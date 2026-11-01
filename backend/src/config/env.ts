@@ -88,7 +88,7 @@ export function validateSecurityConfig(): { valid: boolean; warnings: string[] }
 }
 
 export const env = {
-  port: Number(cleanEnv(process.env.PORT, '5001')),
+  port: Number(cleanEnv(process.env.PORT, '5002')),
   databaseUrl: cleanEnv(process.env.DATABASE_URL, ''),
   jwtSecret: resolveJwtSecret(),
   corsOrigin: cleanEnv(process.env.CORS_ORIGIN, 'http://localhost:5173,https://attendoschool.online,https://www.attendoschool.online'),

@@ -1,7 +1,7 @@
 import { pool, isPostgresConfigured } from '../db';
 import { sendMailWithDualPortFallback } from './notificationService';
 import { env } from '../config/env';
-import { isSameSchool } from '../utils/tenant';
+import { isSameSchool, canonicalSchoolId } from '../utils/tenant';
 
 // In-memory fallback stores for test schools / pure Firestore mode resilience
 export const memAnnouncements: any[] = [
@@ -111,7 +111,7 @@ async function resolveClassAndSectionUuids(schoolId: string, classId?: string | 
                      Number(raw.replace(/[^0-9-]/g, ''));
     if (!isNaN(cleanNum)) {
       try {
-        const q = await pool.query('SELECT id FROM classes WHERE (school_id = $1 OR school_id = $2) AND class_number = $3 LIMIT 1', [schoolId, '00000000-0000-0000-0000-000000000001', cleanNum]);
+        const q = await pool.query('SELECT id FROM classes WHERE school_id = $1 AND class_number = $2 LIMIT 1', [schoolId, cleanNum]);
         if (q.rowCount && q.rows[0]) cUuid = q.rows[0].id;
       } catch {}
     }
@@ -153,7 +153,7 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
   const targetSectionId = audience === 'SECTION' ? resolvedSectionId : null;
 
   const isUuid = (val?: string | null) => Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(val)));
-  const safeSchoolId = isUuid(schoolId) ? schoolId : '00000000-0000-0000-0000-000000000001';
+  const safeSchoolId = isUuid(schoolId) ? schoolId : (canonicalSchoolId(schoolId) || schoolId);
   const safeUserId = isUuid(userId) ? userId : null;
 
   const isDirectPublish = d.publish === true || d.status === 'PUBLISHED';
@@ -200,6 +200,10 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
     id: `ann-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     school_id: schoolId,
     created_by: userId,
+    author_name: d.author_name || d.created_by_name || 'School Administration',
+    created_by_name: d.created_by_name || d.author_name || 'School Administration',
+    author_role: d.author_role || d.created_by_role || 'SCHOOL_ADMIN',
+    created_by_role: d.created_by_role || d.author_role || 'SCHOOL_ADMIN',
     title: d.title,
     message: d.message,
     audience_type: audience,
@@ -216,6 +220,7 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
     updated_at: new Date().toISOString(),
     recipient_count: audience === 'SCHOOL' ? 25 : audience === 'TEACHER' ? 12 : audience === 'SECTION' ? 15 : 30,
     read_count: 0,
+    read_by: [],
     reply_count: 0,
     attachment_url: attachmentUrl,
     attachment_name: attachmentName,
@@ -253,7 +258,7 @@ export async function updateAnnouncement(schoolId: string, id: string, d: any) {
       `UPDATE announcements
        SET title = $1, message = $2, audience_type = $3, class_id = $4, section_id = $5, priority = $6,
            attachment_url = $7, attachment_name = $8, attachment_type = $9, attachment_size = $10, updated_at = NOW()
-       WHERE id = $11 AND (school_id = $12 OR school_id = '00000000-0000-0000-0000-000000000001')
+       WHERE id = $11 AND school_id = $12
        RETURNING *`,
       [
         d.title,
@@ -309,6 +314,20 @@ export async function updateAnnouncement(schoolId: string, id: string, d: any) {
     status: 'DRAFT',
     updated_at: new Date().toISOString()
   };
+}
+
+export async function deleteAnnouncement(schoolId: string, id: string) {
+  await ensureTables();
+  if (isPostgresConfigured) {
+    try {
+      await pool.query(`DELETE FROM announcement_recipients WHERE announcement_id = $1`, [id]).catch(() => {});
+      await pool.query(`DELETE FROM notification_replies WHERE announcement_id = $1`, [id]).catch(() => {});
+      await pool.query(`DELETE FROM announcements WHERE id = $1 AND school_id = $2`, [id, schoolId]);
+    } catch (_e) {}
+  }
+  const idx = memAnnouncements.findIndex(a => a.id === id);
+  if (idx >= 0) memAnnouncements.splice(idx, 1);
+  return { success: true };
 }
 
 /**
@@ -584,8 +603,9 @@ export async function listSchoolAnnouncements(schoolId: string) {
     if (rows && rows.length > 0) return rows;
   } catch (_e) {}
 
-  return memAnnouncements.map(a => ({
+  return memAnnouncements.filter(a => isSameSchool(a.school_id, schoolId)).map(a => ({
     ...a,
+    read_count: Array.isArray(a.read_by) ? a.read_by.length : (a.read_count || 0),
     reply_count: memReplies.filter(r => r.announcement_id === a.id).length || a.reply_count || 0
   }));
 }
@@ -631,9 +651,25 @@ export async function teacherInbox(teacherUserId: string, schoolId: string, from
   }
 
   // Filter in-memory announcements strictly for faculty
-  let facultyNotices = memAnnouncements.filter(
-    a => a.status === 'PUBLISHED' && ['TEACHER', 'SCHOOL'].includes(a.audience_type) && isSameSchool(a.school_id, schoolId)
-  );
+  let facultyNotices = memAnnouncements.filter(a => {
+    if (a.status !== 'PUBLISHED') return false;
+
+    // Strict multi-tenant match
+    const matchesSchool = isSameSchool(a.school_id, schoolId);
+
+    if (!matchesSchool) return false;
+
+    // Audience & creator checks: announcements from Admin or targeting school/faculty
+    const aud = String(a.audience_type || '').toUpperCase();
+    const isTargetAudience = ['TEACHER', 'SCHOOL', 'STUDENT', 'CLASS', 'SECTION', 'PARENTS', 'ALL'].includes(aud);
+    const isFromAdmin = a.author_role === 'SCHOOL_ADMIN' ||
+                        a.created_by_role === 'SCHOOL_ADMIN' ||
+                        a.author_role === 'SUPER_ADMIN' ||
+                        !a.created_by ||
+                        a.created_by !== teacherUserId;
+
+    return isTargetAudience && isFromAdmin;
+  });
 
   if (fromDate && fromDate.trim()) {
     const fromTime = new Date(`${fromDate.trim()}T00:00:00`).getTime();
@@ -663,11 +699,14 @@ export async function teacherInbox(teacherUserId: string, schoolId: string, from
     return tB - tA;
   });
 
-  return facultyNotices.map(n => ({
-    ...n,
-    author_name: n.created_by_name || 'Principal Office',
-    read_at: null
-  }));
+  return facultyNotices.map(n => {
+    const isRead = Array.isArray(n.read_by) && (n.read_by.includes(teacherUserId) || n.read_by.includes(String(teacherUserId)));
+    return {
+      ...n,
+      author_name: n.author_name || n.created_by_name || 'School Administration',
+      read_at: isRead ? (n.read_at || new Date().toISOString()) : null
+    };
+  });
 }
 
 /**
@@ -726,7 +765,7 @@ export async function parentInbox(parentUserId: string, schoolId: string) {
   } catch (_e) {}
 
   const parentNotices = memAnnouncements.filter(
-    a => a.status === 'PUBLISHED' && ['PARENTS', 'SCHOOL', 'CLASS', 'SECTION'].includes(a.audience_type)
+    a => isSameSchool(a.school_id, schoolId) && a.status === 'PUBLISHED' && ['PARENTS', 'SCHOOL', 'CLASS', 'SECTION'].includes(a.audience_type)
   );
   return parentNotices.map(n => ({
     ...n,
@@ -965,6 +1004,7 @@ export async function markRead(userId: string, recipientIdOrNoticeId: string) {
           [resolvedAnnId, userId]
         );
         if (insRes.rowCount && insRes.rowCount > 0) {
+          pool.query(`UPDATE announcements SET read_count = (SELECT COUNT(DISTINCT parent_user_id) FROM announcement_recipients WHERE announcement_id = $1 AND read_at IS NOT NULL) WHERE id = $1`, [resolvedAnnId]).catch(() => {});
           return insRes.rows[0];
         }
       }
@@ -975,8 +1015,13 @@ export async function markRead(userId: string, recipientIdOrNoticeId: string) {
 
   // Update in-memory announcements as fallback
   try {
-    const memMatch = memAnnouncements.find(a => a.id === recipientIdOrNoticeId);
+    const memMatch = memAnnouncements.find(a => a.id === recipientIdOrNoticeId || a.id === String(recipientIdOrNoticeId).trim());
     if (memMatch) {
+      if (!Array.isArray(memMatch.read_by)) memMatch.read_by = [];
+      if (!memMatch.read_by.includes(userId)) {
+        memMatch.read_by.push(userId);
+      }
+      memMatch.read_count = memMatch.read_by.length;
       memMatch.read_at = new Date().toISOString();
       memMatch.delivery_status = 'READ';
     }

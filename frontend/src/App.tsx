@@ -6133,6 +6133,21 @@ function Students(){
     }
 
     // Client-side uniqueness pre-checks against loaded student directory
+    if (primaryPhone) {
+      const cleanPhoneDigits = primaryPhone.replace(/\D/g, '').slice(-10);
+      if (cleanPhoneDigits.length === 10) {
+        const dupPhone = rows.find(r => {
+          if (editingStudent && r.id === editingStudent.id) return false;
+          const rPhone = String(r.parent_sms_number || r.parentPhone || r.fatherPhone || r.motherPhone || r.phone || '').replace(/\D/g, '').slice(-10);
+          return rPhone === cleanPhoneDigits;
+        });
+        if (dupPhone) {
+          alert('Validation Error: This phone number is already registered.');
+          return;
+        }
+      }
+    }
+
     if (cleanAdm) {
       const dupAdm = rows.find(r => 
         (!editingStudent || r.id !== editingStudent.id) &&
@@ -6947,6 +6962,7 @@ function Students(){
         const seenAdm = new Map<string, number>();
         const seenRoll = new Map<string, number>();
         const seenEmails = new Map<string, number>();
+        const seenPhones = new Map<string, number>();
 
         const mapped = json.map((r, idx) => {
           const rowNum = idx + 1;
@@ -7118,6 +7134,23 @@ function Students(){
             }
           }
 
+          
+          const primaryPhoneForImport = parentPhone || fatherPhone || motherPhone || '';
+          const cleanPhoneDigits = primaryPhoneForImport.replace(/\D/g, '').slice(-10);
+          if (cleanPhoneDigits.length === 10) {
+            if (seenPhones.has(cleanPhoneDigits)) {
+              rowErrs.push({row:rowNum,field:'Contact Phone',message:`Duplicate phone number in file: '${primaryPhoneForImport}' (row ${seenPhones.get(cleanPhoneDigits)})`});
+            } else {
+              seenPhones.set(cleanPhoneDigits, rowNum);
+              const dbDupPhone = rows.find(dr => {
+                const rPhone = String(dr.parent_sms_number || dr.parentPhone || dr.fatherPhone || dr.motherPhone || dr.phone || '').replace(/\D/g, '').slice(-10);
+                return rPhone === cleanPhoneDigits;
+              });
+              if (dbDupPhone) {
+                rowErrs.push({row:rowNum,field:'Contact Phone',message:`Phone number '${primaryPhoneForImport}' already in use in database`});
+              }
+            }
+          }
           rowErrors.push(...rowErrs);
           return {
             firstName,
@@ -10216,12 +10249,20 @@ function Teachers(){
     }
     const dupEmail = rows.find(r => (!editingTeacher || r.id !== editingTeacher.id) && String(r.email || '').trim().toLowerCase() === email);
     if (dupEmail) {
-      alert(`Validation Error: Teacher email already exists. Email '${email}' is already registered to teacher '${dupEmail.name || 'Existing Teacher'}'.`);
+      alert('Validation Error: This email address is already registered.');
       return;
     }
     if (!employeeId) {
       alert('Validation Error: Please enter Employee ID / Savior_No.');
       return;
+    }
+    const cleanEmp = String(employeeId || '').trim().toLowerCase();
+    if (cleanEmp) {
+      const dupEmp = rows.find(r => (!editingTeacher || r.id !== editingTeacher.id) && String(r.employee_id || r.employeeId || r.savior_no || '').trim().toLowerCase() === cleanEmp);
+      if (dupEmp) {
+        alert('Validation Error: This Employee/Saviour ID is already registered.');
+        return;
+      }
     }
     const joiningDateVal = f.joiningDate || f.joining_date;
     if (!joiningDateVal) {
@@ -10244,6 +10285,18 @@ function Teachers(){
     if (cleanMobile.length < 10) {
       alert('Validation Error: Mobile Number must be a valid 10-digit number.');
       return;
+    }
+    const cleanMob10 = cleanMobile.slice(-10);
+    if (cleanMob10.length === 10) {
+      const dupMobile = rows.find(r => {
+        if (editingTeacher && r.id === editingTeacher.id) return false;
+        const rMob = String(r.mobile || r.phone || '').replace(/\D/g, '').slice(-10);
+        return rMob === cleanMob10;
+      });
+      if (dupMobile) {
+        alert('Validation Error: This phone number is already registered.');
+        return;
+      }
     }
 
     const assignedClassSecText = (f.class_name || f.class)
@@ -10642,8 +10695,9 @@ function Teachers(){
         });
 
         const rowErrors: { row: number; field: string; message: string }[] = [];
-        const seenSavior = new Set<string>();
-        const seenMail = new Set<string>();
+        const seenSavior = new Map<string, number>();
+        const seenMail = new Map<string, number>();
+        const seenMobile = new Map<string, number>();
 
         const mapped = cleanedJson.map((r, idx) => {
           const rowNum = idx + 1;
@@ -10685,7 +10739,7 @@ function Teachers(){
           }
 
           const rawMobile = getExcelCell(r, ['Mobile', 'MOBILE', 'mobile', 'Phone', 'PHONE', 'phone', 'Contact']).replace(/[^0-9]/g, '');
-          const mobile = rawMobile || '9876500000';
+          const mobile = rawMobile;
           let rawGender = getExcelCell(r, ['Gender', 'GENDER', 'gender', 'Sex', 'SEX', 'sex', 'Gender (M/F)', 'Gender(M/F)', 'M/F', 'MF', 'Sex/Gender', 'Gen']);
           if (!rawGender) {
             const gk = Object.keys(r).find(k => /gender|sex|\bm[\/\-_]?f\b/i.test(k));
@@ -10718,23 +10772,46 @@ function Teachers(){
           if (!name) {
             rowErrs.push({ row: rowNum, field: 'Full Name', message: 'Name is required' });
           }
+          const cleanSavior = String(saviorNo || '').trim().toLowerCase();
           if (!saviorNo) {
             rowErrs.push({ row: rowNum, field: 'Savior_No', message: 'Savior_No / Employee ID is required' });
-          } else if (seenSavior.has(saviorNo)) {
-            rowErrs.push({ row: rowNum, field: 'Savior_No', message: `Duplicate Savior_No '${saviorNo}' in file` });
+          } else if (seenSavior.has(cleanSavior)) {
+            rowErrs.push({ row: rowNum, field: 'Savior_No', message: `Duplicate Savior_No '${saviorNo}' in file (row ${seenSavior.get(cleanSavior)})` });
           } else {
-            seenSavior.add(saviorNo);
+            seenSavior.set(cleanSavior, rowNum);
+            const dbDupEmp = rows.find(dr => String(dr.employee_id || dr.savior_no || dr.employeeId || '').trim().toLowerCase() === cleanSavior);
+            if (dbDupEmp) {
+              rowErrs.push({ row: rowNum, field: 'Savior_No', message: `Employee ID / Savior No '${saviorNo}' already exists in database` });
+            }
           }
-          if (email && seenMail.has(email)) {
-            rowErrs.push({ row: rowNum, field: 'Email ID', message: `Duplicate email '${email}' in file` });
-          } else if (email) {
-            seenMail.add(email);
+          if (email) {
+            const cleanMail = email.trim().toLowerCase();
+            if (seenMail.has(cleanMail)) {
+              rowErrs.push({ row: rowNum, field: 'Email ID', message: `Duplicate email '${email}' in file (row ${seenMail.get(cleanMail)})` });
+            } else {
+              seenMail.set(cleanMail, rowNum);
+              const dbDupMail = rows.find(dr => String(dr.email || '').trim().toLowerCase() === cleanMail);
+              if (dbDupMail) {
+                rowErrs.push({ row: rowNum, field: 'Email ID', message: `Email '${email}' already exists in database` });
+              }
+            }
           }
           if (joiningDate && !isValidDdMmYyyy(joiningDate)) {
             rowErrs.push({ row: rowNum, field: 'Joining Date', message: 'Joining Date must be DD-MM-YYYY' });
           }
+          const cleanTeacherMob10 = rawMobile.slice(-10);
           if (rawMobile && rawMobile.length !== 10) {
             rowErrs.push({ row: rowNum, field: 'Mobile', message: `Mobile must be 10 digits (${rawMobile.length} given)` });
+          } else if (cleanTeacherMob10.length === 10) {
+            if (seenMobile.has(cleanTeacherMob10)) {
+              rowErrs.push({ row: rowNum, field: 'Mobile', message: `Duplicate mobile '${rawMobile}' in file (row ${seenMobile.get(cleanTeacherMob10)})` });
+            } else {
+              seenMobile.set(cleanTeacherMob10, rowNum);
+              const dbDupMob = rows.find(dr => String(dr.mobile || dr.phone || '').replace(/\D/g, '').slice(-10) === cleanTeacherMob10);
+              if (dbDupMob) {
+                rowErrs.push({ row: rowNum, field: 'Mobile', message: `Mobile number '${rawMobile}' already exists in database` });
+              }
+            }
           }
 
           rowErrors.push(...rowErrs);

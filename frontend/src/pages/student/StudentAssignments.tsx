@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   FileCheck, ArrowLeft, Send, CheckCircle2, Clock, Paperclip, Calendar,
-  Upload, X, Download, Eye, FileText, AlertCircle, Loader2, Search, Edit3, RotateCcw
+  Upload, X, Download, Eye, FileText, AlertCircle, Loader2, Search, Edit3, RotateCcw,
+  Image
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { studentApi, Assignment, AssignmentAttachment } from '../../services/studentApi';
@@ -37,6 +38,47 @@ const formatBytes = (bytes: number) => {
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+};
+
+const getFileIcon = (fileName?: string, mimeType?: string) => {
+  const lowerName = (fileName || '').toLowerCase();
+  const lowerMime = (mimeType || '').toLowerCase();
+
+  if (lowerMime === 'application/pdf' || lowerName.endsWith('.pdf')) {
+    return <FileText size={18} color="#dc2626" />;
+  }
+  if (
+    lowerMime.startsWith('image/') ||
+    lowerName.endsWith('.png') ||
+    lowerName.endsWith('.jpg') ||
+    lowerName.endsWith('.jpeg') ||
+    lowerName.endsWith('.webp') ||
+    lowerName.endsWith('.gif')
+  ) {
+    return <Image size={18} color="#2563eb" />;
+  }
+  if (lowerName.endsWith('.doc') || lowerName.endsWith('.docx')) {
+    return <FileText size={18} color="#2563eb" />;
+  }
+  if (lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx') || lowerName.endsWith('.csv')) {
+    return <FileCheck size={18} color="#16a34a" />;
+  }
+  return <Paperclip size={18} color="#2563eb" />;
+};
+
+const isPreviewableFile = (fileName?: string, mimeType?: string) => {
+  const lower = (fileName || '').toLowerCase();
+  const m = (mimeType || '').toLowerCase();
+  return (
+    m === 'application/pdf' ||
+    m.startsWith('image/') ||
+    lower.endsWith('.pdf') ||
+    lower.endsWith('.png') ||
+    lower.endsWith('.jpg') ||
+    lower.endsWith('.jpeg') ||
+    lower.endsWith('.webp') ||
+    lower.endsWith('.gif')
+  );
 };
 
 export function StudentAssignments() {
@@ -549,167 +591,238 @@ export function StudentAssignments() {
                 </div>
               </div>
 
-              {/* Teacher's Attached Document / Material Section */}
+              {/* Teacher's Attached Documents / Reference Material */}
               {((a.document_name) || (a.teacher_attachments && a.teacher_attachments.length > 0)) && (
-                <div
-                  style={{
-                    margin: '12px 0',
-                    padding: '12px',
-                    borderRadius: 8,
-                    background: 'rgba(2, 132, 199, 0.06)',
-                    border: '1px solid rgba(2, 132, 199, 0.22)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 8
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#0369a1', display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <FileText size={14} style={{ color: '#0284c7' }} />
-                      Assignment Document / Worksheet:
-                    </span>
-                    <span style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>
-                      Teacher Material
-                    </span>
-                  </div>
+                <div style={{ margin: '14px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    color: 'var(--text-muted, #64748b)',
+                    marginBottom: 2
+                  }}>
+                    Attached Documents ({(a.teacher_attachments && a.teacher_attachments.length > 0) ? a.teacher_attachments.length : (a.document_name ? 1 : 0)})
+                  </label>
 
-                  {(a.teacher_attachments && a.teacher_attachments.length > 0
-                    ? a.teacher_attachments
-                    : [{
-                        id: 'doc',
-                        file_name: a.document_name || 'Assignment_Document.pdf',
-                        file_size: a.document_size || 0,
-                        mime_type: a.document_mime || 'application/pdf',
-                        file_data: a.document_data
-                      }]
-                  ).map((doc, idx) => {
-                    const isPreviewable =
-                      (doc.mime_type && (doc.mime_type.startsWith('image/') || doc.mime_type === 'application/pdf')) ||
-                      doc.file_name.endsWith('.pdf') ||
-                      doc.file_name.endsWith('.png') ||
-                      doc.file_name.endsWith('.jpg') ||
-                      doc.file_name.endsWith('.jpeg');
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {(a.teacher_attachments && a.teacher_attachments.length > 0
+                      ? a.teacher_attachments
+                      : [{
+                          id: 'doc',
+                          file_name: a.document_name || 'Assignment_Document.pdf',
+                          file_size: a.document_size || 0,
+                          mime_type: a.document_mime || 'application/pdf',
+                          file_data: a.document_data
+                        }]
+                    ).map((doc, idx) => {
+                      const isPreviewable = isPreviewableFile(doc.file_name, doc.mime_type);
+                      return (
+                        <div
+                          key={doc.id || idx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '12px 16px',
+                            borderRadius: 8,
+                            backgroundColor: 'var(--card-subtle, #f8fafc)',
+                            border: '1px solid var(--border, #cbd5e1)',
+                            gap: 12,
+                            flexWrap: 'wrap'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                            <div style={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: 6,
+                              backgroundColor: '#eff6ff',
+                              color: '#2563eb',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              {getFileIcon(doc.file_name, doc.mime_type)}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{
+                                fontWeight: 600,
+                                fontSize: 13.5,
+                                color: 'var(--text, #0f172a)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {doc.file_name}
+                              </div>
+                              {doc.file_size > 0 && (
+                                <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>
+                                  {formatBytes(doc.file_size)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
 
-                    return (
-                      <div
-                        key={doc.id || idx}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '8px 10px',
-                          borderRadius: 6,
-                          background: 'var(--bg-card, #ffffff)',
-                          border: '1px solid var(--border, #e2e8f0)',
-                          gap: 8
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden', maxWidth: '60%' }}>
-                          <Paperclip size={13} style={{ color: '#0284c7', flexShrink: 0 }} />
-                          <span
-                            title={doc.file_name}
-                            style={{
-                              fontSize: 12.5,
-                              fontWeight: 600,
-                              color: 'var(--text, #0f172a)',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}
-                          >
-                            {doc.file_name}
-                          </span>
-                          {doc.file_size > 0 && (
-                            <span style={{ fontSize: 11, color: '#64748b', flexShrink: 0 }}>
-                              ({formatBytes(doc.file_size)})
-                            </span>
-                          )}
-                        </div>
-
-                        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                          {isPreviewable && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {isPreviewable && (
+                              <button
+                                type="button"
+                                onClick={() => openTeacherDocPreview(a.id, doc.file_name, doc.mime_type, doc.file_data, doc.id)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  padding: '7px 14px',
+                                  borderRadius: 6,
+                                  backgroundColor: '#eff6ff',
+                                  color: '#2563eb',
+                                  fontSize: 12.5,
+                                  fontWeight: 600,
+                                  border: '1px solid #bfdbfe',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <Eye size={14} /> Preview
+                              </button>
+                            )}
                             <button
                               type="button"
-                              onClick={() => openTeacherDocPreview(a.id, doc.file_name, doc.mime_type, doc.file_data, doc.id)}
-                              className="student-attachment-preview-btn"
-                              style={{ padding: '4px 8px', fontSize: 11.5 }}
+                              onClick={() => handleTeacherDocDownload(a.id, doc.file_name, doc.file_data, doc.id)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '7px 14px',
+                                borderRadius: 6,
+                                backgroundColor: '#2563eb',
+                                color: '#ffffff',
+                                fontSize: 12.5,
+                                fontWeight: 600,
+                                border: 'none',
+                                cursor: 'pointer',
+                                boxShadow: '0 1px 2px rgba(37,99,235,0.2)'
+                              }}
                             >
-                              <Eye size={12} /> Preview Attachment
+                              <Download size={14} /> Download Document
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => handleTeacherDocDownload(a.id, doc.file_name, doc.file_data, doc.id)}
-                            className="student-attachment-download-btn"
-                            style={{ padding: '4px 8px', fontSize: 11.5 }}
-                          >
-                            <Download size={12} /> Download Attachment
-                          </button>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
               {/* Submitted Information Box */}
               {a.submission_status !== 'PENDING' && (
                 <div className="student-submission-info-box">
-                  <div className="submission-header" style={{ fontWeight: 600, color: 'var(--text, #334155)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <CheckCircle2 size={14} color="#16a34a" /> Your Submission:
+                  <div className="submission-header" style={{ fontWeight: 600, color: 'var(--text, #334155)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <CheckCircle2 size={15} color="#16a34a" /> Your Submitted Work:
                   </div>
                   {a.submission_text ? (
-                    <p style={{ margin: '0 0 8px', color: 'var(--text-secondary, #475569)', whiteSpace: 'pre-wrap', fontSize: 12.5 }}>
+                    <p style={{ margin: '0 0 10px', color: 'var(--text-secondary, #475569)', whiteSpace: 'pre-wrap', fontSize: 13 }}>
                       {a.submission_text}
                     </p>
                   ) : null}
 
-                  {/* Attachments List */}
+                  {/* Submitted Attachments List */}
                   {a.attachments && a.attachments.length > 0 && (
                     <div style={{ marginTop: 8 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>
-                        Attachments ({a.attachments.length}):
+                      <span style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted, #64748b)', display: 'block', marginBottom: 6 }}>
+                        Submitted Attachments ({a.attachments.length})
                       </span>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {a.attachments.map((att) => {
-                          const isPreviewable =
-                            att.mime_type.startsWith('image/') ||
-                            att.mime_type === 'application/pdf' ||
-                            att.file_name.endsWith('.pdf') ||
-                            att.file_name.endsWith('.png') ||
-                            att.file_name.endsWith('.jpg') ||
-                            att.file_name.endsWith('.jpeg');
-
+                          const isPreviewable = isPreviewableFile(att.file_name, att.mime_type);
                           return (
                             <div
                               key={att.id}
-                              className="student-attachment-card-item"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '10px 14px',
+                                borderRadius: 8,
+                                backgroundColor: '#ffffff',
+                                border: '1px solid var(--border, #cbd5e1)',
+                                gap: 10,
+                                flexWrap: 'wrap'
+                              }}
                             >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '65%' }}>
-                                <Paperclip size={13} color="var(--text-muted, #64748b)" />
-                                <span title={att.file_name} className="file-name" style={{ fontWeight: 500, color: 'var(--text, #1e293b)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                  {att.file_name}
-                                </span>
-                                <span style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 11 }}>
-                                  ({formatBytes(att.file_size)})
-                                </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                                <div style={{
+                                  width: 32,
+                                  height: 32,
+                                  borderRadius: 6,
+                                  backgroundColor: '#eff6ff',
+                                  color: '#2563eb',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0
+                                }}>
+                                  {getFileIcon(att.file_name, att.mime_type)}
+                                </div>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{
+                                    fontWeight: 600,
+                                    fontSize: 13,
+                                    color: 'var(--text, #0f172a)',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    {att.file_name}
+                                  </div>
+                                  <div style={{ fontSize: 11, color: 'var(--text-muted, #64748b)' }}>
+                                    {formatBytes(att.file_size)}
+                                  </div>
+                                </div>
                               </div>
-                              <div style={{ display: 'flex', gap: 6 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 {isPreviewable && (
                                   <button
                                     type="button"
                                     onClick={() => openPreview(a.id, att)}
-                                    className="student-attachment-preview-btn"
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 4,
+                                      padding: '5px 10px',
+                                      borderRadius: 6,
+                                      backgroundColor: '#eff6ff',
+                                      color: '#2563eb',
+                                      fontSize: 12,
+                                      fontWeight: 600,
+                                      border: '1px solid #bfdbfe',
+                                      cursor: 'pointer'
+                                    }}
                                   >
-                                    <Eye size={12} /> Preview Attachment
+                                    <Eye size={12} /> Preview
                                   </button>
                                 )}
                                 <button
                                   type="button"
                                   onClick={() => handleDownload(a.id, att)}
-                                  className="student-attachment-download-btn"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    padding: '5px 12px',
+                                    borderRadius: 6,
+                                    backgroundColor: '#2563eb',
+                                    color: '#ffffff',
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 1px 2px rgba(37,99,235,0.2)'
+                                  }}
                                 >
-                                  <Download size={12} /> Download Attachment
+                                  <Download size={12} /> Download File
                                 </button>
                               </div>
                             </div>
@@ -794,23 +907,20 @@ export function StudentAssignments() {
               )}
 
               {/* Display Teacher Attached Document if available */}
-              {(activeModal.document_name || (activeModal.teacher_attachments && activeModal.teacher_attachments.length > 0)) && (
-                <div
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: 8,
-                    background: 'rgba(2, 132, 199, 0.08)',
-                    border: '1px solid rgba(2, 132, 199, 0.25)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 6,
-                    marginBottom: 10
-                  }}
-                >
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#0369a1', display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <FileText size={13} style={{ color: '#0284c7' }} />
-                    Teacher's Reference Material / Questions:
-                  </span>
+              {/* Teacher's Reference Material / Attached Documents */}
+              {((activeModal.document_name) || (activeModal.teacher_attachments && activeModal.teacher_attachments.length > 0)) && (
+                <div style={{ marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    color: 'var(--text-muted, #64748b)',
+                    marginBottom: 2
+                  }}>
+                    Teacher's Reference Material / Attached Documents
+                  </label>
                   {(activeModal.teacher_attachments && activeModal.teacher_attachments.length > 0
                     ? activeModal.teacher_attachments
                     : [{
@@ -820,47 +930,90 @@ export function StudentAssignments() {
                         mime_type: activeModal.document_mime || 'application/pdf',
                         file_data: activeModal.document_data
                       }]
-                  ).map((doc, idx) => (
-                    <div
-                      key={doc.id || idx}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        background: 'var(--bg-card, #ffffff)',
-                        padding: '6px 10px',
-                        borderRadius: 6,
-                        border: '1px solid var(--border, #e2e8f0)',
-                        fontSize: 12
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', maxWidth: '65%' }}>
-                        <Paperclip size={12} style={{ color: '#0284c7' }} />
-                        <span style={{ fontWeight: 600, color: 'var(--text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {doc.file_name}
-                        </span>
-                        {doc.file_size > 0 && <span style={{ color: '#64748b' }}>({formatBytes(doc.file_size)})</span>}
+                  ).map((doc, idx) => {
+                    const isPreviewable = isPreviewableFile(doc.file_name, doc.mime_type);
+                    return (
+                      <div
+                        key={doc.id || idx}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 14px',
+                          borderRadius: 8,
+                          backgroundColor: 'var(--card-subtle, #f8fafc)',
+                          border: '1px solid var(--border, #cbd5e1)',
+                          gap: 10,
+                          flexWrap: 'wrap'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                          <div style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 6,
+                            backgroundColor: '#eff6ff',
+                            color: '#2563eb',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            {getFileIcon(doc.file_name, doc.mime_type)}
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {doc.file_name}
+                            </div>
+                            {doc.file_size > 0 && <div style={{ fontSize: 11, color: '#64748b' }}>{formatBytes(doc.file_size)}</div>}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {isPreviewable && (
+                            <button
+                              type="button"
+                              onClick={() => openTeacherDocPreview(activeModal.id, doc.file_name, doc.mime_type, doc.file_data, doc.id)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                padding: '5px 10px',
+                                borderRadius: 6,
+                                backgroundColor: '#eff6ff',
+                                color: '#2563eb',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                border: '1px solid #bfdbfe',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <Eye size={12} /> Preview
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleTeacherDocDownload(activeModal.id, doc.file_name, doc.file_data, doc.id)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              padding: '5px 12px',
+                              borderRadius: 6,
+                              backgroundColor: '#2563eb',
+                              color: '#ffffff',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              border: 'none',
+                              cursor: 'pointer',
+                              boxShadow: '0 1px 2px rgba(37,99,235,0.2)'
+                            }}
+                          >
+                            <Download size={12} /> Download Document
+                          </button>
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button
-                          type="button"
-                          onClick={() => openTeacherDocPreview(activeModal.id, doc.file_name, doc.mime_type, doc.file_data, doc.id)}
-                          className="student-attachment-preview-btn"
-                          style={{ padding: '3px 8px', fontSize: 11 }}
-                        >
-                          <Eye size={11} /> View
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleTeacherDocDownload(activeModal.id, doc.file_name, doc.file_data, doc.id)}
-                          className="student-attachment-download-btn"
-                          style={{ padding: '3px 8px', fontSize: 11 }}
-                        >
-                          <Download size={11} /> Get File
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
@@ -884,10 +1037,11 @@ export function StudentAssignments() {
               </label>
 
               {/* Existing Submitted Attachments (When editing) */}
+              {/* Existing Submitted Attachments (When editing) */}
               {activeModal.attachments && activeModal.attachments.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #334155)' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted, #64748b)' }}>
                       Current Submitted Attachments:
                     </span>
                     <span style={{ fontSize: 11, color: '#64748b' }}>
@@ -897,6 +1051,7 @@ export function StudentAssignments() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {activeModal.attachments.map((att) => {
                       const isRemoved = removedAttachmentIds.includes(att.id);
+                      const isPreviewable = isPreviewableFile(att.file_name, att.mime_type);
                       return (
                         <div
                           key={att.id}
@@ -904,49 +1059,87 @@ export function StudentAssignments() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            padding: '6px 10px',
+                            padding: '8px 12px',
                             borderRadius: 6,
-                            border: `1px solid ${isRemoved ? '#fca5a5' : '#e2e8f0'}`,
-                            background: isRemoved ? '#fef2f2' : 'var(--bg-card, #ffffff)',
+                            border: `1px solid ${isRemoved ? '#fca5a5' : 'var(--border, #cbd5e1)'}`,
+                            background: isRemoved ? '#fef2f2' : 'var(--card-subtle, #f8fafc)',
                             opacity: isRemoved ? 0.65 : 1,
-                            fontSize: 12
+                            gap: 10
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', maxWidth: '60%' }}>
-                            <Paperclip size={13} color={isRemoved ? '#ef4444' : 'var(--text-muted, #64748b)'} />
-                            <span
-                              style={{
-                                fontWeight: 500,
-                                textDecoration: isRemoved ? 'line-through' : 'none',
-                                color: isRemoved ? '#991b1b' : 'var(--text, #1e293b)',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap'
-                              }}
-                            >
-                              {att.file_name}
-                            </span>
-                            <span style={{ color: '#94a3b8', fontSize: 11 }}>
-                              ({formatBytes(att.file_size)})
-                            </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                            <div style={{
+                              width: 30,
+                              height: 30,
+                              borderRadius: 4,
+                              backgroundColor: isRemoved ? '#fecaca' : '#eff6ff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              {getFileIcon(att.file_name, att.mime_type)}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <div
+                                style={{
+                                  fontSize: 12.5,
+                                  fontWeight: 600,
+                                  textDecoration: isRemoved ? 'line-through' : 'none',
+                                  color: isRemoved ? '#991b1b' : 'var(--text, #1e293b)',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}
+                              >
+                                {att.file_name}
+                              </div>
+                              <span style={{ color: '#94a3b8', fontSize: 11 }}>
+                                {formatBytes(att.file_size)}
+                              </span>
+                            </div>
                           </div>
 
                           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                             {!isRemoved && (
                               <>
-                                <button
-                                  type="button"
-                                  onClick={() => openPreview(activeModal.id, att)}
-                                  className="student-attachment-preview-btn"
-                                  style={{ padding: '3px 8px', fontSize: 11 }}
-                                >
-                                  <Eye size={11} /> Preview
-                                </button>
+                                {isPreviewable && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openPreview(activeModal.id, att)}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 3,
+                                      padding: '3px 8px',
+                                      borderRadius: 4,
+                                      border: '1px solid #bfdbfe',
+                                      backgroundColor: '#eff6ff',
+                                      color: '#2563eb',
+                                      fontSize: 11,
+                                      fontWeight: 600,
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    <Eye size={11} /> Preview
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => handleDownload(activeModal.id, att)}
-                                  className="student-attachment-download-btn"
-                                  style={{ padding: '3px 8px', fontSize: 11 }}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 3,
+                                    padding: '3px 8px',
+                                    borderRadius: 4,
+                                    border: 'none',
+                                    backgroundColor: '#2563eb',
+                                    color: '#ffffff',
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                  }}
                                 >
                                   <Download size={11} /> Download
                                 </button>
@@ -1001,82 +1194,128 @@ export function StudentAssignments() {
 
               {/* Attachments Section */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #334155)' }}>
-                    Add Attachments (Max 5 cumulative files, 10MB each, 25MB total):
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 2 }}>
+                  Attach Document / File
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <label
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '7px 14px',
+                      borderRadius: 6,
+                      border: '1px dashed var(--border, #cbd5e1)',
+                      backgroundColor: 'var(--card-subtle, #f8fafc)',
+                      color: 'var(--text, #334155)',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                    title="Attach files to your submission"
+                  >
+                    <Paperclip size={15} color="#2563eb" />
+                    <span>{selectedFiles.length > 0 ? 'Attach More Files' : 'Attach Document / File'}</span>
+                    <input
+                      id="assignment-file-input"
+                      type="file"
+                      multiple
+                      accept=".png,.jpg,.jpeg,.pdf,.xlsx,.doc,.docx"
+                      style={{ display: 'none' }}
+                      onChange={handleFileChange}
+                      disabled={((activeModal.attachments || []).filter(a => !removedAttachmentIds.includes(a.id)).length + selectedFiles.length) >= MAX_FILE_COUNT}
+                    />
+                  </label>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                    {((activeModal.attachments || []).filter(a => !removedAttachmentIds.includes(a.id)).length + selectedFiles.length)} / {MAX_FILE_COUNT} files (Max 10MB each, 25MB total)
                   </span>
-                  <span style={{ fontSize: 11, color: '#64748b' }}>
-                    {((activeModal.attachments || []).filter(a => !removedAttachmentIds.includes(a.id)).length + selectedFiles.length)} / {MAX_FILE_COUNT} files
-                  </span>
-                </div>
-
-                <div
-                  className="student-file-dropzone"
-                  onClick={() => document.getElementById('assignment-file-input')?.click()}
-                >
-                  <input
-                    id="assignment-file-input"
-                    type="file"
-                    multiple
-                    accept=".png,.jpg,.jpeg,.pdf,.xlsx,.doc,.docx"
-                    style={{ display: 'none' }}
-                    onChange={handleFileChange}
-                    disabled={((activeModal.attachments || []).filter(a => !removedAttachmentIds.includes(a.id)).length + selectedFiles.length) >= MAX_FILE_COUNT}
-                  />
-                  <Upload size={22} color="var(--text-muted, #64748b)" style={{ margin: '0 auto 6px' }} />
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)' }}>
-                    Click to select files
-                  </p>
-                  <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-muted, #64748b)' }}>
-                    PDF, PNG, JPG, XLSX, DOC, DOCX up to 10MB each
-                  </p>
                 </div>
 
                 {/* Selected Files List */}
                 {selectedFiles.length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
-                    {selectedFiles.map((f, idx) => (
-                      <div
-                        key={idx}
-                        className="student-selected-file-item"
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', maxWidth: '65%' }}>
-                          <FileText size={14} color="#3b82f6" />
-                          <span style={{ fontWeight: 500, color: 'var(--text, #1e293b)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {f.name}
-                          </span>
-                          <span style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 11 }}>
-                            ({formatBytes(f.size)})
-                          </span>
+                    {selectedFiles.map((f, idx) => {
+                      const isPreviewable = isPreviewableFile(f.name, f.file.type);
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '8px 12px',
+                            borderRadius: 6,
+                            background: 'var(--card, #ffffff)',
+                            border: '1px solid var(--border, #cbd5e1)',
+                            gap: 10
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                            <div style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: 4,
+                              backgroundColor: '#eff6ff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              {getFileIcon(f.name, f.file.type)}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text, #1e293b)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {f.name}
+                              </span>
+                              <span style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 11, marginLeft: 6 }}>
+                                ({formatBytes(f.size)})
+                              </span>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {isPreviewable && (
+                              <button
+                                type="button"
+                                onClick={() => openLocalFilePreview(f.file)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 3,
+                                  padding: '3px 8px',
+                                  borderRadius: 4,
+                                  border: '1px solid #bfdbfe',
+                                  backgroundColor: '#eff6ff',
+                                  color: '#2563eb',
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  cursor: 'pointer'
+                                }}
+                                title="Preview file before submitting"
+                              >
+                                <Eye size={11} /> Preview
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFile(idx)}
+                              style={{
+                                border: 'none',
+                                background: 'none',
+                                cursor: 'pointer',
+                                color: '#ef4444',
+                                padding: 2,
+                                display: 'inline-flex',
+                                alignItems: 'center'
+                              }}
+                              title="Remove file"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <button
-                            type="button"
-                            onClick={() => openLocalFilePreview(f.file)}
-                            className="student-attachment-preview-btn"
-                            style={{ padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}
-                            title="Preview file before submitting"
-                          >
-                            <Eye size={11} /> Preview
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveFile(idx)}
-                            style={{
-                              border: 'none',
-                              background: 'none',
-                              cursor: 'pointer',
-                              color: '#ef4444',
-                              padding: 2
-                            }}
-                            title="Remove file"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

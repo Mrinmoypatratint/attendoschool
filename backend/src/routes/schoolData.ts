@@ -38,7 +38,13 @@ import {
   normalizeAdmissionNumber,
   normalizeRollNumber,
   normalizeEmail,
+  normalizePhoneNumber,
 } from "../utils/studentValidation";
+import {
+  validateTeacherUniqueness,
+  preValidateTeacherBulkImport,
+  normalizeEmployeeId,
+} from "../utils/teacherValidation";
 import { normalizeGender } from "../utils/gender";
 import { invalidateDashboardCache } from "./dashboard";
 import { clearStudentDashboardCache } from "../services/studentService";
@@ -1915,6 +1921,23 @@ r.post("/students", ...admin, async (req: AuthRequest, res) => {
             message: `Student email '${cleanStudentEmail}' is already registered in this school.`,
           });
     }
+    if (parentSmsNumber) {
+      const normP = normalizePhoneNumber(parentSmsNumber);
+      if (normP) {
+        const last10 = normP.slice(-10);
+        const dupPhone = demoStudents.find(
+          (s) =>
+            s.school_id === schoolId &&
+            s.parent_sms_number &&
+            normalizePhoneNumber(s.parent_sms_number)?.slice(-10) === last10,
+        );
+        if (dupPhone) {
+          return res.status(409).json({
+            message: "This phone number is already registered.",
+          });
+        }
+      }
+    }
     if (rollNumber) {
       const dupRoll = demoStudents.find(
         (s) =>
@@ -2224,6 +2247,13 @@ r.post("/students", ...admin, async (req: AuthRequest, res) => {
           admissionNumber: cleanAdmissionNumber || null,
           rollNumber: rollNumber ? String(rollNumber) : null,
           studentEmail: cleanStudentEmail || null,
+          studentPhone: parentSmsNumber || null,
+          familyInfo: {
+            fatherName: fatherName || null,
+            motherName: motherName || null,
+            parentName: parentName || null,
+            guardianName: guardianName || null,
+          },
         });
         if (!uniquenessResult.valid) {
           return res.status(409).json({
@@ -4123,6 +4153,8 @@ r.put("/students/:id", ...admin, async (req: AuthRequest, res) => {
     const effectiveRollNum = cleanRollNumber || existStu?.roll_number || null;
     const effectiveEmail = cleanStudentEmail || existStu?.email || null;
 
+    const cleanParentSms = String(parentSmsNumber || parentPhone || parent_sms_number || "").trim();
+    const effectivePhone = cleanParentSms || existStu?.parent_sms_number || null;
     if (isPostgresConfigured) {
       const uniquenessResult = await validateStudentUniqueness({
         schoolId,
@@ -4132,6 +4164,13 @@ r.put("/students/:id", ...admin, async (req: AuthRequest, res) => {
         admissionNumber: effectiveAdmNum,
         rollNumber: effectiveRollNum,
         studentEmail: effectiveEmail,
+        studentPhone: effectivePhone,
+        familyInfo: {
+          fatherName: cleanFatherName !== undefined ? cleanFatherName : (existStu?.father_name || null),
+          motherName: cleanMotherName !== undefined ? cleanMotherName : (existStu?.mother_name || null),
+          parentName: cleanParentName !== undefined ? cleanParentName : (existStu?.parent_name || null),
+          guardianName: cleanGuardianName !== undefined ? cleanGuardianName : (existStu?.guardian_name || null),
+        },
         excludeStudentId: studentId,
       });
       if (!uniquenessResult.valid) {
@@ -5232,60 +5271,73 @@ r.post("/teachers", ...admin, async (req: AuthRequest, res) => {
       });
   }
 
-  // Teacher Email uniqueness check
-  const dupEmail = demoTeachers.find(
-    (t) => (t.email || "").trim().toLowerCase() === cleanEmail,
-  );
-  if (dupEmail) {
-    return res
-      .status(409)
-      .json({ message: `Teacher email '${cleanEmail}' already exists.` });
-  }
-  if (isPostgresConfigured) {
-    const existingUser = await pool.query(
-      `SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1`,
-      [cleanEmail],
-    );
-    if (existingUser.rowCount && existingUser.rowCount > 0) {
-      return res
-        .status(409)
-        .json({ message: `Teacher email '${cleanEmail}' already exists.` });
-    }
-  }
-  if (isFirebaseConfigured()) {
-    try {
-      const fsSnap = await collections
-        .teachers()
-        .where("email", "==", cleanEmail)
-        .limit(1)
-        .get();
-      if (!fsSnap.empty) {
-        return res
-          .status(409)
-          .json({ message: `Teacher email '${cleanEmail}' already exists.` });
-      }
-    } catch {}
-  }
-
-  // Mobile validation: 10 digits if provided
-  if (mobile && !/^\d{10}$/.test(mobile.replace(/[^0-9]/g, ""))) {
+  // Mobile validation: 10 digits if provided (normalized)
+  const normTeacherMobile = mobile ? normalizePhoneNumber(mobile) : null;
+  if (mobile && (!normTeacherMobile || normTeacherMobile.length !== 10)) {
     return res
       .status(400)
       .json({ message: "Mobile number must be a 10-digit number." });
   }
 
-  // Check unique Employee ID / Savior_No within school tenant
-  const dup = demoTeachers.find(
-    (t) =>
-      t.school_id === req.user!.schoolId &&
-      (t.employee_id === employeeId || t.savior_no === employeeId),
-  );
-  if (dup) {
-    return res
-      .status(400)
-      .json({
-        message: `Employee ID / Savior_NO '${employeeId}' already exists for this school.`,
+  // Demo store teacher uniqueness check
+  if (!isPostgresConfigured) {
+    if (employeeId) {
+      const dupEmp = demoTeachers.find(
+        (t) =>
+          t.school_id === req.user!.schoolId &&
+          (String(t.employee_id || t.savior_no || t.employeeId || "").trim().toLowerCase() === employeeId.toLowerCase()),
+      );
+      if (dupEmp) {
+        return res.status(409).json({
+          message: "This Employee/Saviour ID is already registered.",
+        });
+      }
+    }
+    if (cleanEmail) {
+      const dupEmail = demoTeachers.find(
+        (t) => (t.email || "").trim().toLowerCase() === cleanEmail,
+      );
+      if (dupEmail) {
+        return res.status(409).json({
+          message: "This email address is already registered.",
+        });
+      }
+    }
+    if (mobile) {
+      const normMob = normalizePhoneNumber(mobile);
+      if (normMob) {
+        const last10 = normMob.slice(-10);
+        const dupMobile = demoTeachers.find(
+          (t) =>
+            t.school_id === req.user!.schoolId &&
+            normalizePhoneNumber(t.mobile || t.phone)?.slice(-10) === last10,
+        );
+        if (dupMobile) {
+          return res.status(409).json({
+            message: "This phone number is already registered.",
+          });
+        }
+      }
+    }
+  }
+
+  // PostgreSQL teacher uniqueness check
+  if (isPostgresConfigured) {
+    const uniquenessResult = await validateTeacherUniqueness({
+      schoolId: req.user!.schoolId,
+      employeeId,
+      email: cleanEmail,
+      mobile: mobile || null,
+      phone: mobile || null,
+    });
+    if (!uniquenessResult.valid) {
+      return res.status(409).json({
+        message:
+          uniquenessResult.errors[0]?.message ||
+          "Teacher validation failed.",
+        errors: uniquenessResult.errors,
       });
+    }
   }
 
   if (password && String(password).trim()) {
@@ -5484,14 +5536,29 @@ r.post("/teachers", ...admin, async (req: AuthRequest, res) => {
       if (req.user?.schoolId) fastCache.delete(`teachers:${req.user.schoolId}`);
       syncTeacherToFirestore(created, hash).catch(() => {});
       return res.status(201).json(created);
-    } catch (e) {
+    } catch (e: any) {
       await client.query("ROLLBACK");
+      if (e?.code === '23505') {
+        const detail = String(e?.detail || '').toLowerCase();
+        let message = 'Validation Error: A conflicting record already exists.';
+        if (detail.includes('employee_id')) {
+          message = 'Validation Error: This Employee/Saviour ID is already registered.';
+        } else if (detail.includes('email')) {
+          message = 'Validation Error: This email address is already registered.';
+        } else if (detail.includes('mobile') || detail.includes('phone')) {
+          message = 'Validation Error: This phone number is already registered.';
+        }
+        return res.status(409).json({ message, code: 'DUPLICATE_TEACHER', field: 'employeeId' });
+      }
       throw e;
     } finally {
       client.release();
     }
   } catch (err: any) {
-    console.warn("[TeacherOnboarding] Database fallback:", err.message);
+    console.warn("[TeacherOnboarding] Database error:", err.message);
+    if (isPostgresConfigured) {
+      return res.status(500).json({ message: "Database operation failed: " + err.message });
+    }
   }
 
   // Automatic Teacher Welcome Email via SMTP in Fallback
@@ -5973,7 +6040,7 @@ r.post("/teachers/bulk-import", ...admin, async (req: AuthRequest, res) => {
         lastName,
         name,
         email,
-        mobile: rawMobile || "9876500000",
+        mobile: rawMobile || null,
         gender,
         joiningDate,
         joining_date: joiningDate,
@@ -5994,6 +6061,29 @@ r.post("/teachers/bulk-import", ...admin, async (req: AuthRequest, res) => {
       errors,
       message: `Validation failed for ${errors.length} record(s). The entire import has been cancelled and no faculty data was stored in the database.`,
     });
+  }
+
+  // Pre-validate against intra-file duplicates and existing database records
+  if (isPostgresConfigured) {
+    const importDbErrors = await preValidateTeacherBulkImport({
+      schoolId,
+      rows: validRows.map((r) => ({
+        rowNum: r._origRowIndex,
+        saviorNo: r.saviorNo,
+        email: r.email,
+        mobile: r.mobile,
+        phone: r.mobile,
+        name: r.name,
+      })),
+    });
+
+    if (importDbErrors.length > 0) {
+      return res.status(422).json({
+        success: false,
+        errors: importDbErrors,
+        message: `Import validation failed: ${importDbErrors.length} conflict(s) detected against existing database records or duplicate rows.`,
+      });
+    }
   }
 
   const schoolName = req.user?.schoolName || "School";
@@ -6058,13 +6148,12 @@ r.post("/teachers/bulk-import", ...admin, async (req: AuthRequest, res) => {
       for (const { t, tempPassword, hash } of preparedRows) {
         const u = await client.query(
           `INSERT INTO users(school_id, name, email, password_hash, role) VALUES($1, $2, $3, $4, 'TEACHER')
-           ON CONFLICT (email) DO UPDATE SET name=EXCLUDED.name, school_id=EXCLUDED.school_id, password_hash=EXCLUDED.password_hash
            RETURNING id, name, email`,
           [schoolId, t.name, t.email, hash],
         );
         if (!u.rowCount || !u.rows[0]) {
           throw new Error(
-            `Failed to insert or update user record for faculty member ${t.name} (${t.email})`,
+            `Failed to insert user record for faculty member ${t.name} (${t.email})`,
           );
         }
 
@@ -6082,44 +6171,23 @@ r.post("/teachers/bulk-import", ...admin, async (req: AuthRequest, res) => {
           else if (/^m/i.test(parsedGender)) parsedGender = "Male";
         }
 
-        const existingEp = await client.query(
-          "SELECT user_id FROM teacher_profiles WHERE employee_id = $1",
-          [t.saviorNo],
+        await client.query(
+          `INSERT INTO teacher_profiles(user_id, employee_id, mobile, designation, class_name, section_name, gender, joining_date, first_name, middle_name, last_name)
+           VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [
+            u.rows[0].id,
+            t.saviorNo,
+            t.mobile || null,
+            t.designation || "Teacher",
+            rawClass,
+            rawSection,
+            parsedGender,
+            toDbDate(t.joiningDate),
+            t.firstName || null,
+            t.middleName || null,
+            t.lastName || null,
+          ],
         );
-        if (
-          existingEp.rows.length > 0 &&
-          existingEp.rows[0].user_id !== u.rows[0].id
-        ) {
-          await client.query(
-            `UPDATE teacher_profiles SET user_id = $1, mobile = $2, designation = $3, class_name = $4, section_name = $5, gender = COALESCE($6, gender), joining_date = COALESCE($7, joining_date) WHERE employee_id = $8`,
-            [
-              u.rows[0].id,
-              t.mobile || null,
-              t.designation || "Teacher",
-              rawClass,
-              rawSection,
-              parsedGender,
-              toDbDate(t.joiningDate),
-              t.saviorNo,
-            ],
-          );
-        } else {
-          await client.query(
-            `INSERT INTO teacher_profiles(user_id, employee_id, mobile, designation, class_name, section_name, gender, joining_date) VALUES($1, $2, $3, $4, $5, $6, $7, $8)
-             ON CONFLICT (user_id) DO UPDATE SET employee_id=EXCLUDED.employee_id, mobile=EXCLUDED.mobile, designation=EXCLUDED.designation, class_name=EXCLUDED.class_name, section_name=EXCLUDED.section_name, gender=COALESCE(EXCLUDED.gender, teacher_profiles.gender), joining_date=COALESCE(EXCLUDED.joining_date, teacher_profiles.joining_date)
-             RETURNING *`,
-            [
-              u.rows[0].id,
-              t.saviorNo,
-              t.mobile || null,
-              t.designation || "Teacher",
-              rawClass,
-              rawSection,
-              parsedGender,
-              toDbDate(t.joiningDate),
-            ],
-          );
-        }
 
         // Resolve class/section to UUIDs for class_mentors
         let resolvedClassId: string | null = null;
@@ -6696,18 +6764,63 @@ r.put("/teachers/:id", ...admin, async (req: AuthRequest, res) => {
     if (dupEmail) {
       return res
         .status(409)
-        .json({ message: `Teacher email '${cleanEmail}' already exists.` });
+        .json({ message: "This email address is already registered." });
     }
-    if (isPostgresConfigured) {
-      const existingUser = await pool.query(
-        `SELECT id FROM users WHERE LOWER(email) = LOWER($1) AND id <> $2 LIMIT 1`,
-        [cleanEmail, tid],
+  }
+
+  // Demo store check for Employee ID and Phone on edit
+  const targetPutEmp = String(employeeId || employee_id || existingDocData.employee_id || demoTeachers[idx]?.employee_id || "").trim();
+  const targetPutMobile = String(mobile || phone || existingDocData.mobile || demoTeachers[idx]?.mobile || "").trim();
+  if (!isPostgresConfigured) {
+    if (targetPutEmp) {
+      const dupEmp = demoTeachers.find(
+        (t) =>
+          t.id !== tid &&
+          t.school_id === (userSchoolId || resolvedSchoolId) &&
+          String(t.employee_id || t.savior_no || t.employeeId || "").trim().toLowerCase() === targetPutEmp.toLowerCase(),
       );
-      if (existingUser.rowCount && existingUser.rowCount > 0) {
-        return res
-          .status(409)
-          .json({ message: `Teacher email '${cleanEmail}' already exists.` });
+      if (dupEmp) {
+        return res.status(409).json({
+          message: "This Employee/Saviour ID is already registered.",
+        });
       }
+    }
+    if (targetPutMobile) {
+      const normMob = normalizePhoneNumber(targetPutMobile);
+      if (normMob) {
+        const last10 = normMob.slice(-10);
+        const dupMob = demoTeachers.find(
+          (t) =>
+            t.id !== tid &&
+            t.school_id === (userSchoolId || resolvedSchoolId) &&
+            normalizePhoneNumber(t.mobile || t.phone)?.slice(-10) === last10,
+        );
+        if (dupMob) {
+          return res.status(409).json({
+            message: "This phone number is already registered.",
+          });
+        }
+      }
+    }
+  }
+
+  // PostgreSQL teacher uniqueness check on edit
+  if (isPostgresConfigured) {
+    const uniquenessResult = await validateTeacherUniqueness({
+      schoolId: userSchoolId || resolvedSchoolId,
+      employeeId: targetPutEmp || null,
+      email: cleanEmail || null,
+      mobile: targetPutMobile || null,
+      phone: targetPutMobile || null,
+      excludeUserId: tid,
+    });
+    if (!uniquenessResult.valid) {
+      return res.status(409).json({
+        message:
+          uniquenessResult.errors[0]?.message ||
+          "Teacher validation conflict.",
+        errors: uniquenessResult.errors,
+      });
     }
   }
 
@@ -6970,7 +7083,18 @@ r.put("/teachers/:id", ...admin, async (req: AuthRequest, res) => {
       }
     }
   } catch (updateErr: any) {
-    console.warn("[PUT /teachers/:id] Update error:", updateErr.message);
+    if (updateErr.code === "23505") {
+      let msg = "A unique constraint violation occurred.";
+      if (updateErr.detail?.includes("employee_id") || updateErr.constraint?.includes("employee")) {
+        msg = "This Employee/Saviour ID is already registered.";
+      } else if (updateErr.detail?.includes("email") || updateErr.constraint?.includes("email")) {
+        msg = "This email address is already registered.";
+      } else if (updateErr.detail?.includes("phone") || updateErr.detail?.includes("mobile") || updateErr.constraint?.includes("phone")) {
+        msg = "This phone number is already registered.";
+      }
+      return res.status(409).json({ message: msg });
+    }
+    return res.status(500).json({ message: updateErr.message || "Failed to update teacher" });
   }
 
   const updated = {

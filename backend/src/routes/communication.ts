@@ -1,22 +1,22 @@
 import { Router, Request } from 'express';
 import * as svc from '../services/communicationService';
-import { isTestSchool } from './auth';
+import { isTestSchool, canonicalSchoolId, isGreenwoodSchool } from '../utils/tenant';
 
 const router = Router();
 const u = (r: Request) => (r as any).user;
 
 function resolveSchoolId(req: Request): string {
   const user = u(req);
-  return (
+  const raw = (
     user?.schoolId ||
     user?.school_id ||
     (req.headers['x-school-id'] as string) ||
     (req.headers['x-tenant-id'] as string) ||
     req.body?.schoolId ||
     req.body?.school_id ||
-    (req.query?.schoolId as string) ||
-    '00000000-0000-0000-0000-000000000001'
+    (req.query?.schoolId as string)
   );
+  return canonicalSchoolId(raw) || raw || '00000000-0000-0000-0000-000000000001';
 }
 
 router.use((req, res, next) => {
@@ -34,7 +34,14 @@ router.post('/announcements', async (req, res) => {
   const sid = (req as any).schoolId || resolveSchoolId(req);
   const uid = user?.id || '00000000-0000-0000-0000-000000000021';
   try {
-    const created = await svc.createAnnouncement(sid, uid, req.body);
+    const announcementPayload = {
+      ...req.body,
+      author_name: req.body.author_name || user?.name || (user?.role === 'TEACHER' ? 'Teacher' : 'School Administration'),
+      created_by_name: req.body.created_by_name || user?.name || (user?.role === 'TEACHER' ? 'Teacher' : 'School Administration'),
+      author_role: req.body.author_role || user?.role || 'SCHOOL_ADMIN',
+      created_by_role: req.body.created_by_role || user?.role || 'SCHOOL_ADMIN'
+    };
+    const created = await svc.createAnnouncement(sid, uid, announcementPayload);
     if (req.body?.publish === true || req.body?.status === 'PUBLISHED') {
       try {
         const published = await svc.publishAnnouncement(sid, created.id);
@@ -102,12 +109,27 @@ router.post('/announcements/:id/publish', async (req, res) => {
   }
 });
 
+// Delete announcement
+router.delete('/announcements/:id', async (req, res) => {
+  const user = u(req);
+  if (user && !['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'].includes(user.role)) {
+    return res.status(403).json({ message: 'Communication access required' });
+  }
+  const sid = (req as any).schoolId || resolveSchoolId(req);
+  try {
+    await svc.deleteAnnouncement(sid, req.params.id);
+    return res.json({ success: true, message: 'Announcement deleted' });
+  } catch (e: any) {
+    return res.status(400).json({ message: e.message || 'Unable to delete announcement' });
+  }
+});
+
 // List all school announcements (Admin & faculty)
 router.get('/', async (req, res) => {
   try {
     res.json(await svc.listSchoolAnnouncements(u(req).schoolId));
   } catch (_e: any) {
-    if (isTestSchool(u(req).schoolId)) {
+    if (isGreenwoodSchool(u(req).schoolId)) {
       return res.json([
         {
           id: 'ann-1',
@@ -132,7 +154,7 @@ router.get('/announcements', async (req, res) => {
   try {
     res.json(await svc.listSchoolAnnouncements(u(req).schoolId));
   } catch (_e: any) {
-    if (isTestSchool(u(req).schoolId)) {
+    if (isGreenwoodSchool(u(req).schoolId)) {
       return res.json([
         {
           id: 'ann-1',
@@ -240,8 +262,8 @@ router.get('/announcements/:id/replies', async (req, res) => {
 
 // Administrator Console: Threaded replies grouped by notice
 router.get('/replies', async (req, res) => {
-  if (!['SUPER_ADMIN', 'SCHOOL_ADMIN'].includes(u(req).role)) {
-    return res.status(403).json({ message: 'Administrator access required' });
+  if (!['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'].includes(u(req).role)) {
+    return res.status(403).json({ message: 'Administrator or faculty access required' });
   }
   try {
     const replies = await svc.listAllRepliesGrouped(u(req).schoolId);

@@ -381,12 +381,18 @@ export default function PeopleManagement() {
     }
 
     if (rows && rows.some((r: any) => String(r.email || '').trim().toLowerCase() === email)) {
-      alert('Validation Error: A teacher with this email address already exists.');
+      alert('Validation Error: This email address is already registered.');
       return;
     }
 
     if (!employeeId) {
       alert('Validation Error: Employee ID / Savior_No is a required field.');
+      return;
+    }
+
+    const cleanEmp = String(employeeId || '').trim().toLowerCase();
+    if (rows && rows.some((r: any) => String(r.employee_id || r.savior_no || r.employeeId || '').trim().toLowerCase() === cleanEmp)) {
+      alert('Validation Error: This Employee/Saviour ID is already registered.');
       return;
     }
 
@@ -402,6 +408,11 @@ export default function PeopleManagement() {
     }
     if (cleanMobile.length < 10) {
       alert('Validation Error: Mobile Number must be a valid 10-digit number.');
+      return;
+    }
+    const cleanMob10 = cleanMobile.slice(-10);
+    if (cleanMob10.length === 10 && rows && rows.some((r: any) => String(r.mobile || r.phone || '').replace(/\D/g, '').slice(-10) === cleanMob10)) {
+      alert('Validation Error: This phone number is already registered.');
       return;
     }
 

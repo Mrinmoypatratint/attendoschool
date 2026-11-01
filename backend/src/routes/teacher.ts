@@ -3097,9 +3097,17 @@ r.put('/change-password', ...teacher, async (req: AuthRequest, res) => {
 // ── PUT /api/teacher/profile ──
 r.put('/profile', ...teacher, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
+  const schoolId = req.user!.schoolId;
   const { phone, address, qualification, gender } = req.body || {};
 
   try {
+    if (phone && schoolId) {
+      const { checkTeacherPhoneConflict } = await import('../utils/teacherValidation');
+      const conflictRes = await checkTeacherPhoneConflict(schoolId, String(phone), userId);
+      if (conflictRes.conflict) {
+        return res.status(409).json({ message: conflictRes.message || 'This phone number is already registered.' });
+      }
+    }
     const existingTp = (await pool.query('SELECT employee_id FROM teacher_profiles WHERE user_id = $1', [userId])).rows[0];
     const empId = existingTp?.employee_id || `FAC-${userId.slice(0, 8).toUpperCase()}`;
     await pool.query(
