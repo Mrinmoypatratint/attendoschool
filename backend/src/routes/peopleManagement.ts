@@ -116,7 +116,13 @@ router.put('/teachers/:id', adminOnly, async (req: Request,res: Response)=>{
   try {
     if(!sid(req) && role(req) !== 'SUPER_ADMIN') return res.status(403).json({message:'School access required'});
     res.json(await updateTeacher(effectiveSid(req), String(req.params.id), req.body||{}));
-  } catch(e:any){ res.status(400).json({message:e.message||'Unable to update teacher'}); }
+  } catch(e:any){
+    const status = typeof e.status === 'number' ? e.status : 400;
+    res.status(status).json({
+      message: e.message || 'Unable to update teacher',
+      ...(e.errors ? { errors: e.errors } : {})
+    });
+  }
 });
 
 router.patch('/teachers/:id/status', adminOnly, async (req: Request,res: Response)=>{

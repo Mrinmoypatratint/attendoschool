@@ -3480,6 +3480,14 @@ r.put('/profile', ...teacher, async (req: AuthRequest, res) => {
   const { email, phone, address, qualification, gender } = req.body || {};
 
   try {
+    if (phone && schoolId) {
+      const { checkTeacherPhoneConflict } = await import('../utils/teacherValidation');
+      const conflictRes = await checkTeacherPhoneConflict(schoolId, String(phone), userId);
+      if (conflictRes.conflict) {
+        return res.status(409).json({ message: conflictRes.message || 'This phone number is already registered.' });
+      }
+    }
+
     // 1. Update email in users table if provided
     if (email && typeof email === 'string') {
       const cleanEmail = email.trim().toLowerCase();

@@ -63,6 +63,7 @@ const allowedOriginsList = [
   'http://localhost:3000',
   'http://localhost:5000',
   'http://localhost:5001',
+  'http://localhost:5002',
   'https://attendoschool.online',
   'https://www.attendoschool.online',
   'http://attendoschool.online',

@@ -7,6 +7,7 @@ function cleanDateStr(d: any) {
 import bcrypt from 'bcryptjs';
 import { pool } from '../db';
 import { validateStudentUniqueness } from '../utils/studentValidation';
+import { validateTeacherUniqueness } from '../utils/teacherValidation';
 import { normalizeGender } from '../utils/gender';
 
 export async function listStudents(schoolId: string, search = '', activeOnly = true, session = '', academicYearId = '', classId = '', sectionId = '') {
@@ -167,6 +168,7 @@ export async function updateStudent(schoolId: string, id: string, body: any) {
   const targetClassId = body.class_id !== undefined ? body.class_id : stu.class_id;
   const targetSectionId = body.section_id !== undefined ? body.section_id : stu.section_id;
   const targetEmail = body.email !== undefined ? body.email : (body.student_email !== undefined ? body.student_email : stu.email);
+  const targetPhone = body.parent_sms_number !== undefined ? body.parent_sms_number : (body.parent_phone !== undefined ? body.parent_phone : (body.phone !== undefined ? body.phone : stu.parent_sms_number));
 
   const validation = await validateStudentUniqueness({
     schoolId,
@@ -176,6 +178,13 @@ export async function updateStudent(schoolId: string, id: string, body: any) {
     admissionNumber: targetAdmission,
     rollNumber: targetRoll,
     studentEmail: targetEmail,
+    studentPhone: targetPhone,
+    familyInfo: {
+      fatherName: body.father_name !== undefined ? body.father_name : stu.father_name,
+      motherName: body.mother_name !== undefined ? body.mother_name : stu.mother_name,
+      parentName: body.parent_name !== undefined ? body.parent_name : stu.parent_name,
+      guardianName: body.guardian_name !== undefined ? body.guardian_name : stu.guardian_name,
+    },
     excludeStudentId: id
   });
 
@@ -248,7 +257,9 @@ export async function updateStudent(schoolId: string, id: string, body: any) {
         } else if (constraint.includes('roll') || dbErr.detail?.includes('roll_number')) {
           msg = `Roll number '${targetRoll}' is already assigned in this section for the selected academic session.`;
         } else if (constraint.includes('email') || dbErr.detail?.includes('email')) {
-          msg = `Student email '${targetEmail}' is already registered in this school.`;
+          msg = "This email address is already registered.";
+        } else if (constraint.includes('phone') || constraint.includes('sms') || dbErr.detail?.includes('parent_sms_number')) {
+          msg = "This phone number is already registered.";
         }
         const err: any = new Error(msg);
         err.status = 409;
@@ -378,15 +389,40 @@ export async function updateTeacher(schoolId: string, id: string, body: any) {
   try {
     await client.query('BEGIN');
     const teacher = await client.query(
-      `SELECT u.id FROM users u WHERE u.id=$1 AND u.school_id=$2 AND u.role='TEACHER'`,
+      `SELECT u.id, u.email, tp.employee_id, tp.phone, tp.mobile 
+       FROM users u 
+       LEFT JOIN teacher_profiles tp ON tp.user_id = u.id 
+       WHERE u.id=$1 AND u.school_id=$2 AND u.role='TEACHER'`,
       [id, schoolId]
     );
     if (!teacher.rowCount) throw new Error('Teacher not found');
 
+    const cur = teacher.rows[0];
+    const targetEmployeeId = body.employee_id !== undefined ? body.employee_id : (body.employeeId !== undefined ? body.employeeId : (body.savior_no !== undefined ? body.savior_no : cur.employee_id));
+    const targetEmail = body.email !== undefined ? body.email : cur.email;
+    const targetPhone = body.phone !== undefined ? body.phone : (body.mobile !== undefined ? body.mobile : (cur.phone || cur.mobile));
+
+    const validation = await validateTeacherUniqueness({
+      schoolId,
+      employeeId: targetEmployeeId,
+      email: targetEmail,
+      phone: targetPhone,
+      mobile: targetPhone,
+      excludeUserId: id,
+      client
+    });
+
+    if (!validation.valid) {
+      const err: any = new Error(validation.errors[0]?.message || 'Teacher uniqueness validation conflict.');
+      err.status = 409;
+      err.errors = validation.errors;
+      throw err;
+    }
+
     const userFields: string[] = [];
     const userValues: any[] = [];
-    if (body.name !== undefined) { userValues.push(String(body.name).toUpperCase()); userFields.push(`name=${userValues.length}`); }
-    if (body.email !== undefined) { userValues.push(body.email); userFields.push(`email=$${userValues.length}`); }
+    if (body.name !== undefined) { userValues.push(String(body.name).toUpperCase()); userFields.push(`name=$${userValues.length}`); }
+    if (body.email !== undefined) { userValues.push(String(body.email).trim().toLowerCase()); userFields.push(`email=$${userValues.length}`); }
     if (userFields.length) {
       userValues.push(id, schoolId);
       await client.query(
@@ -421,17 +457,33 @@ export async function updateTeacher(schoolId: string, id: string, body: any) {
     }
     if (fields.length) {
       values.push(id);
+      const cols = allowed.filter(k => Object.prototype.hasOwnProperty.call(body, k) || (k === 'joining_date' && body.joiningDate !== undefined));
+      const valPlaceholders = values.slice(0, -1).map((_, i) => `$${i + 1}`).join(', ');
       await client.query(
-        `INSERT INTO teacher_profiles (user_id, ${allowed.filter(k => Object.prototype.hasOwnProperty.call(body, k) || (k === 'joining_date' && body.joiningDate !== undefined)).join(', ')})
-         VALUES ($${values.length}, ${values.slice(0, -1).map((_, i) => '$' + (i + 1)).join(', ')})
+        `INSERT INTO teacher_profiles (user_id, ${cols.join(', ')})
+         VALUES ($${values.length}, ${valPlaceholders})
          ON CONFLICT (user_id) DO UPDATE SET ${fields.join(', ')}`,
         values
       );
     }
     await client.query('COMMIT');
     return (await listTeachers(schoolId, '', false)).find(t => t.id === id);
-  } catch (e) {
+  } catch (e: any) {
     await client.query('ROLLBACK');
+    if (e.code === '23505') {
+      const constraint = e.constraint || '';
+      let msg = 'A unique constraint violation occurred.';
+      if (constraint.includes('employee') || e.detail?.includes('employee_id')) {
+        msg = 'This Employee/Saviour ID is already registered.';
+      } else if (constraint.includes('email') || e.detail?.includes('email')) {
+        msg = 'This email address is already registered.';
+      } else if (constraint.includes('phone') || constraint.includes('mobile') || e.detail?.includes('mobile') || e.detail?.includes('phone')) {
+        msg = 'This phone number is already registered.';
+      }
+      const err: any = new Error(msg);
+      err.status = 409;
+      throw err;
+    }
     throw e;
   } finally { client.release(); }
 }
