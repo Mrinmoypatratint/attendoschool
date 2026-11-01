@@ -17,7 +17,7 @@ import { findFirestoreUserByEmail, getFirestoreSchools, getFirestoreSchoolById }
 const router = Router();
 
 export { isSameSchool, canonicalSchoolId, isTestSchool, GREENWOOD_TEST_ALIASES } from '../utils/tenant';
-import { isSameSchool, canonicalSchoolId, isTestSchool, isTintSchool, isDavSchool } from '../utils/tenant';
+import { isSameSchool, canonicalSchoolId, isTestSchool, isTintSchool, isDavSchool, isGreenwoodSchool } from '../utils/tenant';
 
 // GET /api/auth/institutes - Public active institutes strictly from Database (Cloud Firestore / Database)
 router.get('/institutes', async (_req, res) => {
@@ -752,8 +752,8 @@ router.post('/login', loginRateLimit, async (req, res) => {
 
     const demoSchoolObj = demoSchools.find(s => s.id === demo.schoolId || s.code === demo.schoolId || isSameSchool(s.id, demo.schoolId));
     const resolvedSchoolId = canonicalSchoolId(demo.schoolId) || demo.schoolId || resolvedInstituteId || '00000000-0000-0000-0000-000000000001';
-    const resolvedSchoolName = selectedSchoolName || demoSchoolObj?.name || (isTintSchool(resolvedSchoolId) ? 'TINT School' : (isTestSchool(resolvedSchoolId) ? 'Greenwood International School' : 'Institutional Campus'));
-    const resolvedSchoolCode = selectedSchoolCode || demoSchoolObj?.code || (isTintSchool(resolvedSchoolId) ? 'TINT-187' : (isTestSchool(resolvedSchoolId) ? 'GIS001' : 'SCH'));
+    const resolvedSchoolName = selectedSchoolName || demoSchoolObj?.name || (isDavSchool(resolvedSchoolId) ? 'DAV MODEL SCHOOL' : (isTintSchool(resolvedSchoolId) ? 'TINT School' : (isGreenwoodSchool(resolvedSchoolId) ? 'Greenwood International School' : 'Institutional Campus')));
+    const resolvedSchoolCode = selectedSchoolCode || demoSchoolObj?.code || (isDavSchool(resolvedSchoolId) ? '15582' : (isTintSchool(resolvedSchoolId) ? 'TINT-187' : (isGreenwoodSchool(resolvedSchoolId) ? 'GIS001' : 'SCH')));
 
     const demoPhoto = demo.photo_url || demo.photoUrl || undefined;
     const userPayload: any = {

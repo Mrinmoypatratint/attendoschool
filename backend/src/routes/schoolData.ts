@@ -1467,6 +1467,27 @@ r.get("/students", ...reader, async (req: AuthRequest, res) => {
   return sendPaginatedStudents([]);
 });
 
+// GET /students/registered-emails — List all registered student emails across all sessions for duplicate prevention
+r.get("/students/registered-emails", ...reader, async (req: AuthRequest, res) => {
+  const userSchoolId = req.user?.schoolId;
+  if (!userSchoolId) return res.json([]);
+  try {
+    const q = await pool.query(
+      `SELECT DISTINCT LOWER(TRIM(email)) AS email
+       FROM (
+         SELECT email FROM students WHERE school_id = $1 AND email IS NOT NULL AND TRIM(email) != ''
+         UNION
+         SELECT email FROM users WHERE school_id = $1 AND role = 'STUDENT' AND email IS NOT NULL AND TRIM(email) != ''
+       ) e`,
+      [userSchoolId]
+    );
+    return res.json(q.rows.map((r: any) => r.email).filter(Boolean));
+  } catch (err: any) {
+    console.error("Error in GET /students/registered-emails:", err?.message);
+    return res.json([]);
+  }
+});
+
 // GET /students/template — download standardized Excel import template
 r.get("/students/template", ...reader, (_req, res) => {
   const XLSX = require("xlsx");
@@ -1810,9 +1831,32 @@ r.post("/students", ...admin, async (req: AuthRequest, res) => {
 
   // Email format validation
   const EMAIL_FORMAT_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  const schoolId = req.user!.schoolId;
+
   const cleanStudentEmail = String(studentEmail || "")
     .trim()
     .toLowerCase();
+
+  if (cleanStudentEmail && isPostgresConfigured) {
+    try {
+      const existingEmailQ = await pool.query(
+        `SELECT id FROM (
+           SELECT id FROM students WHERE school_id = $1 AND LOWER(TRIM(email)) = LOWER(TRIM($2))
+           UNION
+           SELECT id FROM users WHERE school_id = $1 AND role = 'STUDENT' AND LOWER(TRIM(email)) = LOWER(TRIM($2))
+         ) e LIMIT 1`,
+        [schoolId, cleanStudentEmail]
+      );
+      if (existingEmailQ.rowCount && existingEmailQ.rowCount > 0) {
+        return res.status(409).json({
+          message: `Student email '${cleanStudentEmail}' is already registered in this school.`
+        });
+      }
+    } catch (err: any) {
+      console.warn('[CreateStudent] Email duplicate check warning:', err.message);
+    }
+  }
+
   const cleanParentEmail = String(parentEmail || "")
     .trim()
     .toLowerCase();
@@ -1841,7 +1885,6 @@ r.post("/students", ...admin, async (req: AuthRequest, res) => {
   // Mandatory session binding — resolve academic_year_id
   const { getInMemoryAcademicYears, getInMemoryActiveAcademicYear } =
     await import("./academicYears");
-  const schoolId = req.user!.schoolId;
   await ensureSchoolClassesAndSections(schoolId);
 
   const rawSession = String(sessionId || "").trim();
@@ -4956,9 +4999,11 @@ r.get("/teachers", ...reader, async (req: AuthRequest, res) => {
       tp.middle_name,
       tp.last_name,
       tp.employee_id,
-      tp.mobile,
+      COALESCE(tp.mobile, tp.phone) AS mobile,
+      COALESCE(tp.phone, tp.mobile) AS phone,
       tp.gender,
       tp.joining_date,
+      tp.date_of_birth,
       tp.designation,
       tp.class_name,
       tp.section_name,
@@ -5032,6 +5077,12 @@ r.get("/teachers", ...reader, async (req: AuthRequest, res) => {
           class: convertRomanClassToDigital(r.class_name),
           section_name: r.section_name || null,
           section: r.section_name || null,
+          employee_id: r.employee_id || "",
+          employeeId: r.employee_id || "",
+          mobile: r.mobile || "",
+          phone: r.phone || r.mobile || "",
+          gender: r.gender || "",
+          designation: r.designation || "Teacher",
           joining_date: r.joining_date
             ? normalizeToDdMmYyyy(r.joining_date)
             : "",
@@ -6934,6 +6985,32 @@ r.put("/teachers/:id", ...admin, async (req: AuthRequest, res) => {
     }
   }
 
+  const newEmpId = (employeeId || employee_id || req.body?.saviorNo || req.body?.savior_no || "").trim();
+  if (newEmpId) {
+    if (isPostgresConfigured && effectiveSchoolId) {
+      try {
+        const dupEmp = await pool.query(
+          `SELECT tp.id FROM teacher_profiles tp JOIN users u ON u.id = tp.user_id WHERE u.school_id = $1::uuid AND LOWER(TRIM(tp.employee_id)) = LOWER(TRIM($2)) AND u.id != $3 LIMIT 1`,
+          [effectiveSchoolId, newEmpId, tid]
+        );
+        if (dupEmp.rowCount && dupEmp.rowCount > 0) {
+          return res.status(409).json({ message: `Employee ID / Savior_NO '${newEmpId}' is already registered to another teacher.` });
+        }
+      } catch (e: any) {
+        console.warn("[PUT /teachers/:id] Error checking duplicate employee_id in DB:", e.message);
+      }
+    }
+    const dupDemo = demoTeachers.find(
+      (t) =>
+        t.school_id === effectiveSchoolId &&
+        t.id !== tid &&
+        (String(t.employee_id || "").toLowerCase() === newEmpId.toLowerCase() || String(t.savior_no || "").toLowerCase() === newEmpId.toLowerCase())
+    );
+    if (dupDemo) {
+      return res.status(409).json({ message: `Employee ID / Savior_NO '${newEmpId}' is already registered to another teacher.` });
+    }
+  }
+
   if (!prevDesig) {
     prevDesig =
       existingDocData.designation ||
@@ -6947,35 +7024,164 @@ r.put("/teachers/:id", ...admin, async (req: AuthRequest, res) => {
 
   let assignmentWarning: string | undefined;
   try {
+    // Ensure all profile columns exist on teacher_profiles table
+    await pool.query(`
+      ALTER TABLE teacher_profiles ADD COLUMN IF NOT EXISTS designation VARCHAR(100);
+      ALTER TABLE teacher_profiles ADD COLUMN IF NOT EXISTS class_name VARCHAR(100);
+      ALTER TABLE teacher_profiles ADD COLUMN IF NOT EXISTS section_name VARCHAR(100);
+      ALTER TABLE teacher_profiles ADD COLUMN IF NOT EXISTS gender VARCHAR(50);
+      ALTER TABLE teacher_profiles ADD COLUMN IF NOT EXISTS date_of_birth DATE;
+      ALTER TABLE teacher_profiles ADD COLUMN IF NOT EXISTS joining_date DATE;
+      ALTER TABLE teacher_profiles ADD COLUMN IF NOT EXISTS mobile VARCHAR(30);
+      ALTER TABLE teacher_profiles ADD COLUMN IF NOT EXISTS phone VARCHAR(30);
+      ALTER TABLE teacher_profiles ADD COLUMN IF NOT EXISTS address TEXT;
+      ALTER TABLE teacher_profiles ADD COLUMN IF NOT EXISTS qualification VARCHAR(200);
+      ALTER TABLE teacher_profiles ADD COLUMN IF NOT EXISTS first_name VARCHAR(100);
+      ALTER TABLE teacher_profiles ADD COLUMN IF NOT EXISTS middle_name VARCHAR(100);
+      ALTER TABLE teacher_profiles ADD COLUMN IF NOT EXISTS last_name VARCHAR(100);
+    `).catch(() => {});
+
+    // Update users table
     await pool.query(
-      `UPDATE users SET name=$1, email=$2, is_active=$3, updated_at=NOW() WHERE id=$4 AND school_id=$5`,
+      `UPDATE users
+       SET name=$1,
+           email=$2,
+           is_active=$3,
+           first_name=COALESCE(NULLIF($5, ''), first_name),
+           middle_name=COALESCE(NULLIF($6, ''), middle_name),
+           last_name=COALESCE(NULLIF($7, ''), last_name),
+           updated_at=NOW()
+       WHERE id=$4`,
       [
         resolvedName,
         cleanEmail,
         resolvedStatus === "ACTIVE",
-        tid,
-        userSchoolId,
-      ],
-    );
-    await pool.query(
-      `UPDATE teacher_profiles SET employee_id=$1, mobile=$2, gender=$3, joining_date=$4, designation=$5, class_name=$6, section_name=$7, first_name=COALESCE(NULLIF($9, ''), first_name), middle_name=COALESCE(NULLIF($10, ''), middle_name), last_name=COALESCE(NULLIF($11, ''), last_name) WHERE user_id=$8`,
-      [
-        employeeId ||
-          employee_id ||
-          existingDocData.employee_id ||
-          demoTeachers[idx]?.employee_id,
-        mobile || phone || existingDocData.mobile || demoTeachers[idx]?.mobile,
-        resolvedGender,
-        toDbDate(resolvedJoining),
-        resolvedDesig,
-        resolvedClass,
-        resolvedSection,
         tid,
         computedFirst || null,
         computedMiddle || null,
         computedLast || null,
       ],
     );
+
+    const finalEmpId =
+      employeeId ||
+      employee_id ||
+      existingDocData.employee_id ||
+      demoTeachers[idx]?.employee_id ||
+      `EMP-${Date.now().toString().slice(-4)}`;
+    const finalMobile =
+      mobile ||
+      phone ||
+      existingDocData.mobile ||
+      demoTeachers[idx]?.mobile ||
+      null;
+    const finalJoining = toDbDate(resolvedJoining);
+    const finalDob = toDbDate(resolvedDob);
+    const finalDesig = (resolvedDesig || "Teacher").trim();
+
+    // 1. Attempt UPDATE on teacher_profiles
+    const updTp = await pool.query(
+      `UPDATE teacher_profiles
+       SET employee_id=$1,
+           mobile=$2,
+           phone=COALESCE($2, phone),
+           gender=$3,
+           joining_date=$4,
+           date_of_birth=COALESCE($12, date_of_birth),
+           designation=$5,
+           class_name=$6,
+           section_name=$7,
+           first_name=COALESCE(NULLIF($9, ''), first_name),
+           middle_name=COALESCE(NULLIF($10, ''), middle_name),
+           last_name=COALESCE(NULLIF($11, ''), last_name)
+       WHERE user_id=$8`,
+      [
+        finalEmpId,
+        finalMobile,
+        resolvedGender,
+        finalJoining,
+        finalDesig,
+        resolvedClass,
+        resolvedSection,
+        tid,
+        computedFirst || null,
+        computedMiddle || null,
+        computedLast || null,
+        finalDob,
+      ],
+    );
+
+    // 2. If teacher profile row did not exist, INSERT with ON CONFLICT (user_id) DO UPDATE
+    if (!updTp.rowCount || updTp.rowCount === 0) {
+      try {
+        await pool.query(
+          `INSERT INTO teacher_profiles
+             (user_id, employee_id, mobile, phone, gender, joining_date, date_of_birth, designation, class_name, section_name, first_name, middle_name, last_name)
+           VALUES
+             ($1, $2, $3, $3, $4, $5, $6, $7, $8, $9, NULLIF($10, ''), NULLIF($11, ''), NULLIF($12, ''))
+           ON CONFLICT (user_id) DO UPDATE SET
+             employee_id = EXCLUDED.employee_id,
+             mobile = EXCLUDED.mobile,
+             phone = EXCLUDED.phone,
+             gender = EXCLUDED.gender,
+             joining_date = EXCLUDED.joining_date,
+             date_of_birth = COALESCE(EXCLUDED.date_of_birth, teacher_profiles.date_of_birth),
+             designation = EXCLUDED.designation,
+             class_name = EXCLUDED.class_name,
+             section_name = EXCLUDED.section_name,
+             first_name = COALESCE(EXCLUDED.first_name, teacher_profiles.first_name),
+             middle_name = COALESCE(EXCLUDED.middle_name, teacher_profiles.middle_name),
+             last_name = COALESCE(EXCLUDED.last_name, teacher_profiles.last_name)`,
+          [
+            tid,
+            finalEmpId,
+            finalMobile,
+            resolvedGender,
+            finalJoining,
+            finalDob,
+            finalDesig,
+            resolvedClass,
+            resolvedSection,
+            computedFirst || null,
+            computedMiddle || null,
+            computedLast || null,
+          ],
+        );
+      } catch (insertErr: any) {
+        console.warn("[PUT /teachers/:id] Profile insert fallback without strict employee_id:", insertErr.message);
+        await pool.query(
+          `INSERT INTO teacher_profiles
+             (user_id, mobile, phone, gender, joining_date, date_of_birth, designation, class_name, section_name, first_name, middle_name, last_name)
+           VALUES
+             ($1, $2, $2, $3, $4, $5, $6, $7, $8, NULLIF($9, ''), NULLIF($10, ''), NULLIF($11, ''))
+           ON CONFLICT (user_id) DO UPDATE SET
+             mobile = EXCLUDED.mobile,
+             phone = EXCLUDED.phone,
+             gender = EXCLUDED.gender,
+             joining_date = EXCLUDED.joining_date,
+             date_of_birth = COALESCE(EXCLUDED.date_of_birth, teacher_profiles.date_of_birth),
+             designation = EXCLUDED.designation,
+             class_name = EXCLUDED.class_name,
+             section_name = EXCLUDED.section_name,
+             first_name = COALESCE(EXCLUDED.first_name, teacher_profiles.first_name),
+             middle_name = COALESCE(EXCLUDED.middle_name, teacher_profiles.middle_name),
+             last_name = COALESCE(EXCLUDED.last_name, teacher_profiles.last_name)`,
+          [
+            tid,
+            finalMobile,
+            resolvedGender,
+            finalJoining,
+            finalDob,
+            finalDesig,
+            resolvedClass,
+            resolvedSection,
+            computedFirst || null,
+            computedMiddle || null,
+            computedLast || null,
+          ],
+        ).catch(() => {});
+      }
+    }
 
     const cleanOldPos = (prevDesig || "Teacher").trim();
     const cleanNewPos = (resolvedDesig || "Teacher").trim();
@@ -7179,7 +7385,14 @@ r.put("/teachers/:id", ...admin, async (req: AuthRequest, res) => {
   } else if (resolvedClass === null && existingAssignIdx >= 0) {
     demoTeacherAssignments.splice(existingAssignIdx, 1);
   }
-  if (userSchoolId) fastCache.delete(`teachers:${userSchoolId}`);
+  if (userSchoolId) {
+    fastCache.delete(`teachers:${userSchoolId}`);
+    fastCache.delete(`people:teachers:${userSchoolId}`);
+  }
+  if (resolvedSchoolId) {
+    fastCache.delete(`teachers:${resolvedSchoolId}`);
+    fastCache.delete(`people:teachers:${resolvedSchoolId}`);
+  }
 
   if (password && String(password).trim()) {
     const pwValidation = validatePasswordStrength(String(password).trim());
