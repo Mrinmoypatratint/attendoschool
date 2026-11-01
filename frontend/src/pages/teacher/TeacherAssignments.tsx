@@ -620,7 +620,7 @@ export function TeacherAssignments() {
   }, [assignments, searchQuery, filterClass]);
 
   return (
-    <div style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 20px', fontFamily: 'inherit' }}>
+    <div style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0', fontFamily: 'inherit' }}>
       {/* Header Bar */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 24 }}>
         <div>

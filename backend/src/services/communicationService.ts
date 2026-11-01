@@ -1,7 +1,7 @@
 import { pool, isPostgresConfigured } from '../db';
 import { sendMailWithDualPortFallback } from './notificationService';
 import { env } from '../config/env';
-import { isSameSchool } from '../utils/tenant';
+import { isSameSchool, canonicalSchoolId } from '../utils/tenant';
 
 // In-memory fallback stores for test schools / pure Firestore mode resilience
 export const memAnnouncements: any[] = [
@@ -111,7 +111,7 @@ async function resolveClassAndSectionUuids(schoolId: string, classId?: string | 
                      Number(raw.replace(/[^0-9-]/g, ''));
     if (!isNaN(cleanNum)) {
       try {
-        const q = await pool.query('SELECT id FROM classes WHERE (school_id = $1 OR school_id = $2) AND class_number = $3 LIMIT 1', [schoolId, '00000000-0000-0000-0000-000000000001', cleanNum]);
+        const q = await pool.query('SELECT id FROM classes WHERE school_id = $1 AND class_number = $2 LIMIT 1', [schoolId, cleanNum]);
         if (q.rowCount && q.rows[0]) cUuid = q.rows[0].id;
       } catch {}
     }
@@ -153,7 +153,7 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
   const targetSectionId = audience === 'SECTION' ? resolvedSectionId : null;
 
   const isUuid = (val?: string | null) => Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(val)));
-  const safeSchoolId = isUuid(schoolId) ? schoolId : '00000000-0000-0000-0000-000000000001';
+  const safeSchoolId = isUuid(schoolId) ? schoolId : (canonicalSchoolId(schoolId) || schoolId);
   const safeUserId = isUuid(userId) ? userId : null;
 
   const isDirectPublish = d.publish === true || d.status === 'PUBLISHED';
@@ -258,7 +258,7 @@ export async function updateAnnouncement(schoolId: string, id: string, d: any) {
       `UPDATE announcements
        SET title = $1, message = $2, audience_type = $3, class_id = $4, section_id = $5, priority = $6,
            attachment_url = $7, attachment_name = $8, attachment_type = $9, attachment_size = $10, updated_at = NOW()
-       WHERE id = $11 AND (school_id = $12 OR school_id = '00000000-0000-0000-0000-000000000001')
+       WHERE id = $11 AND school_id = $12
        RETURNING *`,
       [
         d.title,
@@ -322,7 +322,7 @@ export async function deleteAnnouncement(schoolId: string, id: string) {
     try {
       await pool.query(`DELETE FROM announcement_recipients WHERE announcement_id = $1`, [id]).catch(() => {});
       await pool.query(`DELETE FROM notification_replies WHERE announcement_id = $1`, [id]).catch(() => {});
-      await pool.query(`DELETE FROM announcements WHERE id = $1 AND (school_id = $2 OR $2 = '00000000-0000-0000-0000-000000000001')`, [id, schoolId]);
+      await pool.query(`DELETE FROM announcements WHERE id = $1 AND school_id = $2`, [id, schoolId]);
     } catch (_e) {}
   }
   const idx = memAnnouncements.findIndex(a => a.id === id);
@@ -603,7 +603,7 @@ export async function listSchoolAnnouncements(schoolId: string) {
     if (rows && rows.length > 0) return rows;
   } catch (_e) {}
 
-  return memAnnouncements.map(a => ({
+  return memAnnouncements.filter(a => isSameSchool(a.school_id, schoolId)).map(a => ({
     ...a,
     read_count: Array.isArray(a.read_by) ? a.read_by.length : (a.read_count || 0),
     reply_count: memReplies.filter(r => r.announcement_id === a.id).length || a.reply_count || 0
@@ -654,13 +654,8 @@ export async function teacherInbox(teacherUserId: string, schoolId: string, from
   let facultyNotices = memAnnouncements.filter(a => {
     if (a.status !== 'PUBLISHED') return false;
 
-    // School match check with full multi-tenant compatibility
-    const matchesSchool = !a.school_id || !schoolId ||
-      isSameSchool(a.school_id, schoolId) ||
-      a.school_id === schoolId ||
-      String(a.school_id).toLowerCase() === String(schoolId).toLowerCase() ||
-      a.school_id === '00000000-0000-0000-0000-000000000001' ||
-      schoolId === '00000000-0000-0000-0000-000000000001';
+    // Strict multi-tenant match
+    const matchesSchool = isSameSchool(a.school_id, schoolId);
 
     if (!matchesSchool) return false;
 
@@ -770,7 +765,7 @@ export async function parentInbox(parentUserId: string, schoolId: string) {
   } catch (_e) {}
 
   const parentNotices = memAnnouncements.filter(
-    a => a.status === 'PUBLISHED' && ['PARENTS', 'SCHOOL', 'CLASS', 'SECTION'].includes(a.audience_type)
+    a => isSameSchool(a.school_id, schoolId) && a.status === 'PUBLISHED' && ['PARENTS', 'SCHOOL', 'CLASS', 'SECTION'].includes(a.audience_type)
   );
   return parentNotices.map(n => ({
     ...n,

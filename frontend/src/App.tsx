@@ -2738,7 +2738,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         { path: '/student/attendance', label: 'My Attendance', category: 'Student Portal', description: 'Personal attendance records & statistics', icon: ClipboardCheck, keywords: ['attendance', 'presence'] },
         { path: '/student/timetable', label: 'My Timetable', category: 'Student Portal', description: 'Class schedule & routine', icon: CalendarDays, keywords: ['timetable', 'schedule'] },
         { path: '/student/assignments', label: 'Assignments', category: 'Student Portal', description: 'Class homework & tasks', icon: BookOpen, keywords: ['assignments', 'homework'] },
-        { path: '/student/exams', label: 'Exams', category: 'Student Portal', description: 'Exam schedules & results', icon: FileText, keywords: ['exams', 'tests'] },
+        // { path: '/student/exams', label: 'Exams', category: 'Student Portal', description: 'Exam schedules & results', icon: FileText, keywords: ['exams', 'tests'] },
         { path: '/student/announcements', label: 'Announcements', category: 'Student Portal', description: 'School announcements & circulars', icon: Megaphone, keywords: ['announcements', 'notices'] },
         { path: '/student/leave-request', label: 'Apply Leave', category: 'Student Portal', description: 'Apply for leave & check status', icon: CalendarPlus, keywords: ['leave', 'sick leave'] },
         { path: '/student/profile', label: 'My Profile', category: 'Student Portal', description: 'Personal profile & account', icon: User, keywords: ['profile', 'account'] }
@@ -4450,8 +4450,8 @@ function AdminHome() {
             </div>
           </div>
           <div className="hero-actions">
-            <button className="action-btn-primary" onClick={() => nav('/take-attendance')}>
-              <ClipboardCheck size={16} /> Take Today's Attendance
+            <button className="action-btn-secondary" onClick={() => nav('/teachers')}>
+              <UserPlus size={16} /> Enroll Teacher
             </button>
             <button className="action-btn-secondary" onClick={() => nav('/students?enroll=true')}>
               <UserPlus size={16} /> Enroll Student
@@ -4895,6 +4895,9 @@ function TeacherHome() {
   const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
   const [authorizedSections, setAuthorizedSections] = useState<any[]>([]);
   const [schoolDate, setSchoolDate] = useState<string>('');
+  const [activeSession, setActiveSession] = useState<string>(() => {
+    return localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year') || '';
+  });
 
   // 1-second interval timer for live digital clock widget with cleanup on unmount
   useEffect(() => {
@@ -4902,14 +4905,17 @@ function TeacherHome() {
     return () => clearInterval(timer);
   }, []);
 
-  async function loadSchedule(showSpinner = true) {
+  async function loadSchedule(showSpinner = true, sessionOverride?: string) {
     if (showSpinner) setLoading(true);
     try {
-      const [routineRes, historyRes, noticesRes, authSecRes] = await Promise.all([
+      const currentSession = sessionOverride || activeSession || localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year') || '';
+
+      const [routineRes, historyRes, noticesRes, authSecRes, routineWeekRes] = await Promise.all([
         api.get('/teacher/routine/today').catch(() => ({ data: [] })),
         api.get('/teacher/attendance/history').catch(() => ({ data: [] })),
         api.get('/communication/teacher/inbox').catch(() => ({ data: [] })),
-        api.get('/teacher/attendance/authorized-sections').catch(() => ({ data: { sections: [], schoolDate: '' } }))
+        api.get('/teacher/attendance/authorized-sections').catch(() => ({ data: { sections: [], schoolDate: '' } })),
+        api.get('/teacher/routine/week').catch(() => ({ data: [] }))
       ]);
 
       const secData = Array.isArray(authSecRes.data?.sections) ? authSecRes.data.sections : [];
@@ -4926,31 +4932,120 @@ function TeacherHome() {
       const rawNotices = Array.isArray(noticesRes.data) ? noticesRes.data : [];
       setNotices(rawNotices.filter((n: any) => !n.read_at));
 
-      // Calculate distinct active students across teacher's assigned classes
-      if (routineData.length > 0) {
-        const uniqueClassSecs = new Map<string, { classId: string; sectionId: string }>();
-        routineData.forEach((item: any) => {
-          const key = `${item.class_id || item.class_number}_${item.section_id || item.section_name}`;
-          if (!uniqueClassSecs.has(key)) {
-            uniqueClassSecs.set(key, { classId: item.class_id || item.class_number, sectionId: item.section_id || item.section_name });
-          }
-        });
+      // Teacher's assigned classes:
+      // Priority 1: Mentored / Authorized sections (Class Mentor / Temporary Assignments)
+      const assignedClassSecs = new Map<string, { classId?: string; sectionId?: string; classNumber?: number; sectionName?: string }>();
 
-        const studentRequests = Array.from(uniqueClassSecs.values()).map(cs =>
-          api.get('/teacher/students', { params: { classId: cs.classId, sectionId: cs.sectionId } }).catch(() => ({ data: [] }))
-        );
+      secData.forEach((s: any) => {
+        const cId = s.classId || s.class_id;
+        const sId = s.sectionId || s.section_id;
+        const cNum = s.classNumber ?? s.class_number;
+        const sName = s.sectionName || s.section_name;
+        const key = `${cNum ?? cId}_${sName ?? sId}`;
+        if (!assignedClassSecs.has(key)) {
+          assignedClassSecs.set(key, {
+            classId: cId ? String(cId) : undefined,
+            sectionId: sId ? String(sId) : undefined,
+            classNumber: cNum !== undefined ? Number(cNum) : undefined,
+            sectionName: sName ? String(sName) : undefined
+          });
+        }
+      });
 
-        const studentResponses = await Promise.all(studentRequests);
-        const uniqueStudentIds = new Set<string>();
-        studentResponses.forEach(res => {
-          if (Array.isArray(res.data)) {
-            res.data.forEach((st: any) => {
-              const stKey = String(st.id || st.admission_number || st.roll_number || st.name);
-              if (stKey) uniqueStudentIds.add(stKey);
+      // Priority 2: Profile assigned class/section (if teacher profile explicitly specifies an assigned class)
+      if (user) {
+        const uClass = (user as any).assigned_class_id || (user as any).assigned_class || (user as any).assignedClass;
+        const uSec = (user as any).assigned_section_id || (user as any).assigned_section || (user as any).assignedSection;
+        if (uClass && uSec) {
+          const key = `${uClass}_${uSec}`;
+          if (!assignedClassSecs.has(key)) {
+            assignedClassSecs.set(key, {
+              classId: String(uClass),
+              sectionId: String(uSec)
             });
           }
+        }
+      }
+
+      // Priority 3: If teacher has NO assigned/mentored sections at all, fall back to today's teaching routine / timetable
+      if (assignedClassSecs.size === 0) {
+        routineData.forEach((item: any) => {
+          const cId = item.class_id || item.classId;
+          const sId = item.section_id || item.sectionId;
+          const cNum = item.class_number ?? item.classNumber;
+          const sName = item.section_name || item.sectionName;
+          if (cNum !== undefined || cId) {
+            const key = `${cNum ?? cId}_${sName ?? sId}`;
+            if (!assignedClassSecs.has(key)) {
+              assignedClassSecs.set(key, {
+                classId: cId ? String(cId) : undefined,
+                sectionId: sId ? String(sId) : undefined,
+                classNumber: cNum !== undefined ? Number(cNum) : undefined,
+                sectionName: sName ? String(sName) : undefined
+              });
+            }
+          }
         });
-        setStudentCount(uniqueStudentIds.size);
+      }
+
+      // Calculate distinct active students across teacher's assigned classes for the selected session
+      // Dynamically fetches from the School Admin Student Directory (/people/students)
+      if (assignedClassSecs.size > 0) {
+        let counted = false;
+        try {
+          const peopleRes = await api.get('/people/students', {
+            params: { session: currentSession || undefined },
+            headers: currentSession ? { 'x-academic-session': encodeURIComponent(currentSession) } : undefined
+          });
+
+          const studentList = Array.isArray(peopleRes.data) ? peopleRes.data : [];
+          const uniqueStudentIds = new Set<string>();
+
+          studentList.forEach((st: any) => {
+            for (const target of assignedClassSecs.values()) {
+              const matchClass = (target.classId && String(st.class_id) === String(target.classId)) ||
+                                 (target.classNumber !== undefined && Number(st.class_number) === Number(target.classNumber));
+              const matchSec = (target.sectionId && String(st.section_id) === String(target.sectionId)) ||
+                               (target.sectionName && String(st.section_name || '').toUpperCase() === String(target.sectionName || '').toUpperCase());
+              if (matchClass && matchSec) {
+                const stKey = String(st.id || st.admission_number || st.roll_number || st.name);
+                if (stKey) uniqueStudentIds.add(stKey);
+                break;
+              }
+            }
+          });
+
+          setStudentCount(uniqueStudentIds.size);
+          counted = true;
+        } catch (err) {
+          console.warn('[TeacherDashboard] Could not fetch student count from /people/students:', err);
+        }
+
+        // Secondary fallback to /teacher/students if needed
+        if (!counted) {
+          const studentRequests = Array.from(assignedClassSecs.values()).map(cs =>
+            api.get('/teacher/students', {
+              params: {
+                classId: cs.classId || cs.classNumber,
+                sectionId: cs.sectionId || cs.sectionName,
+                session: currentSession
+              },
+              headers: currentSession ? { 'x-academic-session': encodeURIComponent(currentSession) } : undefined
+            }).catch(() => ({ data: [] }))
+          );
+
+          const studentResponses = await Promise.all(studentRequests);
+          const uniqueStudentIds = new Set<string>();
+          studentResponses.forEach(res => {
+            if (Array.isArray(res.data)) {
+              res.data.forEach((st: any) => {
+                const stKey = String(st.id || st.admission_number || st.roll_number || st.name);
+                if (stKey) uniqueStudentIds.add(stKey);
+              });
+            }
+          });
+          setStudentCount(uniqueStudentIds.size);
+        }
       } else {
         setStudentCount(0);
       }
@@ -4965,15 +5060,29 @@ function TeacherHome() {
     loadSchedule(true);
     const onFocus = () => loadSchedule(false);
     const onAnnouncementsUpdated = () => loadSchedule(false);
+    const onSessionChanged = (e: any) => {
+      const sessName = typeof e?.detail === 'object' ? (e.detail?.name || '') : (typeof e?.detail === 'string' ? e.detail : '');
+      const finalSess = sessName || localStorage.getItem('attendo_academic_session') || '';
+      if (finalSess) setActiveSession(finalSess);
+      loadSchedule(false, finalSess);
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'attendo_academic_session' || e.key === 'attendo_active_academic_year') {
+        const val = e.newValue || localStorage.getItem('attendo_academic_session') || '';
+        if (val) setActiveSession(val);
+        loadSchedule(false, val);
+      }
+    };
+
     window.addEventListener('focus', onFocus);
     window.addEventListener('announcements-read', onAnnouncementsUpdated);
-    window.addEventListener('storage', onAnnouncementsUpdated);
-    window.addEventListener('sessionChanged', onAnnouncementsUpdated);
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('sessionChanged', onSessionChanged);
     return () => {
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('announcements-read', onAnnouncementsUpdated);
-      window.removeEventListener('storage', onAnnouncementsUpdated);
-      window.removeEventListener('sessionChanged', onAnnouncementsUpdated);
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('sessionChanged', onSessionChanged);
     };
   }, []);
 
@@ -5643,8 +5752,14 @@ function TeacherHome() {
                 <div className="td-next-class-box" style={{ justifyContent: 'center', textAlign: 'center' }}>
                   <div>
                     <CheckCircle2 size={24} style={{ color: '#10b981', margin: '0 auto 6px' }} />
-                    <div className="td-next-class-name">All classes completed for today</div>
-                    <div className="td-next-sub">Great job! No more upcoming routine periods.</div>
+                    <div className="td-next-class-name">
+                      {r.length === 0 ? 'No classes scheduled today' : 'All classes completed for today'}
+                    </div>
+                    <div className="td-next-sub">
+                      {r.length === 0
+                        ? (currentDayOfWeek === 0 ? 'Sunday is a weekend off. No routine periods scheduled.' : 'No routine periods assigned for today.')
+                        : 'Great job! No more upcoming routine periods.'}
+                    </div>
                   </div>
                 </div>
               )}
@@ -6127,8 +6242,8 @@ function Students() {
       alert('Validation Error: Please enter student last name.');
       return;
     }
-    if (lastName.length < 3 || lastName.length > 15) {
-      alert('Validation Error: Last Name must be between 3 and 15 characters.');
+    if (lastName.length < 2 || lastName.length > 20) {
+      alert('Validation Error: Last Name must be between 2 and 20 characters.');
       return;
     }
     if (/\d/.test(lastName)) {
@@ -8044,7 +8159,7 @@ function Students() {
                   {toDdMmYyyy(x.admission_date || x.admissionDate) || '—'}
                 </td>
                 <td>
-                  <StudentProfileHoverCard student={x} activeSession={activeSession}>
+                  <StudentProfileHoverCard student={x} activeSession={activeSession} mode="student">
                     <b style={{ textTransform: 'uppercase' }}>{String(x.name || '').toUpperCase()}</b>
                   </StudentProfileHoverCard>
                 </td>
@@ -8354,7 +8469,7 @@ function Students() {
       const lnVal = f.lastName !== undefined ? f.lastName : (editingStudent ? (f.name || '').split(' ').slice(1).join(' ') : '');
       const isFnInvalid = Boolean(fnVal && (fnVal.length < 3 || fnVal.length > 15 || /\s/.test(fnVal) || /\d/.test(fnVal)));
       const isMnInvalid = Boolean(mnVal && (/\d/.test(mnVal) || /\s/.test(mnVal)));
-      const isLnInvalid = Boolean(lnVal && (/\d/.test(lnVal) || lnVal.length < 3 || lnVal.length > 15));
+      const isLnInvalid = Boolean(lnVal && (/\d/.test(lnVal) || lnVal.length < 2 || lnVal.length > 20));
 
       const isDobYearInvalidInUi = Boolean(
         f.dob && (String(f.dob).split('-')[0]?.length > 4 || parseInt(String(f.dob).split('-')[0], 10) > 9999)
@@ -8462,14 +8577,14 @@ function Students() {
                   <input
                     required
                     placeholder="e.g. Sharma"
-                    maxLength={15}
+                    maxLength={20}
                     value={lnVal || ''}
                     style={{
                       borderColor: isLnInvalid ? '#ef4444' : undefined,
                       boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
                     }}
                     onChange={e => {
-                      const ln = e.target.value.replace(/\d/g, '').slice(0, 15);
+                      const ln = e.target.value.replace(/\d/g, '').slice(0, 20);
                       const fullName = formatStudentFullName(fnVal, mnVal, ln);
                       setF({ ...f, lastName: ln, name: fullName });
                     }}
@@ -8478,9 +8593,9 @@ function Students() {
                     <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Enter a string not a number
                     </span>
-                  ) : lnVal && lnVal.length < 3 ? (
+                  ) : lnVal && (lnVal.length < 2 || lnVal.length > 20) ? (
                     <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                      Must be 3 to 15 characters
+                      Must be 2 to 20 characters
                     </span>
                   ) : null}
                 </label>
@@ -9985,6 +10100,24 @@ function Teachers() {
   }, [directoryPage, scrollToDirectoryTop]);
   const [editingTeacher, setEditingTeacher] = useState<any | null>(null);
 
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get('enroll') === 'true' && (user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN')) {
+        setEditingTeacher(null);
+        setF({
+          countryCode: '+91',
+          gender: 'MALE',
+          class_id: '',
+          class_number: '',
+          section_id: '',
+          section_name: '',
+          section: ''
+        });
+        setOpen(true);
+      }
+    } catch {}
+  }, [user]);
+
   // Universal Preview State for Teacher Add/Edit
   const [teacherPreview, setTeacherPreview] = useState<{
     isOpen: boolean;
@@ -10359,8 +10492,8 @@ function Teachers() {
       alert('Validation Error: Please enter faculty member last name.');
       return;
     }
-    if (lastName.length < 3 || lastName.length > 15) {
-      alert('Validation Error: Last Name must be between 3 and 15 characters.');
+    if (lastName.length < 2 || lastName.length > 20) {
+      alert('Validation Error: Last Name must be between 2 and 20 characters.');
       return;
     }
     if (/\d/.test(lastName)) {
@@ -10383,6 +10516,21 @@ function Teachers() {
     }
     if (!employeeId) {
       alert('Validation Error: Please enter Employee ID / Savior_No.');
+      return;
+    }
+    const currentEmpIdTrimmed = employeeId.trim().toLowerCase();
+    const dupEmpId = rows.find(r => {
+      const isSameRecord = editingTeacher && (
+        r.id === editingTeacher.id ||
+        (editingTeacher.id && r.id && String(r.id) === String(editingTeacher.id)) ||
+        (editingTeacher.user_id && r.user_id && String(r.user_id) === String(editingTeacher.user_id))
+      );
+      if (isSameRecord) return false;
+      const rEmp = String(r.employee_id || r.employeeId || r.savior_no || r.saviorNo || '').trim().toLowerCase();
+      return rEmp && rEmp === currentEmpIdTrimmed;
+    });
+    if (dupEmpId) {
+      alert(`Validation Error: Employee ID already exists. Employee ID '${employeeId}' is already registered to teacher '${dupEmpId.name || 'Existing Teacher'}'.`);
       return;
     }
     const joiningDateVal = f.joiningDate || f.joining_date;
@@ -10884,6 +11032,11 @@ function Teachers() {
             rowErrs.push({ row: rowNum, field: 'Savior_No', message: 'Savior_No / Employee ID is required' });
           } else if (seenSavior.has(saviorNo)) {
             rowErrs.push({ row: rowNum, field: 'Savior_No', message: `Duplicate Savior_No '${saviorNo}' in file` });
+          } else if (rows.some(r => {
+            const rEmp = String(r.employee_id || r.employeeId || r.savior_no || r.saviorNo || '').trim().toLowerCase();
+            return rEmp && rEmp === saviorNo.trim().toLowerCase();
+          })) {
+            rowErrs.push({ row: rowNum, field: 'Savior_No', message: `Employee ID / Savior_No '${saviorNo}' already exists in system` });
           } else {
             seenSavior.add(saviorNo);
           }
@@ -11627,6 +11780,7 @@ function Teachers() {
     {open && (() => {
       const EMAIL_VALIDATION_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       const currentTeacherEmail = String(f.email || '').trim().toLowerCase();
+      const currentTeacherEmpId = String(f.employeeId || f.saviorNo || f.employee_id || '').trim().toLowerCase();
       const isEmailDuplicateInUi = Boolean(
         currentTeacherEmail &&
         rows.some(r => {
@@ -11644,13 +11798,26 @@ function Teachers() {
       const isEmailInvalidInUi = Boolean(
         currentTeacherEmail && !EMAIL_VALIDATION_REGEX.test(currentTeacherEmail)
       );
+      const isEmpIdDuplicateInUi = Boolean(
+        currentTeacherEmpId &&
+        rows.some(r => {
+          const rowEmpId = String(r.employee_id || r.employeeId || r.savior_no || r.saviorNo || '').trim().toLowerCase();
+          const matches = rowEmpId && rowEmpId === currentTeacherEmpId;
+          const isSameRecord = editingTeacher && (
+            r.id === editingTeacher.id ||
+            (editingTeacher.id && r.id && String(r.id) === String(editingTeacher.id)) ||
+            (editingTeacher.user_id && r.user_id && String(r.user_id) === String(editingTeacher.user_id))
+          );
+          return matches && !isSameRecord;
+        })
+      );
 
       const fnVal = f.firstName !== undefined ? f.firstName : (editingTeacher ? (f.name || '').split(' ')[0] : '');
       const mnVal = f.middleName || '';
       const lnVal = f.lastName !== undefined ? f.lastName : (editingTeacher ? (f.name || '').split(' ').slice(1).join(' ') : '');
       const isFnInvalid = Boolean(fnVal && (fnVal.length < 3 || fnVal.length > 15 || /\s/.test(fnVal) || /\d/.test(fnVal)));
       const isMnInvalid = Boolean(mnVal && (/\d/.test(mnVal) || /\s/.test(mnVal)));
-      const isLnInvalid = Boolean(lnVal && (/\d/.test(lnVal) || lnVal.length < 3 || lnVal.length > 15));
+      const isLnInvalid = Boolean(lnVal && (/\d/.test(lnVal) || lnVal.length < 2 || lnVal.length > 20));
 
       return (
         <Modal maxWidth={620} title={editingTeacher ? `Edit Faculty Member — ${editingTeacher.name}` : "Add Faculty Member / Teacher"} close={() => { setOpen(false); setEditingTeacher(null); setF({}); }}>
@@ -11751,7 +11918,7 @@ function Teachers() {
                   <input
                     required
                     placeholder="e.g. Sharma"
-                    maxLength={15}
+                    maxLength={20}
                     value={lnVal || ''}
                     style={{
                       textTransform: 'uppercase',
@@ -11759,7 +11926,7 @@ function Teachers() {
                       boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
                     }}
                     onChange={e => {
-                      const ln = e.target.value.replace(/\d/g, '').slice(0, 15).toUpperCase();
+                      const ln = e.target.value.replace(/\d/g, '').slice(0, 20).toUpperCase();
                       const fullName = formatTeacherFullName(fnVal, mnVal, ln);
                       setF({ ...f, lastName: ln, name: fullName });
                     }}
@@ -11768,9 +11935,9 @@ function Teachers() {
                     <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Enter a string not a number
                     </span>
-                  ) : lnVal && lnVal.length < 3 ? (
+                  ) : lnVal && (lnVal.length < 2 || lnVal.length > 20) ? (
                     <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                      Must be 3 to 15 characters
+                      Must be 2 to 20 characters
                     </span>
                   ) : null}
                 </label>
@@ -11823,7 +11990,21 @@ function Teachers() {
                 <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                   Employee ID / Savior_NO <span style={{ color: '#ef4444' }}>*</span>
                 </span>
-                <input required placeholder="e.g. EMP001 or SAVIOR_101" value={f.employeeId || f.saviorNo || ''} onChange={e => setF({ ...f, employeeId: e.target.value, saviorNo: e.target.value })} />
+                <input
+                  required
+                  placeholder="e.g. EMP001 or SAVIOR_101"
+                  value={f.employeeId || f.saviorNo || ''}
+                  style={{
+                    borderColor: isEmpIdDuplicateInUi ? '#ef4444' : undefined,
+                    boxShadow: isEmpIdDuplicateInUi ? '0 0 0 1px #ef4444' : undefined
+                  }}
+                  onChange={e => setF({ ...f, employeeId: e.target.value, saviorNo: e.target.value })}
+                />
+                {isEmpIdDuplicateInUi && (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
+                    Already existed
+                  </span>
+                )}
               </label>
               {/* Row 1: Gender & Joining Date */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -11925,7 +12106,7 @@ function Teachers() {
                     {f.designation && !allocDesignations.some(d => (d.title || d.name) === f.designation) && (
                       <option value={f.designation}>{f.designation}</option>
                     )}
-                    {allocDesignations.filter(d => d.is_active !== false).map(d => (
+                    {allocDesignations.map(d => (
                       <option key={d.id || d.title} value={d.title || d.name}>
                         {d.title || d.name}{d.category ? ` (${d.category})` : ''}
                       </option>
@@ -19400,7 +19581,7 @@ function App() {
         <Route path="/student/timetable" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentTimetable /></StudentLayout></RoleGuard>} />
         <Route path="/student/homework" element={<Navigate to="/student/assignments" replace />} />
         <Route path="/student/assignments" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAssignments /></StudentLayout></RoleGuard>} />
-        <Route path="/student/exams" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentExams /></StudentLayout></RoleGuard>} />
+        {/* <Route path="/student/exams" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentExams /></StudentLayout></RoleGuard>} /> */}
         <Route path="/student/announcements" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAnnouncements /></StudentLayout></RoleGuard>} />
         <Route path="/student/leave-request" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentLeaveRequest /></StudentLayout></RoleGuard>} />
         <Route path="/student/profile" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentProfile /></StudentLayout></RoleGuard>} />

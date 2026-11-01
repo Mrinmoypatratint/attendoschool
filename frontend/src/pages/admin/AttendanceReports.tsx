@@ -1429,7 +1429,7 @@ export default function AttendanceReports({
                     style={{ cursor: 'pointer', width: 16, height: 16 }}
                   />
                 </td>
-                <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 600, color: 'var(--text, #1e293b)' }}><PersonProfileLink kind="student" id={r.student_id} name={r.student_name} person={{ ...r, roll_number: r.roll, roll: r.roll } as any} activeSession={sessions.find(s => s.id === selectedSession)?.name || sessions[0]?.name} /></td>
+                <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 600, color: 'var(--text, #1e293b)' }}><PersonProfileLink kind="student" id={r.student_id} name={r.student_name} person={{ ...r, roll_number: r.roll, roll: r.roll } as any} activeSession={sessions.find(s => s.id === selectedSession)?.name || sessions[0]?.name} mode="report" /></td>
                 <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>{r.roll}</td>
                 <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-secondary, #475569)' }}>{r.class_name || '-'}</td>
                 <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-secondary, #475569)' }}>{r.section_name || '-'}</td>
@@ -1662,7 +1662,7 @@ export default function AttendanceReports({
                 <tbody>
                   {filteredRows.map((r, i) => (
                     <tr key={r.student_id || i} style={{ borderBottom: '1px solid var(--border, #f1f5f9)' }}>
-                      <td style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--text, #0f172a)' }}><PersonProfileLink kind="student" id={r.student_id} name={r.student_name} person={{ ...r, roll_number: r.roll, roll: r.roll } as any} activeSession={sessions.find(s => s.id === selectedSession)?.name || sessions[0]?.name} /></td>
+                      <td style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--text, #0f172a)' }}><PersonProfileLink kind="student" id={r.student_id} name={r.student_name} person={{ ...r, roll_number: r.roll, roll: r.roll } as any} activeSession={sessions.find(s => s.id === selectedSession)?.name || sessions[0]?.name} mode="report" /></td>
                       <td style={{ padding: '8px 12px', color: 'var(--text-muted, #64748b)' }}>{r.roll}</td>
                       <td style={{ padding: '8px 12px', color: 'var(--text-secondary, #475569)' }}>{r.class_name || '-'}</td>
                       <td style={{ padding: '8px 12px', color: 'var(--text-secondary, #475569)' }}>{r.section_name || '-'}</td>

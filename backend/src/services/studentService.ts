@@ -8,6 +8,7 @@ import { getAllDemoUsers } from '../store/demoUsers';
 import { memAttendanceSessions, memAttendanceRecords } from '../routes/teacher';
 import { calculateWorkingCalendar } from './calendarService';
 import { inMemoryLeaves } from '../store/leavesStore';
+import { memEntries } from '../routes/timetable';
 import { validatePasswordStrength } from '../utils/passwordPolicy';
 import { normalizeGender } from '../utils/gender';
 import { validateAttachment, uploadToStorage, deleteFromStorage, buildStudentSubmissionStorageKey, MAX_FILES_COUNT, MAX_TOTAL_SIZE } from '../utils/firebaseStorage';
@@ -632,7 +633,7 @@ export async function getStudentDashboard(schoolId: string, userId: string, stud
   if (!st) throw new Error('Student record not found');
   const now = new Date();
   const todayDay = now.getDay(); // 0 = Sunday, 1 = Monday, ...
-  const targetDay = todayDay === 0 ? 1 : todayDay; // Default to Monday if Sunday
+  const targetDay = todayDay;
 
   // Run all PostgreSQL queries concurrently
   const [attQ, timeQ, recQ, annQ, assignQ, nextExamQ] = await Promise.all([
@@ -664,7 +665,7 @@ export async function getStudentDashboard(schoolId: string, userId: string, stud
          AND (e.class_id::text = $2 OR c.class_number = $3)
          AND (e.section_id::text = $4 OR LOWER(sec.name) = LOWER($5))
          AND e.day_of_week = $6
-         AND e.status = 'PUBLISHED'
+         AND (e.status = 'PUBLISHED' OR e.status = 'ASSIGNED')
        ORDER BY p.start_time ASC, p.period_number ASC`,
       [schoolId, String(st.class_id || ''), Number(st.class_number || 0), String(st.section_id || ''), String(st.section_name || ''), targetDay]
     ).catch(() => ({ rowCount: 0, rows: [] as any[] })),
@@ -848,15 +849,25 @@ export async function getStudentDashboard(schoolId: string, userId: string, stud
         }
       } catch {}
     }
-    if (todayTimetable.length === 0) {
-      todayTimetable = [
-        { periodNumber: 1, time: '08:00 - 08:45', subject: 'Mathematics', teacher: 'Mr. S. Verma', room: 'A-101', status: 'Completed' },
-        { periodNumber: 2, time: '08:45 - 09:30', subject: 'Science', teacher: 'Mrs. P. Das', room: 'A-102', status: 'Completed' },
-        { periodNumber: 3, time: '09:45 - 10:30', subject: 'English', teacher: 'Ms. R. Khan', room: 'A-103', status: 'Ongoing' },
-        { periodNumber: 4, time: '10:30 - 11:15', subject: 'Social Science', teacher: 'Mr. A. Singh', room: 'A-104', status: 'Upcoming' },
-        { periodNumber: 5, time: '11:30 - 12:15', subject: 'Computer Science', teacher: 'Mrs. N. Roy', room: 'Lab-1', status: 'Upcoming' },
-        { periodNumber: 6, time: '12:15 - 01:00', subject: 'Physical Education', teacher: 'Mr. K. Yadav', room: 'Ground', status: 'Upcoming' }
-      ];
+    if (todayTimetable.length === 0 && Array.isArray(memEntries) && memEntries.length > 0) {
+      const memList = memEntries.filter((e: any) => {
+        const matchSid = (!e.school_id && isTestSchool(schoolId)) || (e.school_id && isSameSchool(e.school_id, schoolId));
+        if (!matchSid) return false;
+        if (Number(e.day_of_week ?? e.dayOfWeek) !== targetDay) return false;
+        if (e.status === 'CANCELLED') return false;
+        return matchesStudentClass(e, st) && matchesStudentSection(e, st);
+      });
+      if (memList.length > 0) {
+        todayTimetable = memList.map((e: any, idx: number) => ({
+          periodNumber: Number(e.period_number ?? e.periodNumber ?? (idx + 1)),
+          time: `${(e.start_time || e.startTime || '09:00').slice(0, 5)} - ${(e.end_time || e.endTime || '09:45').slice(0, 5)}`,
+          subject: e.subject_name || e.subjectName || 'Subject',
+          teacher: e.teacher_name || e.teacherName || 'Faculty',
+          room: e.room_name || e.roomName || e.room || `Room ${st.class_number || 10}`,
+          status: computePeriodStatus(e.start_time || '09:00', e.end_time || '09:45')
+        }));
+        todayTimetable.sort((a, b) => a.periodNumber - b.periodNumber || a.time.localeCompare(b.time));
+      }
     }
   }
 
@@ -1200,7 +1211,7 @@ export async function getStudentTimetable(schoolId: string, userId: string) {
        WHERE e.school_id = $1
          AND (e.class_id::text = $2 OR c.class_number = $3)
          AND (e.section_id::text = $4 OR LOWER(sec.name) = LOWER($5))
-         AND e.status = 'PUBLISHED'
+         AND (e.status = 'PUBLISHED' OR e.status = 'ASSIGNED')
        ORDER BY e.day_of_week ASC, p.start_time ASC, p.period_number ASC`,
       [schoolId, String(st.class_id || ''), Number(st.class_number || 0), String(st.section_id || ''), String(st.section_name || '')]
     );

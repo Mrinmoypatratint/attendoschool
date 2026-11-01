@@ -16,6 +16,37 @@ import { CLASS_GRADES } from '../routes/schoolData';
 
 const router = Router();
 
+let assignmentTablesChecked = false;
+async function ensureAssignmentTables() {
+  if (assignmentTablesChecked || !isPostgresConfigured) return;
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS assignment_attachments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        assignment_id UUID NOT NULL REFERENCES student_assignments(id) ON DELETE CASCADE,
+        school_id UUID REFERENCES schools(id) ON DELETE CASCADE,
+        file_name VARCHAR(255) NOT NULL,
+        storage_key TEXT,
+        file_url TEXT,
+        mime_type VARCHAR(100) NOT NULL,
+        file_size INTEGER NOT NULL DEFAULT 0,
+        uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_assignment_attachments_assignment_id
+        ON assignment_attachments (assignment_id);
+    `);
+    assignmentTablesChecked = true;
+  } catch (err: any) {
+    console.warn('[ensureAssignmentTables] warning:', err.message);
+    assignmentTablesChecked = true;
+  }
+}
+
+router.use(async (_req, _res, next) => {
+  await ensureAssignmentTables();
+  next();
+});
+
 export let hasAssignedDateCol: boolean | null = null;
 export async function checkHasAssignedDate(): Promise<boolean> {
   if (hasAssignedDateCol !== null) return hasAssignedDateCol;
