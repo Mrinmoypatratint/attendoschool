@@ -1569,6 +1569,8 @@ export default function PeopleManagement() {
                       />
                       <input
                         type="date"
+                        min="1900-01-01"
+                        max="9999-12-31"
                         title="Select from date picker"
                         style={{
                           position: 'absolute',
@@ -1589,7 +1591,8 @@ export default function PeopleManagement() {
                         onChange={e => {
                           if (e.target.value) {
                             const [y, m, d] = e.target.value.split('-');
-                            setTeacherForm({ ...teacherForm, joiningDate: `${d}-${m}-${y}`, joining_date: `${d}-${m}-${y}` });
+                            const cleanY = (y || '').slice(0, 4);
+                            setTeacherForm({ ...teacherForm, joiningDate: `${d}-${m}-${cleanY}`, joining_date: `${d}-${m}-${cleanY}` });
                           }
                         }}
                       />

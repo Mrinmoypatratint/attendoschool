@@ -178,6 +178,15 @@ const isPreviewableFile = (fileName?: string, mimeType?: string) => {
   );
 };
 
+function clampTo4DigitYear(val: string): string {
+  if (!val) return '';
+  const parts = val.split('-');
+  if (parts[0] && parts[0].length > 4) {
+    parts[0] = parts[0].slice(0, 4);
+    return parts.join('-');
+  }
+  return val;
+}
 export function TeacherAssignments() {
   const [assignments, setAssignments] = useState<AssignmentRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1229,8 +1238,10 @@ export function TeacherAssignments() {
                   </label>
                   <input
                     type="date"
+                    min="1900-01-01"
+                    max="9999-12-31"
                     value={createForm.assigned_date}
-                    onChange={(e) => setCreateForm({ ...createForm, assigned_date: e.target.value })}
+                    onChange={(e) => setCreateForm({ ...createForm, assigned_date: clampTo4DigitYear(e.target.value) })}
                     style={{
                       width: '100%',
                       padding: '10px 12px',
@@ -1250,8 +1261,10 @@ export function TeacherAssignments() {
                   </label>
                   <input
                     type="date"
+                    min="1900-01-01"
+                    max="9999-12-31"
                     value={createForm.due_date}
-                    onChange={(e) => setCreateForm({ ...createForm, due_date: e.target.value })}
+                    onChange={(e) => setCreateForm({ ...createForm, due_date: clampTo4DigitYear(e.target.value) })}
                     style={{
                       width: '100%',
                       padding: '10px 12px',
@@ -1858,8 +1871,10 @@ export function TeacherAssignments() {
                   </label>
                   <input
                     type="date"
+                    min="1900-01-01"
+                    max="9999-12-31"
                     value={editForm.assigned_date}
-                    onChange={(e) => setEditForm({ ...editForm, assigned_date: e.target.value })}
+                    onChange={(e) => setEditForm({ ...editForm, assigned_date: clampTo4DigitYear(e.target.value) })}
                     style={{
                       width: '100%',
                       padding: '10px 12px',
@@ -1879,8 +1894,10 @@ export function TeacherAssignments() {
                   </label>
                   <input
                     type="date"
+                    min="1900-01-01"
+                    max="9999-12-31"
                     value={editForm.due_date}
-                    onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value })}
+                    onChange={(e) => setEditForm({ ...editForm, due_date: clampTo4DigitYear(e.target.value) })}
                     style={{
                       width: '100%',
                       padding: '10px 12px',
