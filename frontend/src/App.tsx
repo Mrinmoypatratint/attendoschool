@@ -4158,24 +4158,9 @@ function Stat({ label, value, trend, sub }: { label: string; value: any; trend?:
     )}
   </div>
 }
-function PageHead({ title, sub, button, onClick, schoolName: customSchoolName }: { title: string; sub: string; button?: string; onClick?: () => void; schoolName?: string }) {
-  const { user } = useAuth();
-  const isSchoolAdmin = user?.role === 'SCHOOL_ADMIN';
-  const isTeacher = user?.role === 'TEACHER';
-  const resolvedSchoolName = customSchoolName || user?.schoolName || (isTeacher ? 'School' : 'School Administration');
-  const eyebrowText = isSchoolAdmin
-    ? `${resolvedSchoolName.toUpperCase()} ADMIN`
-    : isTeacher
-      ? `${resolvedSchoolName.toUpperCase()} FACULTY`
-      : (title.includes('Admin') ? 'ATTENDOSCHOOL SUPER ADMIN' : 'ATTENDOSCHOOL ADMIN');
-  const logoAlt = (isSchoolAdmin || isTeacher) ? resolvedSchoolName : 'AttendoSchool';
-
+function PageHead({ title, sub, button, onClick, schoolName }: { title: string; sub: string; button?: string; onClick?: () => void; schoolName?: string }) {
   return <div className="page-head">
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-        <img src="/attendo-school-logo.png" alt={logoAlt} style={{ width: 18, height: 18, borderRadius: 4, objectFit: 'contain' }} />
-        <p className="eyebrow" style={{ margin: 0 }}>{eyebrowText}</p>
-      </div>
       <h1>{title}</h1>
       <p className="muted">{sub}</p>
     </div>
