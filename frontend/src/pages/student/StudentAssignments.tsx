@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   FileCheck, ArrowLeft, Send, CheckCircle2, Clock, Paperclip, Calendar,
   Upload, X, Download, Eye, FileText, AlertCircle, Loader2, Search, Edit3, RotateCcw,
@@ -81,6 +81,25 @@ const isPreviewableFile = (fileName?: string, mimeType?: string) => {
   );
 };
 
+const getAssignmentTimestamp = (a: Assignment): number => {
+  const dateStr = a.assigned_date || a.created_at;
+  if (!dateStr) return 0;
+  const ts = new Date(dateStr).getTime();
+  return isNaN(ts) ? 0 : ts;
+};
+
+const sortAssignmentsMostRecentFirst = (list: Assignment[]): Assignment[] => {
+  return [...list].sort((a, b) => {
+    const tsA = getAssignmentTimestamp(a);
+    const tsB = getAssignmentTimestamp(b);
+    if (tsB !== tsA) return tsB - tsA; // Most recent first
+    const cA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const cB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    if (cB !== cA) return cB - cA;
+    return String(b.id || '').localeCompare(String(a.id || ''));
+  });
+};
+
 export function StudentAssignments() {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryParam = searchParams.get('q') || searchParams.get('search') || '';
@@ -108,7 +127,7 @@ export function StudentAssignments() {
     studentApi
       .getAssignments()
       .then((res) => {
-        setAssignments(res);
+        setAssignments(sortAssignmentsMostRecentFirst(res));
         setLoading(false);
       })
       .catch(() => {
@@ -432,18 +451,21 @@ export function StudentAssignments() {
     }
   };
 
-  const filtered = assignments.filter((a) => {
-    if (activeTab === 'PENDING' && a.submission_status !== 'PENDING') return false;
-    if (activeTab === 'SUBMITTED' && a.submission_status === 'PENDING') return false;
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase();
-      return a.title.toLowerCase().includes(q) ||
-        (a.subject_name && a.subject_name.toLowerCase().includes(q)) ||
-        (a.description && a.description.toLowerCase().includes(q)) ||
-        (a.teacher_name && a.teacher_name.toLowerCase().includes(q));
-    }
-    return true;
-  });
+  const filtered: Assignment[] = useMemo(() => {
+    const list = assignments.filter((a) => {
+      if (activeTab === 'PENDING' && a.submission_status !== 'PENDING') return false;
+      if (activeTab === 'SUBMITTED' && a.submission_status === 'PENDING') return false;
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase();
+        return a.title.toLowerCase().includes(q) ||
+          (a.subject_name && a.subject_name.toLowerCase().includes(q)) ||
+          (a.description && a.description.toLowerCase().includes(q)) ||
+          (a.teacher_name && a.teacher_name.toLowerCase().includes(q));
+      }
+      return true;
+    });
+    return sortAssignmentsMostRecentFirst(list);
+  }, [assignments, activeTab, searchTerm]);
 
   return (
     <div className="student-subpage">
@@ -545,7 +567,7 @@ export function StudentAssignments() {
         </div>
       ) : (
         <div className="student-assignment-grid">
-          {filtered.map((a) => (
+          {filtered.map((a: Assignment) => (
             <div key={a.id} className="student-assignment-card">
               <div className="assignment-card-top">
                 <span className="assignment-subject-badge">{a.subject_name}</span>
@@ -616,7 +638,7 @@ export function StudentAssignments() {
                           mime_type: a.document_mime || 'application/pdf',
                           file_data: a.document_data
                         }]
-                    ).map((doc, idx) => {
+                    ).map((doc: any, idx: number) => {
                       const isPreviewable = isPreviewableFile(doc.file_name, doc.mime_type);
                       return (
                         <div
@@ -735,7 +757,7 @@ export function StudentAssignments() {
                         Submitted Attachments ({a.attachments.length})
                       </span>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {a.attachments.map((att) => {
+                        {a.attachments.map((att: AssignmentAttachment) => {
                           const isPreviewable = isPreviewableFile(att.file_name, att.mime_type);
                           return (
                             <div
@@ -930,7 +952,7 @@ export function StudentAssignments() {
                         mime_type: activeModal.document_mime || 'application/pdf',
                         file_data: activeModal.document_data
                       }]
-                  ).map((doc, idx) => {
+                  ).map((doc: any, idx: number) => {
                     const isPreviewable = isPreviewableFile(doc.file_name, doc.mime_type);
                     return (
                       <div

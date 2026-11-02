@@ -108,8 +108,15 @@ const corsOptions: cors.CorsOptions = {
 
 app.use(cors(corsOptions));
 app.use(compression());
-app.use(express.json({ limit: '35mb' }));
-app.use(express.urlencoded({ extended: true, limit: '35mb' }));
+
+// Route-specific high-headroom parser for assignment uploads (25MB binary = ~33.3MB Base64 + JSON metadata)
+const assignmentUploadParser = express.json({ limit: '48mb' });
+app.use('/api/teacher/assignments', assignmentUploadParser);
+app.use('/api/student/assignments', assignmentUploadParser);
+
+// Standard JSON and URL-encoded body limits for all other routes
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
 // Global security middleware applied to all endpoints
 app.use(securityHeaders);

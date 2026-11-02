@@ -10,7 +10,8 @@ import {
   buildTeacherAssignmentStorageKey,
   isInlinePreviewMime,
   getStorageHealth,
-  StorageConfigurationError
+  StorageConfigurationError,
+  ensureAttachmentStorageTable
 } from '../utils/firebaseStorage';
 import { CLASS_GRADES } from '../routes/schoolData';
 
@@ -20,6 +21,7 @@ let assignmentTablesChecked = false;
 async function ensureAssignmentTables() {
   if (assignmentTablesChecked || !isPostgresConfigured) return;
   try {
+    await ensureAttachmentStorageTable();
     await pool.query(`
       CREATE TABLE IF NOT EXISTS assignment_attachments (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -322,17 +324,13 @@ router.post('/', async (req: AuthRequest, res: Response) => {
         });
       }
 
-      const formattedData = typeof item.fileData === 'string' && item.fileData.startsWith('data:')
-        ? item.fileData
-        : `data:${v.mimeType};base64,${typeof item.fileData === 'string' ? item.fileData.replace(/^data:[^;]+;base64,/, '') : ''}`;
-
+      // Store metadata only in attachments array (single source of truth in attachment_blobs)
       processedAttachments.push({
         id: fileId,
         file_name: v.sanitizedName,
         file_size: v.buffer.length,
         mime_type: v.mimeType,
         storage_key: storageKey,
-        file_data: formattedData,
         uploaded_at: new Date().toISOString()
       });
     }
@@ -359,7 +357,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
             firstDoc ? firstDoc.file_name : null,
             firstDoc ? firstDoc.file_size : null,
             firstDoc ? firstDoc.mime_type : null,
-            firstDoc ? firstDoc.file_data : null,
+            null, // document_data is NULL for single source of truth in attachment_blobs
             firstDoc ? firstDoc.storage_key : null,
             JSON.stringify(processedAttachments)
           ]
@@ -381,7 +379,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
             firstDoc ? firstDoc.file_name : null,
             firstDoc ? firstDoc.file_size : null,
             firstDoc ? firstDoc.mime_type : null,
-            firstDoc ? firstDoc.file_data : null,
+            null, // document_data is NULL for single source of truth in attachment_blobs
             firstDoc ? firstDoc.storage_key : null,
             JSON.stringify(processedAttachments)
           ]
@@ -390,12 +388,12 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 
       const rec = q.rows[0];
 
-      // Insert attachment rows into assignment_attachments table
+      // Insert attachment rows into assignment_attachments table (metadata only; contents in attachment_blobs)
       for (const att of processedAttachments) {
         try {
           await pool.query(
-            `INSERT INTO assignment_attachments (id, assignment_id, school_id, file_name, storage_key, mime_type, file_size, uploaded_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+            `INSERT INTO assignment_attachments (id, assignment_id, school_id, file_name, storage_key, file_url, mime_type, file_size, uploaded_at)
+             VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, NOW())
              ON CONFLICT (id) DO NOTHING`,
             [att.id, rec.id, req.user!.schoolId!, att.file_name, att.storage_key, att.mime_type, att.file_size]
           );
@@ -484,7 +482,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
                a.title, a.description,
                a.created_at::date AS assigned_date,
                a.due_date, a.max_marks,
-               a.document_url, a.document_name, a.document_size, a.document_mime, a.document_data,
+               a.document_url, a.document_name, a.document_size, a.document_mime,
                a.storage_key,
                COALESCE(a.attachments, '[]'::jsonb) AS attachments,
                a.created_at, a.updated_at,
@@ -527,8 +525,26 @@ router.get('/', async (req: AuthRequest, res: Response) => {
         } else if (attCount === 0 && (row.document_name || row.storage_key)) {
           attCount = 1;
         }
+
+        // Lightweight metadata only for listing API (strip raw base64 data URLs)
+        const sanitizedAttachments = (Array.isArray(row.attachments) ? row.attachments : []).map((att: any) => ({
+          id: att.id,
+          file_name: att.file_name || att.name || 'document',
+          file_size: Number(att.file_size || att.size || 0),
+          mime_type: att.mime_type || att.type || 'application/octet-stream',
+          storage_key: att.storage_key,
+          uploaded_at: att.uploaded_at
+        }));
+
+        const safeDocUrl = row.document_url && String(row.document_url).startsWith('data:')
+          ? `/api/teacher/assignments/${row.id}/document/download`
+          : row.document_url;
+
         return {
           ...row,
+          document_data: undefined, // Strip raw base64 from listing API
+          document_url: safeDocUrl,
+          attachments: sanitizedAttachments,
           attachment_count: attCount
         };
       });
@@ -690,14 +706,13 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     // Handle existing attachments list
     let currentAttachments: any[] = Array.isArray(existingAsg.attachments) ? [...existingAsg.attachments] : [];
 
-    // Remove deleted attachments
+    // Remove deleted attachments (collect storage keys for post-commit cleanup)
+    const removedStorageKeys: string[] = [];
     if (Array.isArray(removedAttachmentIds) && removedAttachmentIds.length > 0) {
       const toRemove = currentAttachments.filter((att) => removedAttachmentIds.includes(att.id));
       for (const att of toRemove) {
         if (att.storage_key) {
-          try {
-            await deleteFromStorage(att.storage_key);
-          } catch (_e) {}
+          removedStorageKeys.push(att.storage_key);
         }
       }
 
@@ -739,17 +754,13 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
           });
         }
 
-        const formattedData = typeof item.fileData === 'string' && item.fileData.startsWith('data:')
-          ? item.fileData
-          : `data:${v.mimeType};base64,${typeof item.fileData === 'string' ? item.fileData.replace(/^data:[^;]+;base64,/, '') : ''}`;
-
+        // Store metadata only (single source of truth in attachment_blobs)
         const newEntry = {
           id: fileId,
           file_name: v.sanitizedName,
           file_size: v.buffer.length,
           mime_type: v.mimeType,
           storage_key: storageKey,
-          file_data: formattedData,
           uploaded_at: new Date().toISOString()
         };
 
@@ -758,8 +769,8 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
         if (isPostgresConfigured) {
           try {
             await pool.query(
-              `INSERT INTO assignment_attachments (id, assignment_id, school_id, file_name, storage_key, mime_type, file_size, uploaded_at)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+              `INSERT INTO assignment_attachments (id, assignment_id, school_id, file_name, storage_key, file_url, mime_type, file_size, uploaded_at)
+               VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, NOW())
                ON CONFLICT (id) DO NOTHING`,
               [newEntry.id, assignmentId, req.user!.schoolId!, newEntry.file_name, newEntry.storage_key, newEntry.mime_type, newEntry.file_size]
             );
@@ -831,6 +842,13 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       }
 
       const updatedRow = updQ.rows[0];
+
+      // Safe post-update storage cleanup (only after DB update succeeds)
+      for (const key of removedStorageKeys) {
+        try {
+          await deleteFromStorage(key);
+        } catch (_e) {}
+      }
 
       // Update in-memory fallback too
       const memIdx = inMemoryAssignments.findIndex((a) => a.id === assignmentId);
@@ -936,7 +954,23 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
         }
       } catch (_e) {}
 
-      // Safe storage cleanup
+      // 1. Delete database records inside transaction first (cascades submissions and attachments)
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(`DELETE FROM assignment_attachments WHERE assignment_id = $1`, [assignmentId]);
+        await client.query(`DELETE FROM student_assignment_attachments WHERE assignment_id = $1`, [assignmentId]);
+        await client.query(`DELETE FROM student_assignment_submissions WHERE assignment_id = $1`, [assignmentId]);
+        await client.query(`DELETE FROM student_assignments WHERE id = $1 AND school_id = $2`, [assignmentId, req.user!.schoolId!]);
+        await client.query('COMMIT');
+      } catch (txErr) {
+        await client.query('ROLLBACK');
+        throw txErr;
+      } finally {
+        client.release();
+      }
+
+      // 2. Safe storage cleanup (deleteFromStorage checks for remaining references across all tables)
       for (const key of Array.from(new Set(storageKeysToDelete))) {
         try {
           await deleteFromStorage(key);
@@ -944,19 +978,6 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
           failedPurges.push(key);
         }
       }
-
-      // Delete database records (cascades submissions and attachments)
-      try {
-        await pool.query(`DELETE FROM assignment_attachments WHERE assignment_id = $1`, [assignmentId]);
-      } catch (_e) {}
-      try {
-        await pool.query(`DELETE FROM student_assignment_attachments WHERE assignment_id = $1`, [assignmentId]);
-      } catch (_e) {}
-      try {
-        await pool.query(`DELETE FROM student_assignment_submissions WHERE assignment_id = $1`, [assignmentId]);
-      } catch (_e) {}
-
-      await pool.query(`DELETE FROM student_assignments WHERE id = $1 AND school_id = $2`, [assignmentId, req.user!.schoolId!]);
     } else {
       const idx = inMemoryAssignments.findIndex(
         (a) => a.id === assignmentId && isSameSchool(a.school_id, req.user!.schoolId!)
@@ -1029,17 +1050,13 @@ router.post('/:id/attachments', async (req: AuthRequest, res: Response) => {
 
     await uploadToStorage(storageKey, v.buffer, v.mimeType);
 
-    const formattedData = typeof fileData === 'string' && fileData.startsWith('data:')
-      ? fileData
-      : `data:${v.mimeType};base64,${typeof fileData === 'string' ? fileData.replace(/^data:[^;]+;base64,/, '') : ''}`;
-
+    // Metadata only in attachments list (single source of truth in attachment_blobs)
     const newAttachment = {
       id: fileId,
       file_name: v.sanitizedName,
       file_size: v.buffer.length,
       mime_type: v.mimeType,
       storage_key: storageKey,
-      file_data: formattedData,
       uploaded_at: new Date().toISOString()
     };
 
@@ -1052,8 +1069,9 @@ router.post('/:id/attachments', async (req: AuthRequest, res: Response) => {
       );
       try {
         await pool.query(
-          `INSERT INTO assignment_attachments (id, assignment_id, school_id, file_name, storage_key, mime_type, file_size, uploaded_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+          `INSERT INTO assignment_attachments (id, assignment_id, school_id, file_name, storage_key, file_url, mime_type, file_size, uploaded_at)
+           VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, NOW())
+           ON CONFLICT (id) DO NOTHING`,
           [newAttachment.id, assignmentId, req.user!.schoolId!, newAttachment.file_name, storageKey, newAttachment.mime_type, newAttachment.file_size]
         );
       } catch (_e) {}
@@ -1090,16 +1108,6 @@ router.delete('/:id/attachments/:attachmentId', async (req: AuthRequest, res: Re
     const currentAttachments: any[] = Array.isArray(asg.attachments) ? asg.attachments : [];
     const targetAtt = currentAttachments.find((a) => a.id === attachmentId);
 
-    if (targetAtt?.storage_key) {
-      try {
-        await deleteFromStorage(targetAtt.storage_key);
-      } catch (delErr: any) {
-        return res.status(502).json({
-          message: `Failed to remove attachment from storage: ${delErr.message || 'Storage error'}. Database record preserved.`
-        });
-      }
-    }
-
     const updatedAttachments = currentAttachments.filter((a) => a.id !== attachmentId);
 
     if (isPostgresConfigured) {
@@ -1115,6 +1123,15 @@ router.delete('/:id/attachments/:attachmentId', async (req: AuthRequest, res: Re
       } catch (_e) {}
     } else {
       asg.attachments = updatedAttachments;
+    }
+
+    // Storage deletion strictly after DB update (reference check verifies 0 active references)
+    if (targetAtt?.storage_key) {
+      try {
+        await deleteFromStorage(targetAtt.storage_key);
+      } catch (delErr: any) {
+        console.warn(`[Storage] Failed to prune storage key '${targetAtt.storage_key}':`, delErr.message);
+      }
     }
 
     res.json({ success: true, message: 'Attachment removed successfully' });
