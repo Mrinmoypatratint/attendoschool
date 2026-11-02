@@ -113,7 +113,7 @@ export default function AttendanceCorrections() {
   }
 
   return (
-    <div className="feature-page" style={{ padding: '24px 32px' }}>
+    <div className="feature-page" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
       <div className="feature-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0 0 6px' }}>Attendance Corrections</h1>

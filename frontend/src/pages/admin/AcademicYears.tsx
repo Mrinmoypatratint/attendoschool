@@ -807,7 +807,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
   }
 
   return (
-    <div className="feature-page" style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 20px' }}>
+    <div className="feature-page" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, color: 'var(--text, #0f172a)' }}>
