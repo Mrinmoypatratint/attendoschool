@@ -19110,7 +19110,7 @@ function SchoolProfile() {
                 {/* Title & Info */}
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 750, color: 'var(--text-color, #0f172a)' }}>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 750, color: 'var(--text, #0f172a)' }}>
                       {adminName}
                     </h3>
                     <span className="badge active" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
@@ -19380,7 +19380,7 @@ function SchoolProfile() {
                       value={loading ? 'Loading school...' : (profile?.schoolName || profile?.name || user?.schoolName || '—')}
                       style={{
                         backgroundColor: 'var(--input-disabled-bg, #f1f5f9)',
-                        color: 'var(--text-color, #0f172a)',
+                        color: 'var(--text, #0f172a)',
                         cursor: 'not-allowed',
                         fontWeight: 600
                       }}
@@ -19398,7 +19398,7 @@ function SchoolProfile() {
                       value={user?.email || profile?.adminEmail || profile?.email || '—'}
                       style={{
                         backgroundColor: 'var(--input-disabled-bg, #f1f5f9)',
-                        color: 'var(--text-color, #0f172a)',
+                        color: 'var(--text, #0f172a)',
                         cursor: 'not-allowed'
                       }}
                       id="admin-email-input"

@@ -78,6 +78,8 @@
 
   --text: #0f172a;
   --text-main: #0f172a;
+  --text-color: #0f172a;
+  --input-disabled-bg: #f1f5f9;
   --bg-muted: #f1f5f9;
   --text-secondary: #475569;
   --text-muted: #64748b;
@@ -142,6 +144,8 @@ html.dark {
 
   --text: #f8fafc;
   --text-main: #f8fafc;
+  --text-color: #f8fafc;
+  --input-disabled-bg: #1e293b;
   --bg-muted: #17223b;
   --text-secondary: #cbd5e1;
   --text-muted: #94a3b8;
