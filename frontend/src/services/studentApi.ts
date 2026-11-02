@@ -236,6 +236,10 @@ export const studentApi = {
     api.get<Announcement[]>('/student/announcements', { params: { from, to } }).then((r) => r.data),
   markAnnouncementRead: (id: string) => api.post<{ success: boolean; read_at: string }>('/student/announcements/' + id + '/read').then((r) => r.data),
   replyToAnnouncement: (id: string, replyText: string) => api.post('/communication/announcements/' + id + '/reply', { replyText }).then((r) => r.data),
+  previewAnnouncementAttachment: (id: string) =>
+    api.get<Blob>(`/communication/announcements/${id}/attachment/preview`, { responseType: 'blob' }).then((r) => r.data),
+  downloadAnnouncementAttachment: (id: string) =>
+    api.get<Blob>(`/communication/announcements/${id}/attachment/download`, { responseType: 'blob' }).then((r) => r.data),
   getAssignments: () => api.get<Assignment[]>('/student/assignments').then((r) => r.data),
   submitAssignment: (
     id: string,

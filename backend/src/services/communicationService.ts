@@ -343,6 +343,30 @@ export async function deleteAnnouncement(schoolId: string, id: string) {
   return { success: true };
 }
 
+export async function getAnnouncementById(schoolId: string, id: string, allowCrossSchool = false) {
+  await ensureTables();
+  if (isPostgresConfigured && pool) {
+    try {
+      const res = await pool.query(
+        `SELECT a.*, 
+                COALESCE(a.author_name, a.created_by_name, u.name, 'School Administration') AS author_name,
+                COALESCE(a.author_role, a.created_by_role, u.role::text, 'SCHOOL_ADMIN') AS author_role
+         FROM announcements a
+         LEFT JOIN users u ON u.id = a.created_by
+         WHERE a.id = $1 AND (a.school_id = $2 OR $3 = true)
+         LIMIT 1`,
+        [id, schoolId, allowCrossSchool]
+      );
+      if (res.rows && res.rows.length > 0) {
+        return res.rows[0];
+      }
+    } catch (_e) {}
+  }
+
+  const mem = memAnnouncements.find(x => x.id === id && (allowCrossSchool || isSameSchool(x.school_id, schoolId)));
+  return mem || null;
+}
+
 /**
  * Publishes an announcement.
  * Multi-Channel Dispatch: If priority === 'EMERGENCY', automatically triggers emergency emails.
