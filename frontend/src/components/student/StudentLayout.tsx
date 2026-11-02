@@ -586,30 +586,6 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               </div>
             )}
 
-            {/* Institute Pill */}
-            <div 
-              className="student-institute-pill" 
-              onClick={handleOpenSchoolWebsite}
-              title={targetWebsiteUrl ? `Official School Website: ${targetWebsiteUrl}` : schoolName}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: targetWebsiteUrl ? 'pointer' : 'default' }}
-            >
-              {schoolPhoto ? (
-                <img
-                  src={schoolPhoto}
-                  alt={schoolName}
-                  style={{ width: 22, height: 22, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }}
-                />
-              ) : (
-                <Building2 size={15} className="student-inst-icon" />
-              )}
-              <span className="student-inst-name">{schoolName}</span>
-              {schoolWebsite ? (
-                <ExternalLink size={12} className="student-inst-ext-icon" />
-              ) : (
-                <ChevronDown size={14} className="student-inst-chevron" />
-              )}
-            </div>
-
             {/* Connected Review Notifications Bell & Popover (Student Announcements) */}
             <div className="super-notif-wrap" ref={studentNotifRef} style={{ position: 'relative' }}>
               <button
