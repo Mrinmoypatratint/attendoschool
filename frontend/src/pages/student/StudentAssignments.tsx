@@ -53,7 +53,7 @@ export const formatAssignmentDate = (value?: string | null): string => {
     ? new Date(Date.UTC(parseInt(match[1], 10), parseInt(match[2], 10) - 1, parseInt(match[3], 10)))
     : new Date(str);
 
-  if (Number.isNaN(date.getTime())) return '—';
+  if (Number.isNaN(date.getTime()) || date.getUTCFullYear() < 1970 || date.getUTCFullYear() > 2100) return '—';
 
   return new Intl.DateTimeFormat('en-GB', {
     day: '2-digit',
