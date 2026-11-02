@@ -26,9 +26,11 @@ const loginIpBuckets = new Map<string, { count: number; start: number }>();
 const WINDOW = 60_000; // 1 minute window
 
 // General API limit
-const LIMIT = process.env.RATE_LIMIT
-  ? Number(process.env.RATE_LIMIT)
-  : (process.env.NODE_ENV === 'production' ? 600 : 1000);
+export function getApiRateLimit(): number {
+  return process.env.RATE_LIMIT
+    ? Number(process.env.RATE_LIMIT)
+    : (process.env.NODE_ENV === 'production' ? 600 : 1000);
+}
 
 // Login account-level limit (per IP + targeted account)
 const ACCOUNT_LOGIN_LIMIT = Number(process.env.LOGIN_RATE_LIMIT || 30);
@@ -160,7 +162,7 @@ export function apiRateLimit(req: Request, res: Response, next: NextFunction) {
     return next();
   }
   b.count++;
-  if (b.count > LIMIT) {
+  if (b.count > getApiRateLimit()) {
     return res.status(429).json({
       message: 'Too many requests. Please try again later.',
       retryAfter: Math.ceil((WINDOW - (now - b.start)) / 1000)

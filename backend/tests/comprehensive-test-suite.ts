@@ -1,10 +1,11 @@
+process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { env } from '../src/config/env';
 import { requireAuth, requireRoles, AuthRequest } from '../src/middleware/auth';
-import { securityHeaders, apiRateLimit, requestContext } from '../src/middleware/security';
+import { securityHeaders, apiRateLimit, requestContext, getApiRateLimit } from '../src/middleware/security';
 import app from '../src/app';
 import http from 'http';
 import { pool } from '../src/db';
@@ -123,7 +124,7 @@ async function runTestSuite() {
 
   // Rate Limiting
   const rateLimitReq: any = { ip: '192.168.1.100', user: { id: 'user-test-1' } };
-  const limitThreshold = Number(process.env.RATE_LIMIT || (process.env.NODE_ENV === 'production' ? 120 : 1000));
+  const limitThreshold = getApiRateLimit();
   for (let i = 0; i < limitThreshold; i++) {
     apiRateLimit(rateLimitReq, mockRes, () => {});
   }
