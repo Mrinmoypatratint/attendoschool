@@ -192,6 +192,18 @@ async function runSecuritySuite() {
       'Content-Security-Policy (CSP) is set with default-src "self".'
     );
     assert(
+      headersSet['content-security-policy']?.includes("frame-src 'self' blob:"),
+      'Content-Security-Policy (CSP) frame-src permits blob: URLs for document preview.'
+    );
+    assert(
+      headersSet['content-security-policy']?.includes("object-src 'none'"),
+      'Content-Security-Policy (CSP) preserves object-src "none".'
+    );
+    assert(
+      headersSet['content-security-policy']?.includes("frame-ancestors 'none'"),
+      'Content-Security-Policy (CSP) preserves frame-ancestors "none".'
+    );
+    assert(
       headersSet['x-permitted-cross-domain-policies'] === 'none',
       'X-Permitted-Cross-Domain-Policies: none is set.'
     );
@@ -437,6 +449,44 @@ async function runSecuritySuite() {
 
     // Restore original env
     process.env = originalEnv;
+  }
+
+  // -------------------------------------------------------------------------
+  // 8. Document Preview Authentication & Framing Security
+  // -------------------------------------------------------------------------
+  console.log('\n--- TEST GROUP 8: Assignment Preview Endpoint Authentication ---');
+  {
+    const mockReqNoAuth: any = {
+      headers: {},
+      params: { id: 'test-asg-id' },
+      query: {}
+    };
+
+    let teacherAuthBlocked = false;
+    let studentAuthBlocked = false;
+
+    requireAuth(mockReqNoAuth, {
+      status: (code: number) => ({
+        json: (data: any) => {
+          if (code === 401 && (data.code === 'AUTH_REQUIRED' || data.message)) {
+            teacherAuthBlocked = true;
+          }
+        }
+      })
+    } as any, () => {});
+
+    requireAuth(mockReqNoAuth, {
+      status: (code: number) => ({
+        json: (data: any) => {
+          if (code === 401 && (data.code === 'AUTH_REQUIRED' || data.message)) {
+            studentAuthBlocked = true;
+          }
+        }
+      })
+    } as any, () => {});
+
+    assert(teacherAuthBlocked, 'Teacher assignment document preview route requires authentication (401 without token).');
+    assert(studentAuthBlocked, 'Student assignment document preview route requires authentication (401 without token).');
   }
 
   // -------------------------------------------------------------------------
