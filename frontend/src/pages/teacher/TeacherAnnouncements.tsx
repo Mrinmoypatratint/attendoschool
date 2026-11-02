@@ -213,10 +213,31 @@ export function TeacherAnnouncements() {
     );
   };
 
+  const resolvePreviewMime = (responseType?: string, declaredType?: string, fileName?: string): string => {
+    const lowerName = (fileName || '').toLowerCase();
+    const respMime = (responseType || '').toLowerCase();
+    const declMime = (declaredType || '').toLowerCase();
+
+    if (['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(respMime)) {
+      return respMime;
+    }
+    if (['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(declMime)) {
+      return declMime;
+    }
+
+    if (lowerName.endsWith('.pdf')) return 'application/pdf';
+    if (lowerName.endsWith('.png')) return 'image/png';
+    if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) return 'image/jpeg';
+    if (lowerName.endsWith('.webp')) return 'image/webp';
+
+    return respMime || declMime || 'application/octet-stream';
+  };
+
   const openAttachmentPreview = async (notice: { id: string; attachment_name?: string; attachment_type?: string; attachment_url?: string }) => {
     if (!notice) return;
+    const currentNoticeId = notice.id;
     const fileName = notice.attachment_name || 'announcement-attachment';
-    const mimeType = notice.attachment_type || '';
+    const declaredMime = notice.attachment_type || '';
 
     if (attachmentPreview?.blobUrl) {
       URL.revokeObjectURL(attachmentPreview.blobUrl);
@@ -225,38 +246,60 @@ export function TeacherAnnouncements() {
     setAttachmentPreview({
       open: true,
       fileName,
-      mimeType,
+      mimeType: resolvePreviewMime('', declaredMime, fileName),
       blobUrl: null,
       loading: true,
       error: null,
-      noticeId: notice.id
+      noticeId: currentNoticeId
     });
 
     try {
-      let blob: Blob;
-      if (notice.attachment_url && notice.attachment_url.startsWith('data:')) {
-        const resp = await fetch(notice.attachment_url);
-        blob = await resp.blob();
-      } else {
-        const resp = await api.get(`/communication/announcements/${notice.id}/attachment/preview`, {
-          responseType: 'blob'
-        });
-        blob = resp.data;
-      }
+      // Always use the authenticated Axios client - completely avoids browser CSP connect-src violations on data: URLs
+      const resp = await api.get(`/communication/announcements/${currentNoticeId}/attachment/preview`, {
+        responseType: 'blob'
+      });
+
+      const blob: Blob = resp.data;
+      const effectiveMime = resolvePreviewMime(blob.type, declaredMime, fileName);
       const blobUrl = URL.createObjectURL(blob);
-      const effectiveMime = blob.type || mimeType || (fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
-      setAttachmentPreview(prev => prev && prev.open ? {
-        ...prev,
-        blobUrl,
-        loading: false,
-        mimeType: effectiveMime
-      } : null);
+
+      setAttachmentPreview((prev) => {
+        if (!prev || !prev.open || prev.noticeId !== currentNoticeId) {
+          URL.revokeObjectURL(blobUrl);
+          return prev;
+        }
+        return {
+          ...prev,
+          blobUrl,
+          loading: false,
+          mimeType: effectiveMime,
+          error: null
+        };
+      });
     } catch (err: any) {
-      setAttachmentPreview(prev => prev && prev.open ? {
-        ...prev,
-        loading: false,
-        error: err?.response?.data?.message || 'Failed to load preview.'
-      } : null);
+      let errorMessage = 'Failed to load preview.';
+      if (err?.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const parsed = JSON.parse(text);
+          if (parsed?.message) {
+            errorMessage = parsed.message;
+          }
+        } catch {}
+      } else if (err?.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+
+      setAttachmentPreview((prev) => {
+        if (!prev || !prev.open || prev.noticeId !== currentNoticeId) return prev;
+        return {
+          ...prev,
+          loading: false,
+          error: errorMessage
+        };
+      });
     }
   };
 
