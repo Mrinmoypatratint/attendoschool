@@ -292,6 +292,6 @@ export const studentApi = {
     api.put('/student/change-password', { currentPassword, newPassword }).then((r) => r.data),
   updatePhoto: (photoUrl: string) =>
     api.put<{ success: boolean; photoUrl?: string; pendingPhotoUrl?: string; pendingApproval?: boolean; message: string }>('/student/photo', { photoUrl }).then((r) => r.data),
-  updateProfile: (data: { gender?: string; dateOfBirth?: string; address?: string }) =>
+  updateProfile: (data: { gender?: string; dateOfBirth?: string; address?: string; email?: string }) =>
     api.put<{ success: boolean; message: string }>('/student/profile', data).then((r) => r.data)
 };

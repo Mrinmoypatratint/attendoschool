@@ -367,11 +367,12 @@ export async function getStudentProfile(schoolId: string, userId: string, studen
 /**
  * Updates student profile details (gender, date of birth, address)
  */
-export async function updateStudentProfile(schoolId: string, userId: string, data: { gender?: string; dateOfBirth?: string; address?: string }) {
+export async function updateStudentProfile(schoolId: string, userId: string, data: { gender?: string; dateOfBirth?: string; address?: string; email?: string }) {
   const st = await resolveStudentRecord(schoolId, userId);
   if (!st) throw new Error('Student record not found');
 
   const cleanDob = data.dateOfBirth ? toDdMmYyyy(data.dateOfBirth) : null;
+  const cleanEmail = data.email !== undefined ? (data.email ? String(data.email).trim().toLowerCase() : null) : undefined;
   const updates: string[] = [];
   const params: any[] = [];
   let idx = 1;
@@ -388,6 +389,10 @@ export async function updateStudentProfile(schoolId: string, userId: string, dat
     updates.push(`address = $${idx++}`);
     params.push(data.address || null);
   }
+  if (cleanEmail !== undefined) {
+    updates.push(`email = $${idx++}`);
+    params.push(cleanEmail);
+  }
 
   if (updates.length > 0) {
     try {
@@ -397,6 +402,16 @@ export async function updateStudentProfile(schoolId: string, userId: string, dat
         params
       );
     } catch (_dbErr) {}
+
+    if (cleanEmail !== undefined) {
+      try {
+        const targetUserId = st.user_id || userId;
+        await pool.query(
+          `UPDATE users SET email = $1, updated_at = NOW() WHERE id = $2`,
+          [cleanEmail, targetUserId]
+        );
+      } catch (_uErr) {}
+    }
   }
 
   // Update in Firestore
@@ -410,6 +425,10 @@ export async function updateStudentProfile(schoolId: string, userId: string, dat
         fUpdates.dateOfBirth = cleanDob;
       }
       if (data.address !== undefined) fUpdates.address = data.address || null;
+      if (cleanEmail !== undefined) {
+        fUpdates.email = cleanEmail;
+        fUpdates.student_email = cleanEmail;
+      }
       await collections.students().doc(st.id).set(fUpdates, { merge: true });
     } catch (_fErr) {}
   }
@@ -421,6 +440,10 @@ export async function updateStudentProfile(schoolId: string, userId: string, dat
     if (data.dateOfBirth !== undefined) {
       ds.date_of_birth = cleanDob;
       ds.dob = cleanDob;
+    }
+    if (cleanEmail !== undefined) {
+      ds.email = cleanEmail;
+      ds.student_email = cleanEmail;
     }
   }
 

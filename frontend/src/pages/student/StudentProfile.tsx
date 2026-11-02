@@ -146,6 +146,7 @@ export function StudentProfile() {
   const [editingDetails, setEditingDetails] = useState(false);
   const [editGender, setEditGender] = useState('');
   const [editDob, setEditDob] = useState('');
+  const [editEmail, setEditEmail] = useState('');
   const [savingDetails, setSavingDetails] = useState(false);
   const [detailsMsg, setDetailsMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -156,6 +157,7 @@ export function StudentProfile() {
         setProfile(res);
         setEditGender(formatGender(res?.gender) || '');
         setEditDob(toDdMmYyyy(res?.dateOfBirth));
+        setEditEmail(res?.email || user?.email || '');
         if (res?.photoUrl) {
           updateUser({ photoUrl: res.photoUrl, avatarUrl: res.photoUrl, photo_url: res.photoUrl });
           window.dispatchEvent(new CustomEvent('student-photo-updated', { detail: { photoUrl: res.photoUrl } }));
@@ -187,11 +189,21 @@ export function StudentProfile() {
       return;
     }
 
+        const cleanEmail = editEmail.trim();
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setDetailsMsg({
+        type: 'error',
+        text: 'Please enter a valid student email address.'
+      });
+      return;
+    }
+
     const normalizedDob = toDdMmYyyy(cleanDob);
     setSavingDetails(true);
     try {
-      await studentApi.updateProfile({ gender: editGender, dateOfBirth: normalizedDob });
-      setProfile((prev) => prev ? { ...prev, gender: editGender, dateOfBirth: normalizedDob } : null);
+      await studentApi.updateProfile({ gender: editGender, dateOfBirth: normalizedDob, email: cleanEmail });
+      setProfile((prev) => prev ? { ...prev, gender: editGender, dateOfBirth: normalizedDob, email: cleanEmail } : null);
+      if (cleanEmail) updateUser({ email: cleanEmail });
       setEditDob(normalizedDob);
       setDetailsMsg({ type: 'success', text: 'Personal details updated successfully!' });
       setEditingDetails(false);
@@ -610,6 +622,29 @@ export function StudentProfile() {
                     </span>
                   )}
                 </label>
+
+                <label style={{ display: 'grid', gap: 4, gridColumn: 'span 2' }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
+                    Student Email:
+                  </span>
+                  <input
+                    type="email"
+                    placeholder="student@school.edu"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border-strong, #cbd5e1)',
+                      fontSize: 13,
+                      outline: 'none',
+                      backgroundColor: 'var(--card-bg, #ffffff)',
+                      color: 'var(--text, #0f172a)',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </label>
               </div>
 
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
@@ -619,6 +654,7 @@ export function StudentProfile() {
                     setEditingDetails(false);
                     setEditGender(formatGender(profile?.gender) || '');
                     setEditDob(profile?.dateOfBirth ? toDdMmYyyy(profile.dateOfBirth) : '');
+                    setEditEmail(profile?.email || user?.email || '');
                   }}
                   style={{
                     display: 'inline-flex',
