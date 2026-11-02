@@ -1491,7 +1491,7 @@ export async function getStudentAssignments(schoolId: string, userId: string) {
   try {
     const q = await pool.query(
       `SELECT a.id, a.title, a.description, a.due_date, ${dateCol} AS assigned_date, a.created_at, a.max_marks,
-              a.document_url, a.document_name, a.document_size, a.document_mime, a.document_data,
+              a.document_url, a.document_name, a.document_size, a.document_mime,
               COALESCE(a.attachments, '[]'::jsonb) AS teacher_attachments,
               sub.name AS subject_name, u.name AS teacher_name,
               COALESCE(s.status, 'PENDING') AS submission_status,
@@ -1502,7 +1502,7 @@ export async function getStudentAssignments(schoolId: string, userId: string) {
        LEFT JOIN users u ON u.id = a.teacher_id
        LEFT JOIN student_assignment_submissions s ON s.assignment_id = a.id AND s.student_id = $3
        WHERE a.school_id = $1 AND a.class_id = $2 AND (a.section_id IS NULL OR a.section_id = $4)
-       ORDER BY a.due_date ASC`,
+       ORDER BY ${dateCol} DESC, a.created_at DESC`,
       [schoolId, st.class_id, st.id, st.section_id]
     );
     if (q.rowCount && q.rowCount > 0) {
@@ -1549,9 +1549,25 @@ export async function getStudentAssignments(schoolId: string, userId: string) {
         if (tAtts.length === 0 && (r.document_name || r.document_url)) {
           tAtts = [{ id: 'doc-0', file_name: r.document_name, file_size: r.document_size, mime_type: r.document_mime }];
         }
+        // Lightweight metadata only for listing API (strip raw base64 data URLs)
+        const sanitizedTeacherAtts = tAtts.map((att: any) => ({
+          id: att.id,
+          file_name: att.file_name || att.name || 'document',
+          file_size: Number(att.file_size || att.size || 0),
+          mime_type: att.mime_type || att.type || 'application/octet-stream',
+          storage_key: att.storage_key,
+          uploaded_at: att.uploaded_at
+        }));
+
+        const safeDocUrl = r.document_url && String(r.document_url).startsWith('data:')
+          ? `/api/student/assignments/${r.id}/document/download`
+          : r.document_url;
+
         return {
           ...r,
-          teacher_attachments: tAtts,
+          document_data: undefined, // Strip raw base64 from listing API
+          document_url: safeDocUrl,
+          teacher_attachments: sanitizedTeacherAtts,
           attachments: r.submission_id ? (attachmentsMap.get(r.submission_id) || []) : []
         };
       });
@@ -1620,39 +1636,19 @@ export async function submitStudentAssignment(
     currentAtts = curAttQ.rows || [];
   }
 
-  // 4. Safely handle removal of attachments
+  // 4. Calculate remaining attachments and validate limits before mutation
   const toRemoveIds: string[] = Array.isArray(removedAttachmentIds) ? removedAttachmentIds.filter(Boolean) : [];
-  if (toRemoveIds.length > 0 && currentAtts.length > 0) {
-    const toDeleteList = currentAtts.filter((att) => toRemoveIds.includes(att.id));
-    for (const delAtt of toDeleteList) {
-      if (delAtt.storage_key) {
-        try {
-          await deleteFromStorage(delAtt.storage_key);
-        } catch (_delErr) {
-          console.warn('[Storage] Failed to delete storage key:', delAtt.storage_key);
-        }
-      }
-    }
-    const delIds = toDeleteList.map((a) => a.id);
-    if (delIds.length > 0) {
-      await pool.query(
-        `DELETE FROM student_assignment_attachments
-         WHERE id = ANY($1::uuid[]) AND student_id = $2 AND school_id = $3`,
-        [delIds, st.id, schoolId]
-      );
-      currentAtts = currentAtts.filter((att) => !toRemoveIds.includes(att.id));
-    }
-  }
+  const remainingAtts = currentAtts.filter((att) => !toRemoveIds.includes(att.id));
 
   // 5. Enforce cumulative attachment count limit (<= 5)
   const newFilesList = Array.isArray(attachments) ? attachments.filter((a) => a && a.fileData) : [];
-  const remainingCount = currentAtts.length;
+  const remainingCount = remainingAtts.length;
   if (remainingCount + newFilesList.length > MAX_FILES_COUNT) {
     throw new Error(`Maximum ${MAX_FILES_COUNT} files allowed per submission (currently ${remainingCount} attached, cannot add ${newFilesList.length})`);
   }
 
   // 6. Calculate cumulative size and validate new attachments
-  let cumulativeSize = currentAtts.reduce((sum, a) => sum + (Number(a.file_size) || 0), 0);
+  let cumulativeSize = remainingAtts.reduce((sum, a) => sum + (Number(a.file_size) || 0), 0);
   const validatedFiles: Array<{ id: string; fileName: string; mimeType: string; buffer: Buffer; storageKey: string }> = [];
 
   for (const item of newFilesList) {
@@ -1679,7 +1675,7 @@ export async function submitStudentAssignment(
 
   // 7. Verify non-empty submission
   const trimmedText = String(text || '').trim();
-  if (!trimmedText && currentAtts.length === 0 && validatedFiles.length === 0) {
+  if (!trimmedText && remainingAtts.length === 0 && validatedFiles.length === 0) {
     throw new Error('Submission content required: please provide submission text or attach at least one file');
   }
 
@@ -1707,54 +1703,98 @@ export async function submitStudentAssignment(
     }
   }
 
-  // 9. Upsert or update submission record without clearing original submitted_at or grades
-  let subRecord: any;
-  if (existingSub) {
-    const updateSql = hasUpd
-      ? `UPDATE student_assignment_submissions
-         SET submission_text = $1, status = $2, updated_at = NOW()
-         WHERE id = $3 AND school_id = $4 AND student_id = $5
-         RETURNING *`
-      : `UPDATE student_assignment_submissions
-         SET submission_text = $1, status = $2
-         WHERE id = $3 AND school_id = $4 AND student_id = $5
-         RETURNING *`;
-    const updQ = await pool.query(updateSql, [trimmedText, targetStatus, existingSub.id, schoolId, st.id]);
-    subRecord = updQ.rows[0];
-  } else {
-    const insertSql = hasUpd
-      ? `INSERT INTO student_assignment_submissions
-           (school_id, assignment_id, student_id, status, submitted_at, submission_text, updated_at)
-         VALUES ($1, $2, $3, $4, NOW(), $5, NOW())
-         RETURNING *`
-      : `INSERT INTO student_assignment_submissions
-           (school_id, assignment_id, student_id, status, submitted_at, submission_text)
-         VALUES ($1, $2, $3, $4, NOW(), $5)
-         RETURNING *`;
-    const insQ = await pool.query(insertSql, [schoolId, assignmentId, st.id, targetStatus, trimmedText]);
-    subRecord = insQ.rows[0];
+  // 9. Atomic Transaction: DB updates commit first before any storage keys are cleaned up
+  const client = await pool.connect();
+  const keysToDeleteFromStorage: string[] = [];
+
+  try {
+    await client.query('BEGIN');
+
+    // 9a. Delete removed attachment metadata records within transaction
+    if (toRemoveIds.length > 0 && currentAtts.length > 0) {
+      const toDeleteList = currentAtts.filter((att) => toRemoveIds.includes(att.id));
+      const delIds = toDeleteList.map((a) => a.id);
+      if (delIds.length > 0) {
+        await client.query(
+          `DELETE FROM student_assignment_attachments
+           WHERE id = ANY($1::uuid[]) AND student_id = $2 AND school_id = $3`,
+          [delIds, st.id, schoolId]
+        );
+        for (const delAtt of toDeleteList) {
+          if (delAtt.storage_key) {
+            keysToDeleteFromStorage.push(delAtt.storage_key);
+          }
+        }
+      }
+    }
+
+    // 9b. Upsert or update submission record
+    let subRecord: any;
+    if (existingSub) {
+      const updateSql = hasUpd
+        ? `UPDATE student_assignment_submissions
+           SET submission_text = $1, status = $2, updated_at = NOW()
+           WHERE id = $3 AND school_id = $4 AND student_id = $5
+           RETURNING *`
+        : `UPDATE student_assignment_submissions
+           SET submission_text = $1, status = $2
+           WHERE id = $3 AND school_id = $4 AND student_id = $5
+           RETURNING *`;
+      const updQ = await client.query(updateSql, [trimmedText, targetStatus, existingSub.id, schoolId, st.id]);
+      subRecord = updQ.rows[0];
+    } else {
+      const insertSql = hasUpd
+        ? `INSERT INTO student_assignment_submissions
+             (school_id, assignment_id, student_id, status, submitted_at, submission_text, updated_at)
+           VALUES ($1, $2, $3, $4, NOW(), $5, NOW())
+           RETURNING *`
+        : `INSERT INTO student_assignment_submissions
+             (school_id, assignment_id, student_id, status, submitted_at, submission_text)
+           VALUES ($1, $2, $3, $4, NOW(), $5)
+           RETURNING *`;
+      const insQ = await client.query(insertSql, [schoolId, assignmentId, st.id, targetStatus, trimmedText]);
+      subRecord = insQ.rows[0];
+    }
+
+    // 9c. Upload new attachments to storage and record metadata within transaction
+    const savedNewAttachments: any[] = [];
+    for (const file of validatedFiles) {
+      await uploadToStorage(file.storageKey, file.buffer, file.mimeType);
+
+      const attInsert = await client.query(
+        `INSERT INTO student_assignment_attachments
+           (id, school_id, assignment_id, submission_id, student_id, file_name, file_size, mime_type, storage_provider, storage_key, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'FIREBASE', $9, NOW())
+         RETURNING id, file_name, file_size, mime_type, created_at`,
+        [file.id, schoolId, assignmentId, subRecord.id, st.id, file.fileName, file.buffer.length, file.mimeType, file.storageKey]
+      );
+      savedNewAttachments.push(attInsert.rows[0]);
+    }
+
+    // 9d. Commit transaction
+    await client.query('COMMIT');
+
+    // 10. Post-commit storage cleanup: Only delete from storage after commit succeeds
+    for (const key of keysToDeleteFromStorage) {
+      try {
+        await deleteFromStorage(key);
+      } catch (cleanErr: any) {
+        console.warn(`[Storage] Post-commit cleanup failed for removed key '${key}':`, cleanErr.message);
+      }
+    }
+
+    clearStudentDashboardCache(userId);
+    return {
+      ...subRecord,
+      attachments: [...remainingAtts, ...savedNewAttachments]
+    };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    // On rollback: keysToDeleteFromStorage are NOT deleted from storage!
+    throw err;
+  } finally {
+    client.release();
   }
-
-  // 10. Upload new attachments to storage and record in DB
-  const savedNewAttachments: any[] = [];
-  for (const file of validatedFiles) {
-    await uploadToStorage(file.storageKey, file.buffer, file.mimeType);
-
-    const attInsert = await pool.query(
-      `INSERT INTO student_assignment_attachments
-         (id, school_id, assignment_id, submission_id, student_id, file_name, file_size, mime_type, storage_provider, storage_key, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'FIREBASE', $9, NOW())
-       RETURNING id, file_name, file_size, mime_type, created_at`,
-      [file.id, schoolId, assignmentId, subRecord.id, st.id, file.fileName, file.buffer.length, file.mimeType, file.storageKey]
-    );
-    savedNewAttachments.push(attInsert.rows[0]);
-  }
-
-  clearStudentDashboardCache(userId);
-  return {
-    ...subRecord,
-    attachments: [...currentAtts, ...savedNewAttachments]
-  };
 }
 
 /**
@@ -1784,22 +1824,19 @@ export async function deleteStudentSubmissionAttachment(
   }
 
   const att = attQ.rows[0];
-  if (att.storage_key) {
-    try {
-      await deleteFromStorage(att.storage_key);
-    } catch (delErr: any) {
-      console.warn('[Storage] Could not prune file from storage:', att.storage_key);
-      const err: any = new Error(`Failed to remove attachment file from storage: ${delErr.message || 'Storage error'}. Database record preserved.`);
-      err.status = 502;
-      throw err;
-    }
-  }
 
   await pool.query(
     `DELETE FROM student_assignment_attachments WHERE id = $1 AND student_id = $2 AND school_id = $3`,
     [attachmentId, st.id, schoolId]
   );
 
+  if (att.storage_key) {
+    try {
+      await deleteFromStorage(att.storage_key);
+    } catch (delErr: any) {
+      console.warn('[Storage] Could not prune file from storage:', att.storage_key);
+    }
+  }
   const hasUpd = await checkHasUpdatedAtStudentSub();
   if (hasUpd) {
     try {
