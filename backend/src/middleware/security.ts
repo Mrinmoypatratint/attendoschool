@@ -186,7 +186,7 @@ export function securityHeaders(_req: Request, res: Response, next: NextFunction
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: https: blob:",
     "connect-src 'self' https://attendoschool.online https://www.attendoschool.online https://api.razorpay.com https://*.firebaseio.com https://*.googleapis.com",
-    "frame-src 'self' https://api.razorpay.com",
+    "frame-src 'self' blob: https://api.razorpay.com",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
