@@ -4401,8 +4401,22 @@ function AdminHome() {
   const todaySchedule = data?.todaySchedule || [];
   const recentActivity = data?.recentActivity || [];
 
-  const resolvedSchoolName = data?.school?.name || (user as any)?.schoolName || 'School Administration';
-  const resolvedLogoUrl = (user as any)?.photo_url || (user as any)?.photoUrl || data?.school?.photo_url || '';
+  const isDavSchool =
+    String(data?.school?.name || (user as any)?.schoolName || '').toUpperCase().includes('DAV') ||
+    String((user as any)?.schoolCode || '').includes('15582') ||
+    String((user as any)?.email || '').toLowerCase().includes('@dav.') ||
+    (user as any)?.schoolId === '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3';
+
+  const resolvedSchoolName = isDavSchool ? 'DAV MODEL SCHOOL' : (data?.school?.name || (user as any)?.schoolName || 'School Administration');
+  const resolvedLogoUrl =
+    data?.school?.photo_url ||
+    data?.school?.photoUrl ||
+    (user as any)?.schoolPhotoUrl ||
+    (user as any)?.school_photo_url ||
+    (isDavSchool ? '/dav-logo.png' : '') ||
+    (user as any)?.photo_url ||
+    (user as any)?.photoUrl ||
+    '';
 
   return (
     <>
@@ -5205,9 +5219,21 @@ function TeacherHome() {
     return `${diffDays} days ago`;
   };
 
-  const resolvedSchoolName = (user as any)?.schoolName || 'School';
+  const isDavSchool =
+    String((user as any)?.schoolName || '').toUpperCase().includes('DAV') ||
+    String((user as any)?.schoolCode || '').includes('15582') ||
+    String((user as any)?.email || '').toLowerCase().includes('@dav.') ||
+    (user as any)?.schoolId === '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3';
+
+  const resolvedSchoolName = isDavSchool ? 'DAV MODEL SCHOOL' : ((user as any)?.schoolName || 'School');
   const resolvedTeacherName = user?.name || 'Faculty Member';
-  const resolvedLogoUrl = (user as any)?.photo_url || (user as any)?.photoUrl || '';
+  const resolvedLogoUrl =
+    (user as any)?.schoolPhotoUrl ||
+    (user as any)?.school_photo_url ||
+    (isDavSchool ? '/dav-logo.png' : '') ||
+    (user as any)?.photo_url ||
+    (user as any)?.photoUrl ||
+    '';
 
   return (
     <>
