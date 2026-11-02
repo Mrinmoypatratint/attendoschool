@@ -520,7 +520,7 @@ export function StudentAnnouncements() {
                         alignItems: 'center',
                         gap: 4
                       }}>
-                        <GraduationCap size={12} /> Teacher
+                        <GraduationCap size={12} /> Teacher: {a.author_name || 'Teacher'}
                       </span>
                     ) : (
                       <span style={{
@@ -535,7 +535,7 @@ export function StudentAnnouncements() {
                         alignItems: 'center',
                         gap: 4
                       }}>
-                        <Building2 size={12} /> School
+                        <Building2 size={12} /> By School Admin
                       </span>
                     )}
 
@@ -601,6 +601,29 @@ export function StudentAnnouncements() {
               >
                 {a.title}
               </h3>
+              {/* Dynamic Author Indicator */}
+              <div style={{
+                fontSize: 12,
+                color: isTeacherNotice(a) ? '#047857' : '#1d4ed8',
+                fontWeight: 600,
+                marginTop: 2,
+                marginBottom: 8,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5
+              }}>
+                {isTeacherNotice(a) ? (
+                  <>
+                    <GraduationCap size={13} />
+                    <span>Teacher: {a.author_name || 'Teacher'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Building2 size={13} />
+                    <span>By School Admin</span>
+                  </>
+                )}
+              </div>
               <p className="notice-body" style={{ whiteSpace: 'pre-wrap' }}>{a.message}</p>
 
               {/* Document / File Attachment */}
@@ -892,6 +915,40 @@ export function StudentAnnouncements() {
                     }}>
                       {getAudienceBadgeText(viewingNotice)}
                     </span>
+                    {/* Source / Author Badge */}
+                    {isTeacherNotice(viewingNotice) ? (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        backgroundColor: '#ecfdf5',
+                        color: '#047857',
+                        border: '1px solid #a7f3d0'
+                      }}>
+                        <GraduationCap size={12} />
+                        Teacher: {viewingNotice.author_name || 'Teacher'}
+                      </span>
+                    ) : (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        backgroundColor: '#eff6ff',
+                        color: '#1d4ed8',
+                        border: '1px solid #bfdbfe'
+                      }}>
+                        <Building2 size={12} />
+                        By School Admin
+                      </span>
+                    )}
                   </div>
 
                   <h2 style={{
@@ -904,6 +961,27 @@ export function StudentAnnouncements() {
                   }}>
                     {viewingNotice.title}
                   </h2>
+                  <div style={{
+                    fontSize: 12.5,
+                    color: isTeacherNotice(viewingNotice) ? '#047857' : '#1d4ed8',
+                    fontWeight: 600,
+                    marginTop: 6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5
+                  }}>
+                    {isTeacherNotice(viewingNotice) ? (
+                      <>
+                        <GraduationCap size={13} />
+                        <span>Teacher: {viewingNotice.author_name || 'Teacher'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Building2 size={13} />
+                        <span>By School Admin</span>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
 

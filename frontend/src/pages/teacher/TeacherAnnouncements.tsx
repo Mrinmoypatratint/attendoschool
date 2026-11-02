@@ -658,10 +658,12 @@ export function TeacherAnnouncements() {
       // Filter sent notices created by this teacher
       const allData: AnnouncementItem[] = Array.isArray(allAnnRes.data) ? allAnnRes.data : [];
       const teacherSent = allData.filter(a => {
+        const role = ((a as any).author_role || (a as any).created_by_role || '').toUpperCase();
+        if (['SCHOOL_ADMIN', 'ADMIN', 'SUPER_ADMIN'].includes(role)) return false;
         if (user?.id && (a.created_by === user.id || (a as any).author_id === user.id)) return true;
         if (user?.name && (a.author_name === user.name || a.created_by_name === user.name)) return true;
-        // Notices to students created by faculty
-        if (['STUDENT', 'CLASS', 'SECTION'].includes(a.audience_type) && a.created_by && a.created_by !== '00000000-0000-0000-0000-000000000021') return true;
+        if (role === 'TEACHER') return true;
+        if (['STUDENT', 'CLASS', 'SECTION'].includes(a.audience_type) && !a.author_name?.toLowerCase().includes('admin')) return true;
         return false;
       });
       setSentNotices(teacherSent);
@@ -1366,7 +1368,7 @@ export function TeacherAnnouncements() {
                 <Filter size={13} /> Filter:
               </span>
               {(['ALL', 'SENT', 'RECEIVE'] as const).map(f => {
-                const label = f === 'ALL' ? 'All' : f === 'SENT' ? 'Sent' : 'Recieve';
+                const label = f === 'ALL' ? 'All' : f === 'SENT' ? 'Sent' : 'Receive';
                 const count = f === 'ALL' ? totalNoticesCount : f === 'SENT' ? sentNotices.length : receivedNotices.length;
                 return (
                   <button
