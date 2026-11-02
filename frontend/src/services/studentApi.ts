@@ -204,6 +204,10 @@ export interface Announcement {
   attachment_size?: number;
   class_number?: number;
   section_name?: string;
+  status?: string;
+  recipient_count?: number;
+  read_count?: number;
+  reply_count?: number;
 }
 
 export interface LeaveRequest {

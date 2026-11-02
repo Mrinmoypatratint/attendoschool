@@ -1285,13 +1285,23 @@ export async function getStudentAnnouncements(schoolId: string, userId: string, 
 
       const q = await pool.query(
         `SELECT a.id, a.title, a.message, a.priority, a.published_at, a.created_at,
-                a.audience_type,
+                a.audience_type, COALESCE(a.status, 'PUBLISHED') AS status,
                 a.attachment_url, a.attachment_name, a.attachment_type, a.attachment_size,
                 a.created_by,
                 COALESCE(u.name, 'School Administration') AS author_name,
                 COALESCE(u.role, 'SCHOOL_ADMIN') AS author_role,
                 c.class_number, sec.name AS section_name,
-                r.read_at, r.id AS recipient_id
+                r.read_at, r.id AS recipient_id,
+                COALESCE(
+                  NULLIF((SELECT COUNT(*) FROM announcement_recipients ar WHERE ar.announcement_id = a.id)::int, 0),
+                  CASE 
+                    WHEN a.audience_type = 'SECTION' THEN (SELECT COUNT(*) FROM students s WHERE s.school_id = a.school_id AND s.class_id = a.class_id AND s.section_id = a.section_id)::int
+                    WHEN a.audience_type = 'CLASS' THEN (SELECT COUNT(*) FROM students s WHERE s.school_id = a.school_id AND s.class_id = a.class_id)::int
+                    ELSE (SELECT COUNT(*) FROM students s WHERE s.school_id = a.school_id)::int
+                  END
+                ) AS recipient_count,
+                (SELECT COUNT(*) FROM announcement_recipients ar WHERE ar.announcement_id = a.id AND ar.read_at IS NOT NULL)::int AS read_count,
+                (SELECT COUNT(*) FROM notification_replies nr WHERE nr.announcement_id = a.id)::int AS reply_count
          FROM announcements a
          LEFT JOIN users u ON u.id = a.created_by
          LEFT JOIN classes c ON c.id = a.class_id

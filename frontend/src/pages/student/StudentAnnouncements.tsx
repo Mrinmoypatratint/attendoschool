@@ -1,10 +1,85 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Megaphone, ArrowLeft, AlertCircle, Calendar, MessageSquare, Send, CheckCircle2, CornerDownRight, Search, X, Check, RotateCcw, Building2, GraduationCap, Paperclip, Download, Filter } from 'lucide-react';
+import {
+  Megaphone,
+  ArrowLeft,
+  AlertCircle,
+  Calendar,
+  MessageSquare,
+  Send,
+  CheckCircle2,
+  CornerDownRight,
+  Search,
+  X,
+  Check,
+  RotateCcw,
+  Building2,
+  GraduationCap,
+  Paperclip,
+  Download,
+  Filter,
+  AlertTriangle,
+  Clock,
+  Maximize2,
+  Minimize2,
+  FileText
+} from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { studentApi, Announcement } from '../../services/studentApi';
 import { useAuth } from '../../hooks/useAuth';
 import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
 import { AnnouncementDateFilter } from '../../components/AnnouncementDateFilter';
+
+
+export function formatPublishDate(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+}
+
+export function formatPublishTime(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+}
+
+function getAudienceBadgeText(item: Announcement): string {
+  let clsLabel = '';
+  if (item.class_number !== undefined && item.class_number !== null) {
+    if (Number(item.class_number) === -1) clsLabel = 'Class L KG';
+    else if (Number(item.class_number) === 0) clsLabel = 'Class U KG';
+    else clsLabel = `Class ${item.class_number}`;
+  }
+
+  const secName = item.section_name || '';
+
+  if (item.audience_type === 'SECTION') {
+    return `${clsLabel || 'Class'} · Sec ${secName || 'A'}`;
+  } else if (item.audience_type === 'CLASS') {
+    return `${clsLabel || 'Class'}`;
+  } else if (item.audience_type === 'SCHOOL') {
+    return 'Entire School (All)';
+  } else if (item.audience_type === 'TEACHER') {
+    return 'Teachers & Faculty';
+  } else if (item.audience_type === 'STUDENT') {
+    return 'All Students';
+  } else if (item.audience_type === 'PARENTS') {
+    return 'All Parents';
+  }
+  if (clsLabel) {
+    return secName ? `${clsLabel} · Sec ${secName}` : clsLabel;
+  }
+  return 'School';
+}
 
 export function StudentAnnouncements() {
   const { user } = useAuth();
@@ -20,6 +95,19 @@ export function StudentAnnouncements() {
   const [replyText, setReplyText] = useState('');
   const [submittingReply, setSubmittingReply] = useState(false);
   const [replySuccessId, setReplySuccessId] = useState<string | null>(null);
+  const [viewingNotice, setViewingNotice] = useState<Announcement | null>(null);
+  const [isNoticeMaximized, setIsNoticeMaximized] = useState(false);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && viewingNotice) {
+        setViewingNotice(null);
+        setIsNoticeMaximized(false);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [viewingNotice]);
 
   // Source Filter: 'ALL' | 'SCHOOL' | 'TEACHER'
   const [sourceFilter, setSourceFilter] = useState<'ALL' | 'SCHOOL' | 'TEACHER'>('ALL');
@@ -495,7 +583,24 @@ export function StudentAnnouncements() {
                   </div>
                 </div>
 
-              <h3 className="notice-title" style={{ marginTop: 8 }}>{a.title}</h3>
+              <h3
+                className="notice-title"
+                onClick={() => {
+                  setViewingNotice(a);
+                  if (!a.read_at) handleMarkRead(a);
+                }}
+                style={{
+                  marginTop: 8,
+                  cursor: 'pointer',
+                  color: 'var(--text, #0f172a)',
+                  transition: 'color 0.15s ease'
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = '#2563eb')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text, #0f172a)')}
+                title="Click to view full announcement"
+              >
+                {a.title}
+              </h3>
               <p className="notice-body" style={{ whiteSpace: 'pre-wrap' }}>{a.message}</p>
 
               {/* Document / File Attachment */}
@@ -676,6 +781,380 @@ export function StudentAnnouncements() {
         })}
         </div>
       )}
+    
+      {/* ── Viewing Notice Details Modal (Student Portal) ── */}
+      {viewingNotice && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setViewingNotice(null);
+              setIsNoticeMaximized(false);
+            }
+          }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: isNoticeMaximized ? 8 : 16,
+            zIndex: 1050
+          }}
+        >
+          <div
+            className="modal"
+            style={{
+              width: isNoticeMaximized ? 'min(1280px, 98vw)' : 'min(640px, 95vw)',
+              height: isNoticeMaximized ? '94vh' : 'auto',
+              maxHeight: '94vh',
+              background: 'var(--bg-card, #ffffff)',
+              border: '1px solid var(--border, #e2e8f0)',
+              borderRadius: isNoticeMaximized ? 12 : 16,
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              transition: 'width 0.2s ease, height 0.2s ease, border-radius 0.2s ease',
+              animation: 'fadeIn 0.2s ease-out'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{
+              padding: isNoticeMaximized ? '16px 24px' : '18px 24px',
+              borderBottom: '1px solid var(--border, #e2e8f0)',
+              background: 'var(--card-subtle, #f8fafc)',
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              gap: 16
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, minWidth: 0 }}>
+                <div style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 10,
+                  background: (viewingNotice.status || 'PUBLISHED') === 'PUBLISHED' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(37, 99, 235, 0.12)',
+                  color: (viewingNotice.status || 'PUBLISHED') === 'PUBLISHED' ? '#10b981' : '#2563eb',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <MessageSquare size={22} />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+                    {/* Status Badge */}
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '2px 8px',
+                      borderRadius: 4,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      backgroundColor: '#ecfdf5',
+                      color: '#047857',
+                      border: '1px solid #a7f3d0'
+                    }}>
+                      <CheckCircle2 size={12} />
+                      PUBLISHED
+                    </span>
+
+                    {/* Priority Badge */}
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 3,
+                      padding: '2px 7px',
+                      borderRadius: 4,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      backgroundColor: viewingNotice.priority === 'EMERGENCY' ? '#fee2e2' : viewingNotice.priority === 'HIGH' ? '#ffedd5' : 'var(--card-subtle, #f1f5f9)',
+                      color: viewingNotice.priority === 'EMERGENCY' ? '#b91c1c' : viewingNotice.priority === 'HIGH' ? '#c2410c' : 'var(--text-secondary, #475569)'
+                    }}>
+                      {viewingNotice.priority === 'EMERGENCY' && <AlertTriangle size={11} />}
+                      {viewingNotice.priority || 'NORMAL'}
+                    </span>
+
+                    {/* Audience Badge */}
+                    <span style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      padding: '2px 8px',
+                      borderRadius: 4,
+                      backgroundColor: '#eff6ff',
+                      color: '#1d4ed8',
+                      border: '1px solid #bfdbfe'
+                    }}>
+                      {getAudienceBadgeText(viewingNotice)}
+                    </span>
+                  </div>
+
+                  <h2 style={{
+                    margin: 0,
+                    fontSize: isNoticeMaximized ? 20 : 17,
+                    fontWeight: 700,
+                    color: 'var(--text, #0f172a)',
+                    lineHeight: 1.35,
+                    wordBreak: 'break-word'
+                  }}>
+                    {viewingNotice.title}
+                  </h2>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => setIsNoticeMaximized(!isNoticeMaximized)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted, #64748b)',
+                    cursor: 'pointer',
+                    padding: 4,
+                    borderRadius: 6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: 'none',
+                    transition: 'color 0.15s ease'
+                  }}
+                  title={isNoticeMaximized ? "Restore down" : "Maximize"}
+                  aria-label={isNoticeMaximized ? "Restore down" : "Maximize"}
+                >
+                  {isNoticeMaximized ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewingNotice(null);
+                    setIsNoticeMaximized(false);
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted, #64748b)',
+                    cursor: 'pointer',
+                    padding: 4,
+                    borderRadius: 6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: 'none',
+                    transition: 'color 0.15s ease'
+                  }}
+                  title="Close"
+                  aria-label="Close"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{
+              padding: isNoticeMaximized ? '24px 32px' : '20px 24px',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+              flex: 1
+            }}>
+              {/* Meta details strip */}
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '10px 14px',
+                borderRadius: 8,
+                backgroundColor: 'var(--card-subtle, #f8fafc)',
+                border: '1px solid var(--border, #e2e8f0)',
+                fontSize: 12
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary, #475569)' }}>
+                  <Clock size={14} style={{ color: '#10b981' }} />
+                  <span>
+                    Published on <b>{formatPublishDate(viewingNotice.published_at || viewingNotice.created_at)}</b> at <b>{formatPublishTime(viewingNotice.published_at || viewingNotice.created_at)}</b>
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <span style={{ color: 'var(--text-muted, #64748b)' }}>
+                    Recipients: <strong style={{ color: 'var(--text, #0f172a)' }}>{viewingNotice.recipient_count || 1}</strong>
+                  </span>
+                  <span style={{ color: 'var(--text-muted, #64748b)' }}>
+                    Read: <strong style={{ color: 'var(--text, #0f172a)' }}>{viewingNotice.read_count || (viewingNotice.read_at ? 1 : 0)}</strong>
+                  </span>
+                  <span style={{ color: 'var(--text-muted, #64748b)' }}>
+                    Replies: <strong style={{ color: '#2563eb' }}>{viewingNotice.reply_count || 0}</strong>
+                  </span>
+                </div>
+              </div>
+
+              {/* Message Content Container */}
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  color: 'var(--text-muted, #64748b)',
+                  marginBottom: 8
+                }}>
+                  Announcement Message
+                </label>
+                <div style={{
+                  backgroundColor: 'var(--bg-card, #ffffff)',
+                  border: '1px solid var(--border, #cbd5e1)',
+                  borderLeft: '4px solid #10b981',
+                  borderRadius: 8,
+                  padding: isNoticeMaximized ? '20px 22px' : '16px 18px',
+                  fontSize: 14,
+                  lineHeight: 1.7,
+                  color: 'var(--text, #1e293b)',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  maxHeight: isNoticeMaximized ? 'calc(94vh - 360px)' : 280,
+                  minHeight: isNoticeMaximized ? 260 : 'auto',
+                  overflowY: 'auto'
+                }}>
+                  {viewingNotice.message ? (
+                    viewingNotice.message
+                  ) : (
+                    <span style={{ color: 'var(--text-muted, #94a3b8)', fontStyle: 'italic' }}>
+                      No message content available.
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Attached Document inside Modal */}
+              {viewingNotice.attachment_url && (
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    color: 'var(--text-muted, #64748b)',
+                    marginBottom: 8
+                  }}>
+                    Attached Document
+                  </label>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    backgroundColor: 'var(--card-subtle, #f8fafc)',
+                    border: '1px solid var(--border, #cbd5e1)',
+                    gap: 12,
+                    flexWrap: 'wrap'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                      <div style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 6,
+                        backgroundColor: '#eff6ff',
+                        color: '#2563eb',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <Paperclip size={18} />
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{
+                          fontWeight: 600,
+                          fontSize: 13.5,
+                          color: 'var(--text, #0f172a)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {viewingNotice.attachment_name || 'Attached File'}
+                        </div>
+                        {viewingNotice.attachment_size ? (
+                          <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>
+                            {(viewingNotice.attachment_size / 1024).toFixed(1)} KB
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <a
+                      href={viewingNotice.attachment_url}
+                      download={viewingNotice.attachment_name || 'announcement-attachment'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '7px 14px',
+                        borderRadius: 6,
+                        backgroundColor: '#2563eb',
+                        color: '#ffffff',
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        textDecoration: 'none',
+                        boxShadow: '0 1px 2px rgba(37,99,235,0.2)'
+                      }}
+                    >
+                      <Download size={14} /> Download File
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '14px 24px',
+              borderTop: '1px solid var(--border, #e2e8f0)',
+              background: 'var(--card-subtle, #f8fafc)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: 12
+            }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setViewingNotice(null);
+                  setIsNoticeMaximized(false);
+                }}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: 6,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: 'none',
+                  backgroundColor: '#2563eb',
+                  color: '#ffffff',
+                  boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
