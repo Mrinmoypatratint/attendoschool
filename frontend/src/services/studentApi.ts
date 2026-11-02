@@ -79,6 +79,10 @@ export interface StudentDashboardData {
     date: string;
     description: string;
     priority: string;
+    author_name?: string;
+    author_role?: string;
+    created_by_role?: string;
+    created_by_name?: string;
   }>;
   pendingAssignments: Array<{
     id: string;

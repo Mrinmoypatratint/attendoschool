@@ -708,8 +708,11 @@ export async function getStudentDashboard(schoolId: string, userId: string, stud
 
     // 4. Latest Announcements (Unread Only)
     pool.query(
-      `SELECT a.id, a.title, a.message, a.priority, a.published_at, a.created_at
+      `SELECT a.id, a.title, a.message, a.priority, a.published_at, a.created_at,
+              COALESCE(a.author_name, a.created_by_name, u.name, 'School Administration') AS author_name,
+              COALESCE(a.author_role, a.created_by_role, u.role::text, 'SCHOOL_ADMIN') AS author_role
        FROM announcements a
+       LEFT JOIN users u ON u.id = a.created_by
        LEFT JOIN classes c ON c.id = a.class_id
        LEFT JOIN sections sec ON sec.id = a.section_id
        LEFT JOIN announcement_recipients r ON r.announcement_id = a.id AND r.parent_user_id = $6
@@ -977,7 +980,9 @@ export async function getStudentDashboard(schoolId: string, userId: string, stud
       title: a.title,
       date: new Date(a.published_at || a.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
       description: a.message?.slice(0, 80) + '...',
-      priority: a.priority || 'NORMAL'
+      priority: a.priority || 'NORMAL',
+      author_name: a.author_name,
+      author_role: a.author_role
     }));
   }
 
