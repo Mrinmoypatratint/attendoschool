@@ -67,8 +67,8 @@ interface ReplyItem {
 }
 
 export const STANDARD_CLASS_LIST = [
-  { classNumber: -1, label: 'L-KG' },
-  { classNumber: 0, label: 'U-KG' },
+  { classNumber: -1, label: 'Class L KG' },
+  { classNumber: 0, label: 'Class U KG' },
   { classNumber: 1, label: 'Class 1' },
   { classNumber: 2, label: 'Class 2' },
   { classNumber: 3, label: 'Class 3' },
@@ -84,8 +84,8 @@ export const STANDARD_CLASS_LIST = [
 ];
 
 export function formatClassGrade(num?: number | null): string {
-  if (num === -1) return 'L-KG';
-  if (num === 0) return 'U-KG';
+  if (num === -1) return 'Class L KG';
+  if (num === 0) return 'Class U KG';
   if (num !== null && num !== undefined && !isNaN(Number(num))) return `Class ${num}`;
   return '';
 }

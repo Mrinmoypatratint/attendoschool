@@ -371,8 +371,8 @@ export default function Analytics() {
   );
 
   return (
-    <div className="feature-page" style={{ maxWidth: 1100 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+    <div className="feature-page" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
+      <div className="page-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
           <p className="eyebrow">INSTITUTIONAL INSIGHTS & RADAR</p>
           <h1 style={{ display: 'flex', alignItems: 'center', gap: 10, margin: 0 }}>

@@ -81,6 +81,10 @@ export async function ensureTables() {
       ALTER TABLE announcements ADD COLUMN IF NOT EXISTS attachment_name TEXT;
       ALTER TABLE announcements ADD COLUMN IF NOT EXISTS attachment_type TEXT;
       ALTER TABLE announcements ADD COLUMN IF NOT EXISTS attachment_size INTEGER;
+      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS author_name TEXT;
+      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS author_role TEXT;
+      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS created_by_name TEXT;
+      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS created_by_role TEXT;
     `);
     tablesInitialized = true;
   } catch (err) {
@@ -165,11 +169,16 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
   const attachmentType = d.attachment_type || d.attachmentType || null;
   const attachmentSize = d.attachment_size || d.attachmentSize || null;
 
+  const authorName = d.author_name || d.created_by_name || (d.author_role === 'TEACHER' ? 'Teacher' : 'School Administration');
+  const authorRole = d.author_role || d.created_by_role || 'SCHOOL_ADMIN';
+  const createdByName = d.created_by_name || authorName;
+  const createdByRole = d.created_by_role || authorRole;
+
   try {
     const { rows } = await pool.query(
       `INSERT INTO announcements
-       (school_id, created_by, title, message, audience_type, class_id, section_id, priority, scheduled_at, expires_at, status, published_at, attachment_url, attachment_name, attachment_type, attachment_size)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::timestamptz, $10::timestamptz, $11, $12::timestamptz, $13, $14, $15, $16)
+       (school_id, created_by, title, message, audience_type, class_id, section_id, priority, scheduled_at, expires_at, status, published_at, attachment_url, attachment_name, attachment_type, attachment_size, author_name, author_role, created_by_name, created_by_role)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::timestamptz, $10::timestamptz, $11, $12::timestamptz, $13, $14, $15, $16, $17, $18, $19, $20)
        RETURNING *`,
       [
         safeSchoolId,
@@ -187,7 +196,11 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
         attachmentUrl,
         attachmentName,
         attachmentType,
-        attachmentSize
+        attachmentSize,
+        authorName,
+        authorRole,
+        createdByName,
+        createdByRole
       ]
     );
     if (rows && rows.length > 0) return rows[0];
@@ -200,10 +213,10 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
     id: `ann-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     school_id: schoolId,
     created_by: userId,
-    author_name: d.author_name || d.created_by_name || 'School Administration',
-    created_by_name: d.created_by_name || d.author_name || 'School Administration',
-    author_role: d.author_role || d.created_by_role || 'SCHOOL_ADMIN',
-    created_by_role: d.created_by_role || d.author_role || 'SCHOOL_ADMIN',
+    author_name: authorName,
+    created_by_name: createdByName,
+    author_role: authorRole,
+    created_by_role: createdByRole,
     title: d.title,
     message: d.message,
     audience_type: audience,
@@ -579,7 +592,11 @@ export async function listSchoolAnnouncements(schoolId: string) {
   await ensureTables();
   try {
     const { rows } = await pool.query(
-      `SELECT a.*, u.name AS created_by_name,
+      `SELECT a.*,
+        COALESCE(a.author_name, a.created_by_name, u.name, 'School Administration') AS author_name,
+        COALESCE(a.author_role, a.created_by_role, u.role::text, 'SCHOOL_ADMIN') AS author_role,
+        COALESCE(a.created_by_name, a.author_name, u.name, 'School Administration') AS created_by_name,
+        COALESCE(a.created_by_role, a.author_role, u.role::text, 'SCHOOL_ADMIN') AS created_by_role,
         c.class_number, sec.name AS section_name,
         COALESCE(
           NULLIF((SELECT COUNT(*) FROM announcement_recipients r WHERE r.announcement_id = a.id)::int, 0),
@@ -633,7 +650,10 @@ export async function teacherInbox(teacherUserId: string, schoolId: string, from
       const { rows } = await pool.query(
         `SELECT a.id, a.title, a.message, a.priority, a.audience_type, a.published_at, a.created_at,
                 a.attachment_url, a.attachment_name, a.attachment_type, a.attachment_size,
-                u.name AS author_name,
+                a.created_by,
+                COALESCE(a.author_name, a.created_by_name, u.name, 'School Administration') AS author_name,
+                COALESCE(a.author_role, a.created_by_role, u.role::text, 'SCHOOL_ADMIN') AS author_role,
+                COALESCE(a.created_by_role, a.author_role, u.role::text, 'SCHOOL_ADMIN') AS created_by_role,
                 r.read_at, r.id AS recipient_id
          FROM announcements a
          LEFT JOIN users u ON u.id = a.created_by
@@ -659,16 +679,11 @@ export async function teacherInbox(teacherUserId: string, schoolId: string, from
 
     if (!matchesSchool) return false;
 
-    // Audience & creator checks: announcements from Admin or targeting school/faculty
+    // Audience checks: announcements targeting faculty or school
     const aud = String(a.audience_type || '').toUpperCase();
-    const isTargetAudience = ['TEACHER', 'SCHOOL', 'STUDENT', 'CLASS', 'SECTION', 'PARENTS', 'ALL'].includes(aud);
-    const isFromAdmin = a.author_role === 'SCHOOL_ADMIN' ||
-                        a.created_by_role === 'SCHOOL_ADMIN' ||
-                        a.author_role === 'SUPER_ADMIN' ||
-                        !a.created_by ||
-                        a.created_by !== teacherUserId;
+    const isTargetAudience = ['TEACHER', 'SCHOOL', 'ALL'].includes(aud);
 
-    return isTargetAudience && isFromAdmin;
+    return isTargetAudience;
   });
 
   if (fromDate && fromDate.trim()) {

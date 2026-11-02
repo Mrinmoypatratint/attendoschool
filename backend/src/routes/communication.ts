@@ -19,6 +19,8 @@ function resolveSchoolId(req: Request): string {
   return canonicalSchoolId(raw) || raw || '00000000-0000-0000-0000-000000000001';
 }
 
+const sId = (req: Request) => (req as any).schoolId || resolveSchoolId(req);
+
 router.use((req, res, next) => {
   const sid = resolveSchoolId(req);
   (req as any).schoolId = sid;
@@ -103,7 +105,7 @@ router.post('/announcements/:id/publish', async (req, res) => {
     return res.status(403).json({ message: 'Communication access required' });
   }
   try {
-    res.json(await svc.publishAnnouncement(u(req).schoolId, req.params.id));
+    res.json(await svc.publishAnnouncement(sId(req), req.params.id));
   } catch (_e: any) {
     res.json({ id: req.params.id, status: 'PUBLISHED', published_at: new Date().toISOString() });
   }
@@ -127,9 +129,9 @@ router.delete('/announcements/:id', async (req, res) => {
 // List all school announcements (Admin & faculty)
 router.get('/', async (req, res) => {
   try {
-    res.json(await svc.listSchoolAnnouncements(u(req).schoolId));
+    res.json(await svc.listSchoolAnnouncements(sId(req)));
   } catch (_e: any) {
-    if (isGreenwoodSchool(u(req).schoolId)) {
+    if (isGreenwoodSchool(sId(req))) {
       return res.json([
         {
           id: 'ann-1',
@@ -152,9 +154,9 @@ router.get('/', async (req, res) => {
 
 router.get('/announcements', async (req, res) => {
   try {
-    res.json(await svc.listSchoolAnnouncements(u(req).schoolId));
+    res.json(await svc.listSchoolAnnouncements(sId(req)));
   } catch (_e: any) {
-    if (isGreenwoodSchool(u(req).schoolId)) {
+    if (isGreenwoodSchool(sId(req))) {
       return res.json([
         {
           id: 'ann-1',
@@ -182,7 +184,7 @@ router.get('/teacher/inbox', async (req, res) => {
   }
   try {
     const { from, to } = req.query as { from?: string; to?: string };
-    res.json(await svc.teacherInbox(u(req).id, u(req).schoolId, from, to));
+    res.json(await svc.teacherInbox(u(req).id, sId(req), from, to));
   } catch (e: any) {
     res.status(500).json({ message: e.message });
   }
@@ -203,7 +205,7 @@ router.post('/teacher/read/:id', async (req, res) => {
 router.get('/parent/inbox', async (req, res) => {
   if (u(req).role !== 'PARENT') return res.status(403).json({ message: 'Parent access required' });
   try {
-    res.json(await svc.parentInbox(u(req).id, u(req).schoolId));
+    res.json(await svc.parentInbox(u(req).id, sId(req)));
   } catch (e: any) {
     res.status(500).json({ message: e.message });
   }
@@ -221,7 +223,7 @@ router.post('/parent/read/:id', async (req, res) => {
 router.get('/parent/preferences', async (req, res) => {
   if (u(req).role !== 'PARENT') return res.status(403).json({ message: 'Parent access required' });
   try {
-    res.json(await svc.preferences(u(req).id, u(req).schoolId));
+    res.json(await svc.preferences(u(req).id, sId(req)));
   } catch (e: any) {
     res.status(500).json({ message: e.message });
   }
@@ -230,7 +232,7 @@ router.get('/parent/preferences', async (req, res) => {
 router.put('/parent/preferences', async (req, res) => {
   if (u(req).role !== 'PARENT') return res.status(403).json({ message: 'Parent access required' });
   try {
-    res.json(await svc.updatePreferences(u(req).id, u(req).schoolId, req.body));
+    res.json(await svc.updatePreferences(u(req).id, sId(req), req.body));
   } catch (e: any) {
     res.status(400).json({ message: e.message });
   }
@@ -243,7 +245,7 @@ router.post('/announcements/:id/reply', async (req, res) => {
     return res.status(403).json({ message: 'Authentication required to post reply' });
   }
   try {
-    const result = await svc.createReply(u(req).schoolId, req.params.id, u(req).id, role, req.body);
+    const result = await svc.createReply(sId(req), req.params.id, u(req).id, role, req.body);
     res.status(201).json(result);
   } catch (e: any) {
     res.status(400).json({ message: e.message || 'Unable to submit reply' });
@@ -253,7 +255,7 @@ router.post('/announcements/:id/reply', async (req, res) => {
 // Threaded replies for a specific announcement (School Admins & Users)
 router.get('/announcements/:id/replies', async (req, res) => {
   try {
-    const replies = await svc.getAnnouncementReplies(u(req).schoolId, req.params.id);
+    const replies = await svc.getAnnouncementReplies(sId(req), req.params.id);
     res.json(replies);
   } catch (e: any) {
     res.status(500).json({ message: e.message || 'Unable to load replies' });
@@ -266,7 +268,7 @@ router.get('/replies', async (req, res) => {
     return res.status(403).json({ message: 'Administrator or faculty access required' });
   }
   try {
-    const replies = await svc.listAllRepliesGrouped(u(req).schoolId);
+    const replies = await svc.listAllRepliesGrouped(sId(req));
     res.json(replies);
   } catch (e: any) {
     res.status(500).json({ message: e.message || 'Unable to load replies' });
@@ -289,7 +291,7 @@ router.get('/delivery-summary', async (req, res) => {
     return res.status(403).json({ message: 'Admin access required' });
   }
   try {
-    res.json(await svc.deliverySummary(u(req).schoolId));
+    res.json(await svc.deliverySummary(sId(req)));
   } catch (e: any) {
     res.status(500).json({ message: e.message });
   }

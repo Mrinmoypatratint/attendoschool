@@ -443,7 +443,7 @@ export default function SmtpLogs() {
   };
 
   return (
-    <div style={{ padding: '24px 28px', maxWidth: 1400, margin: '0 auto', width: '100%' }}>
+    <div style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
       {/* ── Page Header ── */}
       <div style={{
         display: 'flex',

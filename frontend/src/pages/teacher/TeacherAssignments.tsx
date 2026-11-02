@@ -178,6 +178,15 @@ const isPreviewableFile = (fileName?: string, mimeType?: string) => {
   );
 };
 
+function clampTo4DigitYear(val: string): string {
+  if (!val) return '';
+  const parts = val.split('-');
+  if (parts[0] && parts[0].length > 4) {
+    parts[0] = parts[0].slice(0, 4);
+    return parts.join('-');
+  }
+  return val;
+}
 export function TeacherAssignments() {
   const [assignments, setAssignments] = useState<AssignmentRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -277,7 +286,7 @@ export function TeacherAssignments() {
         res.data.forEach((row: any) => {
           if (row.class_id && !cMap.has(row.class_id)) {
             const num = Number(row.class_number ?? 1);
-            const lbl = row.class_label || (num === -1 ? 'L-KG' : num === 0 ? 'U-KG' : `Class ${num}`);
+            const lbl = row.class_label || (num === -1 ? 'Class L KG' : num === 0 ? 'Class U KG' : `Class ${num}`);
             cMap.set(row.class_id, {
               id: row.class_id,
               class_number: num,
@@ -312,7 +321,7 @@ export function TeacherAssignments() {
 
       const mappedClasses: ClassOption[] = clsArr.map((c: any) => {
         const num = Number(c.class_number ?? c.classNumber ?? 1);
-        const lbl = c.label || c.name || (num === -1 ? 'L-KG' : num === 0 ? 'U-KG' : `Class ${num}`);
+        const lbl = c.label || c.name || (num === -1 ? 'Class L KG' : num === 0 ? 'Class U KG' : `Class ${num}`);
         return {
           id: c.id,
           class_number: num,
@@ -940,7 +949,7 @@ export function TeacherAssignments() {
                 {filteredAssignments.map((asg) => {
                   const attCount = asg.attachment_count ?? (Array.isArray(asg.attachments) ? asg.attachments.length : (asg.document_name ? 1 : 0));
                   const classDisplay = asg.class_number !== undefined
-                    ? (asg.class_number === -1 ? 'L-KG' : asg.class_number === 0 ? 'U-KG' : `Class ${asg.class_number}`)
+                    ? (asg.class_number === -1 ? 'Class L KG' : asg.class_number === 0 ? 'Class U KG' : `Class ${asg.class_number}`)
                     : 'Class';
                   const sectionDisplay = asg.section_name ? `Sec ${asg.section_name}` : 'All Sections';
                   const pubDate = formatAssignmentDate(asg.created_at);
@@ -1229,8 +1238,10 @@ export function TeacherAssignments() {
                   </label>
                   <input
                     type="date"
+                    min="1900-01-01"
+                    max="9999-12-31"
                     value={createForm.assigned_date}
-                    onChange={(e) => setCreateForm({ ...createForm, assigned_date: e.target.value })}
+                    onChange={(e) => setCreateForm({ ...createForm, assigned_date: clampTo4DigitYear(e.target.value) })}
                     style={{
                       width: '100%',
                       padding: '10px 12px',
@@ -1250,8 +1261,10 @@ export function TeacherAssignments() {
                   </label>
                   <input
                     type="date"
+                    min="1900-01-01"
+                    max="9999-12-31"
                     value={createForm.due_date}
-                    onChange={(e) => setCreateForm({ ...createForm, due_date: e.target.value })}
+                    onChange={(e) => setCreateForm({ ...createForm, due_date: clampTo4DigitYear(e.target.value) })}
                     style={{
                       width: '100%',
                       padding: '10px 12px',
@@ -1858,8 +1871,10 @@ export function TeacherAssignments() {
                   </label>
                   <input
                     type="date"
+                    min="1900-01-01"
+                    max="9999-12-31"
                     value={editForm.assigned_date}
-                    onChange={(e) => setEditForm({ ...editForm, assigned_date: e.target.value })}
+                    onChange={(e) => setEditForm({ ...editForm, assigned_date: clampTo4DigitYear(e.target.value) })}
                     style={{
                       width: '100%',
                       padding: '10px 12px',
@@ -1879,8 +1894,10 @@ export function TeacherAssignments() {
                   </label>
                   <input
                     type="date"
+                    min="1900-01-01"
+                    max="9999-12-31"
                     value={editForm.due_date}
-                    onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value })}
+                    onChange={(e) => setEditForm({ ...editForm, due_date: clampTo4DigitYear(e.target.value) })}
                     style={{
                       width: '100%',
                       padding: '10px 12px',

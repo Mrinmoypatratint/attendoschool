@@ -367,11 +367,12 @@ export async function getStudentProfile(schoolId: string, userId: string, studen
 /**
  * Updates student profile details (gender, date of birth, address)
  */
-export async function updateStudentProfile(schoolId: string, userId: string, data: { gender?: string; dateOfBirth?: string; address?: string }) {
+export async function updateStudentProfile(schoolId: string, userId: string, data: { gender?: string; dateOfBirth?: string; address?: string; email?: string }) {
   const st = await resolveStudentRecord(schoolId, userId);
   if (!st) throw new Error('Student record not found');
 
   const cleanDob = data.dateOfBirth ? toDdMmYyyy(data.dateOfBirth) : null;
+  const cleanEmail = data.email !== undefined ? (data.email ? String(data.email).trim().toLowerCase() : null) : undefined;
   const updates: string[] = [];
   const params: any[] = [];
   let idx = 1;
@@ -388,6 +389,10 @@ export async function updateStudentProfile(schoolId: string, userId: string, dat
     updates.push(`address = $${idx++}`);
     params.push(data.address || null);
   }
+  if (cleanEmail !== undefined) {
+    updates.push(`email = $${idx++}`);
+    params.push(cleanEmail);
+  }
 
   if (updates.length > 0) {
     try {
@@ -397,6 +402,16 @@ export async function updateStudentProfile(schoolId: string, userId: string, dat
         params
       );
     } catch (_dbErr) {}
+
+    if (cleanEmail !== undefined) {
+      try {
+        const targetUserId = st.user_id || userId;
+        await pool.query(
+          `UPDATE users SET email = $1, updated_at = NOW() WHERE id = $2`,
+          [cleanEmail, targetUserId]
+        );
+      } catch (_uErr) {}
+    }
   }
 
   // Update in Firestore
@@ -410,6 +425,10 @@ export async function updateStudentProfile(schoolId: string, userId: string, dat
         fUpdates.dateOfBirth = cleanDob;
       }
       if (data.address !== undefined) fUpdates.address = data.address || null;
+      if (cleanEmail !== undefined) {
+        fUpdates.email = cleanEmail;
+        fUpdates.student_email = cleanEmail;
+      }
       await collections.students().doc(st.id).set(fUpdates, { merge: true });
     } catch (_fErr) {}
   }
@@ -421,6 +440,10 @@ export async function updateStudentProfile(schoolId: string, userId: string, dat
     if (data.dateOfBirth !== undefined) {
       ds.date_of_birth = cleanDob;
       ds.dob = cleanDob;
+    }
+    if (cleanEmail !== undefined) {
+      ds.email = cleanEmail;
+      ds.student_email = cleanEmail;
     }
   }
 
@@ -685,8 +708,11 @@ export async function getStudentDashboard(schoolId: string, userId: string, stud
 
     // 4. Latest Announcements (Unread Only)
     pool.query(
-      `SELECT a.id, a.title, a.message, a.priority, a.published_at, a.created_at
+      `SELECT a.id, a.title, a.message, a.priority, a.published_at, a.created_at,
+              COALESCE(a.author_name, a.created_by_name, u.name, 'School Administration') AS author_name,
+              COALESCE(a.author_role, a.created_by_role, u.role::text, 'SCHOOL_ADMIN') AS author_role
        FROM announcements a
+       LEFT JOIN users u ON u.id = a.created_by
        LEFT JOIN classes c ON c.id = a.class_id
        LEFT JOIN sections sec ON sec.id = a.section_id
        LEFT JOIN announcement_recipients r ON r.announcement_id = a.id AND r.parent_user_id = $6
@@ -954,7 +980,9 @@ export async function getStudentDashboard(schoolId: string, userId: string, stud
       title: a.title,
       date: new Date(a.published_at || a.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
       description: a.message?.slice(0, 80) + '...',
-      priority: a.priority || 'NORMAL'
+      priority: a.priority || 'NORMAL',
+      author_name: a.author_name,
+      author_role: a.author_role
     }));
   }
 
@@ -1285,13 +1313,24 @@ export async function getStudentAnnouncements(schoolId: string, userId: string, 
 
       const q = await pool.query(
         `SELECT a.id, a.title, a.message, a.priority, a.published_at, a.created_at,
-                a.audience_type,
+                a.audience_type, COALESCE(a.status, 'PUBLISHED') AS status,
                 a.attachment_url, a.attachment_name, a.attachment_type, a.attachment_size,
                 a.created_by,
-                COALESCE(u.name, 'School Administration') AS author_name,
-                COALESCE(u.role, 'SCHOOL_ADMIN') AS author_role,
+                COALESCE(a.author_name, a.created_by_name, u.name, 'School Administration') AS author_name,
+                COALESCE(a.author_role, a.created_by_role, u.role::text, 'SCHOOL_ADMIN') AS author_role,
+                COALESCE(a.created_by_role, a.author_role, u.role::text, 'SCHOOL_ADMIN') AS created_by_role,
                 c.class_number, sec.name AS section_name,
-                r.read_at, r.id AS recipient_id
+                r.read_at, r.id AS recipient_id,
+                COALESCE(
+                  NULLIF((SELECT COUNT(*) FROM announcement_recipients ar WHERE ar.announcement_id = a.id)::int, 0),
+                  CASE 
+                    WHEN a.audience_type = 'SECTION' THEN (SELECT COUNT(*) FROM students s WHERE s.school_id = a.school_id AND s.class_id = a.class_id AND s.section_id = a.section_id)::int
+                    WHEN a.audience_type = 'CLASS' THEN (SELECT COUNT(*) FROM students s WHERE s.school_id = a.school_id AND s.class_id = a.class_id)::int
+                    ELSE (SELECT COUNT(*) FROM students s WHERE s.school_id = a.school_id)::int
+                  END
+                ) AS recipient_count,
+                (SELECT COUNT(*) FROM announcement_recipients ar WHERE ar.announcement_id = a.id AND ar.read_at IS NOT NULL)::int AS read_count,
+                (SELECT COUNT(*) FROM notification_replies nr WHERE nr.announcement_id = a.id)::int AS reply_count
          FROM announcements a
          LEFT JOIN users u ON u.id = a.created_by
          LEFT JOIN classes c ON c.id = a.class_id
@@ -1374,6 +1413,7 @@ export async function getStudentAnnouncements(schoolId: string, userId: string, 
         ...a,
         author_name: a.author_name || a.created_by_name || (isTeacherRole ? 'Teacher' : 'School Administration'),
         author_role: isTeacherRole ? 'TEACHER' : (a.author_role || a.created_by_role || 'SCHOOL_ADMIN'),
+        created_by_role: isTeacherRole ? 'TEACHER' : (a.created_by_role || a.author_role || 'SCHOOL_ADMIN'),
         read_at: isReadByMe ? (a.read_at || new Date().toISOString()) : (Array.isArray(a.read_by) ? null : (a.read_at || null))
       };
     });

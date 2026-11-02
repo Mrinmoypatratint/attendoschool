@@ -79,6 +79,10 @@ export interface StudentDashboardData {
     date: string;
     description: string;
     priority: string;
+    author_name?: string;
+    author_role?: string;
+    created_by_role?: string;
+    created_by_name?: string;
   }>;
   pendingAssignments: Array<{
     id: string;
@@ -204,6 +208,10 @@ export interface Announcement {
   attachment_size?: number;
   class_number?: number;
   section_name?: string;
+  status?: string;
+  recipient_count?: number;
+  read_count?: number;
+  reply_count?: number;
 }
 
 export interface LeaveRequest {
@@ -288,6 +296,6 @@ export const studentApi = {
     api.put('/student/change-password', { currentPassword, newPassword }).then((r) => r.data),
   updatePhoto: (photoUrl: string) =>
     api.put<{ success: boolean; photoUrl?: string; pendingPhotoUrl?: string; pendingApproval?: boolean; message: string }>('/student/photo', { photoUrl }).then((r) => r.data),
-  updateProfile: (data: { gender?: string; dateOfBirth?: string; address?: string }) =>
+  updateProfile: (data: { gender?: string; dateOfBirth?: string; address?: string; email?: string }) =>
     api.put<{ success: boolean; message: string }>('/student/profile', data).then((r) => r.data)
 };

@@ -62,7 +62,7 @@ export default function ParentCommunication() {
   }, []);
 
   return (
-    <div className="feature-page" style={{ padding: '24px 28px', maxWidth: 900, margin: '0 auto' }}>
+    <div className="feature-page" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Parent Messages & Notices</h1>
         <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>

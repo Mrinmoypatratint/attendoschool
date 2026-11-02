@@ -250,7 +250,7 @@ export default function LeavePolicy() {
   }, [policies]);
 
   return (
-    <div className="leave-policy-container" style={{ padding: '24px 28px', maxWidth: 1400, margin: '0 auto', width: '100%' }}>
+    <div className="leave-policy-container" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
       {/* Toast Notification */}
       {toastMsg && (
         <div style={{

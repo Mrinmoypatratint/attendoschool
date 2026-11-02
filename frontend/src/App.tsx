@@ -4158,24 +4158,9 @@ function Stat({ label, value, trend, sub }: { label: string; value: any; trend?:
     )}
   </div>
 }
-function PageHead({ title, sub, button, onClick, schoolName: customSchoolName }: { title: string; sub: string; button?: string; onClick?: () => void; schoolName?: string }) {
-  const { user } = useAuth();
-  const isSchoolAdmin = user?.role === 'SCHOOL_ADMIN';
-  const isTeacher = user?.role === 'TEACHER';
-  const resolvedSchoolName = customSchoolName || user?.schoolName || (isTeacher ? 'School' : 'School Administration');
-  const eyebrowText = isSchoolAdmin
-    ? `${resolvedSchoolName.toUpperCase()} ADMIN`
-    : isTeacher
-      ? `${resolvedSchoolName.toUpperCase()} FACULTY`
-      : (title.includes('Admin') ? 'ATTENDOSCHOOL SUPER ADMIN' : 'ATTENDOSCHOOL ADMIN');
-  const logoAlt = (isSchoolAdmin || isTeacher) ? resolvedSchoolName : 'AttendoSchool';
-
+function PageHead({ title, sub, button, onClick, schoolName }: { title: string; sub: string; button?: string; onClick?: () => void; schoolName?: string }) {
   return <div className="page-head">
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-        <img src="/attendo-school-logo.png" alt={logoAlt} style={{ width: 18, height: 18, borderRadius: 4, objectFit: 'contain' }} />
-        <p className="eyebrow" style={{ margin: 0 }}>{eyebrowText}</p>
-      </div>
       <h1>{title}</h1>
       <p className="muted">{sub}</p>
     </div>
@@ -4401,8 +4386,22 @@ function AdminHome() {
   const todaySchedule = data?.todaySchedule || [];
   const recentActivity = data?.recentActivity || [];
 
-  const resolvedSchoolName = data?.school?.name || (user as any)?.schoolName || 'School Administration';
-  const resolvedLogoUrl = (user as any)?.photo_url || (user as any)?.photoUrl || data?.school?.photo_url || '';
+  const isDavSchool =
+    String(data?.school?.name || (user as any)?.schoolName || '').toUpperCase().includes('DAV') ||
+    String((user as any)?.schoolCode || '').includes('15582') ||
+    String((user as any)?.email || '').toLowerCase().includes('@dav.') ||
+    (user as any)?.schoolId === '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3';
+
+  const resolvedSchoolName = isDavSchool ? 'DAV MODEL SCHOOL' : (data?.school?.name || (user as any)?.schoolName || 'School Administration');
+  const resolvedLogoUrl =
+    data?.school?.photo_url ||
+    data?.school?.photoUrl ||
+    (user as any)?.schoolPhotoUrl ||
+    (user as any)?.school_photo_url ||
+    (isDavSchool ? '/dav-logo.png' : '') ||
+    (user as any)?.photo_url ||
+    (user as any)?.photoUrl ||
+    '';
 
   return (
     <>
@@ -5205,9 +5204,21 @@ function TeacherHome() {
     return `${diffDays} days ago`;
   };
 
-  const resolvedSchoolName = (user as any)?.schoolName || 'School';
+  const isDavSchool =
+    String((user as any)?.schoolName || '').toUpperCase().includes('DAV') ||
+    String((user as any)?.schoolCode || '').includes('15582') ||
+    String((user as any)?.email || '').toLowerCase().includes('@dav.') ||
+    (user as any)?.schoolId === '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3';
+
+  const resolvedSchoolName = isDavSchool ? 'DAV MODEL SCHOOL' : ((user as any)?.schoolName || 'School');
   const resolvedTeacherName = user?.name || 'Faculty Member';
-  const resolvedLogoUrl = (user as any)?.photo_url || (user as any)?.photoUrl || '';
+  const resolvedLogoUrl =
+    (user as any)?.schoolPhotoUrl ||
+    (user as any)?.school_photo_url ||
+    (isDavSchool ? '/dav-logo.png' : '') ||
+    (user as any)?.photo_url ||
+    (user as any)?.photoUrl ||
+    '';
 
   return (
     <>
@@ -19084,7 +19095,7 @@ function SchoolProfile() {
                 {/* Title & Info */}
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 750, color: 'var(--text-color, #0f172a)' }}>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 750, color: 'var(--text, #0f172a)' }}>
                       {adminName}
                     </h3>
                     <span className="badge active" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
@@ -19354,7 +19365,7 @@ function SchoolProfile() {
                       value={loading ? 'Loading school...' : (profile?.schoolName || profile?.name || user?.schoolName || '—')}
                       style={{
                         backgroundColor: 'var(--input-disabled-bg, #f1f5f9)',
-                        color: 'var(--text-color, #0f172a)',
+                        color: 'var(--text, #0f172a)',
                         cursor: 'not-allowed',
                         fontWeight: 600
                       }}
@@ -19372,7 +19383,7 @@ function SchoolProfile() {
                       value={user?.email || profile?.adminEmail || profile?.email || '—'}
                       style={{
                         backgroundColor: 'var(--input-disabled-bg, #f1f5f9)',
-                        color: 'var(--text-color, #0f172a)',
+                        color: 'var(--text, #0f172a)',
                         cursor: 'not-allowed'
                       }}
                       id="admin-email-input"

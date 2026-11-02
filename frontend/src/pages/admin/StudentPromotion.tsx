@@ -334,7 +334,7 @@ export default function StudentPromotion() {
     displayedItems.filter(x => !x.already_processed).every(x => selected[x.id]);
 
   return (
-    <div className="feature-page" ref={tableTopRef}>
+    <div className="feature-page" ref={tableTopRef} style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
         <div>
           <p className="eyebrow" style={{ margin: '0 0 4px', color: '#6366f1', fontWeight: 700 }}>ACADEMIC TRANSITION</p>

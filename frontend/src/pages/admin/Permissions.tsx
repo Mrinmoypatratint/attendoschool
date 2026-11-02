@@ -340,7 +340,7 @@ export default function Permissions() {
   }
 
   return (
-    <div className="feature-page" style={{ paddingBottom: 60 }}>
+    <div className="feature-page" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 60px 0' }}>
       {/* ─── Institutional Header ─── */}
       <div
         style={{

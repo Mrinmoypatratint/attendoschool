@@ -332,6 +332,22 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     setStudentNotifOpen(false);
   }, [location.pathname]);
 
+  function isTeacherNotice(a: any): boolean {
+    if (a.author_role === 'TEACHER' || a.created_by_role === 'TEACHER') return true;
+    const author = (a.author_name || '').toLowerCase();
+    if (author.includes('school admin') || author.includes('dav admin') || author.includes('administration') || author.includes('principal') || author.includes('management')) {
+      return false;
+    }
+    const role = (a.author_role || a.created_by_role || '').toUpperCase();
+    if (['SCHOOL_ADMIN', 'ADMIN', 'SUPER_ADMIN'].includes(role)) {
+      return false;
+    }
+    if (a.author_name && !author.includes('admin') && !author.includes('administration')) {
+      return true;
+    }
+    return false;
+  }
+
   const handleNoticeClick = async (notice: Announcement) => {
     setStudentNotifOpen(false);
     try {
@@ -586,30 +602,6 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               </div>
             )}
 
-            {/* Institute Pill */}
-            <div 
-              className="student-institute-pill" 
-              onClick={handleOpenSchoolWebsite}
-              title={targetWebsiteUrl ? `Official School Website: ${targetWebsiteUrl}` : schoolName}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: targetWebsiteUrl ? 'pointer' : 'default' }}
-            >
-              {schoolPhoto ? (
-                <img
-                  src={schoolPhoto}
-                  alt={schoolName}
-                  style={{ width: 22, height: 22, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }}
-                />
-              ) : (
-                <Building2 size={15} className="student-inst-icon" />
-              )}
-              <span className="student-inst-name">{schoolName}</span>
-              {schoolWebsite ? (
-                <ExternalLink size={12} className="student-inst-ext-icon" />
-              ) : (
-                <ChevronDown size={14} className="student-inst-chevron" />
-              )}
-            </div>
-
             {/* Connected Review Notifications Bell & Popover (Student Announcements) */}
             <div className="super-notif-wrap" ref={studentNotifRef} style={{ position: 'relative' }}>
               <button
@@ -685,6 +677,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
                           if (stored) readIds = JSON.parse(stored);
                         } catch {}
                         const isUnread = !notice.read_at && !readIds.includes(notice.id);
+                        const isTeacher = isTeacherNotice(notice);
 
                         return (
                           <div
@@ -696,8 +689,8 @@ export function StudentLayout({ children }: StudentLayoutProps) {
                             <div
                               className="super-notif-icon-wrap"
                               style={{
-                                background: '#fef3c7',
-                                color: '#d97706',
+                                background: isTeacher ? '#ecfdf5' : '#eff6ff',
+                                color: isTeacher ? '#047857' : '#1d4ed8',
                                 borderRadius: 10,
                                 width: 38,
                                 height: 38,
@@ -707,7 +700,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
                                 flexShrink: 0
                               }}
                             >
-                              <Megaphone size={18} />
+                              {isTeacher ? <GraduationCap size={18} /> : <Megaphone size={18} />}
                             </div>
 
                             <div className="super-notif-body">
@@ -719,6 +712,42 @@ export function StudentLayout({ children }: StudentLayoutProps) {
                                   {formatNotifTime(notice.published_at || notice.created_at)}
                                 </span>
                               </div>
+
+                              {/* School Admin / Teacher Origin Badge */}
+                              <div style={{ marginTop: 3, marginBottom: 2 }}>
+                                {isTeacher ? (
+                                  <span style={{
+                                    fontSize: 10.5,
+                                    fontWeight: 700,
+                                    padding: '1.5px 6px',
+                                    borderRadius: 4,
+                                    backgroundColor: '#ecfdf5',
+                                    color: '#047857',
+                                    border: '1px solid #a7f3d0',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 3.5
+                                  }}>
+                                    <GraduationCap size={11} /> Teacher: {notice.author_name || 'Teacher'}
+                                  </span>
+                                ) : (
+                                  <span style={{
+                                    fontSize: 10.5,
+                                    fontWeight: 700,
+                                    padding: '1.5px 6px',
+                                    borderRadius: 4,
+                                    backgroundColor: '#eff6ff',
+                                    color: '#1d4ed8',
+                                    border: '1px solid #bfdbfe',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 3.5
+                                  }}>
+                                    <Building2 size={11} /> By School Admin
+                                  </span>
+                                )}
+                              </div>
+
                               <p
                                 className="super-notif-msg"
                                 style={{

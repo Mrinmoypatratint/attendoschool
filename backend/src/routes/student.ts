@@ -515,10 +515,16 @@ router.put('/photo', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// PUT /api/student/profile - Update student profile details (gender, date of birth, etc.)
-router.put('/profile', async (req: AuthRequest, res: Response) => {
+// PUT & PATCH /api/student/profile - Update student profile details (gender, date of birth, email, etc.)
+const handleUpdateProfile = async (req: AuthRequest, res: Response) => {
   try {
-    const { gender, dateOfBirth, address } = req.body || {};
+    const { gender, dateOfBirth, address, email } = req.body || {};
+    if (email !== undefined && email !== null) {
+      const cleanEmail = String(email).trim().toLowerCase();
+      if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+        return res.status(400).json({ message: 'Please enter a valid email address' });
+      }
+    }
     if (dateOfBirth) {
       const cleanDob = String(dateOfBirth).trim();
       const match = cleanDob.match(/^(\d{2})-(\d{2})-(\d{4})$/);
@@ -540,11 +546,14 @@ router.put('/profile', async (req: AuthRequest, res: Response) => {
         return res.status(400).json({ message: `Invalid day ${day} for month ${month}` });
       }
     }
-    const data = await svc.updateStudentProfile(req.user!.schoolId!, req.user!.id, { gender, dateOfBirth, address });
+    const data = await svc.updateStudentProfile(req.user!.schoolId!, req.user!.id, { gender, dateOfBirth, address, email });
     res.json(data);
   } catch (e: any) {
     res.status(400).json({ message: e.message || 'Failed to update student profile' });
   }
-});
+};
+
+router.put('/profile', handleUpdateProfile);
+router.patch('/profile', handleUpdateProfile);
 
 export default router;

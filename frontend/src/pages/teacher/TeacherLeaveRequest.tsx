@@ -1183,8 +1183,19 @@ export default function TeacherLeaveRequest() {
                   <input
                     type="date"
                     required
+                    min="1900-01-01"
+                    max="9999-12-31"
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const parts = val.split('-');
+                      if (parts[0] && parts[0].length > 4) {
+                        parts[0] = parts[0].slice(0, 4);
+                        setStartDate(parts.join('-'));
+                      } else {
+                        setStartDate(val);
+                      }
+                    }}
                     style={{
                       width: '100%',
                       padding: '9px 12px',
@@ -1205,9 +1216,19 @@ export default function TeacherLeaveRequest() {
                   <input
                     type="date"
                     required
-                    min={startDate || undefined}
+                    min={startDate || '1900-01-01'}
+                    max="9999-12-31"
                     value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const parts = val.split('-');
+                      if (parts[0] && parts[0].length > 4) {
+                        parts[0] = parts[0].slice(0, 4);
+                        setEndDate(parts.join('-'));
+                      } else {
+                        setEndDate(val);
+                      }
+                    }}
                     style={{
                       width: '100%',
                       padding: '9px 12px',

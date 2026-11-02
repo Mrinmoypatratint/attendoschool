@@ -879,7 +879,7 @@ export default function AttendanceReports({
   }
 
   return (
-    <div className={embedded ? 'embedded-reports-pane' : 'feature-page'} style={{ padding: embedded ? '8px 0 20px' : '24px 28px', maxWidth: embedded ? '100%' : 1380, margin: '0 auto' }}>
+    <div className={embedded ? 'embedded-reports-pane' : 'feature-page'} style={{ width: '100%', maxWidth: 'none', margin: 0, padding: embedded ? '8px 0 20px' : '0 0 40px 0' }}>
       {/* ─── Header: Title & Right Corner Controls ─── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 18 }}>
         <div>

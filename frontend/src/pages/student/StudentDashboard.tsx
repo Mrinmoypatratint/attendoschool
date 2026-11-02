@@ -16,10 +16,27 @@ import {
   FlaskConical,
   BookMarked,
   Award,
-  CheckCircle2
+  CheckCircle2,
+  Building2
 } from 'lucide-react';
 import { studentApi, StudentDashboardData } from '../../services/studentApi';
 import { useAuth } from '../../hooks/useAuth';
+
+function isTeacherNotice(a: any): boolean {
+  if (a.author_role === 'TEACHER' || a.created_by_role === 'TEACHER') return true;
+  const author = (a.author_name || '').toLowerCase();
+  if (author.includes('school admin') || author.includes('dav admin') || author.includes('administration') || author.includes('principal') || author.includes('management')) {
+    return false;
+  }
+  const role = (a.author_role || a.created_by_role || '').toUpperCase();
+  if (['SCHOOL_ADMIN', 'ADMIN', 'SUPER_ADMIN'].includes(role)) {
+    return false;
+  }
+  if (a.author_name && !author.includes('admin') && !author.includes('administration')) {
+    return true;
+  }
+  return false;
+}
 
 export function StudentDashboard() {
   const { user: authUser } = useAuth();
@@ -241,16 +258,7 @@ export function StudentDashboard() {
             {student?.admissionNumber && (
               <span className="student-meta-pill" style={{ letterSpacing: '0.02em', fontWeight: 600 }}>Adm: {student.admissionNumber}</span>
             )}
-            <span className="student-meta-pill student-meta-school" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              {(student?.school_photo_url || student?.schoolPhotoUrl) ? (
-                <img
-                  src={(student?.school_photo_url || student?.schoolPhotoUrl) as string}
-                  alt={student?.schoolName || 'School'}
-                  style={{ width: 16, height: 16, borderRadius: 3, objectFit: 'cover' }}
-                />
-              ) : null}
-              {student?.schoolName || 'AttendoSchool'}
-            </span>
+            
           </div>
         </div>
 
@@ -452,6 +460,39 @@ export function StudentDashboard() {
                         <div className="student-item-headline">
                           <span className="student-item-title">{a.title}</span>
                           <span className="student-item-date">{a.date}</span>
+                        </div>
+                        <div style={{ marginTop: 2, marginBottom: 2 }}>
+                          {isTeacherNotice(a) ? (
+                            <span style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: '1.5px 6px',
+                              borderRadius: 4,
+                              backgroundColor: '#ecfdf5',
+                              color: '#047857',
+                              border: '1px solid #a7f3d0',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 3.5
+                            }}>
+                              <GraduationCap size={10} /> Teacher: {a.author_name || 'Teacher'}
+                            </span>
+                          ) : (
+                            <span style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: '1.5px 6px',
+                              borderRadius: 4,
+                              backgroundColor: '#eff6ff',
+                              color: '#1d4ed8',
+                              border: '1px solid #bfdbfe',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 3.5
+                            }}>
+                              <Building2 size={10} /> By School Admin
+                            </span>
+                          )}
                         </div>
                         <p className="student-item-desc">{a.description}</p>
                       </div>
