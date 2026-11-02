@@ -12,8 +12,8 @@ export default function Backup(){
  }
  useEffect(()=>{load()},[]);
 
- return <div className="feature-page">
-  <div className="feature-header">
+ return <div className="feature-page" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
+  <div className="page-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
    <div>
     <h1>Backup & Disaster Recovery</h1>
     <p className="muted">Database backups, checksum tracking and restore-test records.</p>
