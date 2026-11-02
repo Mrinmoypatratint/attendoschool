@@ -594,9 +594,9 @@ export async function listSchoolAnnouncements(schoolId: string) {
     const { rows } = await pool.query(
       `SELECT a.*,
         COALESCE(a.author_name, a.created_by_name, u.name, 'School Administration') AS author_name,
-        COALESCE(a.author_role, a.created_by_role, u.role, 'SCHOOL_ADMIN') AS author_role,
+        COALESCE(a.author_role, a.created_by_role, u.role::text, 'SCHOOL_ADMIN') AS author_role,
         COALESCE(a.created_by_name, a.author_name, u.name, 'School Administration') AS created_by_name,
-        COALESCE(a.created_by_role, a.author_role, u.role, 'SCHOOL_ADMIN') AS created_by_role,
+        COALESCE(a.created_by_role, a.author_role, u.role::text, 'SCHOOL_ADMIN') AS created_by_role,
         c.class_number, sec.name AS section_name,
         COALESCE(
           NULLIF((SELECT COUNT(*) FROM announcement_recipients r WHERE r.announcement_id = a.id)::int, 0),
@@ -652,8 +652,8 @@ export async function teacherInbox(teacherUserId: string, schoolId: string, from
                 a.attachment_url, a.attachment_name, a.attachment_type, a.attachment_size,
                 a.created_by,
                 COALESCE(a.author_name, a.created_by_name, u.name, 'School Administration') AS author_name,
-                COALESCE(a.author_role, a.created_by_role, u.role, 'SCHOOL_ADMIN') AS author_role,
-                COALESCE(a.created_by_role, a.author_role, u.role, 'SCHOOL_ADMIN') AS created_by_role,
+                COALESCE(a.author_role, a.created_by_role, u.role::text, 'SCHOOL_ADMIN') AS author_role,
+                COALESCE(a.created_by_role, a.author_role, u.role::text, 'SCHOOL_ADMIN') AS created_by_role,
                 r.read_at, r.id AS recipient_id
          FROM announcements a
          LEFT JOIN users u ON u.id = a.created_by
