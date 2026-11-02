@@ -85,8 +85,8 @@ export interface ReplyItem {
 }
 
 export const STANDARD_CLASS_LIST = [
-  { classNumber: -1, label: 'L-KG' },
-  { classNumber: 0, label: 'U-KG' },
+  { classNumber: -1, label: 'Class L KG' },
+  { classNumber: 0, label: 'Class U KG' },
   { classNumber: 1, label: 'Class 1' },
   { classNumber: 2, label: 'Class 2' },
   { classNumber: 3, label: 'Class 3' },
@@ -102,8 +102,8 @@ export const STANDARD_CLASS_LIST = [
 ];
 
 export function formatClassGrade(num?: number | null): string {
-  if (num === -1) return 'L-KG';
-  if (num === 0) return 'U-KG';
+  if (num === -1) return 'Class L KG';
+  if (num === 0) return 'Class U KG';
   if (num !== null && num !== undefined && !isNaN(Number(num))) return `Class ${num}`;
   return '';
 }
@@ -194,10 +194,15 @@ export function TeacherAnnouncements() {
     api.get('/sections').then(r => setSections(r.data || [])).catch(() => {});
   }, []);
 
-  // Map standard grade list L-KG to Class 12 to live DB class records
+  // Map standard grade list Class L KG to Class 12 to live DB class records
   const resolvedClasses = useMemo(() => {
-    return STANDARD_CLASS_LIST.map(opt => {
-      const found = classes.find(c => Number(c.class_number) === opt.classNumber || c.label === opt.label);
+    const stdMapped = STANDARD_CLASS_LIST.map(opt => {
+      const found = classes.find(c => {
+        if (Number(c.class_number) === opt.classNumber) return true;
+        if (opt.classNumber === -1 && /l.?kg/i.test(String(c.label || c.name || c.id))) return true;
+        if (opt.classNumber === 0 && /u.?kg/i.test(String(c.label || c.name || c.id))) return true;
+        return c.label === opt.label || c.name === opt.label;
+      });
       return {
         id: found ? found.id : `cls-${opt.classNumber}`,
         classNumber: opt.classNumber,
@@ -205,36 +210,89 @@ export function TeacherAnnouncements() {
         realId: found?.id
       };
     });
+
+    const extras: typeof stdMapped = [];
+    classes.forEach(c => {
+      const already = stdMapped.some(m => (m.realId && m.realId === c.id) || (c.class_number !== undefined && Number(c.class_number) === m.classNumber));
+      if (!already) {
+        const cNum = c.class_number !== undefined && c.class_number !== null ? Number(c.class_number) : NaN;
+        const lbl = c.label || c.name || (!isNaN(cNum) ? (cNum === -1 ? 'Class L KG' : cNum === 0 ? 'Class U KG' : `Class ${cNum}`) : 'Custom Class');
+        extras.push({
+          id: c.id,
+          classNumber: !isNaN(cNum) ? cNum : 999,
+          label: lbl,
+          realId: c.id
+        });
+      }
+    });
+
+    return [...stdMapped, ...extras];
   }, [classes]);
 
   const selectedClass = useMemo(() => {
     if (!form.classId) return null;
-    return resolvedClasses.find(c => c.id === form.classId || String(c.classNumber) === String(form.classId)) || null;
+    return resolvedClasses.find(c => c.id === form.classId || (c.realId && c.realId === form.classId) || String(c.classNumber) === String(form.classId)) || null;
   }, [form.classId, resolvedClasses]);
 
   // Find all sections belonging to the selected class
   const classSections = useMemo(() => {
     if (!selectedClass) return [];
     return sections.filter(s => {
-      if (s.class_id && s.class_id === selectedClass.id) return true;
-      if (s.classId && s.classId === selectedClass.id) return true;
-      if (s.class_number !== undefined && Number(s.class_number) === selectedClass.classNumber) return true;
+      if (selectedClass.realId && (s.class_id === selectedClass.realId || s.classId === selectedClass.realId)) return true;
+      if (selectedClass.id && (s.class_id === selectedClass.id || s.classId === selectedClass.id)) return true;
+      if (s.class_number !== undefined && s.class_number !== null && Number(s.class_number) === selectedClass.classNumber) return true;
       return false;
     });
   }, [selectedClass, sections]);
 
-  // Available section letters
+  // Available section letters - dynamic based on chosen class
   const availableSections = useMemo(() => {
-    const letters = ['A', 'B', 'C', 'D'];
-    return letters.map(letter => {
-      const live = classSections.find(s => (s.name || s.section_name) === letter || s.letter === letter);
-      return {
-        letter,
-        name: `Section ${letter}`,
-        id: live?.id || `sec-${letter.toLowerCase()}`
-      };
+    if (!selectedClass) {
+      const seen = new Set<string>();
+      const result: { letter: string; name: string; id: string }[] = [];
+      sections.forEach(s => {
+        const raw = String(s.name || s.section_name || s.letter || '').trim();
+        const letter = raw.replace(/^section\s+/i, '').trim().toUpperCase();
+        if (letter && !seen.has(letter)) {
+          seen.add(letter);
+          result.push({
+            letter,
+            name: `Section ${letter}`,
+            id: s.id || `sec-${letter.toLowerCase()}`
+          });
+        }
+      });
+      if (result.length === 0) {
+        ['A', 'B', 'C', 'D'].forEach(letter => {
+          result.push({ letter, name: `Section ${letter}`, id: `sec-${letter.toLowerCase()}` });
+        });
+      }
+      return result.sort((a, b) => a.letter.localeCompare(b.letter, undefined, { numeric: true }));
+    }
+
+    const seen = new Set<string>();
+    const result: { letter: string; name: string; id: string }[] = [];
+    classSections.forEach(s => {
+      const raw = String(s.name || s.section_name || s.letter || '').trim();
+      const letter = raw.replace(/^section\s+/i, '').trim().toUpperCase();
+      if (letter && !seen.has(letter)) {
+        seen.add(letter);
+        result.push({
+          letter,
+          name: `Section ${letter}`,
+          id: s.id || `sec-${letter.toLowerCase()}`
+        });
+      }
     });
-  }, [classSections]);
+
+    if (result.length === 0) {
+      ['A', 'B'].forEach(letter => {
+        result.push({ letter, name: `Section ${letter}`, id: `sec-${letter.toLowerCase()}` });
+      });
+    }
+
+    return result.sort((a, b) => a.letter.localeCompare(b.letter, undefined, { numeric: true }));
+  }, [selectedClass, classSections, sections]);
 
   function handleClassChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const val = e.target.value;
@@ -344,30 +402,66 @@ export function TeacherAnnouncements() {
 
   const editSelectedClass = useMemo(() => {
     if (!editForm.classId) return null;
-    return resolvedClasses.find(c => c.id === editForm.classId || String(c.classNumber) === String(editForm.classId)) || null;
+    return resolvedClasses.find(c => c.id === editForm.classId || (c.realId && c.realId === editForm.classId) || String(c.classNumber) === String(editForm.classId)) || null;
   }, [editForm.classId, resolvedClasses]);
 
   const editClassSections = useMemo(() => {
     if (!editSelectedClass) return [];
     return sections.filter(s => {
-      if (s.class_id && s.class_id === editSelectedClass.id) return true;
-      if (s.classId && s.classId === editSelectedClass.id) return true;
-      if (s.class_number !== undefined && Number(s.class_number) === editSelectedClass.classNumber) return true;
+      if (editSelectedClass.realId && (s.class_id === editSelectedClass.realId || s.classId === editSelectedClass.realId)) return true;
+      if (editSelectedClass.id && (s.class_id === editSelectedClass.id || s.classId === editSelectedClass.id)) return true;
+      if (s.class_number !== undefined && s.class_number !== null && Number(s.class_number) === editSelectedClass.classNumber) return true;
       return false;
     });
   }, [editSelectedClass, sections]);
 
   const editAvailableSections = useMemo(() => {
-    const letters = ['A', 'B', 'C', 'D'];
-    return letters.map(letter => {
-      const live = editClassSections.find(s => (s.name || s.section_name) === letter || s.letter === letter);
-      return {
-        letter,
-        name: `Section ${letter}`,
-        id: live?.id || `sec-${letter.toLowerCase()}`
-      };
+    if (!editSelectedClass) {
+      const seen = new Set<string>();
+      const result: { letter: string; name: string; id: string }[] = [];
+      sections.forEach(s => {
+        const raw = String(s.name || s.section_name || s.letter || '').trim();
+        const letter = raw.replace(/^section\s+/i, '').trim().toUpperCase();
+        if (letter && !seen.has(letter)) {
+          seen.add(letter);
+          result.push({
+            letter,
+            name: `Section ${letter}`,
+            id: s.id || `sec-${letter.toLowerCase()}`
+          });
+        }
+      });
+      if (result.length === 0) {
+        ['A', 'B', 'C', 'D'].forEach(letter => {
+          result.push({ letter, name: `Section ${letter}`, id: `sec-${letter.toLowerCase()}` });
+        });
+      }
+      return result.sort((a, b) => a.letter.localeCompare(b.letter, undefined, { numeric: true }));
+    }
+
+    const seen = new Set<string>();
+    const result: { letter: string; name: string; id: string }[] = [];
+    editClassSections.forEach(s => {
+      const raw = String(s.name || s.section_name || s.letter || '').trim();
+      const letter = raw.replace(/^section\s+/i, '').trim().toUpperCase();
+      if (letter && !seen.has(letter)) {
+        seen.add(letter);
+        result.push({
+          letter,
+          name: `Section ${letter}`,
+          id: s.id || `sec-${letter.toLowerCase()}`
+        });
+      }
     });
-  }, [editClassSections]);
+
+    if (result.length === 0) {
+      ['A', 'B'].forEach(letter => {
+        result.push({ letter, name: `Section ${letter}`, id: `sec-${letter.toLowerCase()}` });
+      });
+    }
+
+    return result.sort((a, b) => a.letter.localeCompare(b.letter, undefined, { numeric: true }));
+  }, [editSelectedClass, editClassSections, sections]);
 
   function handleEditClassChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const val = e.target.value;
@@ -1751,8 +1845,8 @@ export function TeacherAnnouncements() {
 
                         let secName = x.section_name || '';
                         if (!secName && x.section_id) {
-                          const s = availableSections.find(rs => rs.id === x.section_id);
-                          if (s) secName = s.letter;
+                          const s = sections.find(rs => rs.id === x.section_id);
+                          if (s) secName = s.name || s.section_name || s.letter || '';
                         }
 
                         let audienceBadgeText = 'Students';

@@ -277,7 +277,7 @@ export function TeacherAssignments() {
         res.data.forEach((row: any) => {
           if (row.class_id && !cMap.has(row.class_id)) {
             const num = Number(row.class_number ?? 1);
-            const lbl = row.class_label || (num === -1 ? 'L-KG' : num === 0 ? 'U-KG' : `Class ${num}`);
+            const lbl = row.class_label || (num === -1 ? 'Class L KG' : num === 0 ? 'Class U KG' : `Class ${num}`);
             cMap.set(row.class_id, {
               id: row.class_id,
               class_number: num,
@@ -312,7 +312,7 @@ export function TeacherAssignments() {
 
       const mappedClasses: ClassOption[] = clsArr.map((c: any) => {
         const num = Number(c.class_number ?? c.classNumber ?? 1);
-        const lbl = c.label || c.name || (num === -1 ? 'L-KG' : num === 0 ? 'U-KG' : `Class ${num}`);
+        const lbl = c.label || c.name || (num === -1 ? 'Class L KG' : num === 0 ? 'Class U KG' : `Class ${num}`);
         return {
           id: c.id,
           class_number: num,
@@ -940,7 +940,7 @@ export function TeacherAssignments() {
                 {filteredAssignments.map((asg) => {
                   const attCount = asg.attachment_count ?? (Array.isArray(asg.attachments) ? asg.attachments.length : (asg.document_name ? 1 : 0));
                   const classDisplay = asg.class_number !== undefined
-                    ? (asg.class_number === -1 ? 'L-KG' : asg.class_number === 0 ? 'U-KG' : `Class ${asg.class_number}`)
+                    ? (asg.class_number === -1 ? 'Class L KG' : asg.class_number === 0 ? 'Class U KG' : `Class ${asg.class_number}`)
                     : 'Class';
                   const sectionDisplay = asg.section_name ? `Sec ${asg.section_name}` : 'All Sections';
                   const pubDate = formatAssignmentDate(asg.created_at);
