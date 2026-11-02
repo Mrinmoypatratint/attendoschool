@@ -40,6 +40,29 @@ const formatBytes = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 };
 
+export const formatAssignmentDate = (value?: string | null): string => {
+  if (!value) return '—';
+
+  const str = String(value).trim();
+  if (!str || str === '—' || str === 'N/A') return '—';
+
+  // If value starts with YYYY-MM-DD, parse year, month, day to construct UTC date
+  // This avoids timezone shifts in browsers with negative or positive UTC offsets
+  const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const date = match
+    ? new Date(Date.UTC(parseInt(match[1], 10), parseInt(match[2], 10) - 1, parseInt(match[3], 10)))
+    : new Date(str);
+
+  if (Number.isNaN(date.getTime())) return '—';
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC'
+  }).format(date);
+};
+
 const getFileIcon = (fileName?: string, mimeType?: string) => {
   const lowerName = (fileName || '').toLowerCase();
   const lowerMime = (mimeType || '').toLowerCase();
@@ -590,11 +613,11 @@ export function StudentAssignments() {
                 )}
                 <div className="meta-item">
                   <Calendar size={14} style={{ color: '#6366f1' }} />
-                  <span>Assigned: {a.assigned_date || (a.created_at ? a.created_at.slice(0, 10) : 'Today')}</span>
+                  <span>Assigned: {formatAssignmentDate(a.assigned_date || a.created_at)}</span>
                 </div>
                 <div className="meta-item">
                   <Clock size={14} />
-                  <span>Due: {a.due_date}</span>
+                  <span>Due: {formatAssignmentDate(a.due_date)}</span>
                 </div>
                 {a.submitted_at && (
                   <div className="meta-item">
@@ -914,7 +937,7 @@ export function StudentAssignments() {
             </div>
             <form onSubmit={handleSubmit} className="student-modal-form">
               <p className="modal-sub">
-                Subject: <b>{activeModal.subject_name}</b> &nbsp;|&nbsp; Due: {activeModal.due_date}
+                Subject: <b>{activeModal.subject_name}</b> &nbsp;|&nbsp; Due: {formatAssignmentDate(activeModal.due_date)}
               </p>
 
               {/* Informational banner if editing a graded submission */}

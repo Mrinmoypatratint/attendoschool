@@ -25,7 +25,9 @@ import {
   FileText,
   Maximize2,
   Minimize2,
-  Trash2
+  Trash2,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { api } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
@@ -171,6 +173,107 @@ export function TeacherAnnouncements() {
   // Detail Modal & Drawer States
   const [viewingNotice, setViewingNotice] = useState<AnnouncementItem | null>(null);
   const [isNoticeMaximized, setIsNoticeMaximized] = useState(false);
+  // Attachment Preview Modal State
+  const [attachmentPreview, setAttachmentPreview] = useState<{
+    open: boolean;
+    fileName: string;
+    mimeType: string;
+    blobUrl: string | null;
+    loading: boolean;
+    error: string | null;
+    noticeId?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (attachmentPreview?.blobUrl) {
+        URL.revokeObjectURL(attachmentPreview.blobUrl);
+      }
+    };
+  }, [attachmentPreview?.blobUrl]);
+
+  const closeAttachmentPreview = () => {
+    if (attachmentPreview?.blobUrl) {
+      URL.revokeObjectURL(attachmentPreview.blobUrl);
+    }
+    setAttachmentPreview(null);
+  };
+
+  const isPreviewableFile = (fileName?: string, mimeType?: string) => {
+    const lower = (fileName || '').toLowerCase();
+    const m = (mimeType || '').toLowerCase();
+    return (
+      m === 'application/pdf' ||
+      m.startsWith('image/') ||
+      lower.endsWith('.pdf') ||
+      lower.endsWith('.png') ||
+      lower.endsWith('.jpg') ||
+      lower.endsWith('.jpeg') ||
+      lower.endsWith('.webp')
+    );
+  };
+
+  const openAttachmentPreview = async (notice: { id: string; attachment_name?: string; attachment_type?: string; attachment_url?: string }) => {
+    if (!notice) return;
+    const fileName = notice.attachment_name || 'announcement-attachment';
+    const mimeType = notice.attachment_type || '';
+
+    if (attachmentPreview?.blobUrl) {
+      URL.revokeObjectURL(attachmentPreview.blobUrl);
+    }
+
+    setAttachmentPreview({
+      open: true,
+      fileName,
+      mimeType,
+      blobUrl: null,
+      loading: true,
+      error: null,
+      noticeId: notice.id
+    });
+
+    try {
+      let blob: Blob;
+      if (notice.attachment_url && notice.attachment_url.startsWith('data:')) {
+        const resp = await fetch(notice.attachment_url);
+        blob = await resp.blob();
+      } else {
+        const resp = await api.get(`/communication/announcements/${notice.id}/attachment/preview`, {
+          responseType: 'blob'
+        });
+        blob = resp.data;
+      }
+      const blobUrl = URL.createObjectURL(blob);
+      const effectiveMime = blob.type || mimeType || (fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+      setAttachmentPreview(prev => prev && prev.open ? {
+        ...prev,
+        blobUrl,
+        loading: false,
+        mimeType: effectiveMime
+      } : null);
+    } catch (err: any) {
+      setAttachmentPreview(prev => prev && prev.open ? {
+        ...prev,
+        loading: false,
+        error: err?.response?.data?.message || 'Failed to load preview.'
+      } : null);
+    }
+  };
+
+  const handlePreviewDownload = () => {
+    if (!attachmentPreview) return;
+    if (attachmentPreview.blobUrl) {
+      const a = document.createElement('a');
+      a.href = attachmentPreview.blobUrl;
+      a.download = attachmentPreview.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else if (attachmentPreview.noticeId) {
+      window.open(`/api/communication/announcements/${attachmentPreview.noticeId}/attachment/download`, '_blank');
+    }
+  };
+
   const [selectedNoticeForReplies, setSelectedNoticeForReplies] = useState<AnnouncementItem | null>(null);
   const [noticeReplies, setNoticeReplies] = useState<ReplyItem[]>([]);
   const [loadingNoticeReplies, setLoadingNoticeReplies] = useState(false);
@@ -2649,27 +2752,52 @@ export function TeacherAnnouncements() {
                       </div>
                     </div>
 
-                    <a
-                      href={viewingNotice.attachment_url}
-                      download={viewingNotice.attachment_name || 'announcement-attachment'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        padding: '7px 14px',
-                        borderRadius: 6,
-                        backgroundColor: '#2563eb',
-                        color: '#ffffff',
-                        fontSize: 12.5,
-                        fontWeight: 600,
-                        textDecoration: 'none',
-                        boxShadow: '0 1px 2px rgba(37,99,235,0.2)'
-                      }}
-                    >
-                      <Download size={14} /> Download File
-                    </a>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      {isPreviewableFile(viewingNotice.attachment_name, viewingNotice.attachment_type) && (
+                        <button
+                          type="button"
+                          onClick={() => openAttachmentPreview(viewingNotice)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '7px 14px',
+                            borderRadius: 6,
+                            backgroundColor: '#eff6ff',
+                            color: '#2563eb',
+                            border: '1px solid #bfdbfe',
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 2px rgba(37,99,235,0.08)',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <Eye size={14} /> Preview
+                        </button>
+                      )}
+                      <a
+                        href={viewingNotice.attachment_url}
+                        download={viewingNotice.attachment_name || 'announcement-attachment'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '7px 14px',
+                          borderRadius: 6,
+                          backgroundColor: '#2563eb',
+                          color: '#ffffff',
+                          fontSize: 12.5,
+                          fontWeight: 600,
+                          textDecoration: 'none',
+                          boxShadow: '0 1px 2px rgba(37,99,235,0.2)'
+                        }}
+                      >
+                        <Download size={14} /> Download File
+                      </a>
+                    </div>
                   </div>
                 </div>
               )}
@@ -3258,6 +3386,129 @@ export function TeacherAnnouncements() {
                 <Send size={14} />
                 <span>{editSaving ? 'Publishing...' : 'Confirm & Publish Now'}</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------- IN-BROWSER ANNOUNCEMENT ATTACHMENT PREVIEW MODAL ------------------- */}
+      {attachmentPreview && attachmentPreview.open && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10060,
+            padding: 16
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 900,
+              height: '85vh',
+              background: 'var(--panel, #ffffff)',
+              borderRadius: 14,
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              border: '1px solid var(--border, #cbd5e1)'
+            }}
+          >
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card-subtle, #f8fafc)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                <Eye size={18} style={{ color: '#2563eb' }} />
+                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {attachmentPreview.fileName}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={handlePreviewDownload}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    background: '#ffffff',
+                    color: 'var(--text, #1e293b)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                >
+                  <Download size={13} /> Download File
+                </button>
+                <button
+                  type="button"
+                  onClick={closeAttachmentPreview}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)', padding: 4 }}
+                  aria-label="Close preview"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, overflow: 'hidden', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {attachmentPreview.loading ? (
+                <div style={{ textAlign: 'center', color: '#cbd5e1' }}>
+                  <Loader2 size={32} className="animate-spin" style={{ margin: '0 auto 12px' }} />
+                  <p style={{ margin: 0, fontSize: 14 }}>Loading preview securely...</p>
+                </div>
+              ) : attachmentPreview.error ? (
+                <div style={{ textAlign: 'center', color: '#f87171', padding: 24 }}>
+                  <AlertCircle size={32} style={{ margin: '0 auto 12px' }} />
+                  <p style={{ margin: 0, fontSize: 14 }}>{attachmentPreview.error}</p>
+                </div>
+              ) : attachmentPreview.blobUrl && attachmentPreview.mimeType.startsWith('image/') ? (
+                <img
+                  src={attachmentPreview.blobUrl}
+                  alt={attachmentPreview.fileName}
+                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                />
+              ) : attachmentPreview.blobUrl && (attachmentPreview.mimeType === 'application/pdf' || attachmentPreview.fileName.toLowerCase().endsWith('.pdf')) ? (
+                <iframe
+                  src={attachmentPreview.blobUrl}
+                  title={attachmentPreview.fileName}
+                  style={{ width: '100%', height: '100%', border: 'none' }}
+                />
+              ) : (
+                <div style={{ textAlign: 'center', color: '#e2e8f0', padding: 32 }}>
+                  <FileText size={48} style={{ color: '#94a3b8', margin: '0 auto 16px' }} />
+                  <h4 style={{ margin: '0 0 8px', fontSize: 16 }}>Inline preview not supported for this format</h4>
+                  <p style={{ margin: '0 0 16px', fontSize: 13, color: '#94a3b8' }}>
+                    Document files (.doc, .docx, .xlsx) can be downloaded directly to view on your device.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handlePreviewDownload}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: 6,
+                      border: 'none',
+                      background: '#2563eb',
+                      color: '#ffffff',
+                      fontWeight: 600,
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}
+                  >
+                    <Download size={14} /> Download File
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
