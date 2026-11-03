@@ -5473,16 +5473,22 @@ function TeacherHome() {
                       let displayAbs = Number(sec.absentCount || 0);
                       const displayTot = sec.totalCount ? Number(sec.totalCount) : (displayPres + displayAbs + displayLeftEarly);
 
-                      // Construct summary breakdown parts: e.g. "0P / 1LA" or "2P / 1A / 1LA"
-                      const summaryParts: string[] = [`${displayPres}P`];
-                      if (displayAbs > 0) {
-                        summaryParts.push(`${displayAbs}A`);
+                      // Construct summary breakdown parts: e.g. "1P / 1A" or "1LA / 1A" or "2P / 0A"
+                      const summaryParts: string[] = [];
+                      if (displayPres > 0) {
+                        summaryParts.push(`${displayPres}P`);
                       }
                       if (displayLeftEarly > 0) {
                         summaryParts.push(`${displayLeftEarly}LA`);
                       }
-                      if (summaryParts.length === 1 && displayAbs === 0 && displayLeftEarly === 0) {
-                        summaryParts.push('0A');
+                      if (displayAbs > 0) {
+                        summaryParts.push(`${displayAbs}A`);
+                      }
+                      if (summaryParts.length === 0) {
+                        summaryParts.push('0P / 0A');
+                      } else if (summaryParts.length === 1) {
+                        if (displayPres > 0) summaryParts.push('0A');
+                        else if (displayAbs > 0) summaryParts.unshift('0P');
                       }
                       const summaryBreakdown = summaryParts.join(' / ');
 
@@ -15392,10 +15398,7 @@ function Attendance() {
       }));
       setChecked(prev => ({ ...prev, [sid]: false, [selectedStudent.id]: false }));
 
-      if (selectedClassId && selectedSectionId) {
-        sessionStorage.setItem(`has_left_early_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, '1');
-        localStorage.setItem(`has_left_early_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, '1');
-      }
+
 
       if (existingSession?.id) {
         const res = await api.put(`/teacher/attendance/${existingSession.id}/student/${selectedStudent.id}`, {
@@ -15550,7 +15553,10 @@ function Attendance() {
           notifyParents: false
         });
       } catch (err: any) {
-        console.warn('Reattendance API error (using optimistic state):', err);
+        console.error('Reattendance API error:', err);
+        alert(err?.response?.data?.message || 'Failed to update attendance');
+        setBusy(false);
+        return;
       }
 
       setExistingSession({
@@ -15563,14 +15569,13 @@ function Attendance() {
         leftEarlyCount: leftEarlyCount,
         is_reattendance: true,
         isReattendance: true,
-        reattendance_count: 1,
-        reattendanceCount: 1
+        reattendance_count: (Number(existingSession?.reattendance_count || 0) + 1),
+        reattendanceCount: (Number(existingSession?.reattendanceCount || 0) + 1)
       });
       setIsEditingAttendance(false);
-      setReattendanceSuccessMsg('✓ Attendance successfully updated. Redirecting to dashboard...');
-      setTimeout(() => {
-        nav('/dashboard');
-      }, 1200);
+      setReattendanceSuccessMsg('✓ Attendance successfully updated.');
+      setTimeout(() => setReattendanceSuccessMsg(''), 4000);
+      await checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
     } catch (e: any) {
       console.error('submitWholeClassReattendance error:', e);
     } finally {
@@ -15627,10 +15632,7 @@ function Attendance() {
       const presCount = recordsPayload.filter(r => r.status === 'PRESENT' || r.status === 'LATE').length;
       const leftEarlyCount = recordsPayload.filter(r => r.status === 'LEFT_EARLY').length;
       const absCount = recordsPayload.filter(r => r.status === 'ABSENT').length;
-      if (leftEarlyCount > 0 && selectedClassId && selectedSectionId) {
-        sessionStorage.setItem(`has_left_early_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, String(leftEarlyCount));
-        localStorage.setItem(`has_left_early_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, String(leftEarlyCount));
-      }
+
       setSummary(res.data);
       setDone(true);
       checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);

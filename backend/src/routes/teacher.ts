@@ -25,6 +25,18 @@ export function getSchoolToday(timeZone = 'Asia/Kolkata'): string {
   }
 }
 
+export function formatSchoolDate(val: any, timeZone = 'Asia/Kolkata'): string {
+  if (!val) return '';
+  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+  try {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      return new Intl.DateTimeFormat('en-CA', { timeZone }).format(d);
+    }
+  } catch {}
+  return String(val).slice(0, 10);
+}
+
 export interface MemAttendanceSession {
   id: string;
   school_id: string;
@@ -1610,6 +1622,17 @@ const updateStudentAttendanceHandler = async (req: AuthRequest, res: any) => {
 
   // 1. Locate session
   let session = memAttendanceSessions.find(s => s.id === sessionId && isSameSchool(s.schoolId, sid));
+  if (!session && isPostgresConfigured) {
+    try {
+      const sRes = await pool.query(
+        'SELECT a.*, a.attendance_date::text AS attendance_date, c.class_number, s.name as section_name, u.name as teacher_name FROM attendance_sessions a LEFT JOIN classes c ON c.id = a.class_id LEFT JOIN sections s ON s.id = a.section_id LEFT JOIN users u ON u.id = a.teacher_id WHERE a.id = $1 AND a.school_id = $2 LIMIT 1',
+        [sessionId, sid]
+      );
+      if (sRes.rowCount) {
+        session = sRes.rows[0];
+      }
+    } catch {}
+  }
   if (!session && isFirebaseConfigured()) {
     try {
       const doc = await collections.attendanceSessions().doc(sessionId).get();
@@ -1626,7 +1649,7 @@ const updateStudentAttendanceHandler = async (req: AuthRequest, res: any) => {
     return res.status(404).json({ message: 'Attendance session not found for this school' });
   }
 
-  const sessionDate1 = String(session.attendance_date || session.attendanceDate || '').slice(0, 10);
+  const sessionDate1 = formatSchoolDate(session.attendance_date || session.attendanceDate, 'Asia/Kolkata');
   const todayDate1 = getSchoolToday('Asia/Kolkata');
   const isPastMidnight1 = Boolean(sessionDate1 && sessionDate1 < todayDate1);
   if (isPastMidnight1) {
@@ -1931,7 +1954,7 @@ const batchReattendanceHandler = async (req: AuthRequest, res: any) => {
   if (!session && isPostgresConfigured) {
     try {
       const sRes = await pool.query(
-        'SELECT a.*, c.class_number, s.name as section_name, u.name as teacher_name FROM attendance_sessions a LEFT JOIN classes c ON c.id = a.class_id LEFT JOIN sections s ON s.id = a.section_id LEFT JOIN users u ON u.id = a.teacher_id WHERE a.id = $1 AND a.school_id = $2 LIMIT 1',
+        'SELECT a.*, a.attendance_date::text AS attendance_date, c.class_number, s.name as section_name, u.name as teacher_name FROM attendance_sessions a LEFT JOIN classes c ON c.id = a.class_id LEFT JOIN sections s ON s.id = a.section_id LEFT JOIN users u ON u.id = a.teacher_id WHERE a.id = $1 AND a.school_id = $2 LIMIT 1',
         [sessionId, sid]
       );
       if (sRes.rowCount) {
@@ -1981,7 +2004,7 @@ const batchReattendanceHandler = async (req: AuthRequest, res: any) => {
     return res.status(404).json({ message: 'Attendance session not found' });
   }
 
-  const sessionDate2 = String(session.attendance_date || session.attendanceDate || '').slice(0, 10);
+  const sessionDate2 = formatSchoolDate(session.attendance_date || session.attendanceDate, 'Asia/Kolkata');
   const todayDate2 = getSchoolToday('Asia/Kolkata');
   const isPastMidnight2 = Boolean(sessionDate2 && sessionDate2 < todayDate2);
   if (isPastMidnight2) {
