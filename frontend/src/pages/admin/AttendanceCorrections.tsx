@@ -113,27 +113,20 @@ export default function AttendanceCorrections() {
   }
 
   return (
-    <div className="feature-page" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
-      <div className="feature-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+    <div className="feature-page w-full max-w-none m-0 pb-10" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
+      <div className="feature-header flex justify-between items-center mb-6 flex-wrap gap-4">
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0 0 6px' }}>Attendance Corrections</h1>
-          <p className="muted" style={{ margin: 0, color: 'var(--text-secondary, #94a3b8)' }}>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mb-1">
+            Attendance Corrections
+          </h1>
+          <p className="muted text-sm text-slate-500 dark:text-slate-400">
             Review teacher requests and keep every change auditable.
           </p>
         </div>
         <select
           value={status}
           onChange={e => setStatus(e.target.value)}
-          style={{
-            padding: '8px 14px',
-            borderRadius: 8,
-            border: '1px solid var(--border, #242b3d)',
-            background: 'var(--bg-card, #131722)',
-            color: 'var(--text, #f1f5f9)',
-            fontSize: '0.9rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
+          className="px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold cursor-pointer outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
         >
           <option value="ALL">All Requests</option>
           <option value="PENDING">Pending Only</option>
@@ -143,157 +136,82 @@ export default function AttendanceCorrections() {
       </div>
 
       {successToast && (
-        <div
-          style={{
-            background: 'rgba(16, 185, 129, 0.15)',
-            border: '1px solid rgba(16, 185, 129, 0.4)',
-            color: '#34d399',
-            padding: '12px 18px',
-            borderRadius: 10,
-            marginBottom: 20,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            fontWeight: 600,
-            fontSize: '0.92rem',
-          }}
-        >
+        <div className="mb-5 p-3 px-4.5 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-300 flex items-center gap-2.5 font-semibold text-sm shadow-xs">
           <span>✓</span>
           <span>{successToast}</span>
         </div>
       )}
 
-      {message && <div className="error" style={{ marginBottom: 20 }}>{message}</div>}
+      {message && (
+        <div className="error mb-5 p-3 px-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 text-rose-700 dark:text-rose-300 text-sm">
+          {message}
+        </div>
+      )}
 
       {loading ? (
-        <p className="muted">Loading requests…</p>
+        <p className="muted text-slate-500 dark:text-slate-400">Loading requests…</p>
       ) : (
-        <div className="table-wrap">
-          <table>
+        <div className="table-wrap bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
+          <table className="w-full border-collapse text-left text-sm">
             <thead>
-              <tr>
+              <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800">
                 {['Student', 'Class', 'Date', 'Current', 'Requested', 'Reason', 'Requested by', 'Action'].map(h => (
-                  <th key={h}>{h}</th>
+                  <th key={h} className="p-3 px-4 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">
+                    {h}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {items.map(x => (
-                <tr key={x.id}>
-                  <td>
-                    <PersonProfileLink kind="student" name={x.student_name} person={x as any}><b>{x.student_name}</b></PersonProfileLink>
+                <tr key={x.id} className="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                  <td className="p-3 px-4">
+                    <PersonProfileLink kind="student" name={x.student_name} person={x as any}>
+                      <b className="text-slate-900 dark:text-white">{x.student_name}</b>
+                    </PersonProfileLink>
                     <br />
-                    <small className="table-sub" style={{ color: 'var(--text-secondary, #94a3b8)' }}>Roll {x.roll}</small>
+                    <small className="table-sub text-slate-500 dark:text-slate-400 text-xs">Roll {x.roll}</small>
                   </td>
-                  <td>
+                  <td className="p-3 px-4 text-slate-800 dark:text-slate-200">
                     {x.class_name || '8'} / {x.section_name || 'A'}
                   </td>
-                  <td>{String(x.attendance_date).slice(0, 10)}</td>
-                  <td>
-                    <span
-                      style={{
-                        padding: '4px 10px',
-                        borderRadius: 9999,
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        background: 'rgba(239, 68, 68, 0.15)',
-                        color: '#f87171',
-                      }}
-                    >
+                  <td className="p-3 px-4 text-slate-800 dark:text-slate-200">{String(x.attendance_date).slice(0, 10)}</td>
+                  <td className="p-3 px-4">
+                    <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-rose-500/15 text-rose-600 dark:text-rose-400">
                       {x.current_status}
                     </span>
                   </td>
-                  <td>
-                    <span
-                      style={{
-                        padding: '4px 10px',
-                        borderRadius: 9999,
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        background: 'rgba(59, 130, 246, 0.15)',
-                        color: '#60a5fa',
-                      }}
-                    >
+                  <td className="p-3 px-4">
+                    <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-blue-500/15 text-blue-600 dark:text-blue-400">
                       {x.requested_status}
                     </span>
                   </td>
-                  <td>{x.reason}</td>
-                  <td>{x.requester_name || 'Teacher'}</td>
-                  <td>
+                  <td className="p-3 px-4 text-slate-800 dark:text-slate-200">{x.reason}</td>
+                  <td className="p-3 px-4 text-slate-800 dark:text-slate-200">{x.requester_name || 'Teacher'}</td>
+                  <td className="p-3 px-4">
                     {x.status === 'PENDING' ? (
-                      <div style={{ display: 'flex', gap: 8 }}>
+                      <div className="flex gap-2">
                         <button
                           type="button"
                           onClick={() => openReview(x, 'APPROVED')}
-                          style={{
-                            padding: '6px 14px',
-                            borderRadius: 8,
-                            border: 'none',
-                            background: '#4f46e5',
-                            color: '#fff',
-                            fontWeight: 600,
-                            fontSize: '0.85rem',
-                            cursor: 'pointer',
-                            transition: 'background 0.15s',
-                          }}
+                          className="px-3.5 py-1.5 rounded-lg border-0 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs cursor-pointer transition-colors shadow-xs"
                         >
                           Approve
                         </button>
                         <button
                           type="button"
                           onClick={() => openReview(x, 'REJECTED')}
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: 8,
-                            border: '1px solid rgba(239, 68, 68, 0.3)',
-                            background: 'rgba(239, 68, 68, 0.1)',
-                            color: '#f87171',
-                            fontWeight: 600,
-                            fontSize: '0.85rem',
-                            cursor: 'pointer',
-                          }}
+                          className="px-3 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold text-xs cursor-pointer transition-colors"
                         >
                           Reject
                         </button>
                       </div>
                     ) : x.status === 'APPROVED' ? (
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          padding: '6px 14px',
-                          borderRadius: 9999,
-                          fontSize: '11px',
-                          fontWeight: 800,
-                          letterSpacing: '0.04em',
-                          textTransform: 'uppercase',
-                          background: 'rgba(16, 185, 129, 0.2)',
-                          color: '#34d399',
-                          border: '1px solid rgba(16, 185, 129, 0.4)',
-                        }}
-                      >
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40">
                         ✓ APPROVED
                       </span>
                     ) : (
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          padding: '6px 14px',
-                          borderRadius: 9999,
-                          fontSize: '11px',
-                          fontWeight: 800,
-                          letterSpacing: '0.04em',
-                          textTransform: 'uppercase',
-                          background: 'rgba(239, 68, 68, 0.2)',
-                          color: '#f87171',
-                          border: '1px solid rgba(239, 68, 68, 0.4)',
-                        }}
-                      >
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/40">
                         ✕ REJECTED
                       </span>
                     )}
@@ -302,7 +220,7 @@ export default function AttendanceCorrections() {
               ))}
               {!items.length && (
                 <tr>
-                  <td colSpan={8} className="muted" style={{ padding: 28, textAlign: 'center' }}>
+                  <td colSpan={8} className="muted p-7 text-center text-slate-500 dark:text-slate-400">
                     No correction requests found for this filter.
                   </td>
                 </tr>
@@ -314,14 +232,20 @@ export default function AttendanceCorrections() {
 
       {/* Review Modal Popup */}
       {dialog.isOpen && dialog.item && (
-        <div className="overlay" onClick={() => !dialog.isSubmitting && setDialog(prev => ({ ...prev, isOpen: false }))}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
-            <div className="modal-head">
-              <h3>
+        <div
+          className="overlay fixed inset-0 z-[10050] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4"
+          onClick={() => !dialog.isSubmitting && setDialog(prev => ({ ...prev, isOpen: false }))}
+        >
+          <div
+            className="modal w-full max-w-[480px] bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden p-6"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="modal-head flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white m-0">
                 {dialog.decision === 'APPROVED' ? 'Approve Attendance Correction' : 'Reject Attendance Correction'}
               </h3>
               <button
-                className="close"
+                className="close text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-2xl leading-none bg-transparent border-0 cursor-pointer p-1"
                 type="button"
                 disabled={dialog.isSubmitting}
                 onClick={() => setDialog(prev => ({ ...prev, isOpen: false }))}
@@ -330,40 +254,30 @@ export default function AttendanceCorrections() {
               </button>
             </div>
 
-            <div
-              style={{
-                background: 'var(--gray-50)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-md)',
-                padding: '14px 16px',
-                marginBottom: 18,
-                fontSize: '13.5px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Student:</span>
-                <PersonProfileLink kind="student" name={dialog.item.student_name} person={dialog.item as any}><b>{dialog.item.student_name} (Roll {dialog.item.roll})</b></PersonProfileLink>
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-xl p-3.5 px-4 mb-4 text-[13.5px] flex flex-col gap-2">
+              <div className="flex justify-between">
+                <span className="text-slate-500 dark:text-slate-400">Student:</span>
+                <PersonProfileLink kind="student" name={dialog.item.student_name} person={dialog.item as any}>
+                  <b className="text-slate-900 dark:text-white">{dialog.item.student_name} (Roll {dialog.item.roll})</b>
+                </PersonProfileLink>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Status Change:</span>
+              <div className="flex justify-between">
+                <span className="text-slate-500 dark:text-slate-400">Status Change:</span>
                 <span>
-                  <b style={{ color: 'var(--rose-600)' }}>{dialog.item.current_status}</b> ➔{' '}
-                  <b style={{ color: 'var(--emerald-600)' }}>{dialog.item.requested_status}</b>
+                  <b className="text-rose-600 dark:text-rose-400">{dialog.item.current_status}</b> ➔{' '}
+                  <b className="text-emerald-600 dark:text-emerald-400">{dialog.item.requested_status}</b>
                 </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Teacher's Reason:</span>
-                <span style={{ fontStyle: 'italic', maxWidth: '65%', textAlign: 'right' }}>
+              <div className="flex justify-between">
+                <span className="text-slate-500 dark:text-slate-400">Teacher's Reason:</span>
+                <span className="italic max-w-[65%] text-right text-slate-700 dark:text-slate-300">
                   "{dialog.item.reason}"
                 </span>
               </div>
             </div>
 
-            <form onSubmit={confirmReview} className="modal-form">
-              <label>
+            <form onSubmit={confirmReview} className="modal-form flex flex-col gap-3">
+              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex flex-col gap-1.5">
                 {dialog.decision === 'APPROVED' ? 'Approval Note (Optional)' : 'Rejection Reason (Required)'}
                 <AutoExpandingTextarea
                   required={dialog.decision === 'REJECTED'}
@@ -379,23 +293,23 @@ export default function AttendanceCorrections() {
                 />
               </label>
 
-              <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+              <div className="flex gap-3 mt-3">
                 <button
                   type="button"
-                  className="secondary"
+                  className="secondary flex-1 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm font-semibold cursor-pointer disabled:cursor-not-allowed"
                   disabled={dialog.isSubmitting}
                   onClick={() => setDialog(prev => ({ ...prev, isOpen: false }))}
-                  style={{ flex: 1 }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={dialog.isSubmitting}
-                  style={{
-                    flex: 2,
-                    background: dialog.decision === 'APPROVED' ? 'var(--emerald-600)' : 'var(--rose-600)',
-                  }}
+                  className={`flex-2 px-4 py-2 rounded-lg text-white text-sm font-semibold cursor-pointer disabled:cursor-not-allowed shadow-sm transition-colors ${
+                    dialog.decision === 'APPROVED'
+                      ? 'bg-emerald-600 hover:bg-emerald-700'
+                      : 'bg-rose-600 hover:bg-rose-700'
+                  }`}
                 >
                   {dialog.isSubmitting
                     ? 'Processing…'
@@ -411,4 +325,3 @@ export default function AttendanceCorrections() {
     </div>
   );
 }
-

@@ -940,51 +940,32 @@ export default function TeacherLeaveApprove() {
   };
 
   return (
-    <div className="student-subpage" style={{ width: '100%', paddingBottom: 40 }}>
+    <div className="student-subpage w-full pb-10">
       {/* ── Page Header ── */}
-      <div className="student-subpage-header" style={{ marginBottom: 20 }}>
+      <div className="student-subpage-header mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="student-subpage-title-row">
           <Link
             to="/dashboard"
-            className="student-back-link"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              color: '#2563EB',
-              fontWeight: 600,
-              fontSize: 13,
-              textDecoration: 'none',
-              marginBottom: 4
-            }}
+            className="student-back-link inline-flex items-center gap-1.5 text-blue-600 font-semibold text-xs no-underline mb-1 hover:text-blue-700 transition-colors"
           >
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
-          <h1 className="student-subpage-title" style={{ fontSize: 24, fontWeight: 800, color: 'var(--text, #0F172A)', margin: '2px 0 4px' }}>
+          <h1 className="student-subpage-title text-2xl font-extrabold text-slate-900 dark:text-white my-1">
             Teacher's Leave Review
           </h1>
-          <p className="student-subpage-desc" style={{ fontSize: 14, color: 'var(--text-secondary, #64748B)', margin: 0 }}>
+          <p className="student-subpage-desc text-sm text-slate-500 dark:text-slate-400 m-0">
             Review, approve, or reject leave applications submitted by faculty members across all departments.
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div className="flex items-center gap-2.5 flex-wrap">
           {/* Report Month Selector */}
           <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '6px 12px',
-              borderRadius: 8,
-              border: '1px solid var(--border, #E2E8F0)',
-              background: 'var(--surface, #FFF)',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xs"
             title="Select month to filter leave applications and Excel report"
           >
-            <Calendar size={14} color="#64748B" />
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary, #64748B)' }}>
+            <Calendar size={14} className="text-slate-500" />
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
               Month:
             </span>
             <input
@@ -995,33 +976,13 @@ export default function TeacherLeaveApprove() {
                 setMonthFilter(val || 'ALL');
                 setReportMonth(val || new Date().toISOString().slice(0, 7));
               }}
-              style={{
-                border: 'none',
-                outline: 'none',
-                background: 'transparent',
-                fontSize: 13,
-                fontWeight: 600,
-                color: 'var(--text, #0F172A)',
-                cursor: 'pointer',
-                fontFamily: 'inherit'
-              }}
+              className="border-0 outline-none bg-transparent text-xs font-semibold text-slate-900 dark:text-white cursor-pointer font-inherit"
             />
             {monthFilter !== 'ALL' && (
               <button
                 type="button"
                 onClick={() => setMonthFilter('ALL')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#2563EB',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  padding: '2px 6px',
-                  borderRadius: 4,
-                  display: 'inline-flex',
-                  alignItems: 'center'
-                }}
+                className="bg-transparent border-0 text-blue-600 dark:text-blue-400 text-xs font-semibold cursor-pointer py-0.5 px-1.5 rounded inline-flex items-center hover:underline"
                 title="Show all months"
               >
                 All Months
@@ -1034,21 +995,9 @@ export default function TeacherLeaveApprove() {
             type="button"
             onClick={() => exportMonthlyLeaveReport(reportMonth)}
             disabled={exporting}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 7,
-              padding: '8px 15px',
-              borderRadius: 8,
-              border: '1px solid #16A34A',
-              background: '#16A34A',
-              color: '#FFFFFF',
-              cursor: exporting ? 'wait' : 'pointer',
-              fontSize: 13,
-              fontWeight: 600,
-              boxShadow: '0 1px 3px rgba(22, 163, 74, 0.25)',
-              transition: 'all 0.15s ease'
-            }}
+            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border-0 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-colors ${
+              exporting ? 'cursor-wait opacity-70' : 'cursor-pointer'
+            }`}
             title={`Download monthly leave report for ${formatMonthDisplay(reportMonth)}`}
           >
             <FileSpreadsheet size={15} />
@@ -1065,20 +1014,7 @@ export default function TeacherLeaveApprove() {
           <button
             type="button"
             onClick={loadLeaves}
-            className="student-btn-secondary"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 14px',
-              borderRadius: 8,
-              border: '1px solid var(--border, #E2E8F0)',
-              background: 'var(--surface, #FFF)',
-              cursor: 'pointer',
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--text, #0F172A)'
-            }}
+            className="student-btn-secondary inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-semibold text-xs cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors"
           >
             <RefreshCw size={14} className={loading ? 'spin' : ''} />
             <span>Refresh</span>
@@ -1089,26 +1025,19 @@ export default function TeacherLeaveApprove() {
       {/* ── Feedback Banner ── */}
       {feedback && (
         <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '12px 18px',
-            borderRadius: 8,
-            marginBottom: 16,
-            background: feedback.type === 'success' ? '#F0FDF4' : '#FEF2F2',
-            border: `1px solid ${feedback.type === 'success' ? '#BBF7D0' : '#FECACA'}`,
-            color: feedback.type === 'success' ? '#166534' : '#991B1B',
-            fontSize: 13.5
-          }}
+          className={`flex items-center justify-between p-3 px-4 rounded-xl mb-4 text-sm border ${
+            feedback.type === 'success'
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+              : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300'
+          }`}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="flex items-center gap-2">
             {feedback.type === 'success' ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
             <span>{feedback.message}</span>
           </div>
           <button
             onClick={() => setFeedback(null)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 2 }}
+            className="bg-transparent border-0 cursor-pointer text-inherit p-0.5 hover:opacity-75 transition-opacity"
           >
             <X size={16} />
           </button>
@@ -1116,238 +1045,107 @@ export default function TeacherLeaveApprove() {
       )}
 
       {/* ── KPI Stat Cards ── */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-          gap: 16,
-          marginBottom: 24
-        }}
-      >
-        <div
-          style={{
-            background: 'var(--surface, #FFF)',
-            border: '1px solid var(--border, #E2E8F0)',
-            borderRadius: 12,
-            padding: '18px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-          }}
-        >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center justify-between shadow-xs">
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#D97706', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div className="text-xs font-semibold text-amber-500 uppercase tracking-wider">
               Pending Review
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#B45309', marginTop: 4 }}>
+            <div className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 mt-1">
               {dynamicCounts.pending}
             </div>
           </div>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: '#FEF3C7',
-              color: '#D97706',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
+          <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center shrink-0">
             <Clock size={22} />
           </div>
         </div>
 
-        <div
-          style={{
-            background: 'var(--surface, #FFF)',
-            border: '1px solid var(--border, #E2E8F0)',
-            borderRadius: 12,
-            padding: '18px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-          }}
-        >
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center justify-between shadow-xs">
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#16A34A', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div className="text-xs font-semibold text-emerald-500 uppercase tracking-wider">
               Approved
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#15803D', marginTop: 4 }}>
+            <div className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">
               {dynamicCounts.approved}
             </div>
           </div>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: '#DCFCE7',
-              color: '#16A34A',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
+          <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-500 flex items-center justify-center shrink-0">
             <CheckCircle2 size={22} />
           </div>
         </div>
 
-        <div
-          style={{
-            background: 'var(--surface, #FFF)',
-            border: '1px solid var(--border, #E2E8F0)',
-            borderRadius: 12,
-            padding: '18px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-          }}
-        >
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center justify-between shadow-xs">
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#DC2626', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div className="text-xs font-semibold text-rose-500 uppercase tracking-wider">
               Rejected
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#B91C1C', marginTop: 4 }}>
+            <div className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 mt-1">
               {dynamicCounts.rejected}
             </div>
           </div>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: '#FEE2E2',
-              color: '#DC2626',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
+          <div className="w-11 h-11 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-500 flex items-center justify-center shrink-0">
             <XCircle size={22} />
           </div>
         </div>
 
-        <div
-          style={{
-            background: 'var(--surface, #FFF)',
-            border: '1px solid var(--border, #E2E8F0)',
-            borderRadius: 12,
-            padding: '18px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-          }}
-        >
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center justify-between shadow-xs">
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Total Submissions
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text, #0F172A)', marginTop: 4 }}>
+            <div className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">
               {dynamicCounts.all}
             </div>
           </div>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: '#EFF6FF',
-              color: '#2563EB',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
+          <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
             <FileText size={22} />
           </div>
         </div>
       </div>
 
       {/* ── Status Tab Navigation ── */}
-      <div
-        className="student-tab-bar"
-        style={{
-          display: 'flex',
-          gap: 6,
-          borderBottom: '1px solid var(--border, #E2E8F0)',
-          marginBottom: 20
-        }}
-      >
+      <div className="student-tab-bar flex gap-1.5 border-b border-slate-200 dark:border-slate-700 mb-5 overflow-x-auto pb-px">
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'ALL' ? 'active' : ''}`}
+          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'ALL'
+              ? 'border-blue-600 text-blue-600 dark:text-blue-400 active'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
           onClick={() => setActiveTab('ALL')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            padding: '9px 18px',
-            fontSize: 13.5,
-            fontWeight: 600,
-            cursor: 'pointer',
-            borderBottom: activeTab === 'ALL' ? '2px solid #2563EB' : '2px solid transparent',
-            color: activeTab === 'ALL' ? '#2563EB' : 'var(--text-secondary, #64748B)',
-            transition: 'all 0.15s'
-          }}
         >
           All ({dynamicCounts.all})
         </button>
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'PENDING' ? 'active' : ''}`}
+          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'PENDING'
+              ? 'border-amber-500 text-amber-600 dark:text-amber-400 active'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
           onClick={() => setActiveTab('PENDING')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            padding: '9px 18px',
-            fontSize: 13.5,
-            fontWeight: 600,
-            cursor: 'pointer',
-            borderBottom: activeTab === 'PENDING' ? '2px solid #D97706' : '2px solid transparent',
-            color: activeTab === 'PENDING' ? '#D97706' : 'var(--text-secondary, #64748B)',
-            transition: 'all 0.15s'
-          }}
         >
           Pending Review ({dynamicCounts.pending})
         </button>
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'APPROVED' ? 'active' : ''}`}
+          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'APPROVED'
+              ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400 active'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
           onClick={() => setActiveTab('APPROVED')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            padding: '9px 18px',
-            fontSize: 13.5,
-            fontWeight: 600,
-            cursor: 'pointer',
-            borderBottom: activeTab === 'APPROVED' ? '2px solid #16A34A' : '2px solid transparent',
-            color: activeTab === 'APPROVED' ? '#16A34A' : 'var(--text-secondary, #64748B)',
-            transition: 'all 0.15s'
-          }}
         >
           Approved ({dynamicCounts.approved})
         </button>
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'REJECTED' ? 'active' : ''}`}
+          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'REJECTED'
+              ? 'border-rose-600 text-rose-600 dark:text-rose-400 active'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
           onClick={() => setActiveTab('REJECTED')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            padding: '9px 18px',
-            fontSize: 13.5,
-            fontWeight: 600,
-            cursor: 'pointer',
-            borderBottom: activeTab === 'REJECTED' ? '2px solid #DC2626' : '2px solid transparent',
-            color: activeTab === 'REJECTED' ? '#DC2626' : 'var(--text-secondary, #64748B)',
-            transition: 'all 0.15s'
-          }}
         >
           Rejected ({dynamicCounts.rejected})
         </button>

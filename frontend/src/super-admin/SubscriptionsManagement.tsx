@@ -213,19 +213,19 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
   return (
     <div className="sa-subs-view">
       {/* Module Header */}
-      <div className="sa-module-head">
+      <div className="sa-module-head flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="sa-module-title">Subscription Tiers & Packaging</h1>
-          <p className="sa-module-sub">
+          <h1 className="sa-module-title text-2xl font-bold tracking-tight text-slate-900 m-0">Subscription Tiers & Packaging</h1>
+          <p className="sa-module-sub text-sm text-slate-500 m-0 mt-1">
             Configure institutional SaaS tiers, student capacity limits, pricing models, and active tenant distribution.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="sa-btn-secondary" onClick={loadData} disabled={loading}>
+        <div className="flex items-center gap-2.5" style={{ display: 'flex', gap: '10px' }}>
+          <button className="sa-btn-secondary inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs md:text-sm font-medium transition hover:bg-slate-50" onClick={loadData} disabled={loading}>
             <RefreshCw size={15} className={loading ? 'spinning' : ''} />
             <span>Refresh</span>
           </button>
-          <button className="sa-btn-primary" onClick={openCreateModal}>
+          <button className="sa-btn-primary inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs md:text-sm font-medium transition shadow-sm" onClick={openCreateModal}>
             <Plus size={16} />
             <span>New Tier Plan</span>
           </button>
@@ -233,38 +233,38 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
       </div>
 
       {error && (
-        <div className="sa-error-banner">
+        <div className="sa-error-banner p-3 px-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm mb-4">
           {error}
         </div>
       )}
 
       {/* 4-KPI Telemetry Strip */}
-      <div className="sa-subs-kpi-grid">
-        <div className="sa-subs-kpi-card">
+      <div className="sa-subs-kpi-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="sa-subs-kpi-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="sa-subs-kpi-top">
-            <span className="sa-subs-kpi-label">Active Tiers</span>
+            <span className="sa-subs-kpi-label text-xs font-medium uppercase tracking-wider text-slate-500">Active Tiers</span>
             <div className="sa-subs-kpi-icon-wrap" style={{ background: '#eff6ff', color: '#2563eb' }}>
               <Layers size={18} />
             </div>
           </div>
-          <div className="sa-subs-kpi-val">{loading ? '…' : telemetry.activePlansCount}</div>
-          <span className="sa-subs-kpi-sub">Commercial SaaS plans</span>
+          <div className="sa-subs-kpi-val text-2xl font-bold tracking-tight text-slate-900 mt-1">{loading ? '…' : telemetry.activePlansCount}</div>
+          <span className="sa-subs-kpi-sub text-xs text-slate-400 mt-2 block">Commercial SaaS plans</span>
         </div>
 
-        <div className="sa-subs-kpi-card">
+        <div className="sa-subs-kpi-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="sa-subs-kpi-top">
-            <span className="sa-subs-kpi-label">Subscribed Campuses</span>
+            <span className="sa-subs-kpi-label text-xs font-medium uppercase tracking-wider text-slate-500">Subscribed Campuses</span>
             <div className="sa-subs-kpi-icon-wrap" style={{ background: '#ecfdf5', color: '#16a34a' }}>
               <Building2 size={18} />
             </div>
           </div>
-          <div className="sa-subs-kpi-val">{loading ? '…' : telemetry.enrolledSchoolsCount}</div>
-          <span className="sa-subs-kpi-sub">Active institutional tenants</span>
+          <div className="sa-subs-kpi-val text-2xl font-bold tracking-tight text-slate-900 mt-1">{loading ? '…' : telemetry.enrolledSchoolsCount}</div>
+          <span className="sa-subs-kpi-sub text-xs text-slate-400 mt-2 block">Active institutional tenants</span>
         </div>
 
-        <div className="sa-subs-kpi-card">
+        <div className="sa-subs-kpi-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="sa-subs-kpi-top">
-            <span className="sa-subs-kpi-label">Total Student Quota</span>
+            <span className="sa-subs-kpi-label text-xs font-medium uppercase tracking-wider text-slate-500">Total Student Quota</span>
             <div className="sa-subs-kpi-icon-wrap" style={{ background: '#f5f3ff', color: '#7c3aed' }}>
               <Users size={18} />
             </div>

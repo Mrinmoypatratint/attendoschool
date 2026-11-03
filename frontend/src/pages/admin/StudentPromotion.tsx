@@ -334,59 +334,35 @@ export default function StudentPromotion() {
     displayedItems.filter(x => !x.already_processed).every(x => selected[x.id]);
 
   return (
-    <div className="feature-page" ref={tableTopRef} style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
+    <div className="feature-page w-full max-w-none m-0 pb-10" ref={tableTopRef} style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
+      <div className="flex justify-between items-start flex-wrap gap-3.5 mb-4">
         <div>
-          <p className="eyebrow" style={{ margin: '0 0 4px', color: '#6366f1', fontWeight: 700 }}>ACADEMIC TRANSITION</p>
-          <h1 style={{ margin: 0, fontSize: 24 }}>Student Promotion</h1>
-          <p className="muted" style={{ margin: '4px 0 0' }}>
+          <p className="eyebrow m-0 mb-1 text-xs text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider">ACADEMIC TRANSITION</p>
+          <h1 className="m-0 text-2xl font-bold text-slate-900 dark:text-white">Student Promotion</h1>
+          <p className="muted m-0 mt-1 text-xs text-slate-500 dark:text-slate-400">
             Transition students into a new academic session while preserving historical records and attendance.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="flex gap-2 items-center flex-wrap">
           <button
             type="button"
             onClick={handleExportExcel}
-            className="btn-secondary"
-            style={{
-              padding: '9px 16px',
-              fontSize: 13,
-              fontWeight: 600,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              borderRadius: 8,
-              cursor: 'pointer',
-              background: '#ffffff',
-              border: '1px solid var(--border, #cbd5e1)',
-              color: '#15803d',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-              transition: 'all 0.15s ease'
-            }}
+            className="btn-secondary py-2 px-4 text-xs font-semibold inline-flex items-center gap-2 rounded-lg cursor-pointer bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-emerald-700 dark:text-emerald-400 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors"
             title={classFilter && sectionFilter 
               ? `Export promoted students of ${classFilter} - Section ${sectionFilter} to Excel`
               : 'Export promoted students to Excel for selected Class and Section'}
           >
-            <FileSpreadsheet size={16} color="#16a34a" /> Export Excel
+            <FileSpreadsheet size={16} className="text-emerald-600" /> Export Excel
           </button>
 
           <button
             onClick={initiateProcess}
             disabled={selectedCount === 0 || !toYear}
-            className="btn-primary"
-            style={{
-              padding: '9px 18px',
-              fontSize: 13,
-              fontWeight: 600,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              background: (selectedCount === 0 || !toYear) ? 'var(--btn-disabled-bg, #94a3b8)' : '#2563eb',
-              color: '#ffffff',
-              borderRadius: 8,
-              cursor: (selectedCount === 0 || !toYear) ? 'not-allowed' : 'pointer',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-            }}
+            className={`btn-primary py-2 px-4.5 text-xs font-semibold inline-flex items-center gap-2 rounded-lg shadow-xs transition-colors ${
+              (selectedCount === 0 || !toYear)
+                ? 'bg-slate-400 text-white cursor-not-allowed opacity-60'
+                : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
+            }`}
           >
             <ArrowUpDown size={15} /> Review & Process Selected ({selectedCount})
           </button>
@@ -394,24 +370,13 @@ export default function StudentPromotion() {
       </div>
 
       {/* Session Selection Row */}
-      <div style={{
-        background: 'var(--bg-card, #ffffff)',
-        border: '1px solid var(--border, #cbd5e1)',
-        borderRadius: 10,
-        padding: '16px 20px',
-        marginBottom: 16,
-        display: 'flex',
-        gap: 16,
-        alignItems: 'flex-end',
-        flexWrap: 'wrap',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
-      }}>
-        <label style={{ minWidth: 240, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600 }}>
-          <span>Source Session (From) <span style={{ color: '#ef4444' }}>*</span></span>
+      <div className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-4 px-5 mb-4 flex gap-4 items-end flex-wrap shadow-xs">
+        <label className="min-w-[240px] flex flex-col gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200">
+          <span>Source Session (From) <span className="text-rose-500">*</span></span>
           <select
             value={fromYear}
             onChange={e => setFromYear(e.target.value)}
-            style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13 }}
+            className="py-2 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs outline-none focus:border-blue-500"
           >
             <option value="">Select Academic Session</option>
             {years.map(y => (
@@ -420,12 +385,12 @@ export default function StudentPromotion() {
           </select>
         </label>
 
-        <label style={{ minWidth: 240, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600 }}>
-          <span>Target Session (To) <span style={{ color: '#ef4444' }}>*</span></span>
+        <label className="min-w-[240px] flex flex-col gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200">
+          <span>Target Session (To) <span className="text-rose-500">*</span></span>
           <select
             value={toYear}
             onChange={e => setToYear(e.target.value)}
-            style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13 }}
+            className="py-2 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs outline-none focus:border-blue-500"
           >
             <option value="">Select Target Academic Session</option>
             {years.filter(y => y.id !== fromYear && !y.is_archived).map(y => (
@@ -434,7 +399,7 @@ export default function StudentPromotion() {
           </select>
         </label>
 
-        <div style={{ fontSize: 12.5, color: 'var(--text-muted, #64748b)', paddingBottom: 6 }}>
+        <div className="text-xs text-slate-500 dark:text-slate-400 pb-1.5">
           {eligibleCount} pending eligible student(s) ready for transition
         </div>
       </div>

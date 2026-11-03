@@ -371,101 +371,90 @@ export default function Analytics() {
   );
 
   return (
-    <div className="feature-page" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
-      <div className="page-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+    <div className="feature-page w-full max-w-none m-0 pb-10" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
+      <div className="page-head flex justify-between items-center mb-5 flex-wrap gap-4">
         <div>
-          <p className="eyebrow">INSTITUTIONAL INSIGHTS & RADAR</p>
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: 10, margin: 0 }}>
-            <BarChart3 size={28} style={{ color: 'var(--primary-600)' }} />
+          <p className="eyebrow text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">INSTITUTIONAL INSIGHTS & RADAR</p>
+          <h1 className="flex items-center gap-2.5 text-2xl font-bold text-slate-900 dark:text-white m-0">
+            <BarChart3 size={28} className="text-blue-600 dark:text-blue-400" />
             Academic & Attendance Analytics
           </h1>
-          <p className="muted">Accurate real-time metrics, class distribution, daily trends, and at-risk student monitoring.</p>
+          <p className="muted text-xs text-slate-500 dark:text-slate-400 mt-1">Accurate real-time metrics, class distribution, daily trends, and at-risk student monitoring.</p>
         </div>
         <button
           onClick={() => load()}
           disabled={refreshing}
-          className="btn-secondary"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            cursor: refreshing ? 'not-allowed' : 'pointer',
-            padding: '8px 14px',
-            borderRadius: 6,
-            border: '1px solid var(--border)',
-            background: 'var(--bg-card)',
-            fontWeight: 600,
-            fontSize: 13,
-            color: 'var(--text)'
-          }}
+          className="btn-secondary inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors shadow-xs"
           title="Refresh real-time attendance data"
         >
-          <RefreshCw size={14} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
+          <RefreshCw size={14} className={refreshing ? 'spin' : ''} />
           {refreshing ? 'Updating...' : 'Live Refresh'}
         </button>
       </div>
 
-      {msg && <div className="error" style={{ marginBottom: 16 }}>{msg}</div>}
+      {msg && <div className="error mb-4 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs">{msg}</div>}
 
       {/* SUPER ADMIN VIEW */}
       {platform && (
         <>
-          <div className="stats" style={{ marginBottom: 24 }}>
-            <div className="stat">
-              <span>Onboarded Schools</span>
-              <strong>{platform.totalSchools}</strong>
-              <div style={{ fontSize: 11.5, color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+          <div className="stats grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
+            <div className="stat bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-xs">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Onboarded Schools</span>
+              <strong className="text-2xl font-extrabold text-slate-900 dark:text-white block mt-1">{platform.totalSchools}</strong>
+              <div className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-1">
                 <TrendingUp size={13} /> Active network
               </div>
             </div>
-            <div className="stat">
-              <span>Platform Students</span>
-              <strong>{platform.totalStudents}</strong>
-              <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 4 }}>Across all schools</div>
+            <div className="stat bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-xs">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Platform Students</span>
+              <strong className="text-2xl font-extrabold text-slate-900 dark:text-white block mt-1">{platform.totalStudents}</strong>
+              <div className="text-[11px] text-slate-400 mt-1">Across all schools</div>
             </div>
-            <div className="stat">
-              <span>Active Subscriptions</span>
-              <strong>{platform.activeSubscriptions}</strong>
-              <div style={{ fontSize: 11.5, color: '#10b981', marginTop: 4 }}>Paid & Verified</div>
+            <div className="stat bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-xs">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Active Subscriptions</span>
+              <strong className="text-2xl font-extrabold text-slate-900 dark:text-white block mt-1">{platform.activeSubscriptions}</strong>
+              <div className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">Paid & Verified</div>
             </div>
-            <div className="stat">
-              <span>SaaS Total Revenue</span>
-              <strong style={{ color: '#10b981' }}>₹{platform.totalRevenue?.toLocaleString('en-IN')}</strong>
-              <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 4 }}>GST Invoiced</div>
+            <div className="stat bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-xs">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">SaaS Total Revenue</span>
+              <strong className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 block mt-1">₹{platform.totalRevenue?.toLocaleString('en-IN')}</strong>
+              <div className="text-[11px] text-slate-400 mt-1">GST Invoiced</div>
             </div>
           </div>
 
-          <div className="panel" style={{ padding: 22, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: 16 }}>🏆 School Attendance League Table</h3>
-            <div className="table-wrap">
-              <table>
+          <div className="panel p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xs">
+            <h3 className="m-0 mb-4 text-base font-bold text-slate-900 dark:text-white">🏆 School Attendance League Table</h3>
+            <div className="table-wrap overflow-x-auto">
+              <table className="w-full text-left">
                 <thead>
-                  <tr>
-                    <th>School Institution</th>
-                    <th>Code</th>
-                    <th>Students</th>
-                    <th>Faculty</th>
-                    <th>30-Day Attendance</th>
-                    <th>Performance Rating</th>
+                  <tr className="border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
+                    <th className="py-2.5 px-3">School Institution</th>
+                    <th className="py-2.5 px-3">Code</th>
+                    <th className="py-2.5 px-3">Students</th>
+                    <th className="py-2.5 px-3">Faculty</th>
+                    <th className="py-2.5 px-3">30-Day Attendance</th>
+                    <th className="py-2.5 px-3">Performance Rating</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                   {rank.map((x, idx) => {
                     const rate = Number(x.attendance_percentage || 85);
                     const isHigh = rate >= 90;
                     return (
-                      <tr key={x.id}>
-                        <td>
+                      <tr key={x.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-750/50 transition-colors">
+                        <td className="py-3 px-3">
                           <PersonProfileLink kind="student" id={x.id || x.student_id} name={x.name} person={x as any}><b>{idx === 0 ? '🥇 ' : idx === 1 ? '🥈 ' : idx === 2 ? '🥉 ' : ''}{x.name}</b></PersonProfileLink>
                         </td>
-                        <td><code>{x.code}</code></td>
-                        <td>{x.students}</td>
-                        <td>{x.teachers}</td>
-                        <td>
-                          <b style={{ color: isHigh ? '#10b981' : '#3b82f6', fontSize: 14 }}>{rate}%</b>
+                        <td className="py-3 px-3"><code className="text-xs bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded text-blue-600 dark:text-blue-400">{x.code}</code></td>
+                        <td className="py-3 px-3 text-sm">{x.students}</td>
+                        <td className="py-3 px-3 text-sm">{x.teachers}</td>
+                        <td className="py-3 px-3">
+                          <b className={`text-sm ${isHigh ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400'}`}>{rate}%</b>
                         </td>
-                        <td>
-                          <span className={`badge ${isHigh ? 'active' : 'processing'}`}>
+                        <td className="py-3 px-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                            isHigh ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400' : 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400'
+                          }`}>
                             {isHigh ? 'EXEMPLARY' : 'GOOD STANDING'}
                           </span>
                         </td>
@@ -483,40 +472,49 @@ export default function Analytics() {
       {data && (
         <>
           {/* Key KPI Metric Cards */}
-          <div className="stats" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
-            <div className="stat" style={{ borderLeft: '4px solid #3b82f6' }}>
-              <span>Average Attendance</span>
-              <strong style={{ color: '#3b82f6', fontSize: 26 }}>{data.attendancePercentage ?? 0}%</strong>
-              <div style={{ fontSize: 12, color: (data.attendancePercentage ?? 0) >= 75 ? '#10b981' : '#dc2626', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+          <div className="stats grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 mb-6">
+            <div className="stat bg-white dark:bg-slate-800 border-l-4 border-l-blue-600 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-xs">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Average Attendance</span>
+              <strong className="text-2xl font-extrabold text-blue-600 dark:text-blue-400 block mt-1">{data.attendancePercentage ?? 0}%</strong>
+              <div className={`text-xs flex items-center gap-1 mt-1 font-medium ${
+                (data.attendancePercentage ?? 0) >= 75 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+              }`}>
                 {(data.attendancePercentage ?? 0) >= 75 ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}
                 {data.attendanceSessions > 0 ? `${data.attendanceSessions} sessions recorded` : 'No sessions recorded'}
               </div>
             </div>
-            <div className="stat" style={{ borderLeft: '4px solid #10b981' }}>
-              <span>Total Present Today</span>
-              <strong style={{ color: '#10b981', fontSize: 26 }}>{data.todayPresent ?? 0}</strong>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+            <div className="stat bg-white dark:bg-slate-800 border-l-4 border-l-emerald-600 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-xs">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Present Today</span>
+              <strong className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 block mt-1">{data.todayPresent ?? 0}</strong>
+              <div className="text-xs text-slate-400 mt-1">
                 {(data.todayPresent ?? 0) + (data.todayAbsent ?? 0) + (data.todayLeftEarly ?? 0) > 0 ? 'Recorded present today' : 'No attendance marked today'}
               </div>
             </div>
-            <div className="stat" style={{ borderLeft: '4px solid #ef4444' }}>
-              <span>Total Absent Today</span>
-              <strong style={{ color: '#dc2626', fontSize: 26 }}>{data.todayAbsent ?? 0}</strong>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+            <div className="stat bg-white dark:bg-slate-800 border-l-4 border-l-rose-600 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-xs">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Absent Today</span>
+              <strong className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 block mt-1">{data.todayAbsent ?? 0}</strong>
+              <div className="text-xs text-slate-400 mt-1">
                 {(data.todayPresent ?? 0) + (data.todayAbsent ?? 0) + (data.todayLeftEarly ?? 0) > 0 ? 'Marked absent today' : 'No attendance marked today'}
               </div>
             </div>
-            <div className="stat" style={{ borderLeft: '4px solid #f59e0b' }}>
-              <span>Left Early Today</span>
-              <strong style={{ color: '#d97706', fontSize: 26 }}>{data.todayLeftEarly ?? 0}</strong>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+            <div className="stat bg-white dark:bg-slate-800 border-l-4 border-l-amber-500 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-xs">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Left Early Today</span>
+              <strong className="text-2xl font-extrabold text-amber-500 dark:text-amber-400 block mt-1">{data.todayLeftEarly ?? 0}</strong>
+              <div className="text-xs text-slate-400 mt-1">
                 {(data.todayLeftEarly ?? 0) > 0 ? 'Departed campus early today' : 'No early departures today'}
               </div>
             </div>
-            <div className="stat" style={{ borderLeft: '4px solid #8b5cf6' }}>
-              <span>Low Attendance Risk</span>
-              <strong style={{ color: (data.lowAttendanceCount ?? 0) > 0 ? '#dc2626' : '#8b5cf6', fontSize: 26 }}>{data.lowAttendanceCount ?? 0}</strong>
-              <div style={{ fontSize: 12, color: (data.lowAttendanceCount ?? 0) > 0 ? '#dc2626' : '#10b981', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+            <div className="stat bg-white dark:bg-slate-800 border-l-4 border-l-purple-600 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-xs">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Low Attendance Risk</span>
+              <strong className="text-2xl font-extrabold text-purple-600 dark:text-purple-400 block mt-1">{data.lowAttendanceCount ?? 0}</strong>
+              <div className={`text-xs flex items-center gap-1 mt-1 font-medium ${
+                (data.lowAttendanceCount ?? 0) > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
+              }`}>
+                {(data.lowAttendanceCount ?? 0) > 0 ? <AlertTriangle size={13} /> : <CheckCircle2 size={13} />}
+                {(data.lowAttendanceCount ?? 0) > 0 ? '< 75% threshold' : 'All students ≥ 75%'}
+              </div>
+            </div>
+          </div>
                 {(data.lowAttendanceCount ?? 0) > 0 ? <AlertTriangle size={13} /> : <CheckCircle2 size={13} />}
                 {(data.lowAttendanceCount ?? 0) > 0 ? '< 75% threshold' : 'All students ≥ 75%'}
               </div>
@@ -524,14 +522,35 @@ export default function Analytics() {
           </div>
 
           {/* Sub Navigation Tabs */}
-          <div className="tabs" style={{ marginBottom: 20 }}>
-            <button className={activeTab === 'overview' ? 'tab-active' : ''} onClick={() => setActiveTab('overview')}>
+          <div className="tabs flex gap-2 border-b border-slate-200 dark:border-slate-700 mb-5 overflow-x-auto pb-1">
+            <button
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+                activeTab === 'overview'
+                  ? 'bg-blue-600 text-white shadow-xs tab-active'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+              onClick={() => setActiveTab('overview')}
+            >
               📊 Daily Attendance Trend
             </button>
-            <button className={activeTab === 'classes' ? 'tab-active' : ''} onClick={() => setActiveTab('classes')}>
+            <button
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+                activeTab === 'classes'
+                  ? 'bg-blue-600 text-white shadow-xs tab-active'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+              onClick={() => setActiveTab('classes')}
+            >
               🏫 Class-Wise Performance
             </button>
-            <button className={activeTab === 'watchlist' ? 'tab-active' : ''} onClick={() => setActiveTab('watchlist')}>
+            <button
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+                activeTab === 'watchlist'
+                  ? 'bg-blue-600 text-white shadow-xs tab-active'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+              onClick={() => setActiveTab('watchlist')}
+            >
               ⚠️ At-Risk Watchlist ({data.lowAttendanceCount ?? 0})
             </button>
           </div>

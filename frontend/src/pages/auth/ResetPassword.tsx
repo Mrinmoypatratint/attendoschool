@@ -111,141 +111,67 @@ export default function ResetPassword() {
   const displayRole = tokenData?.role ? (roleLabelMap[tokenData.role] || tokenData.role) : 'Student Portal';
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#f8fafc',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px 16px',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
-    }}>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-6 sm:p-8 font-sans transition-colors">
       {/* Brand Header */}
-      <div style={{ textAlign: 'center', marginBottom: 24 }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+      <div className="text-center mb-6">
+        <div className="inline-flex items-center gap-2.5 mb-2">
           <img
             src="/attendo-school-logo.png"
             alt="AttendoSchool"
-            style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'contain' }}
-            onError={(e)=>{ (e.target as HTMLElement).style.display = 'none'; }}
+            className="w-9 h-9 rounded-lg object-contain"
+            onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
           />
-          <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text, #0f172a)' }}>
-            Attendo<span style={{ color: '#2563eb' }}>School</span>
+          <span className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+            Attendo<span className="text-blue-600">School</span>
           </span>
         </div>
-        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
+        <p className="m-0 text-[13px] text-slate-500 dark:text-slate-400">
           {tokenData?.schoolName || 'Institutional Campus Management Portal'}
         </p>
       </div>
 
       {/* Main Card */}
-      <div style={{
-        width: '100%',
-        maxWidth: 480,
-        backgroundColor: 'var(--bg-card, #ffffff)',
-        borderRadius: 12,
-        border: '1px solid var(--border, #e2e8f0)',
-        boxShadow: '0 4px 16px rgba(15, 23, 42, 0.05)',
-        overflow: 'hidden'
-      }}>
+      <div className="w-full max-w-[480px] bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg shadow-slate-950/5 overflow-hidden transition-colors">
         {/* Card Header Strip */}
-        <div style={{
-          padding: '20px 24px',
-          borderBottom: '1px solid var(--border, #f1f5f9)',
-          backgroundColor: 'var(--bg-card, #ffffff)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
+        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800/80 bg-white dark:bg-slate-900 flex items-center justify-between">
           <div>
-            <span style={{
-              display: 'inline-block',
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: '0.05em',
-              textTransform: 'uppercase',
-              color: '#2563eb',
-              marginBottom: 2
-            }}>
+            <span className="inline-block text-[11px] font-bold tracking-wider uppercase text-blue-600 dark:text-blue-400 mb-0.5">
               Account Activation
             </span>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+            <h2 className="m-0 text-lg font-bold text-slate-900 dark:text-white">
               Set Your Password
             </h2>
           </div>
-          <span style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '4px 10px',
-            backgroundColor: '#eff6ff',
-            color: '#1d4ed8',
-            borderRadius: 6,
-            fontSize: 12,
-            fontWeight: 600,
-            border: '1px solid #dbeafe'
-          }}>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 rounded-md text-xs font-semibold border border-blue-200 dark:border-blue-900/40">
             <ShieldCheck size={14} />
             {displayRole}
           </span>
         </div>
 
         {/* Card Body */}
-        <div style={{ padding: '28px 24px' }}>
+        <div className="p-6 sm:p-7">
           {loading && (
-            <div style={{ textAlign: 'center', padding: '32px 0', color: '#64748b' }}>
-              <div style={{
-                width: 32,
-                height: 32,
-                border: '3px solid #e2e8f0',
-                borderTopColor: '#2563eb',
-                borderRadius: '50%',
-                margin: '0 auto 16px auto',
-                animation: 'spin 0.8s linear infinite'
-              }} />
-              <p style={{ margin: 0, fontSize: 14 }}>Verifying security token...</p>
-              <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+            <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+              <div className="w-8 h-8 border-3 border-slate-200 dark:border-slate-700 border-t-blue-600 rounded-full mx-auto mb-4 animate-spin" />
+              <p className="m-0 text-sm">Verifying security token...</p>
             </div>
           )}
 
           {!loading && !valid && (
-            <div style={{ textAlign: 'center', padding: '16px 0' }}>
-              <div style={{
-                width: 52,
-                height: 52,
-                borderRadius: '50%',
-                backgroundColor: '#fef2f2',
-                color: '#dc2626',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16
-              }}>
+            <div className="text-center py-4">
+              <div className="w-13 h-13 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 inline-flex items-center justify-center mb-4 border border-rose-200 dark:border-rose-900/40">
                 <AlertCircle size={28} />
               </div>
-              <h3 style={{ margin: '0 0 8px 0', fontSize: 16, fontWeight: 700, color: '#991b1b' }}>
+              <h3 className="m-0 mb-2 text-base font-bold text-rose-800 dark:text-rose-300">
                 Setup Link Expired or Invalid
               </h3>
-              <p style={{ margin: '0 0 24px 0', fontSize: 13, color: '#64748b', lineHeight: 1.6 }}>
+              <p className="m-0 mb-6 text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed">
                 {errorMessage}
               </p>
               <button
                 type="button"
                 onClick={() => navigate('/login')}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  backgroundColor: '#2563eb',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: 6,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
+                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 rounded-lg text-sm font-semibold cursor-pointer shadow-sm transition-colors"
               >
                 Return to Login <ArrowRight size={16} />
               </button>
@@ -253,46 +179,20 @@ export default function ResetPassword() {
           )}
 
           {!loading && valid && success && (
-            <div style={{ textAlign: 'center', padding: '16px 0' }}>
-              <div style={{
-                width: 56,
-                height: 56,
-                borderRadius: '50%',
-                backgroundColor: '#f0fdf4',
-                color: '#16a34a',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16,
-                border: '1px solid #bbf7d0'
-              }}>
+            <div className="text-center py-4">
+              <div className="w-14 h-14 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 inline-flex items-center justify-center mb-4 border border-emerald-200 dark:border-emerald-900/40">
                 <CheckCircle2 size={32} />
               </div>
-              <h3 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700, color: '#166534' }}>
+              <h3 className="m-0 mb-2 text-lg font-bold text-emerald-800 dark:text-emerald-300">
                 Password Set Successfully!
               </h3>
-              <p style={{ margin: '0 0 24px 0', fontSize: 14, color: '#4b5563', lineHeight: 1.6 }}>
+              <p className="m-0 mb-6 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                 Your account password has been established. You can now use your email (<b>{tokenData?.email}</b>) to log in to the school portal.
               </p>
               <button
                 type="button"
                 onClick={() => navigate('/login')}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  backgroundColor: '#2563eb',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '12px 20px',
-                  borderRadius: 6,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)'
-                }}
+                className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white border-0 py-3 px-5 rounded-lg text-sm font-semibold cursor-pointer shadow-md shadow-blue-600/20 transition-all"
               >
                 Proceed to Login <ArrowRight size={16} />
               </button>
@@ -300,100 +200,47 @@ export default function ResetPassword() {
           )}
 
           {!loading && valid && !success && (
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               {/* Recipient summary banner */}
-              <div style={{
-                backgroundColor: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: 8,
-                padding: '12px 16px',
-                marginBottom: 20,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12
-              }}>
-                <div style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: '50%',
-                  backgroundColor: '#e0f2fe',
-                  color: '#0284c7',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 700,
-                  fontSize: 14
-                }}>
+              <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-lg p-3 px-4 mb-1 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-sky-100 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">
                   {tokenData?.name ? tokenData.name.charAt(0).toUpperCase() : 'U'}
                 </div>
-                <div style={{ overflow: 'hidden' }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text, #0f172a)' }}>
+                <div className="overflow-hidden">
+                  <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">
                     {tokenData?.name || tokenData?.email}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
                     {tokenData?.email}
                   </div>
                 </div>
               </div>
 
               {errorMessage && (
-                <div style={{
-                  padding: '10px 14px',
-                  backgroundColor: '#fef2f2',
-                  border: '1px solid #fecaca',
-                  borderRadius: 6,
-                  color: '#b91c1c',
-                  fontSize: 13,
-                  marginBottom: 16,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8
-                }}>
-                  <AlertCircle size={16} />
+                <div className="p-2.5 px-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 rounded-lg text-rose-700 dark:text-rose-300 text-[13px] flex items-center gap-2">
+                  <AlertCircle size={16} className="shrink-0" />
                   <span>{errorMessage}</span>
                 </div>
               )}
 
               {/* New Password Input */}
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #334155)', marginBottom: 6 }}>
+              <div>
+                <label className="block text-[13px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Choose New Password
                 </label>
-                <div style={{ position: 'relative' }}>
+                <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
                     placeholder="Enter at least 8 characters..."
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px 40px 10px 14px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border, #cbd5e1)',
-                      fontSize: 14,
-                      color: 'var(--text, #0f172a)',
-                      backgroundColor: 'var(--bg, #ffffff)',
-                      outline: 'none',
-                      boxSizing: 'border-box'
-                    }}
+                    className="w-full py-2.5 pr-10 pl-3.5 rounded-lg border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    style={{
-                      position: 'absolute',
-                      right: 10,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      color: '#94a3b8',
-                      cursor: 'pointer',
-                      padding: 4,
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 bg-transparent border-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1 flex items-center transition-colors"
                     title={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -402,45 +249,23 @@ export default function ResetPassword() {
               </div>
 
               {/* Confirm Password Input */}
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #334155)', marginBottom: 6 }}>
+              <div>
+                <label className="block text-[13px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Confirm New Password
                 </label>
-                <div style={{ position: 'relative' }}>
+                <div className="relative">
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     required
                     placeholder="Re-enter your password..."
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px 40px 10px 14px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border, #cbd5e1)',
-                      fontSize: 14,
-                      color: 'var(--text, #0f172a)',
-                      backgroundColor: 'var(--bg, #ffffff)',
-                      outline: 'none',
-                      boxSizing: 'border-box'
-                    }}
+                    className="w-full py-2.5 pr-10 pl-3.5 rounded-lg border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    style={{
-                      position: 'absolute',
-                      right: 10,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--text-muted, #94a3b8)',
-                      cursor: 'pointer',
-                      padding: 4,
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 bg-transparent border-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1 flex items-center transition-colors"
                     title={showConfirmPassword ? 'Hide password' : 'Show password'}
                   >
                     {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -449,37 +274,30 @@ export default function ResetPassword() {
               </div>
 
               {/* Security Checklist */}
-              <div style={{
-                backgroundColor: 'var(--card-subtle, #f8fafc)',
-                border: '1px solid var(--border, #f1f5f9)',
-                borderRadius: 6,
-                padding: '12px 14px',
-                marginBottom: 24,
-                fontSize: 12
-              }}>
-                <div style={{ fontWeight: 600, color: '#475569', marginBottom: 8 }}>Password Requirements:</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, color: pwCheck.hasMinLength ? '#16a34a' : '#94a3b8' }}>
-                  <Check size={14} style={{ color: pwCheck.hasMinLength ? '#16a34a' : '#cbd5e1' }} />
+              <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-lg p-3 px-3.5 my-1 text-xs">
+                <div className="font-semibold text-slate-600 dark:text-slate-300 mb-2">Password Requirements:</div>
+                <div className={`flex items-center gap-1.5 mb-1 ${pwCheck.hasMinLength ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-slate-400 dark:text-slate-500'}`}>
+                  <Check size={14} className={pwCheck.hasMinLength ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-300 dark:text-slate-600'} />
                   <span>Minimum 8 characters in length</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, color: pwCheck.hasUpperCase ? '#16a34a' : '#94a3b8' }}>
-                  <Check size={14} style={{ color: pwCheck.hasUpperCase ? '#16a34a' : '#cbd5e1' }} />
+                <div className={`flex items-center gap-1.5 mb-1 ${pwCheck.hasUpperCase ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-slate-400 dark:text-slate-500'}`}>
+                  <Check size={14} className={pwCheck.hasUpperCase ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-300 dark:text-slate-600'} />
                   <span>At least 1 Capital letter (A-Z)</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, color: pwCheck.hasLowerCase ? '#16a34a' : '#94a3b8' }}>
-                  <Check size={14} style={{ color: pwCheck.hasLowerCase ? '#16a34a' : '#cbd5e1' }} />
+                <div className={`flex items-center gap-1.5 mb-1 ${pwCheck.hasLowerCase ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-slate-400 dark:text-slate-500'}`}>
+                  <Check size={14} className={pwCheck.hasLowerCase ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-300 dark:text-slate-600'} />
                   <span>At least 1 small letter (a-z)</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, color: pwCheck.hasNumber ? '#16a34a' : '#94a3b8' }}>
-                  <Check size={14} style={{ color: pwCheck.hasNumber ? '#16a34a' : '#cbd5e1' }} />
+                <div className={`flex items-center gap-1.5 mb-1 ${pwCheck.hasNumber ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-slate-400 dark:text-slate-500'}`}>
+                  <Check size={14} className={pwCheck.hasNumber ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-300 dark:text-slate-600'} />
                   <span>At least 1 number (0-9)</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, color: pwCheck.hasSpecialChar ? '#16a34a' : '#94a3b8' }}>
-                  <Check size={14} style={{ color: pwCheck.hasSpecialChar ? '#16a34a' : '#cbd5e1' }} />
+                <div className={`flex items-center gap-1.5 mb-1 ${pwCheck.hasSpecialChar ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-slate-400 dark:text-slate-500'}`}>
+                  <Check size={14} className={pwCheck.hasSpecialChar ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-300 dark:text-slate-600'} />
                   <span>At least 1 special character (e.g. !@#$%^&*)</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: passwordsMatch ? '#16a34a' : '#94a3b8' }}>
-                  <Check size={14} style={{ color: passwordsMatch ? '#16a34a' : '#cbd5e1' }} />
+                <div className={`flex items-center gap-1.5 ${passwordsMatch ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-slate-400 dark:text-slate-500'}`}>
+                  <Check size={14} className={passwordsMatch ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-300 dark:text-slate-600'} />
                   <span>Passwords match</span>
                 </div>
               </div>
@@ -488,23 +306,11 @@ export default function ResetPassword() {
               <button
                 type="submit"
                 disabled={!isFormValid || submitting}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  backgroundColor: isFormValid ? '#2563eb' : '#94a3b8',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '12px 20px',
-                  borderRadius: 6,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: isFormValid && !submitting ? 'pointer' : 'not-allowed',
-                  transition: 'background-color 0.2s',
-                  boxShadow: isFormValid ? '0 2px 4px rgba(37, 99, 235, 0.2)' : 'none'
-                }}
+                className={`w-full flex items-center justify-center gap-2 text-white border-0 py-3 px-5 rounded-lg text-sm font-semibold transition-all shadow-sm ${
+                  isFormValid && !submitting
+                    ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer shadow-blue-600/20'
+                    : 'bg-slate-400 dark:bg-slate-700 cursor-not-allowed opacity-80'
+                }`}
               >
                 {submitting ? 'Saving Password...' : 'Activate Account & Set Password'}
               </button>
@@ -513,14 +319,7 @@ export default function ResetPassword() {
         </div>
 
         {/* Card Footer */}
-        <div style={{
-          padding: '14px 24px',
-          backgroundColor: '#f8fafc',
-          borderTop: '1px solid #f1f5f9',
-          textAlign: 'center',
-          fontSize: 12,
-          color: '#64748b'
-        }}>
+        <div className="p-3.5 px-6 bg-slate-50 dark:bg-slate-900/90 border-t border-slate-100 dark:border-slate-800/80 text-center text-xs text-slate-500 dark:text-slate-400">
           Need assistance? Contact your school administrator office.
         </div>
       </div>

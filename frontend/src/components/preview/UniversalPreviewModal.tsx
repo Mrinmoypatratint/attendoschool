@@ -63,115 +63,73 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
 
   return (
     <div
-      className="overlay"
-      style={{
-        zIndex: 10050,
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(15, 23, 42, 0.6)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: isMaximized ? 8 : 16,
-        transition: 'padding 0.2s ease'
-      }}
+      className={`overlay fixed inset-0 z-[10050] bg-slate-900/60 backdrop-blur-md flex items-center justify-center transition-all ${
+        isMaximized ? 'p-2' : 'p-4'
+      }`}
     >
       <div
-        className="modal"
-        style={{
-          width: isMaximized ? '97vw' : width,
-          maxHeight: isMaximized ? '97vh' : '92vh',
-          height: isMaximized ? '97vh' : undefined,
-          display: 'flex',
-          flexDirection: 'column',
-          background: 'var(--bg-card, #ffffff)',
-          border: '1px solid var(--border, #cbd5e1)',
-          borderRadius: isMaximized ? 12 : 16,
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          overflow: 'hidden',
-          padding: 0,
-          transition: 'width 0.2s ease, height 0.2s ease, border-radius 0.2s ease'
-        }}
+        className={`modal flex flex-col bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 shadow-2xl overflow-hidden p-0 transition-all ${
+          isMaximized
+            ? 'w-[97vw] h-[97vh] max-h-[97vh] rounded-xl'
+            : 'max-h-[92vh] rounded-2xl'
+        }`}
+        style={{ width: isMaximized ? '97vw' : width }}
       >
         {/* ─── Modal Header ─── */}
         <div
-          style={{
-            padding: '20px 24px 16px',
-            borderBottom: '1px solid var(--border, #e2e8f0)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: isDestructive ? 'rgba(239, 68, 68, 0.12)' : 'var(--card-subtle, #f8fafc)'
-          }}
+          className={`px-6 py-5 pb-4 border-b flex items-center justify-between transition-colors ${
+            isDestructive
+              ? 'border-rose-500/25 bg-rose-50 dark:bg-rose-950/40'
+              : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80'
+          }`}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="flex items-center gap-3">
             <div
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: 12,
-                background: isDestructive ? 'rgba(239, 68, 68, 0.22)' : 'rgba(37, 99, 235, 0.14)',
-                color: isDestructive ? '#ef4444' : 'var(--sidebar-accent, #3b82f6)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}
+              className={`w-10.5 h-10.5 rounded-xl flex items-center justify-center shrink-0 ${
+                isDestructive
+                  ? 'bg-rose-500/20 text-rose-500'
+                  : 'bg-blue-600/15 text-blue-600 dark:text-blue-400'
+              }`}
             >
               {isDestructive ? <AlertTriangle size={22} /> : <FileCheck size={22} />}
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div className="flex items-center gap-2">
                 <h3
-                  style={{
-                    margin: 0,
-                    fontSize: 18,
-                    fontWeight: 800,
-                    color: isDestructive ? '#ef4444' : 'var(--text, #0f172a)',
-                    letterSpacing: '-0.02em'
-                  }}
+                  className={`m-0 text-lg font-extrabold tracking-tight ${
+                    isDestructive ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-slate-100'
+                  }`}
                 >
                   {title}
                 </h3>
                 <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    padding: '2px 8px',
-                    borderRadius: 12,
-                    background: isDestructive ? '#fee2e2' : operationType === 'update' ? '#fef3c7' : '#dcfce7',
-                    color: isDestructive ? '#b91c1c' : operationType === 'update' ? '#b45309' : '#15803d'
-                  }}
+                  className={`text-[11px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                    isDestructive
+                      ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                      : operationType === 'update'
+                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                      : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                  }`}
                 >
                   {isDestructive ? 'Destructive Action' : operationType === 'update' ? 'Update Preview' : 'Preview Step'}
                 </span>
               </div>
-              <p style={{ margin: '3px 0 0 0', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
+              <p className="m-0 mt-0.5 text-[13px] text-slate-500 dark:text-slate-400">
                 {subtitle}
               </p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => setIsMaximized(m => !m)}
               disabled={loading}
-              style={{
-                background: isMaximized ? '#e2e8f0' : 'transparent',
-                border: 'none',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                color: isMaximized ? 'var(--text, #0f172a)' : 'var(--text-muted, #94a3b8)',
-                padding: 6,
-                borderRadius: 8,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.15s ease'
-              }}
+              className={`p-1.5 rounded-lg border-0 cursor-pointer disabled:cursor-not-allowed transition-all ${
+                isMaximized
+                  ? 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100'
+                  : 'bg-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              }`}
               title={isMaximized ? 'Restore standard size' : 'Maximize window'}
             >
               {isMaximized ? <Minimize2 size={19} /> : <Maximize2 size={19} />}
@@ -181,18 +139,7 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
               type="button"
               onClick={onClose}
               disabled={loading}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                color: 'var(--text-muted, #94a3b8)',
-                padding: 6,
-                borderRadius: 8,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.15s ease'
-              }}
+              className="p-1.5 rounded-lg bg-transparent border-0 cursor-pointer disabled:cursor-not-allowed text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all"
               title="Cancel and return"
             >
               <X size={20} />
@@ -201,24 +148,11 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
         </div>
 
         {/* ─── Scrollable Modal Body ─── */}
-        <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
+        <div className="p-6 overflow-y-auto flex-1">
           {/* Review Banner */}
           {!isDestructive && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '10px 14px',
-                borderRadius: 10,
-                background: '#eff6ff',
-                border: '1px solid #bfdbfe',
-                color: '#1e40af',
-                fontSize: 13,
-                marginBottom: 16
-              }}
-            >
-              <ShieldCheck size={18} style={{ flexShrink: 0 }} />
+            <div className="flex items-center gap-2.5 p-3 px-3.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 text-blue-800 dark:text-blue-300 text-[13px] mb-4">
+              <ShieldCheck size={18} className="shrink-0" />
               <span>
                 <strong>Verification Mode:</strong> This record has not been saved yet. Please review all fields. If anything needs correction, click <strong>{editText}</strong>.
               </span>
@@ -227,22 +161,8 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
 
           {/* Destructive Warning */}
           {isDestructive && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '12px 16px',
-                borderRadius: 10,
-                background: '#fef2f2',
-                border: '1px solid #fecaca',
-                color: '#b91c1c',
-                fontSize: 13,
-                marginBottom: 16,
-                fontWeight: 600
-              }}
-            >
-              <AlertTriangle size={20} style={{ flexShrink: 0 }} />
+            <div className="flex items-center gap-2.5 p-3 px-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-300 text-[13px] mb-4 font-semibold">
+              <AlertTriangle size={20} className="shrink-0" />
               <span>
                 {destructiveWarning ||
                   `Warning: This destructive operation will delete or deactivate ${entityName || 'this record'}. This cannot be undone.`}
@@ -252,35 +172,12 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
 
           {/* Error Message */}
           {error && (
-            <div
-              style={{
-                padding: '12px 16px',
-                borderRadius: 10,
-                background: '#fef2f2',
-                border: '1px solid #fecaca',
-                color: '#dc2626',
-                fontSize: 13,
-                marginBottom: 16,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 12
-              }}
-            >
+            <div className="p-3 px-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-300 text-[13px] mb-4 flex items-center justify-between gap-3">
               <span>{error}</span>
               <button
                 type="button"
                 onClick={onEdit}
-                style={{
-                  background: '#ffffff',
-                  border: '1px solid #fca5a5',
-                  color: '#dc2626',
-                  padding: '4px 10px',
-                  borderRadius: 6,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
+                className="bg-white dark:bg-slate-800 border border-rose-300 dark:border-rose-700 text-rose-600 dark:text-rose-400 px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer"
               >
                 Back to Form
               </button>
@@ -290,37 +187,23 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
           {/* KPI Summary Cards */}
           {summaryCards.length > 0 && (
             <div
+              className="grid gap-3 mb-4"
               style={{
-                display: 'grid',
-                gridTemplateColumns: `repeat(auto-fit, minmax(${Math.floor(100 / summaryCards.length)}%, 1fr))`,
-                gap: 12,
-                marginBottom: 16
+                gridTemplateColumns: `repeat(auto-fit, minmax(${Math.min(180, Math.floor(100 / summaryCards.length))}px, 1fr))`
               }}
             >
               {summaryCards.map((c, i) => (
                 <div
                   key={c.label || i}
-                  style={{
-                    background: 'var(--bg, #f8fafc)',
-                    border: '1px solid var(--border, #e2e8f0)',
-                    borderRadius: 10,
-                    padding: '12px 14px'
-                  }}
+                  className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl p-3 px-3.5"
                 >
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      color: 'var(--text-muted, #64748b)'
-                    }}
-                  >
+                  <span className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400">
                     {c.label}
                   </span>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text, #0f172a)', margin: '2px 0' }}>
+                  <div className="text-[22px] font-extrabold text-slate-900 dark:text-slate-100 my-0.5">
                     {c.value}
                   </div>
-                  {c.sub && <span style={{ fontSize: 11, color: 'var(--text-muted, #64748b)' }}>{c.sub}</span>}
+                  {c.sub && <span className="text-[11px] text-slate-500 dark:text-slate-400">{c.sub}</span>}
                 </div>
               ))}
             </div>
@@ -336,28 +219,14 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
 
           {/* Table Data Preview */}
           {tableData && tableData.rows.length > 0 && (
-            <div
-              style={{
-                background: 'var(--bg-card, #ffffff)',
-                border: '1px solid var(--border, #e2e8f0)',
-                borderRadius: 12,
-                overflow: 'hidden',
-                marginBottom: 16
-              }}
-            >
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, textAlign: 'left' }}>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden mb-4 shadow-xs">
+              <table className="w-full border-collapse text-[12.5px] text-left">
                 <thead>
-                  <tr style={{ background: 'var(--bg, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
+                  <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800">
                     {tableData.headers.map((h, i) => (
                       <th
                         key={i}
-                        style={{
-                          padding: '10px 14px',
-                          color: 'var(--text-muted, #64748b)',
-                          fontWeight: 700,
-                          fontSize: 11,
-                          textTransform: 'uppercase'
-                        }}
+                        className="p-2.5 px-3.5 text-slate-500 dark:text-slate-400 font-bold text-[11px] uppercase tracking-wider"
                       >
                         {h}
                       </th>
@@ -366,9 +235,12 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
                 </thead>
                 <tbody>
                   {tableData.rows.map((row, rIdx) => (
-                    <tr key={rIdx} style={{ borderBottom: '1px solid var(--border, #f1f5f9)' }}>
+                    <tr
+                      key={rIdx}
+                      className="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                    >
                       {row.map((cell, cIdx) => (
-                        <td key={cIdx} style={{ padding: '9px 14px' }}>
+                        <td key={cIdx} className="p-2.5 px-3.5 text-slate-800 dark:text-slate-200">
                           {cell}
                         </td>
                       ))}
@@ -384,60 +256,26 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
         </div>
 
         {/* ─── Modal Footer Actions ─── */}
-        <div
-          style={{
-            padding: '16px 24px',
-            borderTop: '1px solid var(--border, #e2e8f0)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: 'var(--bg, #f8fafc)',
-            gap: 12,
-            flexWrap: 'wrap'
-          }}
-        >
+        <div className="p-4 sm:px-6 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/90 gap-3 flex-wrap">
           {/* Left: Back to Edit Button */}
           <button
             type="button"
             onClick={onEdit}
             disabled={loading}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '10px 18px',
-              borderRadius: 10,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--bg-card, #ffffff)',
-              color: 'var(--text, #1e293b)',
-              transition: 'all 0.15s ease',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-            }}
+            className="inline-flex items-center gap-2 px-4.5 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer disabled:cursor-not-allowed border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-all shadow-xs"
           >
             <ArrowLeft size={16} />
             <span>{editText}</span>
           </button>
 
           {/* Right: Cancel / Draft & Final Confirm Buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="flex items-center gap-2.5">
             {showCancel && onSecondary && (
               <button
                 type="button"
                 onClick={onClose}
                 disabled={loading || secondaryLoading}
-                style={{
-                  padding: '10px 14px',
-                  borderRadius: 10,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: (loading || secondaryLoading) ? 'not-allowed' : 'pointer',
-                  border: '1px solid transparent',
-                  background: 'transparent',
-                  color: 'var(--text-muted, #64748b)'
-                }}
+                className="px-3.5 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer disabled:cursor-not-allowed border-0 bg-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
               >
                 {cancelText}
               </button>
@@ -448,21 +286,7 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
                 type="button"
                 onClick={onSecondary}
                 disabled={loading || secondaryLoading}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 7,
-                  padding: '10px 18px',
-                  borderRadius: 10,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: (loading || secondaryLoading) ? 'not-allowed' : 'pointer',
-                  border: '1px solid var(--border, #cbd5e1)',
-                  background: 'var(--card-subtle, #f8fafc)',
-                  color: 'var(--text, #1e293b)',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                  transition: 'all 0.15s ease'
-                }}
+                className="inline-flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer disabled:cursor-not-allowed border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-xs"
               >
                 {secondaryLoading ? (
                   <>
@@ -481,16 +305,7 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
                 type="button"
                 onClick={onClose}
                 disabled={loading}
-                style={{
-                  padding: '10px 16px',
-                  borderRadius: 10,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  border: '1px solid transparent',
-                  background: 'transparent',
-                  color: 'var(--text-muted, #64748b)'
-                }}
+                className="px-4 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer disabled:cursor-not-allowed border-0 bg-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
               >
                 {cancelText}
               </button>
@@ -500,23 +315,11 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
               type="button"
               onClick={onConfirm}
               disabled={loading || secondaryLoading}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '10px 22px',
-                borderRadius: 10,
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: (loading || secondaryLoading) ? 'not-allowed' : 'pointer',
-                border: 'none',
-                background: isDestructive ? '#dc2626' : '#2563eb',
-                color: '#ffffff',
-                boxShadow: isDestructive
-                  ? '0 2px 6px rgba(220, 38, 38, 0.3)'
-                  : '0 2px 6px rgba(37, 99, 235, 0.3)',
-                transition: 'all 0.15s ease'
-              }}
+              className={`inline-flex items-center gap-2 px-5.5 py-2.5 rounded-xl text-[13px] font-bold text-white border-0 cursor-pointer disabled:cursor-not-allowed transition-all shadow-sm ${
+                isDestructive
+                  ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/30'
+                  : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/30'
+              }`}
             >
               {loading ? (
                 <>

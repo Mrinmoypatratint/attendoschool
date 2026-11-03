@@ -36,16 +36,43 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ addToast }}>
       {children}
-      <div className="toast-container">
-        {toasts.map(toast => (
-          <div key={toast.id} className={`toast toast-${toast.type}`} onClick={() => removeToast(toast.id)}>
-            <span className="toast-icon">
-              {toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : toast.type === 'warning' ? '⚠' : 'ℹ'}
-            </span>
-            <span className="toast-message">{toast.message}</span>
-            <div className="toast-progress" style={{ animationDuration: `${toast.duration}ms` }} />
-          </div>
-        ))}
+      <div className="toast-container fixed bottom-6 right-6 z-[10000] flex flex-col gap-2.5 pointer-events-auto">
+        {toasts.map(toast => {
+          const typeBorder =
+            toast.type === 'success'
+              ? 'border-l-4 border-l-emerald-600'
+              : toast.type === 'error'
+              ? 'border-l-4 border-l-rose-600'
+              : toast.type === 'warning'
+              ? 'border-l-4 border-l-amber-500'
+              : 'border-l-4 border-l-blue-600';
+
+          const iconColor =
+            toast.type === 'success'
+              ? 'text-emerald-600 dark:text-emerald-400'
+              : toast.type === 'error'
+              ? 'text-rose-600 dark:text-rose-400'
+              : toast.type === 'warning'
+              ? 'text-amber-500 dark:text-amber-400'
+              : 'text-blue-600 dark:text-blue-400';
+
+          return (
+            <div
+              key={toast.id}
+              className={`toast toast-${toast.type} relative flex items-center gap-3 py-3 px-4.5 rounded-[14px] bg-white dark:bg-[#131b2e] text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 shadow-lg text-[13.5px] font-medium cursor-pointer overflow-hidden transition-all hover:opacity-90 ${typeBorder}`}
+              onClick={() => removeToast(toast.id)}
+            >
+              <span className={`toast-icon flex items-center justify-center font-bold text-sm ${iconColor}`}>
+                {toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : toast.type === 'warning' ? '⚠' : 'ℹ'}
+              </span>
+              <span className="toast-message flex-1 leading-snug">{toast.message}</span>
+              <div
+                className="toast-progress absolute bottom-0 left-0 h-[2px] bg-slate-300 dark:bg-slate-700 opacity-60"
+                style={{ animationDuration: `${toast.duration}ms` }}
+              />
+            </div>
+          );
+        })}
       </div>
     </ToastContext.Provider>
   );

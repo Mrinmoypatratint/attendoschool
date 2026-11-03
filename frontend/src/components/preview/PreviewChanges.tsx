@@ -9,67 +9,31 @@ export const PreviewChanges: React.FC<{ changes: PreviewChangeData[] }> = ({ cha
   if (changedItems.length === 0) return null;
 
   return (
-    <div
-      style={{
-        background: '#fffbeb',
-        border: '1px solid #fde68a',
-        borderRadius: 12,
-        padding: '16px 18px',
-        marginBottom: 16
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <History size={16} style={{ color: '#d97706' }} />
-        <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#92400e' }}>
+    <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 rounded-xl p-4 sm:p-4.5 mb-4">
+      <div className="flex items-center gap-2 mb-3">
+        <History size={16} className="text-amber-600 dark:text-amber-400" />
+        <h4 className="m-0 text-sm font-bold text-amber-900 dark:text-amber-200">
           Detected Changes ({changedItems.length} {changedItems.length === 1 ? 'field modified' : 'fields modified'})
         </h4>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="flex flex-col gap-2">
         {changedItems.map((c, i) => (
           <div
             key={c.field || i}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 8,
-              padding: '8px 12px',
-              borderRadius: 8,
-              background: '#ffffff',
-              border: '1px solid #fef3c7'
-            }}
+            className="flex items-center justify-between flex-wrap gap-2 p-2 sm:px-3 rounded-lg bg-white dark:bg-slate-900 border border-amber-100 dark:border-amber-900/30 shadow-xs"
           >
-            <strong style={{ fontSize: 13, color: '#78350f', minWidth: 140 }}>
+            <strong className="text-[13px] font-semibold text-amber-950 dark:text-amber-100 min-w-[140px]">
               {c.label || c.field}
             </strong>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-              <span
-                style={{
-                  fontSize: 12.5,
-                  color: '#991b1b',
-                  background: '#fee2e2',
-                  padding: '2px 8px',
-                  borderRadius: 6,
-                  textDecoration: 'line-through'
-                }}
-              >
+            <div className="flex items-center gap-2.5 flex-1 justify-end flex-wrap">
+              <span className="text-xs text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900/40 px-2 py-0.5 rounded-md line-through">
                 {c.previousValue !== null && c.previousValue !== undefined && c.previousValue !== ''
                   ? String(c.previousValue)
                   : '— (Empty)'}
               </span>
-              <ArrowRight size={14} style={{ color: '#b45309' }} />
-              <span
-                style={{
-                  fontSize: 12.5,
-                  fontWeight: 700,
-                  color: '#15803d',
-                  background: '#dcfce7',
-                  padding: '2px 8px',
-                  borderRadius: 6
-                }}
-              >
+              <ArrowRight size={14} className="text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-900/40 px-2 py-0.5 rounded-md">
                 {c.newValue !== null && c.newValue !== undefined && c.newValue !== ''
                   ? String(c.newValue)
                   : '— (Cleared)'}

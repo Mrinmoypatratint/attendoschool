@@ -104,8 +104,6 @@ export function StudentDashboard() {
     };
   }, [fetchDashboard]);
 
-
-
   if (loading) {
     return (
       <div className="student-loading-wrap">
@@ -122,10 +120,10 @@ export function StudentDashboard() {
 
   if (error && !data) {
     return (
-      <div className="student-error-box">
-        <h3>Unable to load dashboard</h3>
-        <p>{error}</p>
-        <button onClick={() => window.location.reload()} className="student-btn-primary">
+      <div className="student-error-box p-8 text-center rounded-xl border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20 max-w-md mx-auto my-12">
+        <h3 className="text-lg font-bold text-red-700 dark:text-red-400 m-0 mb-2">Unable to load dashboard</h3>
+        <p className="text-xs text-red-600 dark:text-red-300 m-0 mb-4">{error}</p>
+        <button onClick={() => window.location.reload()} className="student-btn-primary px-4 py-2 text-xs font-semibold rounded bg-blue-600 hover:bg-blue-700 text-white cursor-pointer transition-colors shadow-sm">
           Retry
         </button>
       </div>
@@ -252,13 +250,12 @@ export function StudentDashboard() {
               {greetingText}, <span className="student-greeting-name">{String(student?.name || authUser?.name || 'STUDENT').toUpperCase()}</span> {greetingEmoji}
             </h1>
           </div>
-          <div className="student-greeting-meta">
+          <div className="student-greeting-meta flex items-center flex-wrap gap-2 mt-2">
             <span className="student-meta-pill">{(student?.className || authUser?.className) ? `${student?.className || authUser?.className} · Section ${student?.sectionName || authUser?.sectionName || 'A'}` : 'Enrolled'}</span>
             <span className="student-meta-pill">Roll #{student?.rollNumber || authUser?.rollNumber || '—'}</span>
             {student?.admissionNumber && (
-              <span className="student-meta-pill" style={{ letterSpacing: '0.02em', fontWeight: 600 }}>Adm: {student.admissionNumber}</span>
+              <span className="student-meta-pill tracking-wide font-semibold">Adm: {student.admissionNumber}</span>
             )}
-            
           </div>
         </div>
 
@@ -376,7 +373,7 @@ export function StudentDashboard() {
                 <tbody>
                   {timetable.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-secondary)' }}>
+                      <td colSpan={6} className="text-center py-6 px-3 text-slate-500 dark:text-slate-400">
                         No classes scheduled for today
                       </td>
                     </tr>
@@ -403,7 +400,7 @@ export function StudentDashboard() {
             {/* Mobile Schedule Timeline View */}
             <div className="student-mobile-timetable">
               {timetable.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--text-secondary)', fontSize: 13 }}>
+                <div className="text-center py-5 px-2.5 text-slate-500 text-xs">
                   No classes scheduled for today 🎉
                 </div>
               ) : (
@@ -445,10 +442,10 @@ export function StudentDashboard() {
 
               <div className="student-list">
                 {announcements.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '24px 16px', color: 'var(--text-secondary)' }}>
-                    <CheckCircle2 size={24} style={{ color: '#10b981', margin: '0 auto 6px', display: 'block' }} />
-                    <div style={{ fontWeight: 600, fontSize: 13.5 }}>All caught up!</div>
-                    <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>You have read all current school announcements.</p>
+                  <div className="text-center py-6 px-4 text-slate-500">
+                    <CheckCircle2 size={24} className="text-emerald-500 mx-auto mb-1.5 block" />
+                    <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">All caught up!</div>
+                    <p className="m-0 mt-1 text-[11px] text-slate-400">You have read all current school announcements.</p>
                   </div>
                 ) : (
                   announcements.map((a, i) => (
@@ -517,7 +514,7 @@ export function StudentDashboard() {
 
               <div className="student-list">
                 {assignments.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '16px 8px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                  <div className="text-center py-4 px-2 text-xs text-slate-500">
                     No pending assignments. All caught up! 🎉
                   </div>
                 ) : (
@@ -592,13 +589,12 @@ export function StudentDashboard() {
               {prevMonthDays.map((d) => (
                 <div
                   key={`prev-${d}`}
-                  className="cal-date muted"
+                  className="cal-date muted cursor-pointer"
                   onClick={() => {
                     const newD = new Date(calYear, calMonth - 1, d);
                     setCalendarViewDate(newD);
                     setSelectedDate(newD);
                   }}
-                  style={{ cursor: 'pointer' }}
                 >
                   {d}
                 </div>
@@ -631,6 +627,7 @@ export function StudentDashboard() {
 
                 const classes = [
                   'cal-date',
+                  'cursor-pointer',
                   isActive ? 'active-date' : '',
                   isToday && !isActive ? 'today-date' : '',
                   dotClass
@@ -641,7 +638,6 @@ export function StudentDashboard() {
                     key={dayNum}
                     className={classes}
                     onClick={() => setSelectedDate(new Date(calYear, calMonth, dayNum))}
-                    style={{ cursor: 'pointer' }}
                     title={isToday ? `Today (${dayNum} ${calMonthName})` : `${dayNum} ${calMonthName}`}
                   >
                     {dayNum}
@@ -653,13 +649,12 @@ export function StudentDashboard() {
               {nextMonthDays.map((d) => (
                 <div
                   key={`next-${d}`}
-                  className="cal-date muted"
+                  className="cal-date muted cursor-pointer"
                   onClick={() => {
                     const newD = new Date(calYear, calMonth + 1, d);
                     setCalendarViewDate(newD);
                     setSelectedDate(newD);
                   }}
-                  style={{ cursor: 'pointer' }}
                 >
                   {d}
                 </div>
@@ -681,7 +676,7 @@ export function StudentDashboard() {
 
             <div className="student-recent-attendance-list">
               {recentAttendance.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '16px 8px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                <div className="text-center py-4 px-2 text-xs text-slate-500">
                   No recent attendance records
                 </div>
               ) : (

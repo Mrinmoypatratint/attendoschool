@@ -37,60 +37,20 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: '#0f172a',
-          color: '#f8fafc',
-          padding: 24,
-          fontFamily: 'Inter, system-ui, sans-serif'
-        }}>
-          <div style={{
-            maxWidth: 480,
-            width: '100%',
-            background: '#1e293b',
-            borderRadius: 16,
-            padding: 32,
-            textAlign: 'center',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)',
-            border: '1px solid rgba(255, 255, 255, 0.1)'
-          }}>
-            <div style={{
-              width: 56,
-              height: 56,
-              borderRadius: '50%',
-              background: 'rgba(239, 68, 68, 0.15)',
-              color: '#ef4444',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 16px'
-            }}>
+        <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-50 p-6 font-sans">
+          <div className="max-w-[480px] w-full bg-slate-800 rounded-2xl p-8 text-center shadow-2xl border border-white/10">
+            <div className="w-14 h-14 rounded-full bg-red-500/15 text-red-500 flex items-center justify-center mx-auto mb-4">
               <AlertTriangle size={28} />
             </div>
-            <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 8px', color: '#ffffff' }}>
+            <h2 className="text-xl font-bold mb-2 text-white">
               Something went wrong
             </h2>
-            <p style={{ fontSize: 14, color: '#94a3b8', margin: '0 0 24px', lineHeight: 1.5 }}>
+            <p className="text-sm text-slate-400 mb-6 leading-relaxed">
               A temporary display error occurred. Please refresh the page to restore your dashboard.
             </p>
             <button
               onClick={this.handleReset}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '10px 20px',
-                background: '#2563eb',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: 8,
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold cursor-pointer transition-colors shadow-sm"
             >
               <RefreshCw size={16} /> Reload Page
             </button>

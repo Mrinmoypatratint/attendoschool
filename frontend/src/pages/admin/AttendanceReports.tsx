@@ -879,73 +879,40 @@ export default function AttendanceReports({
   }
 
   return (
-    <div className={embedded ? 'embedded-reports-pane' : 'feature-page'} style={{ width: '100%', maxWidth: 'none', margin: 0, padding: embedded ? '8px 0 20px' : '0 0 40px 0' }}>
+    <div className={`${embedded ? 'embedded-reports-pane' : 'feature-page'} w-full max-w-none m-0 pb-10`} style={{ width: '100%', maxWidth: 'none', margin: 0, padding: embedded ? '8px 0 20px' : '0 0 40px 0' }}>
       {/* ─── Header: Title & Right Corner Controls ─── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 18 }}>
+      <div className="flex justify-between items-start flex-wrap gap-3.5 mb-4.5">
         <div>
-          <h2 style={{ margin: 0, fontSize: embedded ? 19 : 24, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+          <h1 className="m-0 text-2xl font-bold text-slate-900 dark:text-white" style={{ fontSize: embedded ? 19 : 24 }}>
             {embedded ? 'Class Attendance Reports' : 'Attendance Reports'}
-          </h2>
-          <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
+          </h1>
+          <p className="muted m-0 mt-1 text-xs text-slate-500 dark:text-slate-400">
             Student-wise attendance verified from institutional Firestore logs.
           </p>
         </div>
 
         {/* Right Corner Buttons: Combined Export Report & Import Excel/CSV */}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="flex gap-2.5 items-center flex-wrap">
           {/* Refresh Button */}
           <button
             type="button"
             onClick={load}
             disabled={loading}
-            className="btn-secondary"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              fontSize: 13,
-              padding: '7px 14px',
-              fontWeight: 600,
-              cursor: loading ? 'default' : 'pointer'
-            }}
+            className="btn-secondary inline-flex items-center gap-1.5 text-xs px-3.5 py-1.5 font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors shadow-xs"
           >
             <RefreshCw size={14} className={loading ? 'spinning' : ''} /> {loading ? 'Refreshing…' : 'Refresh'}
           </button>
 
           {/* Combined Export Button with Dropdown */}
-          <div ref={exportDropdownRef} style={{ position: 'relative' }}>
+          <div ref={exportDropdownRef} className="relative">
             <button
               type="button"
               id="export-report-btn"
               onClick={() => setExportDropdownOpen(prev => !prev)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: 13,
-                padding: '7px 14px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                backgroundColor: exportDropdownOpen ? '#eff6ff' : '#ffffff',
-                border: '1px solid #2563eb',
-                color: '#2563eb',
-                borderRadius: 6,
-                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-                transition: 'all 0.15s ease'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.backgroundColor = '#eff6ff';
-                e.currentTarget.style.borderColor = '#1d4ed8';
-              }}
-              onMouseLeave={e => {
-                if (!exportDropdownOpen) {
-                  e.currentTarget.style.backgroundColor = '#ffffff';
-                  e.currentTarget.style.borderColor = '#2563eb';
-                }
-              }}
+              className="inline-flex items-center gap-1.5 text-xs px-3.5 py-1.5 font-semibold cursor-pointer bg-white dark:bg-slate-800 border border-blue-600 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors shadow-xs"
               title="Export report in Excel (.xlsx) or CSV (.csv) format"
             >
-              <Download size={15} color="#2563eb" /> {selectedStudentIds.size > 0 ? `Export Selected (${selectedStudentIds.size})` : 'Export Report'} <ChevronDown size={14} />
+              <Download size={15} className="text-blue-600 dark:text-blue-400" /> {selectedStudentIds.size > 0 ? `Export Selected (${selectedStudentIds.size})` : 'Export Report'} <ChevronDown size={14} />
             </button>
 
             {exportDropdownOpen && (

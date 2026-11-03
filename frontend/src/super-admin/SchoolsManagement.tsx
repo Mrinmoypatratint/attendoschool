@@ -253,22 +253,22 @@ export function SchoolsManagement({ initialCreateOpen = false }: SchoolsManageme
     <div className="sa-module-page">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="sa-toast">
+        <div className="sa-toast fixed bottom-5 right-5 z-50 flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-lg shadow-lg text-sm">
           <CheckCircle2 size={16} />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* Module Header */}
-      <div className="sa-module-head">
+      <div className="sa-module-head flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="sa-module-title">Schools & Campuses</h2>
-          <p className="sa-module-sub">
+          <h2 className="sa-module-title text-2xl font-bold tracking-tight text-slate-900 m-0">Schools & Campuses</h2>
+          <p className="sa-module-sub text-sm text-slate-500 m-0 mt-1">
             Manage enrolled institutions, administrator profiles, licenses, and tenant status.
           </p>
         </div>
         <button
-          className="sa-btn-primary"
+          className="sa-btn-primary inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg shadow-sm transition"
           onClick={() => {
             setWizardStep(1);
             setWizardError('');
@@ -280,8 +280,8 @@ export function SchoolsManagement({ initialCreateOpen = false }: SchoolsManageme
       </div>
 
       {/* Control Bar: Filters & Search */}
-      <div className="sa-filter-bar">
-        <div className="sa-filter-search-wrap">
+      <div className="sa-filter-bar flex flex-wrap items-center gap-3 bg-white p-3 rounded-xl border border-slate-200 mb-6 shadow-sm">
+        <div className="sa-filter-search-wrap flex-1 min-w-[280px] relative flex items-center">
           <Search size={16} className="sa-search-bar-icon" />
           <input
             type="text"
