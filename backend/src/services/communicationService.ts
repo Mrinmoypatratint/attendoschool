@@ -13,6 +13,10 @@ export const memAnnouncements: any[] = [
     audience_type: 'SCHOOL',
     priority: 'NORMAL',
     status: 'PUBLISHED',
+    author_role: 'SCHOOL_ADMIN',
+    created_by_role: 'SCHOOL_ADMIN',
+    author_name: 'School Administration',
+    created_by_name: 'School Administration',
     recipient_count: 10,
     read_count: 8,
     reply_count: 1,
@@ -27,6 +31,10 @@ export const memAnnouncements: any[] = [
     audience_type: 'TEACHER',
     priority: 'HIGH',
     status: 'PUBLISHED',
+    author_role: 'SCHOOL_ADMIN',
+    created_by_role: 'SCHOOL_ADMIN',
+    author_name: 'School Administration',
+    created_by_name: 'School Administration',
     recipient_count: 18,
     read_count: 14,
     reply_count: 2,
@@ -41,6 +49,10 @@ export const memAnnouncements: any[] = [
     audience_type: 'STUDENT',
     priority: 'NORMAL',
     status: 'PUBLISHED',
+    author_role: 'SCHOOL_ADMIN',
+    created_by_role: 'SCHOOL_ADMIN',
+    author_name: 'School Administration',
+    created_by_name: 'School Administration',
     recipient_count: 120,
     read_count: 95,
     reply_count: 3,
@@ -190,7 +202,19 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
         attachmentSize
       ]
     );
-    if (rows && rows.length > 0) return rows[0];
+    if (rows && rows.length > 0) {
+      return {
+        ...rows[0],
+        created_by: safeUserId || userId,
+        author_id: safeUserId || userId,
+        created_by_name: d.created_by_name || d.author_name || 'Faculty',
+        author_name: d.author_name || d.created_by_name || 'Faculty',
+        created_by_role: d.created_by_role || d.author_role || 'TEACHER',
+        author_role: d.author_role || d.created_by_role || 'TEACHER',
+        created_by_email: d.created_by_email || d.author_email,
+        author_email: d.author_email || d.created_by_email
+      };
+    }
   } catch (dbErr) {
     console.warn('[createAnnouncement] DB insert fallback to memory:', dbErr);
   }
@@ -200,10 +224,13 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
     id: `ann-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     school_id: schoolId,
     created_by: userId,
+    author_id: userId,
     author_name: d.author_name || d.created_by_name || 'School Administration',
     created_by_name: d.created_by_name || d.author_name || 'School Administration',
     author_role: d.author_role || d.created_by_role || 'SCHOOL_ADMIN',
     created_by_role: d.created_by_role || d.author_role || 'SCHOOL_ADMIN',
+    author_email: d.author_email || d.created_by_email,
+    created_by_email: d.created_by_email || d.author_email,
     title: d.title,
     message: d.message,
     audience_type: audience,
@@ -316,6 +343,56 @@ export async function updateAnnouncement(schoolId: string, id: string, d: any) {
   };
 }
 
+/**
+ * Verifies if a teacher has ownership over a particular announcement
+ */
+export async function canTeacherModifyAnnouncement(
+  schoolId: string,
+  announcementId: string,
+  userId?: string,
+  userName?: string,
+  userEmail?: string
+): Promise<boolean> {
+  await ensureTables();
+  const isUuid = (val?: string | null) => Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(val)));
+  const validUserId = isUuid(userId) ? userId : null;
+  const trimmedName = userName ? userName.trim().toLowerCase() : null;
+  const trimmedEmail = userEmail ? userEmail.trim().toLowerCase() : null;
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT a.created_by, u.name AS created_by_name, u.email AS created_by_email
+       FROM announcements a
+       LEFT JOIN users u ON u.id = a.created_by
+       WHERE a.id = $1 AND (a.school_id = $2 OR $2 = '00000000-0000-0000-0000-000000000001')`,
+      [announcementId, schoolId]
+    );
+    if (rows && rows.length > 0) {
+      const row = rows[0];
+      if (validUserId && row.created_by === validUserId) return true;
+      if (trimmedName && row.created_by_name && row.created_by_name.trim().toLowerCase() === trimmedName) return true;
+      if (trimmedEmail && row.created_by_email && row.created_by_email.trim().toLowerCase() === trimmedEmail) return true;
+      return false;
+    }
+  } catch (_e) {}
+
+  const mem = memAnnouncements.find(a => a.id === announcementId);
+  if (mem) {
+    if (userId && (mem.created_by === userId || mem.author_id === userId)) return true;
+    if (trimmedName && (
+      (mem.author_name && mem.author_name.trim().toLowerCase() === trimmedName) ||
+      (mem.created_by_name && mem.created_by_name.trim().toLowerCase() === trimmedName)
+    )) return true;
+    if (trimmedEmail && (
+      (mem.author_email && mem.author_email.trim().toLowerCase() === trimmedEmail) ||
+      (mem.created_by_email && mem.created_by_email.trim().toLowerCase() === trimmedEmail)
+    )) return true;
+    return false;
+  }
+
+  return false;
+}
+
 export async function deleteAnnouncement(schoolId: string, id: string) {
   await ensureTables();
   if (isPostgresConfigured) {
@@ -334,13 +411,13 @@ export async function deleteAnnouncement(schoolId: string, id: string) {
  * Publishes an announcement.
  * Multi-Channel Dispatch: If priority === 'EMERGENCY', automatically triggers emergency emails.
  */
-export async function publishAnnouncement(schoolId: string, id: string) {
+export async function publishAnnouncement(schoolId: string, id: string, userMeta?: { id?: string; name?: string; role?: string; email?: string }) {
   await ensureTables();
   let a: any = null;
 
   try {
     const res = await pool.query(
-      `SELECT * FROM announcements WHERE id = $1 AND school_id = $2`,
+      `SELECT * FROM announcements WHERE id = $1 AND (school_id = $2 OR $2 = '00000000-0000-0000-0000-000000000001')`,
       [id, schoolId]
     );
     if (res.rows && res.rows.length > 0) {
@@ -363,6 +440,10 @@ export async function publishAnnouncement(schoolId: string, id: string) {
     a = {
       id,
       school_id: schoolId,
+      created_by: userMeta?.id,
+      author_id: userMeta?.id,
+      author_name: userMeta?.name,
+      created_by_name: userMeta?.name,
       title: 'Broadcast Announcement',
       message: 'Notice content',
       audience_type: 'SCHOOL',
@@ -375,6 +456,18 @@ export async function publishAnnouncement(schoolId: string, id: string) {
   a.status = 'PUBLISHED';
   a.published_at = new Date().toISOString();
   a.updated_at = new Date().toISOString();
+  if (userMeta?.name) {
+    a.author_name = a.author_name || userMeta.name;
+    a.created_by_name = a.created_by_name || userMeta.name;
+  }
+  if (userMeta?.id) {
+    a.created_by = a.created_by || userMeta.id;
+    a.author_id = a.author_id || userMeta.id;
+  }
+  if (userMeta?.email) {
+    a.author_email = a.author_email || userMeta.email;
+    a.created_by_email = a.created_by_email || userMeta.email;
+  }
 
   // Multi-Channel Dispatch: EMERGENCY notices automatically trigger email broadcast
   if (a.priority === 'EMERGENCY') {
@@ -573,13 +666,25 @@ async function triggerEmergencyEmailBroadcast(schoolId: string, announcement: an
 }
 
 /**
- * Lists all announcements for the School Admin Communication Center
+ * Lists announcements for the Communication Center
+ * If userRole is 'TEACHER', strictly isolates and returns ONLY announcements created by this specific teacher.
  */
-export async function listSchoolAnnouncements(schoolId: string) {
+export async function listSchoolAnnouncements(
+  schoolId: string,
+  userRole?: string,
+  userId?: string,
+  userName?: string,
+  userEmail?: string
+) {
   await ensureTables();
+  const isTeacher = userRole === 'TEACHER';
+  const isUuid = (val?: string | null) => Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(val)));
+  const validUserId = isUuid(userId) ? userId : null;
+  const trimmedName = userName ? userName.trim().toLowerCase() : null;
+  const trimmedEmail = userEmail ? userEmail.trim().toLowerCase() : null;
+
   try {
-    const { rows } = await pool.query(
-      `SELECT a.*, u.name AS created_by_name,
+    let sql = `SELECT a.*, u.name AS created_by_name, u.email AS created_by_email,
         c.class_number, sec.name AS section_name,
         COALESCE(
           NULLIF((SELECT COUNT(*) FROM announcement_recipients r WHERE r.announcement_id = a.id)::int, 0),
@@ -596,14 +701,55 @@ export async function listSchoolAnnouncements(schoolId: string) {
        LEFT JOIN users u ON u.id = a.created_by 
        LEFT JOIN classes c ON c.id = a.class_id
        LEFT JOIN sections sec ON sec.id = a.section_id
-       WHERE a.school_id = $1
-       ORDER BY COALESCE(a.published_at, a.scheduled_at, a.created_at) DESC`,
-      [schoolId]
-    );
+       WHERE (a.school_id = $1 OR $1 = '00000000-0000-0000-0000-000000000001')`;
+
+    const params: any[] = [schoolId];
+
+    if (isTeacher) {
+      const conds: string[] = [];
+      if (validUserId) {
+        params.push(validUserId);
+        conds.push(`a.created_by = $${params.length}`);
+      }
+      if (trimmedName) {
+        params.push(trimmedName);
+        conds.push(`(u.name IS NOT NULL AND LOWER(u.name) = $${params.length})`);
+      }
+      if (trimmedEmail) {
+        params.push(trimmedEmail);
+        conds.push(`(u.email IS NOT NULL AND LOWER(u.email) = $${params.length})`);
+      }
+
+      if (conds.length > 0) {
+        sql += ` AND (${conds.join(' OR ')})`;
+      } else {
+        sql += ` AND 1 = 0`;
+      }
+    }
+
+    sql += ` ORDER BY COALESCE(a.published_at, a.scheduled_at, a.created_at) DESC`;
+
+    const { rows } = await pool.query(sql, params);
     if (rows && rows.length > 0) return rows;
   } catch (_e) {}
 
-  return memAnnouncements.map(a => ({
+  let list = memAnnouncements.filter(a => isSameSchool(a.school_id, schoolId));
+  if (isTeacher) {
+    list = list.filter(a => {
+      const matchId = userId && (a.created_by === userId || a.author_id === userId);
+      const matchName = userName && (
+        (a.author_name && a.author_name.trim().toLowerCase() === userName.trim().toLowerCase()) ||
+        (a.created_by_name && a.created_by_name.trim().toLowerCase() === userName.trim().toLowerCase())
+      );
+      const matchEmail = userEmail && (
+        (a.author_email && a.author_email.trim().toLowerCase() === userEmail.trim().toLowerCase()) ||
+        (a.created_by_email && a.created_by_email.trim().toLowerCase() === userEmail.trim().toLowerCase())
+      );
+      return Boolean(matchId || matchName || matchEmail);
+    });
+  }
+
+  return list.map(a => ({
     ...a,
     read_count: Array.isArray(a.read_by) ? a.read_by.length : (a.read_count || 0),
     reply_count: memReplies.filter(r => r.announcement_id === a.id).length || a.reply_count || 0
@@ -641,6 +787,8 @@ export async function teacherInbox(teacherUserId: string, schoolId: string, from
          WHERE a.school_id = $2 
            AND a.status = 'PUBLISHED'
            AND a.audience_type IN ('TEACHER', 'SCHOOL')
+           AND (u.role IS NULL OR u.role IN ('SCHOOL_ADMIN', 'SUPER_ADMIN'))
+           AND (a.created_by IS NULL OR a.created_by != $1)
            AND (a.expires_at IS NULL OR a.expires_at > NOW())
            ${dateClauses}
          ORDER BY a.priority = 'EMERGENCY' DESC, COALESCE(a.published_at, a.created_at) DESC`,
@@ -650,7 +798,7 @@ export async function teacherInbox(teacherUserId: string, schoolId: string, from
     } catch (_e) {}
   }
 
-  // Filter in-memory announcements strictly for faculty
+  // Filter in-memory announcements strictly for faculty received notices (from School Administration only)
   let facultyNotices = memAnnouncements.filter(a => {
     if (a.status !== 'PUBLISHED') return false;
 
@@ -664,16 +812,26 @@ export async function teacherInbox(teacherUserId: string, schoolId: string, from
 
     if (!matchesSchool) return false;
 
-    // Audience & creator checks: announcements from Admin or targeting school/faculty
+    // Announcements created by teachers are broadcasts for students only; they must NEVER appear in any teacher's receive inbox
+    const isByTeacher = a.author_role === 'TEACHER' ||
+                        a.created_by_role === 'TEACHER' ||
+                        Boolean(teacherUserId && (a.created_by === teacherUserId || a.author_id === teacherUserId));
+    if (isByTeacher) return false;
+
+    // A teacher receive inbox is ONLY for notices targeted to faculty/teachers or whole school from administration
     const aud = String(a.audience_type || '').toUpperCase();
-    const isTargetAudience = ['TEACHER', 'SCHOOL', 'STUDENT', 'CLASS', 'SECTION', 'PARENTS', 'ALL'].includes(aud);
+    const isTargetAudience = ['TEACHER', 'SCHOOL', 'FACULTY', 'STAFF'].includes(aud);
+    if (!isTargetAudience) return false;
+
+    // Must be sent by administration
     const isFromAdmin = a.author_role === 'SCHOOL_ADMIN' ||
                         a.created_by_role === 'SCHOOL_ADMIN' ||
                         a.author_role === 'SUPER_ADMIN' ||
+                        a.created_by_role === 'SUPER_ADMIN' ||
                         !a.created_by ||
-                        a.created_by !== teacherUserId;
+                        a.created_by === '00000000-0000-0000-0000-000000000021';
 
-    return isTargetAudience && isFromAdmin;
+    return isFromAdmin;
   });
 
   if (fromDate && fromDate.trim()) {
@@ -928,33 +1086,85 @@ export async function getAnnouncementReplies(schoolId: string, announcementId: s
 }
 
 /**
- * Returns all replies grouped by announcement for the Administrator Console
+ * Returns all replies grouped by announcement for the Administrator / Faculty Console
+ * When requested by a TEACHER, strictly filters to replies for announcements authored by or received by that teacher.
  */
-export async function listAllRepliesGrouped(schoolId: string) {
+export async function listAllRepliesGrouped(
+  schoolId: string,
+  userRole?: string,
+  userId?: string,
+  userName?: string,
+  userEmail?: string
+) {
   await ensureTables();
+  const isTeacher = userRole === 'TEACHER';
+  const isUuid = (val?: string | null) => Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(val)));
+  const validUserId = isUuid(userId) ? userId : null;
+  const trimmedName = userName ? userName.trim().toLowerCase() : null;
+  const trimmedEmail = userEmail ? userEmail.trim().toLowerCase() : null;
+
   try {
-    const { rows } = await pool.query(
-      `SELECT r.*, a.title AS announcement_title, a.priority AS announcement_priority,
+    let sql = `SELECT r.*, a.title AS announcement_title, a.priority AS announcement_priority,
               u.name AS author_name, u.role AS author_role, u.email AS author_email,
               s.name AS student_name, s.roll_number AS student_roll,
               CASE WHEN c.class_number = -1 THEN 'Class L KG' WHEN c.class_number = 0 THEN 'Class U KG' WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number ELSE NULL END AS class_name,
               sec.name AS section_name
        FROM notification_replies r
        JOIN announcements a ON a.id = r.announcement_id
+       LEFT JOIN users creator ON creator.id = a.created_by
        LEFT JOIN users u ON u.id = r.user_id
        LEFT JOIN students s ON s.id = r.student_id
        LEFT JOIN classes c ON c.id = r.class_id
        LEFT JOIN sections sec ON sec.id = r.section_id
-       WHERE r.school_id = $1
-       ORDER BY r.created_at DESC`,
-      [schoolId]
-    );
+       WHERE (r.school_id = $1 OR $1 = '00000000-0000-0000-0000-000000000001')`;
+
+    const params: any[] = [schoolId];
+
+    if (isTeacher) {
+      const conds: string[] = [];
+      if (validUserId) {
+        params.push(validUserId);
+        conds.push(`a.created_by = $${params.length}`);
+      }
+      if (trimmedName) {
+        params.push(trimmedName);
+        conds.push(`(creator.name IS NOT NULL AND LOWER(creator.name) = $${params.length})`);
+      }
+      if (trimmedEmail) {
+        params.push(trimmedEmail);
+        conds.push(`(creator.email IS NOT NULL AND LOWER(creator.email) = $${params.length})`);
+      }
+
+      if (conds.length > 0) {
+        sql += ` AND (${conds.join(' OR ')})`;
+      } else {
+        sql += ` AND 1 = 0`;
+      }
+    }
+
+    sql += ` ORDER BY r.created_at DESC`;
+
+    const { rows } = await pool.query(sql, params);
     if (rows) return rows;
   } catch (err: any) {
     console.warn('[CommunicationService] listAllRepliesGrouped query notice:', err.message);
   }
 
-  return memReplies.filter(r => r.school_id === schoolId).map(r => {
+  return memReplies.filter(r => isSameSchool(r.school_id, schoolId)).filter(r => {
+    if (!isTeacher) return true;
+    const a = memAnnouncements.find(x => x.id === r.announcement_id);
+    if (!a) return false;
+    const matchId = userId && (a.created_by === userId || a.author_id === userId);
+    const matchName = userName && (
+      (a.author_name && a.author_name.trim().toLowerCase() === userName.trim().toLowerCase()) ||
+      (a.created_by_name && a.created_by_name.trim().toLowerCase() === userName.trim().toLowerCase())
+    );
+    const matchEmail = userEmail && (
+      (a.author_email && a.author_email.trim().toLowerCase() === userEmail.trim().toLowerCase()) ||
+      (a.created_by_email && a.created_by_email.trim().toLowerCase() === userEmail.trim().toLowerCase())
+    );
+    return Boolean(matchId || matchName || matchEmail);
+  }).map(r => {
     const a = memAnnouncements.find(x => x.id === r.announcement_id);
     return {
       ...r,

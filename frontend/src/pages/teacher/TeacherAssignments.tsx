@@ -620,7 +620,7 @@ export function TeacherAssignments() {
   }, [assignments, searchQuery, filterClass]);
 
   return (
-    <div style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 20px', fontFamily: 'inherit' }}>
+    <div className="teacher-assignments-page" style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 20px', fontFamily: 'inherit' }}>
       {/* Header Bar */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 24 }}>
         <div>
@@ -641,7 +641,7 @@ export function TeacherAssignments() {
               padding: '9px 14px',
               borderRadius: 8,
               border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--card, #ffffff)',
+              background: 'var(--bg, #ffffff)',
               color: 'var(--text, #1e293b)',
               fontSize: 13,
               fontWeight: 600,
@@ -679,14 +679,14 @@ export function TeacherAssignments() {
 
       {/* Filter and Search Bar */}
       <div
-        className="panel"
+        className="panel as-assignment-panel"
         style={{
           display: 'flex',
           flexWrap: 'wrap',
           gap: 12,
           padding: 16,
           borderRadius: 10,
-          background: 'var(--panel, #ffffff)',
+          background: 'var(--bg-card, #ffffff)',
           border: '1px solid var(--border, #e2e8f0)',
           marginBottom: 20
         }}
@@ -703,7 +703,7 @@ export function TeacherAssignments() {
               padding: '9px 12px 9px 36px',
               borderRadius: 8,
               border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--card, #ffffff)',
+              background: 'var(--bg, #ffffff)',
               color: 'var(--text, #0f172a)',
               fontSize: 13
             }}
@@ -719,7 +719,7 @@ export function TeacherAssignments() {
               padding: '9px 12px',
               borderRadius: 8,
               border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--card, #ffffff)',
+              background: 'var(--bg, #ffffff)',
               color: 'var(--text, #0f172a)',
               fontSize: 13
             }}
@@ -736,10 +736,10 @@ export function TeacherAssignments() {
 
       {/* Main Content: Published Assignments Table */}
       <div
-        className="panel"
+        className="panel as-assignment-panel"
         style={{
           borderRadius: 12,
-          background: 'var(--panel, #ffffff)',
+          background: 'var(--bg-card, #ffffff)',
           border: '1px solid var(--border, #e2e8f0)',
           overflow: 'hidden'
         }}
@@ -798,7 +798,7 @@ export function TeacherAssignments() {
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+            <table className="as-assignment-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: 'var(--card-subtle, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
                   <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>Assignment Title</th>
@@ -833,7 +833,7 @@ export function TeacherAssignments() {
                         </div>
                       </td>
                       <td style={{ padding: '14px 16px' }}>
-                        <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: 6, background: '#e0e7ff', color: '#4338ca', fontSize: 12, fontWeight: 600 }}>
+                        <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: 6, background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', fontSize: 12, fontWeight: 600 }}>
                           {classDisplay} • {sectionDisplay}
                         </span>
                       </td>
@@ -847,7 +847,7 @@ export function TeacherAssignments() {
                       </td>
                       <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                         {attCount > 0 ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 12, background: 'rgba(2, 132, 199, 0.1)', color: '#0284c7', fontSize: 12, fontWeight: 600 }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 12, background: 'rgba(2, 132, 199, 0.1)', color: 'var(--primary-400, #38bdf8)', fontSize: 12, fontWeight: 600 }}>
                             <Paperclip size={12} /> {attCount}
                           </span>
                         ) : (
@@ -867,7 +867,7 @@ export function TeacherAssignments() {
                               padding: '6px 10px',
                               borderRadius: 6,
                               border: '1px solid var(--border, #cbd5e1)',
-                              background: 'var(--card, #ffffff)',
+                              background: 'var(--bg, #ffffff)',
                               color: 'var(--text, #1e293b)',
                               cursor: 'pointer',
                               display: 'inline-flex',
@@ -888,7 +888,7 @@ export function TeacherAssignments() {
                               padding: '6px 10px',
                               borderRadius: 6,
                               border: '1px solid var(--border, #cbd5e1)',
-                              background: 'var(--card, #ffffff)',
+                              background: 'var(--bg, #ffffff)',
                               color: '#0284c7',
                               cursor: 'pointer',
                               display: 'inline-flex',
@@ -908,9 +908,9 @@ export function TeacherAssignments() {
                             style={{
                               padding: '6px 10px',
                               borderRadius: 6,
-                              border: '1px solid #fecaca',
-                              background: '#fff1f2',
-                              color: '#e11d48',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              background: 'rgba(239, 68, 68, 0.12)',
+                              color: '#ef4444',
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -929,9 +929,9 @@ export function TeacherAssignments() {
                             style={{
                               padding: '6px 10px',
                               borderRadius: 6,
-                              border: '1px solid #c7d2fe',
-                              background: '#eef2ff',
-                              color: '#4338ca',
+                              border: '1px solid rgba(99, 102, 241, 0.3)',
+                              background: 'rgba(99, 102, 241, 0.12)',
+                              color: '#818cf8',
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -973,7 +973,7 @@ export function TeacherAssignments() {
               width: '100%',
               maxWidth: isCreateMaximized ? '95vw' : '680px',
               maxHeight: isCreateMaximized ? '95vh' : '90vh',
-              background: 'var(--panel, #ffffff)',
+              background: 'var(--bg-card, #ffffff)',
               borderRadius: 14,
               boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
               display: 'flex',
@@ -983,7 +983,7 @@ export function TeacherAssignments() {
             }}
           >
             {/* Modal Header */}
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="as-assignment-modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', background: 'var(--card-subtle, #f8fafc)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <BookOpen size={20} style={{ color: '#4f46e5' }} />
                 <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Create Assignment</h2>
@@ -1009,7 +1009,7 @@ export function TeacherAssignments() {
             {/* Modal Form */}
             <form onSubmit={handlePublishAssignment} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', padding: 20, gap: 16 }}>
               {createError && (
-                <div style={{ padding: '10px 14px', borderRadius: 8, background: '#fee2e2', border: '1px solid #f87171', color: '#b91c1c', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <AlertCircle size={16} />
                   <span>{createError}</span>
                 </div>
@@ -1030,7 +1030,7 @@ export function TeacherAssignments() {
                     padding: '10px 12px',
                     borderRadius: 8,
                     border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--card, #ffffff)',
+                    background: 'var(--bg, #ffffff)',
                     color: 'var(--text, #0f172a)',
                     fontSize: 14
                   }}
@@ -1052,7 +1052,7 @@ export function TeacherAssignments() {
                       padding: '10px 12px',
                       borderRadius: 8,
                       border: '1px solid var(--border, #cbd5e1)',
-                      background: 'var(--card, #ffffff)',
+                      background: 'var(--bg, #ffffff)',
                       color: 'var(--text, #0f172a)',
                       fontSize: 14
                     }}
@@ -1110,7 +1110,7 @@ export function TeacherAssignments() {
                       padding: '10px 12px',
                       borderRadius: 8,
                       border: '1px solid var(--border, #cbd5e1)',
-                      background: 'var(--card, #ffffff)',
+                      background: 'var(--bg, #ffffff)',
                       color: 'var(--text, #0f172a)',
                       fontSize: 14
                     }}
@@ -1131,7 +1131,7 @@ export function TeacherAssignments() {
                       padding: '10px 12px',
                       borderRadius: 8,
                       border: '1px solid var(--border, #cbd5e1)',
-                      background: 'var(--card, #ffffff)',
+                      background: 'var(--bg, #ffffff)',
                       color: 'var(--text, #0f172a)',
                       fontSize: 14
                     }}
@@ -1155,7 +1155,7 @@ export function TeacherAssignments() {
                     padding: '10px 12px',
                     borderRadius: 8,
                     border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--card, #ffffff)',
+                    background: 'var(--bg, #ffffff)',
                     color: 'var(--text, #0f172a)',
                     fontSize: 14,
                     lineHeight: 1.5
@@ -1173,6 +1173,7 @@ export function TeacherAssignments() {
                 </p>
 
                 <div
+                  className="as-assignment-upload-zone"
                   style={{
                     border: '2px dashed var(--border, #cbd5e1)',
                     borderRadius: 8,
@@ -1217,7 +1218,7 @@ export function TeacherAssignments() {
                           justifyContent: 'space-between',
                           padding: '8px 12px',
                           borderRadius: 8,
-                          background: 'var(--card, #ffffff)',
+                          background: 'var(--bg, #ffffff)',
                           border: '1px solid var(--border, #e2e8f0)'
                         }}
                       >
@@ -1262,9 +1263,9 @@ export function TeacherAssignments() {
                             style={{
                               padding: '4px 6px',
                               borderRadius: 4,
-                              border: 'none',
-                              background: '#fee2e2',
-                              color: '#b91c1c',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              background: 'rgba(239, 68, 68, 0.15)',
+                              color: '#ef4444',
                               fontSize: 12,
                               cursor: 'pointer'
                             }}
@@ -1279,7 +1280,7 @@ export function TeacherAssignments() {
               </div>
 
               {/* Modal Footer */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, paddingTop: 16, borderTop: '1px solid var(--border, #e2e8f0)' }}>
+              <div className="as-assignment-modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '16px 20px', margin: '0 -20px -20px -20px', borderTop: '1px solid var(--border, #e2e8f0)', background: 'var(--card-subtle, #f8fafc)' }}>
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
@@ -1288,7 +1289,7 @@ export function TeacherAssignments() {
                     padding: '9px 16px',
                     borderRadius: 8,
                     border: '1px solid var(--border, #cbd5e1)',
-                    background: 'transparent',
+                    background: 'var(--bg, #ffffff)',
                     color: 'var(--text, #334155)',
                     fontWeight: 600,
                     cursor: 'pointer'
@@ -1342,7 +1343,7 @@ export function TeacherAssignments() {
               width: '100%',
               maxWidth: 680,
               maxHeight: '90vh',
-              background: 'var(--panel, #ffffff)',
+              background: 'var(--bg-card, #ffffff)',
               borderRadius: 14,
               boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
               display: 'flex',
@@ -1351,7 +1352,7 @@ export function TeacherAssignments() {
               border: '1px solid var(--border, #cbd5e1)'
             }}
           >
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="as-assignment-modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', background: 'var(--card-subtle, #f8fafc)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Eye size={20} style={{ color: '#0284c7' }} />
                 <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Assignment Details</h2>
@@ -1367,7 +1368,7 @@ export function TeacherAssignments() {
 
             <div style={{ padding: 20, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
-                <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: '#e0e7ff', color: '#4338ca', display: 'inline-block', marginBottom: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', display: 'inline-block', marginBottom: 8 }}>
                   Class {viewAssignment.class_number ?? ''} {viewAssignment.section_name ? `• Section ${viewAssignment.section_name}` : '• All Sections'}
                 </span>
                 <h3 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
@@ -1406,7 +1407,7 @@ export function TeacherAssignments() {
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #64748b)', marginBottom: 6 }}>
                   INSTRUCTIONS
                 </label>
-                <div style={{ padding: 14, borderRadius: 8, background: 'var(--card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', whiteSpace: 'pre-wrap', lineHeight: 1.6, fontSize: 14, color: 'var(--text, #1e293b)' }}>
+                <div style={{ padding: 14, borderRadius: 8, background: 'var(--bg, #ffffff)', border: '1px solid var(--border, #e2e8f0)', whiteSpace: 'pre-wrap', lineHeight: 1.6, fontSize: 14, color: 'var(--text, #1e293b)' }}>
                   {viewAssignment.description || 'No instructions provided.'}
                 </div>
               </div>
@@ -1436,7 +1437,7 @@ export function TeacherAssignments() {
                           justifyContent: 'space-between',
                           padding: '10px 14px',
                           borderRadius: 8,
-                          background: 'var(--card, #ffffff)',
+                          background: 'var(--bg, #ffffff)',
                           border: '1px solid var(--border, #e2e8f0)'
                         }}
                       >
@@ -1501,7 +1502,7 @@ export function TeacherAssignments() {
               </div>
             </div>
 
-            <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'flex-end' }}>
+            <div className="as-assignment-modal-footer" style={{ padding: '14px 20px', borderTop: '1px solid var(--border, #e2e8f0)', background: 'var(--card-subtle, #f8fafc)', display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 onClick={() => setViewAssignment(null)}
@@ -1543,7 +1544,7 @@ export function TeacherAssignments() {
               width: '100%',
               maxWidth: 680,
               maxHeight: '90vh',
-              background: 'var(--panel, #ffffff)',
+              background: 'var(--bg-card, #ffffff)',
               borderRadius: 14,
               boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
               display: 'flex',
@@ -1552,7 +1553,7 @@ export function TeacherAssignments() {
               border: '1px solid var(--border, #cbd5e1)'
             }}
           >
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="as-assignment-modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', background: 'var(--card-subtle, #f8fafc)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Edit size={20} style={{ color: '#0284c7' }} />
                 <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Edit Assignment</h2>
@@ -1588,7 +1589,7 @@ export function TeacherAssignments() {
                     padding: '10px 12px',
                     borderRadius: 8,
                     border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--card, #ffffff)',
+                    background: 'var(--bg, #ffffff)',
                     color: 'var(--text, #0f172a)',
                     fontSize: 14
                   }}
@@ -1610,7 +1611,7 @@ export function TeacherAssignments() {
                       padding: '10px 12px',
                       borderRadius: 8,
                       border: '1px solid var(--border, #cbd5e1)',
-                      background: 'var(--card, #ffffff)',
+                      background: 'var(--bg, #ffffff)',
                       color: 'var(--text, #0f172a)',
                       fontSize: 14
                     }}
@@ -1668,7 +1669,7 @@ export function TeacherAssignments() {
                       padding: '10px 12px',
                       borderRadius: 8,
                       border: '1px solid var(--border, #cbd5e1)',
-                      background: 'var(--card, #ffffff)',
+                      background: 'var(--bg, #ffffff)',
                       color: 'var(--text, #0f172a)',
                       fontSize: 14
                     }}
@@ -1689,7 +1690,7 @@ export function TeacherAssignments() {
                       padding: '10px 12px',
                       borderRadius: 8,
                       border: '1px solid var(--border, #cbd5e1)',
-                      background: 'var(--card, #ffffff)',
+                      background: 'var(--bg, #ffffff)',
                       color: 'var(--text, #0f172a)',
                       fontSize: 14
                     }}
@@ -1712,7 +1713,7 @@ export function TeacherAssignments() {
                     padding: '10px 12px',
                     borderRadius: 8,
                     border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--card, #ffffff)',
+                    background: 'var(--bg, #ffffff)',
                     color: 'var(--text, #0f172a)',
                     fontSize: 14,
                     lineHeight: 1.5
@@ -1756,7 +1757,7 @@ export function TeacherAssignments() {
                               <button
                                 type="button"
                                 onClick={() => setEditRemovedIds((prev) => prev.filter((id) => id !== att.id))}
-                                style={{ padding: '3px 8px', borderRadius: 4, border: 'none', background: '#e0e7ff', color: '#4338ca', fontSize: 12, cursor: 'pointer' }}
+                                style={{ padding: '3px 8px', borderRadius: 4, border: 'none', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', fontSize: 12, cursor: 'pointer' }}
                               >
                                 Undo
                               </button>
@@ -1764,7 +1765,7 @@ export function TeacherAssignments() {
                               <button
                                 type="button"
                                 onClick={() => setEditRemovedIds((prev) => [...prev, att.id || ''])}
-                                style={{ padding: '3px 8px', borderRadius: 4, border: 'none', background: '#fee2e2', color: '#b91c1c', fontSize: 12, cursor: 'pointer' }}
+                                style={{ padding: '3px 8px', borderRadius: 4, border: 'none', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', fontSize: 12, cursor: 'pointer' }}
                               >
                                 Remove
                               </button>
@@ -1825,7 +1826,7 @@ export function TeacherAssignments() {
                           justifyContent: 'space-between',
                           padding: '6px 10px',
                           borderRadius: 6,
-                          background: 'var(--card, #ffffff)',
+                          background: 'var(--bg, #ffffff)',
                           border: '1px solid var(--border, #e2e8f0)'
                         }}
                       >
@@ -1851,7 +1852,7 @@ export function TeacherAssignments() {
               </div>
 
               {/* Modal Footer */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, paddingTop: 16, borderTop: '1px solid var(--border, #e2e8f0)' }}>
+              <div className="as-assignment-modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '16px 20px', margin: '0 -20px -20px -20px', borderTop: '1px solid var(--border, #e2e8f0)', background: 'var(--card-subtle, #f8fafc)' }}>
                 <button
                   type="button"
                   onClick={() => setEditAssignment(null)}
@@ -1860,7 +1861,7 @@ export function TeacherAssignments() {
                     padding: '8px 16px',
                     borderRadius: 8,
                     border: '1px solid var(--border, #cbd5e1)',
-                    background: 'transparent',
+                    background: 'var(--bg, #ffffff)',
                     color: 'var(--text, #334155)',
                     fontWeight: 600,
                     cursor: 'pointer'
@@ -1912,7 +1913,7 @@ export function TeacherAssignments() {
             style={{
               width: '100%',
               maxWidth: 480,
-              background: 'var(--panel, #ffffff)',
+              background: 'var(--bg-card, #ffffff)',
               borderRadius: 14,
               boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
               padding: 24,
@@ -1999,7 +2000,7 @@ export function TeacherAssignments() {
               width: '100%',
               maxWidth: 900,
               height: '85vh',
-              background: 'var(--panel, #ffffff)',
+              background: 'var(--bg-card, #ffffff)',
               borderRadius: 14,
               boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
               display: 'flex',
@@ -2008,7 +2009,7 @@ export function TeacherAssignments() {
               border: '1px solid var(--border, #cbd5e1)'
             }}
           >
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="as-assignment-modal-header" style={{ padding: '14px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', background: 'var(--card-subtle, #f8fafc)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
                 <Eye size={18} style={{ color: '#0284c7' }} />
                 <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -2125,7 +2126,7 @@ export function TeacherAssignments() {
               width: '100%',
               maxWidth: 840,
               maxHeight: '90vh',
-              background: 'var(--panel, #ffffff)',
+              background: 'var(--bg-card, #ffffff)',
               borderRadius: 14,
               boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
               display: 'flex',
@@ -2134,7 +2135,7 @@ export function TeacherAssignments() {
               border: '1px solid var(--border, #cbd5e1)'
             }}
           >
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="as-assignment-modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', background: 'var(--card-subtle, #f8fafc)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ margin: '0 0 2px', fontSize: 17, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
                   Student Submissions: {submissionsAsg.title}
@@ -2197,8 +2198,8 @@ export function TeacherAssignments() {
                               borderRadius: 12,
                               fontSize: 11,
                               fontWeight: 600,
-                              background: sub.status === 'GRADED' ? '#dcfce7' : '#fef3c7',
-                              color: sub.status === 'GRADED' ? '#15803d' : '#b45309'
+                              background: sub.status === 'GRADED' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                              color: sub.status === 'GRADED' ? '#10b981' : '#f59e0b'
                             }}
                           >
                             {sub.status}
@@ -2219,7 +2220,7 @@ export function TeacherAssignments() {
                               padding: '5px 12px',
                               borderRadius: 6,
                               border: '1px solid var(--border, #cbd5e1)',
-                              background: 'var(--card, #ffffff)',
+                              background: 'var(--bg, #ffffff)',
                               color: '#4f46e5',
                               fontSize: 12,
                               fontWeight: 600,
@@ -2242,7 +2243,7 @@ export function TeacherAssignments() {
                     Grade Submission: {gradingSub.student_name}
                   </h4>
                   {gradingSub.submission_text && (
-                    <div style={{ marginBottom: 12, padding: 10, borderRadius: 6, background: '#ffffff', border: '1px solid #e2e8f0', fontSize: 13, color: '#334155' }}>
+                    <div style={{ marginBottom: 12, padding: 10, borderRadius: 6, background: 'var(--bg, #ffffff)', border: '1px solid var(--border, #e2e8f0)', fontSize: 13, color: 'var(--text, #334155)' }}>
                       <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>SUBMISSION TEXT:</span>
                       {gradingSub.submission_text}
                     </div>
@@ -2264,7 +2265,9 @@ export function TeacherAssignments() {
                             width: '100%',
                             padding: '8px 10px',
                             borderRadius: 6,
-                            border: '1px solid #cbd5e1',
+                            border: '1px solid var(--border, #cbd5e1)',
+                            background: 'var(--bg, #ffffff)',
+                            color: 'var(--text, #0f172a)',
                             fontSize: 13
                           }}
                           required
@@ -2283,7 +2286,9 @@ export function TeacherAssignments() {
                             width: '100%',
                             padding: '8px 10px',
                             borderRadius: 6,
-                            border: '1px solid #cbd5e1',
+                            border: '1px solid var(--border, #cbd5e1)',
+                            background: 'var(--bg, #ffffff)',
+                            color: 'var(--text, #0f172a)',
                             fontSize: 13
                           }}
                         />
@@ -2311,11 +2316,11 @@ export function TeacherAssignments() {
               )}
             </div>
 
-            <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'flex-end' }}>
+            <div className="as-assignment-modal-footer" style={{ padding: '12px 20px', borderTop: '1px solid var(--border, #e2e8f0)', background: 'var(--card-subtle, #f8fafc)', display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 onClick={() => setSubmissionsAsg(null)}
-                style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#f8fafc', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
+                style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--bg, #ffffff)', color: 'var(--text, #1e293b)', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
               >
                 Close
               </button>

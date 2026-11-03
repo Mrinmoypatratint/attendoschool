@@ -152,6 +152,17 @@ const demoUsers: DemoUser[] = [
     photo_url: '/dav-logo.png'
   },
   {
+    id: 'd7a18f43-8e22-4a09-9112-9e163722dd66',
+    schoolId: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3',
+    name: 'Debashis Das',
+    email: 'teacher2@dav.com',
+    employeeId: '50360',
+    role: 'TEACHER',
+    password: 'ChangeMe123!',
+    isActive: true,
+    photo_url: '/dav-logo.png'
+  },
+  {
     id: 'b149cd21-7f33-4c12-8854-8e354911aa78',
     schoolId: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3',
     name: 'Rajesh Sen',
