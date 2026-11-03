@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { api } from '../../api';
 import * as XLSX from 'xlsx';
-import { FileSpreadsheet, Plus, Download, UploadCloud, KeyRound, AlertCircle, CheckCircle2, Eye, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar, Info, RefreshCw, Clock, Loader2 } from 'lucide-react';
+import { FileSpreadsheet, Plus, Download, UploadCloud, KeyRound, AlertCircle, AlertTriangle, CheckCircle2, Eye, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar, Info, RefreshCw, Clock, Loader2 } from 'lucide-react';
 import { StudentProfileHoverCard } from '../../components/StudentProfileHoverCard';
 import { TeacherProfileHoverCard } from '../../components/TeacherProfileHoverCard';
 import { formatGender } from '../../utils/gender';
@@ -160,6 +160,7 @@ export default function PeopleManagement() {
   const [allocClasses, setAllocClasses] = useState<any[]>([]);
   const [allocSections, setAllocSections] = useState<any[]>([]);
   const [allocDesignations, setAllocDesignations] = useState<any[]>([]);
+  const [allocMentors, setAllocMentors] = useState<any[]>([]);
 
   const lastRegisteredTeacherInfo = useMemo(() => {
     try {
@@ -338,9 +339,62 @@ export default function PeopleManagement() {
     load();
   }
 
+  function getMentorConflict(classIdOrName: string, sectionIdOrName: string) {
+    if (!classIdOrName || !sectionIdOrName || !allocMentors.length) return null;
+
+    const clsObj = allocClasses.find(c =>
+      String(c.id) === String(classIdOrName) ||
+      String(c.class_number) === String(classIdOrName).replace(/^Class\s*/i, '').trim() ||
+      (c.class_number === -1 && /l-?kg/i.test(classIdOrName)) ||
+      (c.class_number === 0 && /u-?kg/i.test(classIdOrName))
+    );
+
+    const matchedMentor = allocMentors.find(m => {
+      if (!m.teacher_id) return false;
+
+      const classMatch = clsObj
+        ? String(m.class_id) === String(clsObj.id) || m.class_number === clsObj.class_number
+        : String(m.class_id) === String(classIdOrName) || String(m.class_number) === String(classIdOrName).replace(/^Class\s*/i, '').trim();
+
+      if (!classMatch) return false;
+
+      const sIdOrNameNorm = String(sectionIdOrName).replace(/^Section\s*/i, '').trim().toUpperCase();
+      const secNorm = String(m.section_name || '').replace(/^Section\s*/i, '').trim().toUpperCase();
+      const sectionMatch = String(m.section_id) === String(sectionIdOrName) || secNorm === sIdOrNameNorm;
+
+      return sectionMatch;
+    });
+
+    if (!matchedMentor) return null;
+
+    const cDisplay = matchedMentor.class_number === -1 ? 'Class L-KG' : matchedMentor.class_number === 0 ? 'Class U-KG' : `Class ${matchedMentor.class_number}`;
+    const sDisplay = matchedMentor.section_name || sectionIdOrName;
+    const tDisplay = matchedMentor.teacher_name || 'Another Teacher';
+    const empDisplay = matchedMentor.employee_id ? ` [${matchedMentor.employee_id}]` : '';
+
+    return {
+      conflict: true,
+      mentorName: tDisplay,
+      employeeId: matchedMentor.employee_id,
+      className: cDisplay,
+      sectionName: sDisplay,
+      message: `Assignment Conflict: ${cDisplay} - Section ${sDisplay} is already assigned to mentor ${tDisplay}${empDisplay}. A class section can only have one assigned mentor.`
+    };
+  }
+
   // Teacher Addition
   async function handleAddTeacher(e: React.FormEvent) {
     e.preventDefault();
+    const targetClassVal = teacherForm.class_id || teacherForm.class_name || teacherForm.class || '';
+    const targetSecVal = teacherForm.section_name || teacherForm.section || teacherForm.section_id || '';
+    if (targetClassVal && targetSecVal) {
+      const conflict = getMentorConflict(targetClassVal, targetSecVal);
+      if (conflict) {
+        alert(`${conflict.message}\n\nPlease select another section or reassign via Classes & Sections.`);
+        return;
+      }
+    }
+
     const joiningDateVal = teacherForm.joiningDate || teacherForm.joining_date;
     if (!joiningDateVal) {
       alert('Validation Error: Joining Date is a required field.');
@@ -1774,13 +1828,46 @@ export default function PeopleManagement() {
                           ));
                         }
                         uniqueNames.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
-                        return uniqueNames.map(secName => (
-                          <option key={secName} value={secName}>Section {secName}</option>
-                        ));
+                        return uniqueNames.map(secName => {
+                          const secConflict = getMentorConflict(teacherForm.class_id || teacherForm.class_name || teacherForm.class, secName);
+                          const secLabelExtra = secConflict ? ` (Already Assigned: ${secConflict.mentorName})` : '';
+                          return (
+                            <option key={secName} value={secName}>Section {secName}{secLabelExtra}</option>
+                          );
+                        });
                       })()}
                     </select>
                   </label>
                 </div>
+
+                {/* Class Mentor Conflict Banner */}
+                {(() => {
+                  const currentConflict = getMentorConflict(teacherForm.class_id || teacherForm.class_name || teacherForm.class, teacherForm.section_name || teacherForm.section);
+                  if (!currentConflict) return null;
+                  return (
+                    <div style={{
+                      marginTop: 8,
+                      padding: '10px 14px',
+                      borderRadius: 8,
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid rgba(239, 68, 68, 0.35)',
+                      color: '#dc2626',
+                      fontSize: 12.5,
+                      fontWeight: 500,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10
+                    }}>
+                      <AlertTriangle size={18} style={{ flexShrink: 0, color: '#dc2626' }} />
+                      <div>
+                        <strong>Assignment Conflict:</strong> {currentConflict.className} - Section {currentConflict.sectionName} is already assigned to mentor <strong>{currentConflict.mentorName}</strong>{currentConflict.employeeId ? ` [${currentConflict.employeeId}]` : ''}.
+                        <div style={{ fontSize: 11.5, opacity: 0.9, marginTop: 2 }}>
+                          A class section can only have one assigned mentor. Please select another section or reassign under Classes & Sections.
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Automatic Email Notice */}
                 <div style={{
