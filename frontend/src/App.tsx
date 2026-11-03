@@ -15477,19 +15477,19 @@ function Attendance() {
       [sid]: {
         ...(prev[sid] || {}),
         status: newStatus,
-        departurePeriod: null,
-        departureTime: null,
-        arrivalPeriod: null,
-        arrivalTime: null,
+        departurePeriod: undefined,
+        departureTime: undefined,
+        arrivalPeriod: undefined,
+        arrivalTime: undefined,
         remarks: ''
       },
       [s.id]: {
         ...(prev[s.id] || {}),
         status: newStatus,
-        departurePeriod: null,
-        departureTime: null,
-        arrivalPeriod: null,
-        arrivalTime: null,
+        departurePeriod: undefined,
+        departureTime: undefined,
+        arrivalPeriod: undefined,
+        arrivalTime: undefined,
         remarks: ''
       }
     }));
