@@ -142,6 +142,8 @@ jobs:
               exit 1
             fi
             git checkout --detach "${{ env.DEPLOY_VERSION }}"
+            echo "📦 Installing Dependencies on VPS..."
+            npm --prefix frontend install --include=dev --no-audit
             echo "🔨 Compiling Backend TypeScript..."
             npm --prefix backend run build
             echo "🔨 Building Frontend React SPA with Vite..."
