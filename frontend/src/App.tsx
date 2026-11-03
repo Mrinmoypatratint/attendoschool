@@ -124,7 +124,7 @@ export const sortAcademicYearsAscending = (list: any[]) => {
   });
 };
 
-// Purge legacy dateless attendance locks from localStorage / sessionStorage on startup
+// Purge legacy attendance locks from localStorage / sessionStorage on startup
 if (typeof window !== 'undefined') {
   try {
     const purgeKeys = (storage: Storage) => {
@@ -132,11 +132,7 @@ if (typeof window !== 'undefined') {
       for (let i = 0; i < storage.length; i++) {
         const k = storage.key(i);
         if (k && (k.startsWith('finalized_attendance_') || k.startsWith('finalized_att_') || k.startsWith('has_left_early_'))) {
-          const parts = k.split('_');
-          const hasDate = parts.some(p => /^\d{4}-\d{2}-\d{2}$/.test(p));
-          if (!hasDate) {
-            keysToRemove.push(k);
-          }
+          keysToRemove.push(k);
         }
       }
       keysToRemove.forEach(k => storage.removeItem(k));
@@ -5460,42 +5456,21 @@ function TeacherHome() {
                         ? new Date(sec.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                         : null;
 
-                      const storedRaw = (typeof window !== 'undefined')
-                        ? (
-                            sessionStorage.getItem(`finalized_att_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
-                            localStorage.getItem(`finalized_att_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
-                            sessionStorage.getItem(`finalized_attendance_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
-                            localStorage.getItem(`finalized_attendance_${schoolDate}_${sec.classId}_${sec.sectionId}`)
-                          )
-                        : null;
-
-                      let storedFinalized: any = null;
-                      if (storedRaw) {
+                      // Past midnight check: attendance is only finalized if for a past date (after midnight 12:00 AM)
+                      const getTodayIST = () => {
                         try {
-                          const parsed = JSON.parse(storedRaw);
-                          if (parsed.date === schoolDate) {
-                            storedFinalized = parsed;
-                          }
+                          return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
                         } catch {
-                          if (storedRaw === '1') {
-                            storedFinalized = { finalized: true };
-                          }
+                          return new Date().toLocaleDateString('en-CA');
                         }
-                      }
+                      };
+                      const todayIST = getTodayIST();
+                      const isPastDate = sec.attendanceDate ? (sec.attendanceDate < todayIST) : false;
+                      const isFinalized = Boolean(sec.hasSubmitted && isPastDate);
 
-                      // Finalized only applies if attendance has already been submitted for today AND (server says isReattendance or reattendanceCount > 0, OR date-scoped finalized flag was set)
-                      const isFinalized = Boolean(
-                        sec.hasSubmitted && (
-                          sec.isReattendance ||
-                          (sec.reattendanceCount && Number(sec.reattendanceCount) > 0) ||
-                          storedFinalized?.finalized ||
-                          storedRaw === '1'
-                        )
-                      );
-
-                      const displayPres = Number(sec.presentCount ?? (storedFinalized?.presentCount ?? 0));
-                      let displayLeftEarly = Number(sec.leftEarlyCount ?? (storedFinalized?.leftEarlyCount ?? 0));
-                      let displayAbs = Number(sec.absentCount ?? (storedFinalized?.absentCount ?? 0));
+                      const displayPres = Number(sec.presentCount || 0);
+                      let displayLeftEarly = Number(sec.leftEarlyCount || 0);
+                      let displayAbs = Number(sec.absentCount || 0);
 
                       // If storedFinalized was saved with older code where leftEarly was lumped into absentCount,
                       // or if sec has leftEarlyCount:
@@ -14797,21 +14772,19 @@ function Attendance() {
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
   const rosterTopRef = useRef<HTMLDivElement>(null);
 
-  // Existing session & Re-attendance state
+  // Existing session & Re-attendance state (multiple edits allowed until midnight 12:00 AM)
   const [existingSession, setExistingSession] = useState<any>(null);
-  const isAlreadyEdited = Boolean(
-    existingSession && (
-      existingSession.is_reattendance ||
-      existingSession.isReattendance ||
-      (Number(existingSession.reattendance_count || 0) > 0) ||
-      (Number(existingSession.reattendanceCount || 0) > 0) ||
-      (typeof window !== 'undefined' && selectedClassId && selectedSectionId && (
-        sessionStorage.getItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`) === '1' ||
-        localStorage.getItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`) === '1'
-      ))
-    )
-  );
-  const canEditAttendance = Boolean(existingSession && !isAlreadyEdited);
+  const getTodayIST = () => {
+    try {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+    } catch {
+      return new Date().toLocaleDateString('en-CA');
+    }
+  };
+  const isPastMidnight = Boolean(attendanceDate && attendanceDate < getTodayIST());
+  // Sessions are only finalized after midnight (12:00 AM) of that attendance date
+  const isAlreadyEdited = Boolean(existingSession && isPastMidnight);
+  const canEditAttendance = Boolean(existingSession && !isPastMidnight);
 
   useEffect(() => {
     if (isAlreadyEdited) {
@@ -15574,11 +15547,10 @@ function Attendance() {
         submittedAt: new Date().toISOString()
       };
 
+      // Keep counts in session storage for immediate local UI sync
       if (selectedClassId && selectedSectionId) {
-        sessionStorage.setItem(`finalized_att_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
-        localStorage.setItem(`finalized_att_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
-        sessionStorage.setItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, '1');
-        localStorage.setItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, '1');
+        sessionStorage.setItem(`today_counts_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
+        localStorage.setItem(`today_counts_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
       }
 
       let res: any = null;
@@ -15606,7 +15578,7 @@ function Attendance() {
         reattendanceCount: 1
       });
       setIsEditingAttendance(false);
-      setReattendanceSuccessMsg('✓ Attendance successfully updated and finalized. Redirecting to dashboard...');
+      setReattendanceSuccessMsg('✓ Attendance successfully updated. Redirecting to dashboard...');
       setTimeout(() => {
         nav('/dashboard');
       }, 1200);
@@ -15796,10 +15768,10 @@ function Attendance() {
             </div>
             <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--text-muted)' }}>
               {isAlreadyEdited
-                ? '✓ Attendance has been submitted and edited. This session is now finalized and locked (no further edits permitted).'
+                ? '✓ Attendance has been finalized and locked after midnight 12:00 AM (no further edits permitted).'
                 : isEditingAttendance
-                ? '✏️ Attendance Edit Mode Active: Change student status between Present and Absent. Click "Submit Updated Attendance" below to finalize.'
-                : 'Attendance for this class section has been submitted for today. Need to correct a mistake? Click "Edit Attendance" to update records once.'}
+                ? '✏️ Attendance Edit Mode Active: Change student status between Present and Absent. Click "Submit Updated Attendance" below to save.'
+                : 'Attendance for this class section has been submitted for today. Need to correct a mistake? Click "Edit Attendance" to update records anytime before midnight.'}
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -16331,10 +16303,10 @@ function Attendance() {
         <span>
           {existingSession
             ? (isAlreadyEdited
-                ? 'Attendance Finalized: Attendance has been edited and locked. No further edits are permitted.'
+                ? 'Attendance Finalized: Past attendance (after midnight 12:00 AM) is locked. No further edits are permitted.'
                 : isEditingAttendance
-                ? 'Attendance Edit Mode Active: You can update attendance once. When finished, click "Submit Updated Attendance" to finalize.'
-                : 'Re-attendance Station Active: All assigned teachers can adjust early departures (e.g. student left after 1st period), record late arrivals, or save a re-roll call.')
+                ? 'Attendance Edit Mode Active: You can update student statuses. When finished, click "Submit Updated Attendance" to save.'
+                : 'Attendance Submitted: You can edit attendance multiple times until midnight 12:00 AM.')
             : 'Check only students who are physically present. Unchecked students are marked absent and their parents will be notified.'}
         </span>
       </div>

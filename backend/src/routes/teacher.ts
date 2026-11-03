@@ -1299,7 +1299,7 @@ const authorizedSectionsHandler = async (req: AuthRequest, res: any) => {
              att.school_id = $1
              AND att.class_id = ua.class_id
              AND att.section_id = ua.section_id
-             AND (att.attendance_date = $3 OR att.submitted_at >= NOW() - INTERVAL '18 hours')
+             AND att.attendance_date = $3
            )
            LEFT JOIN users u ON u.id = att.teacher_id
            ORDER BY ua.class_id, ua.section_id, ua.is_temporary ASC, att.submitted_at DESC NULLS LAST`,
@@ -1626,15 +1626,13 @@ const updateStudentAttendanceHandler = async (req: AuthRequest, res: any) => {
     return res.status(404).json({ message: 'Attendance session not found for this school' });
   }
 
-  const isSessionAlreadyReattended1 = Boolean(
-    session.is_reattendance ||
-    session.isReattendance ||
-    (Number(session.reattendance_count || session.reattendanceCount || 0) >= 1)
-  );
-  if (isSessionAlreadyReattended1) {
+  const sessionDate1 = String(session.attendance_date || session.attendanceDate || '').slice(0, 10);
+  const todayDate1 = getSchoolToday('Asia/Kolkata');
+  const isPastMidnight1 = Boolean(sessionDate1 && sessionDate1 < todayDate1);
+  if (isPastMidnight1) {
     return res.status(403).json({
       success: false,
-      message: 'Attendance can only be edited once. This session has already been edited and finalized.'
+      message: 'Attendance for past dates is locked and cannot be edited after midnight (12:00 AM).'
     });
   }
 
@@ -1952,15 +1950,13 @@ const batchReattendanceHandler = async (req: AuthRequest, res: any) => {
     return res.status(404).json({ message: 'Attendance session not found' });
   }
 
-  const isSessionAlreadyReattended2 = Boolean(
-    session.is_reattendance ||
-    session.isReattendance ||
-    (Number(session.reattendance_count || session.reattendanceCount || 0) >= 1)
-  );
-  if (isSessionAlreadyReattended2) {
+  const sessionDate2 = String(session.attendance_date || session.attendanceDate || '').slice(0, 10);
+  const todayDate2 = getSchoolToday('Asia/Kolkata');
+  const isPastMidnight2 = Boolean(sessionDate2 && sessionDate2 < todayDate2);
+  if (isPastMidnight2) {
     return res.status(403).json({
       success: false,
-      message: 'Attendance can only be edited once. This session has already been edited and finalized.'
+      message: 'Attendance for past dates is locked and cannot be edited after midnight (12:00 AM).'
     });
   }
 
