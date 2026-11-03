@@ -2670,11 +2670,33 @@ const postAttendanceHandler = async (req: AuthRequest, res: any) => {
         )).rows[0];
         sessionId = session.id;
 
-        // Fetch students enrolled in this section in Postgres
-        let students = (await client.query(
-          `SELECT id, name, roll_number FROM students WHERE school_id=$1 AND class_id=$2 AND section_id=$3 AND is_active`,
-          [schoolId, classId, sectionId]
-        )).rows;
+        // Fetch students enrolled in this section in Postgres (restricted to submitted roster or active academic year)
+        const submittedStudentIds = Array.isArray(x.studentIds) && x.studentIds.length > 0
+          ? x.studentIds.filter((id: any) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id)))
+          : (Array.isArray(x.records)
+              ? x.records
+                  .map((r: any) => r.studentId || r.student_id || r.id)
+                  .filter((id: any) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id)))
+              : []);
+
+        let students: any[] = [];
+        if (submittedStudentIds.length > 0) {
+          students = (await client.query(
+            `SELECT id, name, roll_number FROM students 
+             WHERE school_id=$1 AND class_id=$2 AND section_id=$3 AND is_active AND id = ANY($4::uuid[])`,
+            [schoolId, classId, sectionId, submittedStudentIds]
+          )).rows;
+        } else {
+          students = (await client.query(
+            `SELECT id, name, roll_number FROM students 
+             WHERE school_id=$1 AND class_id=$2 AND section_id=$3 AND is_active
+               AND (
+                 academic_year_id = (SELECT id FROM academic_years WHERE school_id=$1 AND is_active LIMIT 1)
+                 OR academic_year_id IS NULL
+               )`,
+            [schoolId, classId, sectionId]
+          )).rows;
+        }
 
         // If no students enrolled in Postgres yet but records were passed in request body, resolve or create them
         if (students.length === 0 && Array.isArray(x.records) && x.records.length > 0) {

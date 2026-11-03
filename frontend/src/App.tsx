@@ -124,6 +124,28 @@ export const sortAcademicYearsAscending = (list: any[]) => {
   });
 };
 
+// Purge legacy dateless attendance locks from localStorage / sessionStorage on startup
+if (typeof window !== 'undefined') {
+  try {
+    const purgeKeys = (storage: Storage) => {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < storage.length; i++) {
+        const k = storage.key(i);
+        if (k && (k.startsWith('finalized_attendance_') || k.startsWith('finalized_att_') || k.startsWith('has_left_early_'))) {
+          const parts = k.split('_');
+          const hasDate = parts.some(p => /^\d{4}-\d{2}-\d{2}$/.test(p));
+          if (!hasDate) {
+            keysToRemove.push(k);
+          }
+        }
+      }
+      keysToRemove.forEach(k => storage.removeItem(k));
+    };
+    purgeKeys(localStorage);
+    purgeKeys(sessionStorage);
+  } catch {}
+}
+
 function AttendoEmblem({ size = 32 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" fill="none" style={{ flexShrink: 0 }}>
@@ -5442,16 +5464,8 @@ function TeacherHome() {
                         ? (
                             sessionStorage.getItem(`finalized_att_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
                             localStorage.getItem(`finalized_att_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
-                            sessionStorage.getItem(`finalized_att_${sec.classId}_${sec.sectionId}`) ||
-                            localStorage.getItem(`finalized_att_${sec.classId}_${sec.sectionId}`) ||
-                            sessionStorage.getItem(`finalized_att_${sec.classNumber}_${sec.sectionName}`) ||
-                            localStorage.getItem(`finalized_att_${sec.classNumber}_${sec.sectionName}`) ||
                             sessionStorage.getItem(`finalized_attendance_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
-                            localStorage.getItem(`finalized_attendance_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
-                            sessionStorage.getItem(`finalized_attendance_${sec.classId}_${sec.sectionId}`) ||
-                            localStorage.getItem(`finalized_attendance_${sec.classId}_${sec.sectionId}`) ||
-                            sessionStorage.getItem(`finalized_attendance_${sec.classNumber}_${sec.sectionName}`) ||
-                            localStorage.getItem(`finalized_attendance_${sec.classNumber}_${sec.sectionName}`)
+                            localStorage.getItem(`finalized_attendance_${schoolDate}_${sec.classId}_${sec.sectionId}`)
                           )
                         : null;
 
@@ -5459,15 +5473,17 @@ function TeacherHome() {
                       if (storedRaw) {
                         try {
                           const parsed = JSON.parse(storedRaw);
-                          if (!parsed.date || parsed.date === schoolDate) {
+                          if (parsed.date === schoolDate) {
                             storedFinalized = parsed;
                           }
                         } catch {
-                          storedFinalized = { finalized: true };
+                          if (storedRaw === '1') {
+                            storedFinalized = { finalized: true };
+                          }
                         }
                       }
 
-                      // Finalized only applies if attendance has already been submitted for today
+                      // Finalized only applies if attendance has already been submitted for today AND (server says isReattendance or reattendanceCount > 0, OR date-scoped finalized flag was set)
                       const isFinalized = Boolean(
                         sec.hasSubmitted && (
                           sec.isReattendance ||
@@ -5477,9 +5493,9 @@ function TeacherHome() {
                         )
                       );
 
-                      const displayPres = storedFinalized?.presentCount !== undefined ? Number(storedFinalized.presentCount) : Number(sec.presentCount || 0);
-                      let displayLeftEarly = storedFinalized?.leftEarlyCount !== undefined ? Number(storedFinalized.leftEarlyCount) : Number(sec.leftEarlyCount || 0);
-                      let displayAbs = storedFinalized?.absentCount !== undefined ? Number(storedFinalized.absentCount) : Number(sec.absentCount || 0);
+                      const displayPres = Number(sec.presentCount ?? (storedFinalized?.presentCount ?? 0));
+                      let displayLeftEarly = Number(sec.leftEarlyCount ?? (storedFinalized?.leftEarlyCount ?? 0));
+                      let displayAbs = Number(sec.absentCount ?? (storedFinalized?.absentCount ?? 0));
 
                       // If storedFinalized was saved with older code where leftEarly was lumped into absentCount,
                       // or if sec has leftEarlyCount:
@@ -5492,14 +5508,12 @@ function TeacherHome() {
                         }
                       }
 
-                      // Check fallback flag stored during early departure marking
+                      // Check date-scoped fallback flag stored during early departure marking
                       if (displayLeftEarly === 0) {
                         const storedHasLeftEarly = (typeof window !== 'undefined')
                           ? (
-                              sessionStorage.getItem(`has_left_early_${sec.classId}_${sec.sectionId}`) ||
-                              localStorage.getItem(`has_left_early_${sec.classId}_${sec.sectionId}`) ||
-                              sessionStorage.getItem(`has_left_early_${sec.classNumber}_${sec.sectionName}`) ||
-                              localStorage.getItem(`has_left_early_${sec.classNumber}_${sec.sectionName}`)
+                              sessionStorage.getItem(`has_left_early_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
+                              localStorage.getItem(`has_left_early_${schoolDate}_${sec.classId}_${sec.sectionId}`)
                             )
                           : null;
                         if (storedHasLeftEarly && Number(storedHasLeftEarly) > 0) {
@@ -14791,26 +14805,9 @@ function Attendance() {
       existingSession.isReattendance ||
       (Number(existingSession.reattendance_count || 0) > 0) ||
       (Number(existingSession.reattendanceCount || 0) > 0) ||
-      (typeof window !== 'undefined' && (
-        (selectedClassId && selectedSectionId && (
-          sessionStorage.getItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`) ||
-          localStorage.getItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`) ||
-          sessionStorage.getItem(`finalized_attendance_${selectedClassId}_${selectedSectionId}`) ||
-          localStorage.getItem(`finalized_attendance_${selectedClassId}_${selectedSectionId}`)
-        )) ||
-        (classes.length > 0 && sections.length > 0 && (() => {
-          const cObj = classes.find((c: any) => String(c.id) === String(selectedClassId));
-          const sObj = sections.find((s: any) => String(s.id) === String(selectedSectionId));
-          if (!cObj || !sObj) return false;
-          const cNum = cObj.class_number ?? cObj.classNumber;
-          const sName = sObj.name ?? sObj.sectionName;
-          return Boolean(
-            sessionStorage.getItem(`finalized_attendance_${attendanceDate}_${cNum}_${sName}`) ||
-            localStorage.getItem(`finalized_attendance_${attendanceDate}_${cNum}_${sName}`) ||
-            sessionStorage.getItem(`finalized_attendance_${cNum}_${sName}`) ||
-            localStorage.getItem(`finalized_attendance_${cNum}_${sName}`)
-          );
-        })())
+      (typeof window !== 'undefined' && selectedClassId && selectedSectionId && (
+        sessionStorage.getItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`) === '1' ||
+        localStorage.getItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`) === '1'
       ))
     )
   );
@@ -15452,16 +15449,8 @@ function Attendance() {
       setChecked(prev => ({ ...prev, [sid]: false, [selectedStudent.id]: false }));
 
       if (selectedClassId && selectedSectionId) {
-        sessionStorage.setItem(`has_left_early_${selectedClassId}_${selectedSectionId}`, '1');
-        localStorage.setItem(`has_left_early_${selectedClassId}_${selectedSectionId}`, '1');
-      }
-      const cObjEarly = classes.find((c: any) => String(c.id) === String(selectedClassId));
-      const sObjEarly = sections.find((s: any) => String(s.id) === String(selectedSectionId));
-      if (cObjEarly && sObjEarly) {
-        const cNumEarly = cObjEarly.class_number ?? cObjEarly.classNumber;
-        const sNameEarly = sObjEarly.name ?? sObjEarly.sectionName;
-        sessionStorage.setItem(`has_left_early_${cNumEarly}_${sNameEarly}`, '1');
-        localStorage.setItem(`has_left_early_${cNumEarly}_${sNameEarly}`, '1');
+        sessionStorage.setItem(`has_left_early_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, '1');
+        localStorage.setItem(`has_left_early_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, '1');
       }
 
       if (existingSession?.id) {
@@ -15590,21 +15579,6 @@ function Attendance() {
         localStorage.setItem(`finalized_att_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
         sessionStorage.setItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, '1');
         localStorage.setItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, '1');
-        sessionStorage.setItem(`finalized_att_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
-        localStorage.setItem(`finalized_att_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
-        sessionStorage.setItem(`finalized_attendance_${selectedClassId}_${selectedSectionId}`, '1');
-        localStorage.setItem(`finalized_attendance_${selectedClassId}_${selectedSectionId}`, '1');
-      }
-
-      const cObj = classes.find((c: any) => String(c.id) === String(selectedClassId));
-      const sObj = sections.find((s: any) => String(s.id) === String(selectedSectionId));
-      if (cObj && sObj) {
-        const cNum = cObj.class_number ?? cObj.classNumber;
-        const sName = sObj.name ?? sObj.sectionName;
-        sessionStorage.setItem(`finalized_att_${cNum}_${sName}`, JSON.stringify(finalizedPayload));
-        localStorage.setItem(`finalized_att_${cNum}_${sName}`, JSON.stringify(finalizedPayload));
-        sessionStorage.setItem(`finalized_attendance_${cNum}_${sName}`, '1');
-        localStorage.setItem(`finalized_attendance_${cNum}_${sName}`, '1');
       }
 
       let res: any = null;
@@ -15693,14 +15667,8 @@ function Attendance() {
       const leftEarlyCount = recordsPayload.filter(r => r.status === 'LEFT_EARLY').length;
       const absCount = recordsPayload.filter(r => r.status === 'ABSENT').length;
       if (leftEarlyCount > 0 && selectedClassId && selectedSectionId) {
-        sessionStorage.setItem(`has_left_early_${selectedClassId}_${selectedSectionId}`, String(leftEarlyCount));
-        localStorage.setItem(`has_left_early_${selectedClassId}_${selectedSectionId}`, String(leftEarlyCount));
-      }
-      if (leftEarlyCount > 0 && cObj && sObj) {
-        const cNum = cObj.class_number ?? cObj.classNumber;
-        const sName = sObj.name ?? sObj.sectionName;
-        sessionStorage.setItem(`has_left_early_${cNum}_${sName}`, String(leftEarlyCount));
-        localStorage.setItem(`has_left_early_${cNum}_${sName}`, String(leftEarlyCount));
+        sessionStorage.setItem(`has_left_early_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, String(leftEarlyCount));
+        localStorage.setItem(`has_left_early_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, String(leftEarlyCount));
       }
       setSummary(res.data);
       setDone(true);
