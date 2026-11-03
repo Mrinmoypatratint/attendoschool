@@ -190,7 +190,27 @@ function clampTo4DigitYear(val: string): string {
   return val;
 }
 export function TeacherAssignments() {
-  const [assignments, setAssignments] = useState<AssignmentRecord[]>([]);
+  const { user } = useAuth();
+
+  // Two-Section Dashboard State: 'published' = Published by Me, 'mentored' = My Mentored Class
+  const [activeTab, setActiveTab] = useState<'published' | 'mentored'>('published');
+  const [publishedAssignments, setPublishedAssignments] = useState<AssignmentRecord[]>([]);
+  const [mentoredAssignments, setMentoredAssignments] = useState<AssignmentRecord[]>([]);
+  const [mentorInfo, setMentorInfo] = useState<{
+    has_mentor_class: boolean;
+    mentored_classes: Array<{
+      mentor_record_id: string;
+      class_id: string;
+      section_id: string;
+      class_number: number;
+      class_label: string;
+      section_name: string;
+      display_name: string;
+    }>;
+  }>({
+    has_mentor_class: false,
+    mentored_classes: []
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -263,13 +283,21 @@ export function TeacherAssignments() {
   const [gradeFeedback, setGradeFeedback] = useState<string>('');
   const [savingGrade, setSavingGrade] = useState(false);
 
-  // 1. Load Published Assignments
+  // 1. Load Published and Mentored Class Assignments
   const loadAssignments = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await api.get('/teacher/assignments?scope=all');
-      setAssignments(Array.isArray(res.data) ? res.data : []);
+      const [pubRes, mentRes, infoRes] = await Promise.all([
+        api.get('/teacher/assignments/my-published'),
+        api.get('/teacher/assignments/my-mentored'),
+        api.get('/teacher/assignments/mentor-info').catch(() => ({ data: { has_mentor_class: false, mentored_classes: [] } }))
+      ]);
+      setPublishedAssignments(Array.isArray(pubRes.data) ? pubRes.data : []);
+      setMentoredAssignments(Array.isArray(mentRes.data) ? mentRes.data : []);
+      if (infoRes?.data) {
+        setMentorInfo(infoRes.data);
+      }
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Failed to load assignments.');
     } finally {
@@ -742,19 +770,24 @@ export function TeacherAssignments() {
     }
   };
 
+  // Active list based on selected tab: Section 1 (Published by Me) vs Section 2 (My Mentored Class)
+  const currentList = activeTab === 'published' ? publishedAssignments : mentoredAssignments;
+
   // Filtered assignments
   const filteredAssignments = useMemo(() => {
-    return assignments.filter((a) => {
+    return currentList.filter((a) => {
       const matchesSearch =
-        searchQuery === '' ||
+        searchQuery.trim() === '' ||
         a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (a.description && a.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (a.teacher_name && a.teacher_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (a.subject_name && a.subject_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (a.section_name && a.section_name.toLowerCase().includes(searchQuery.toLowerCase()));
 
       const matchesClass = filterClass === '' || a.class_id === filterClass;
       return matchesSearch && matchesClass;
     });
-  }, [assignments, searchQuery, filterClass]);
+  }, [currentList, searchQuery, filterClass]);
 
   return (
     <div style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0', fontFamily: 'inherit' }}>
@@ -813,6 +846,141 @@ export function TeacherAssignments() {
           </button>
         </div>
       </div>
+
+      {/* Two-Section Switcher: SECTION 1 (Published by Me) vs SECTION 2 (My Mentored Class) */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          borderBottom: '2px solid var(--border, #e2e8f0)',
+          marginBottom: 16
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setActiveTab('published')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'published' ? '3px solid #4f46e5' : '3px solid transparent',
+            color: activeTab === 'published' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            fontWeight: activeTab === 'published' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <BookOpen size={18} />
+          <span>Published by Me</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 12,
+              background: activeTab === 'published' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
+              color: activeTab === 'published' ? '#4338ca' : '#64748b',
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {publishedAssignments.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('mentored')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'mentored' ? '3px solid #4f46e5' : '3px solid transparent',
+            color: activeTab === 'mentored' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            fontWeight: activeTab === 'mentored' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <GraduationCap size={18} />
+          <span>My Mentored Class</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 12,
+              background: activeTab === 'mentored' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
+              color: activeTab === 'mentored' ? '#4338ca' : '#64748b',
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {mentoredAssignments.length}
+          </span>
+        </button>
+      </div>
+
+      {/* Context Banner */}
+      {activeTab === 'published' ? (
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: 8,
+            background: 'var(--card-subtle, #f8fafc)',
+            border: '1px solid var(--border, #e2e8f0)',
+            marginBottom: 20,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            fontSize: 13,
+            color: 'var(--text-secondary, #475569)'
+          }}
+        >
+          <BookOpen size={16} color="#4f46e5" />
+          <span>
+            Showing assignments published by <strong>you</strong> across all classes. You have full edit, delete, and submission grading permissions.
+          </span>
+        </div>
+      ) : (
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: 8,
+            background: mentorInfo.has_mentor_class ? '#f0fdf4' : '#fffbeb',
+            border: mentorInfo.has_mentor_class ? '1px solid #bbf7d0' : '1px solid #fde68a',
+            marginBottom: 20,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            fontSize: 13,
+            color: mentorInfo.has_mentor_class ? '#166534' : '#92400e'
+          }}
+        >
+          <GraduationCap size={16} color={mentorInfo.has_mentor_class ? '#16a34a' : '#d97706'} />
+          <span>
+            {mentorInfo.has_mentor_class ? (
+              <>
+                Showing assignments published for your mentored class (
+                <strong>
+                  {mentorInfo.mentored_classes.map((c) => c.display_name).join(', ')}
+                </strong>
+                ) by all teachers. Assignments created by other teachers are read-only.
+              </>
+            ) : (
+              <>
+                You are not currently assigned as a class mentor to any section. Mentor assignments are configured by school administrators.
+              </>
+            )}
+          </span>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div
@@ -883,7 +1051,7 @@ export function TeacherAssignments() {
       >
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
-            Published Assignments ({filteredAssignments.length})
+            {activeTab === 'published' ? 'Assignments Published by Me' : 'Mentored Class Assignments'} ({filteredAssignments.length})
           </h2>
         </div>
 
@@ -912,27 +1080,61 @@ export function TeacherAssignments() {
             </button>
           </div>
         ) : filteredAssignments.length === 0 ? (
-          <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
-            <BookOpen size={40} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
-            <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: 'var(--text, #1e293b)' }}>No Assignments Found</h3>
-            <p style={{ margin: '0 0 16px', fontSize: 14 }}>Create and publish your first assignment to get started.</p>
-            <button
-              type="button"
-              onClick={() => setShowCreateModal(true)}
-              style={{
-                padding: '8px 16px',
-                borderRadius: 8,
-                border: 'none',
-                background: '#4f46e5',
-                color: '#ffffff',
-                fontWeight: 600,
-                fontSize: 13,
-                cursor: 'pointer'
-              }}
-            >
-              <Plus size={14} style={{ display: 'inline', marginRight: 6 }} /> Create Assignment
-            </button>
-          </div>
+          activeTab === 'published' ? (
+            <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
+              <BookOpen size={40} style={{ margin: '0 auto 12px', opacity: 0.5, color: '#4f46e5' }} />
+              <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: 'var(--text, #1e293b)' }}>No Assignments Published by You</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 14 }}>Create and publish your first assignment across any class or section.</p>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(true)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: '#4f46e5',
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer'
+                }}
+              >
+                <Plus size={14} style={{ display: 'inline', marginRight: 6 }} /> Create Assignment
+              </button>
+            </div>
+          ) : !mentorInfo.has_mentor_class ? (
+            <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
+              <GraduationCap size={40} style={{ margin: '0 auto 12px', opacity: 0.5, color: '#d97706' }} />
+              <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: 'var(--text, #1e293b)' }}>No Mentored Class Assigned</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 14, maxWidth: 440, marginInline: 'auto' }}>
+                You are not currently assigned as a class mentor to any section. Mentor assignments are configured by school administrators.
+              </p>
+            </div>
+          ) : (
+            <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
+              <BookOpen size={40} style={{ margin: '0 auto 12px', opacity: 0.5, color: '#16a34a' }} />
+              <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: 'var(--text, #1e293b)' }}>No Assignments for Mentored Class</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 14 }}>
+                No assignments have been published for {mentorInfo.mentored_classes.map((c) => c.display_name).join(', ')} yet.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(true)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: '#4f46e5',
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer'
+                }}
+              >
+                <Plus size={14} style={{ display: 'inline', marginRight: 6 }} /> Create Assignment
+              </button>
+            </div>
+          )
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
@@ -965,9 +1167,22 @@ export function TeacherAssignments() {
                     >
                       <td style={{ padding: '14px 16px' }}>
                         <div style={{ fontWeight: 600, color: 'var(--text, #0f172a)', marginBottom: 2 }}>{asg.title}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748b)', maxWidth: 300, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748b)', maxWidth: 300, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4 }}>
                           {asg.description}
                         </div>
+                        {activeTab === 'mentored' && (
+                          <div>
+                            {asg.is_owner ? (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '1px 6px', borderRadius: 4, background: '#dbeafe', color: '#1e40af', fontSize: 11, fontWeight: 600 }}>
+                                Published by You
+                              </span>
+                            ) : (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '1px 6px', borderRadius: 4, background: '#f1f5f9', color: '#475569', fontSize: 11, fontWeight: 500 }}>
+                                By: {asg.teacher_name || 'Other Teacher'} (Read-Only)
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
                         <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: 6, background: '#e0e7ff', color: '#4338ca', fontSize: 12, fontWeight: 600 }}>
@@ -1017,47 +1232,52 @@ export function TeacherAssignments() {
                             <Eye size={13} /> View
                           </button>
 
-                          <button
-                            type="button"
-                            title="Edit Assignment"
-                            onClick={() => handleOpenEdit(asg)}
-                            style={{
-                              padding: '6px 10px',
-                              borderRadius: 6,
-                              border: '1px solid var(--border, #cbd5e1)',
-                              background: 'var(--card, #ffffff)',
-                              color: '#0284c7',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                              fontSize: 12,
-                              fontWeight: 500
-                            }}
-                          >
-                            <Edit size={13} /> Edit
-                          </button>
+                          {/* Only author can Edit or Delete */}
+                          {asg.is_owner && (
+                            <>
+                              <button
+                                type="button"
+                                title="Edit Assignment"
+                                onClick={() => handleOpenEdit(asg)}
+                                style={{
+                                  padding: '6px 10px',
+                                  borderRadius: 6,
+                                  border: '1px solid var(--border, #cbd5e1)',
+                                  background: 'var(--card, #ffffff)',
+                                  color: '#0284c7',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  fontSize: 12,
+                                  fontWeight: 500
+                                }}
+                              >
+                                <Edit size={13} /> Edit
+                              </button>
 
-                          <button
-                            type="button"
-                            title="Delete Assignment"
-                            onClick={() => setDeleteTarget(asg)}
-                            style={{
-                              padding: '6px 10px',
-                              borderRadius: 6,
-                              border: '1px solid #fecaca',
-                              background: '#fff1f2',
-                              color: '#e11d48',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                              fontSize: 12,
-                              fontWeight: 500
-                            }}
-                          >
-                            <Trash2 size={13} /> Delete
-                          </button>
+                              <button
+                                type="button"
+                                title="Delete Assignment"
+                                onClick={() => setDeleteTarget(asg)}
+                                style={{
+                                  padding: '6px 10px',
+                                  borderRadius: 6,
+                                  border: '1px solid #fecaca',
+                                  background: '#fff1f2',
+                                  color: '#e11d48',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  fontSize: 12,
+                                  fontWeight: 500
+                                }}
+                              >
+                                <Trash2 size={13} /> Delete
+                              </button>
+                            </>
+                          )}
 
                           <button
                             type="button"
