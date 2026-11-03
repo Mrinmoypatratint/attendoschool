@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useAuth } from '../../hooks/useAuth';
 import {
-  BookOpen, Plus, FileText, CheckCircle2, Clock, AlertTriangle, AlertCircle,
+  BookOpen, GraduationCap, Plus, FileText, CheckCircle2, Clock, AlertTriangle, AlertCircle,
   Loader2, RefreshCw, Send, Eye, X, Award, Search, Paperclip, Download, Upload,
   Maximize2, Minimize2, Edit, Trash2, Calendar, Check, FileCheck, Image
 } from 'lucide-react';
@@ -46,6 +47,7 @@ interface AssignmentRecord {
   document_data?: string;
   storage_key?: string | null;
   attachments?: AssignmentAttachmentItem[];
+  is_owner?: boolean;
 }
 
 interface UploadDocItem {
@@ -2555,7 +2557,7 @@ export function TeacherAssignments() {
                               cursor: 'pointer'
                             }}
                           >
-                            {sub.status === 'GRADED' ? 'Edit Grade' : 'Grade'}
+                            {submissionsAsg.is_owner ? (sub.status === 'GRADED' ? 'Edit Grade' : 'Grade') : 'View Work'}
                           </button>
                         </td>
                       </tr>
@@ -2671,7 +2673,8 @@ export function TeacherAssignments() {
                     </div>
                   )}
 
-                  <form onSubmit={handleGradeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {submissionsAsg.is_owner ? (
+                    <form onSubmit={handleGradeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <div style={{ display: 'flex', gap: 12 }}>
                       <div style={{ flex: '0 0 140px' }}>
                         <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
@@ -2730,6 +2733,20 @@ export function TeacherAssignments() {
                       </button>
                     </div>
                   </form>
+                ) : (
+                  <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, color: '#64748b' }}>
+                      Read-only: Only the assignment author ({submissionsAsg.teacher_name || 'Author'}) can submit or modify grades.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setGradingSub(null)}
+                      style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#ffffff', cursor: 'pointer', fontSize: 12 }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                )}
                 </div>
               )}
             </div>
