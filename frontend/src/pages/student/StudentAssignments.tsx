@@ -505,16 +505,16 @@ export function StudentAssignments() {
       </div>
 
       {feedbackMsg && (
-        <div className="student-alert-success" style={{ marginBottom: 16 }}>
+        <div className="student-alert-success mb-4 p-3 rounded-md text-xs flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400">
           <CheckCircle2 size={16} />
           <span>{feedbackMsg}</span>
         </div>
       )}
 
       {/* In-Page Search & Filter Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <div className="student-inpage-search-bar">
-          <Search size={15} color="var(--text-muted, #94a3b8)" />
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        <div className="student-inpage-search-bar flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex-1 max-w-md">
+          <Search size={15} className="text-slate-400" />
           <input
             type="text"
             placeholder="Filter assignments by title, subject, or teacher..."
@@ -527,14 +527,7 @@ export function StudentAssignments() {
                 setSearchParams({});
               }
             }}
-            style={{
-              border: 'none',
-              outline: 'none',
-              background: 'transparent',
-              fontSize: 13,
-              width: '100%',
-              color: 'var(--text)'
-            }}
+            className="border-none outline-none bg-transparent text-xs w-full text-slate-900 dark:text-slate-100"
           />
           {searchTerm && (
             <button
@@ -543,7 +536,7 @@ export function StudentAssignments() {
                 setSearchTerm('');
                 setSearchParams({});
               }}
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}
+              className="bg-transparent border-none cursor-pointer text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex"
               title="Clear search"
             >
               <X size={14} />
@@ -551,7 +544,7 @@ export function StudentAssignments() {
           )}
         </div>
         {searchTerm && (
-          <div style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
+          <div className="text-xs text-slate-500 dark:text-slate-400">
             Showing <b>{filtered.length}</b> of <b>{assignments.length}</b> assignments
           </div>
         )}
@@ -605,14 +598,14 @@ export function StudentAssignments() {
               <h3 className="assignment-title">{a.title}</h3>
               <p className="assignment-desc">{a.description}</p>
 
-              <div className="assignment-meta-row" style={{ flexWrap: 'wrap', gap: 10 }}>
+              <div className="assignment-meta-row flex flex-wrap gap-2.5">
                 {a.teacher_name && (
                   <div className="meta-item">
-                    <span style={{ fontWeight: 600, color: 'var(--text, #1e293b)' }}>Teacher: {a.teacher_name}</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">Teacher: {a.teacher_name}</span>
                   </div>
                 )}
                 <div className="meta-item">
-                  <Calendar size={14} style={{ color: '#6366f1' }} />
+                  <Calendar size={14} className="text-indigo-500" />
                   <span>Assigned: {formatAssignmentDate(a.assigned_date || a.created_at)}</span>
                 </div>
                 <div className="meta-item">
@@ -621,13 +614,13 @@ export function StudentAssignments() {
                 </div>
                 {a.submitted_at && (
                   <div className="meta-item">
-                    <CheckCircle2 size={14} style={{ color: '#10b981' }} />
+                    <CheckCircle2 size={14} className="text-emerald-500" />
                     <span>Submitted: {new Date(a.submitted_at).toLocaleDateString()} {new Date(a.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
                 )}
                 {a.updated_at && a.submitted_at && new Date(a.updated_at).getTime() - new Date(a.submitted_at).getTime() > 2000 && (
                   <div className="meta-item">
-                    <Clock size={14} style={{ color: '#f59e0b' }} />
+                    <Clock size={14} className="text-amber-500" />
                     <span>Updated: {new Date(a.updated_at).toLocaleDateString()} {new Date(a.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
                 )}
@@ -638,20 +631,12 @@ export function StudentAssignments() {
 
               {/* Teacher's Attached Documents / Reference Material */}
               {((a.document_name) || (a.teacher_attachments && a.teacher_attachments.length > 0)) && (
-                <div style={{ margin: '14px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{
-                    display: 'block',
-                    fontSize: 11.5,
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                    color: 'var(--text-muted, #64748b)',
-                    marginBottom: 2
-                  }}>
+                <div className="my-3.5 flex flex-col gap-2">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">
                     Attached Documents ({(a.teacher_attachments && a.teacher_attachments.length > 0) ? a.teacher_attachments.length : (a.document_name ? 1 : 0)})
                   </label>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div className="flex flex-col gap-2">
                     {(a.teacher_attachments && a.teacher_attachments.length > 0
                       ? a.teacher_attachments
                       : [{
@@ -666,69 +651,30 @@ export function StudentAssignments() {
                       return (
                         <div
                           key={doc.id || idx}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '12px 16px',
-                            borderRadius: 8,
-                            backgroundColor: 'var(--card-subtle, #f8fafc)',
-                            border: '1px solid var(--border, #cbd5e1)',
-                            gap: 12,
-                            flexWrap: 'wrap'
-                          }}
+                          className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 gap-3 flex-wrap"
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                            <div style={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: 6,
-                              backgroundColor: '#eff6ff',
-                              color: '#2563eb',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              flexShrink: 0
-                            }}>
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-9 h-9 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                               {getFileIcon(doc.file_name, doc.mime_type)}
                             </div>
-                            <div style={{ minWidth: 0 }}>
-                              <div style={{
-                                fontWeight: 600,
-                                fontSize: 13.5,
-                                color: 'var(--text, #0f172a)',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap'
-                              }}>
+                            <div className="min-w-0">
+                              <div className="font-semibold text-xs md:text-sm text-slate-900 dark:text-slate-100 truncate">
                                 {doc.file_name}
                               </div>
                               {doc.file_size > 0 && (
-                                <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400">
                                   {formatBytes(doc.file_size)}
                                 </div>
                               )}
                             </div>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div className="flex items-center gap-2">
                             {isPreviewable && (
                               <button
                                 type="button"
                                 onClick={() => openTeacherDocPreview(a.id, doc.file_name, doc.mime_type, doc.file_data, doc.id)}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 6,
-                                  padding: '7px 14px',
-                                  borderRadius: 6,
-                                  backgroundColor: '#eff6ff',
-                                  color: '#2563eb',
-                                  fontSize: 12.5,
-                                  fontWeight: 600,
-                                  border: '1px solid #bfdbfe',
-                                  cursor: 'pointer'
-                                }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 text-xs font-semibold border border-blue-500/20 cursor-pointer transition-colors"
                               >
                                 <Eye size={14} /> Preview
                               </button>
@@ -736,20 +682,7 @@ export function StudentAssignments() {
                             <button
                               type="button"
                               onClick={() => handleTeacherDocDownload(a.id, doc.file_name, doc.file_data, doc.id)}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 6,
-                                padding: '7px 14px',
-                                borderRadius: 6,
-                                backgroundColor: '#2563eb',
-                                color: '#ffffff',
-                                fontSize: 12.5,
-                                fontWeight: 600,
-                                border: 'none',
-                                cursor: 'pointer',
-                                boxShadow: '0 1px 2px rgba(37,99,235,0.2)'
-                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold cursor-pointer shadow-sm transition-colors border-0"
                             >
                               <Download size={14} /> Download Document
                             </button>
@@ -764,87 +697,48 @@ export function StudentAssignments() {
               {/* Submitted Information Box */}
               {a.submission_status !== 'PENDING' && (
                 <div className="student-submission-info-box">
-                  <div className="submission-header" style={{ fontWeight: 600, color: 'var(--text, #334155)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <CheckCircle2 size={15} color="#16a34a" /> Your Submitted Work:
+                  <div className="submission-header font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5 text-xs">
+                    <CheckCircle2 size={15} className="text-emerald-600 dark:text-emerald-400" /> Your Submitted Work:
                   </div>
                   {a.submission_text ? (
-                    <p style={{ margin: '0 0 10px', color: 'var(--text-secondary, #475569)', whiteSpace: 'pre-wrap', fontSize: 13 }}>
+                    <p className="m-0 mb-2.5 text-slate-600 dark:text-slate-400 whitespace-pre-wrap text-xs md:text-sm">
                       {a.submission_text}
                     </p>
                   ) : null}
 
                   {/* Submitted Attachments List */}
                   {a.attachments && a.attachments.length > 0 && (
-                    <div style={{ marginTop: 8 }}>
-                      <span style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted, #64748b)', display: 'block', marginBottom: 6 }}>
+                    <div className="mt-2">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1.5">
                         Submitted Attachments ({a.attachments.length})
                       </span>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div className="flex flex-col gap-2">
                         {a.attachments.map((att: AssignmentAttachment) => {
                           const isPreviewable = isPreviewableFile(att.file_name, att.mime_type);
                           return (
                             <div
                               key={att.id}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: '10px 14px',
-                                borderRadius: 8,
-                                backgroundColor: '#ffffff',
-                                border: '1px solid var(--border, #cbd5e1)',
-                                gap: 10,
-                                flexWrap: 'wrap'
-                              }}
+                              className="flex items-center justify-between p-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 gap-2.5 flex-wrap"
                             >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                                <div style={{
-                                  width: 32,
-                                  height: 32,
-                                  borderRadius: 6,
-                                  backgroundColor: '#eff6ff',
-                                  color: '#2563eb',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  flexShrink: 0
-                                }}>
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-8 h-8 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                                   {getFileIcon(att.file_name, att.mime_type)}
                                 </div>
-                                <div style={{ minWidth: 0 }}>
-                                  <div style={{
-                                    fontWeight: 600,
-                                    fontSize: 13,
-                                    color: 'var(--text, #0f172a)',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap'
-                                  }}>
+                                <div className="min-w-0">
+                                  <div className="font-semibold text-xs md:text-sm text-slate-900 dark:text-slate-100 truncate">
                                     {att.file_name}
                                   </div>
-                                  <div style={{ fontSize: 11, color: 'var(--text-muted, #64748b)' }}>
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
                                     {formatBytes(att.file_size)}
                                   </div>
                                 </div>
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <div className="flex items-center gap-1.5">
                                 {isPreviewable && (
                                   <button
                                     type="button"
                                     onClick={() => openPreview(a.id, att)}
-                                    style={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: 4,
-                                      padding: '5px 10px',
-                                      borderRadius: 6,
-                                      backgroundColor: '#eff6ff',
-                                      color: '#2563eb',
-                                      fontSize: 12,
-                                      fontWeight: 600,
-                                      border: '1px solid #bfdbfe',
-                                      cursor: 'pointer'
-                                    }}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 text-xs font-semibold border border-blue-500/20 cursor-pointer transition-colors"
                                   >
                                     <Eye size={12} /> Preview
                                   </button>
@@ -852,20 +746,7 @@ export function StudentAssignments() {
                                 <button
                                   type="button"
                                   onClick={() => handleDownload(a.id, att)}
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 4,
-                                    padding: '5px 12px',
-                                    borderRadius: 6,
-                                    backgroundColor: '#2563eb',
-                                    color: '#ffffff',
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    boxShadow: '0 1px 2px rgba(37,99,235,0.2)'
-                                  }}
+                                  className="inline-flex items-center gap-1 px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold cursor-pointer shadow-sm transition-colors border-0"
                                 >
                                   <Download size={12} /> Download File
                                 </button>
@@ -954,16 +835,8 @@ export function StudentAssignments() {
               {/* Display Teacher Attached Document if available */}
               {/* Teacher's Reference Material / Attached Documents */}
               {((activeModal.document_name) || (activeModal.teacher_attachments && activeModal.teacher_attachments.length > 0)) && (
-                <div style={{ marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <label style={{
-                    display: 'block',
-                    fontSize: 11.5,
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                    color: 'var(--text-muted, #64748b)',
-                    marginBottom: 2
-                  }}>
+                <div className="mb-3.5 flex flex-col gap-1.5">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">
                     Teacher's Reference Material / Attached Documents
                   </label>
                   {(activeModal.teacher_attachments && activeModal.teacher_attachments.length > 0
@@ -980,57 +853,25 @@ export function StudentAssignments() {
                     return (
                       <div
                         key={doc.id || idx}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '10px 14px',
-                          borderRadius: 8,
-                          backgroundColor: 'var(--card-subtle, #f8fafc)',
-                          border: '1px solid var(--border, #cbd5e1)',
-                          gap: 10,
-                          flexWrap: 'wrap'
-                        }}
+                        className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 gap-2.5 flex-wrap"
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                          <div style={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: 6,
-                            backgroundColor: '#eff6ff',
-                            color: '#2563eb',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
-                          }}>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                             {getFileIcon(doc.file_name, doc.mime_type)}
                           </div>
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div className="min-w-0">
+                            <div className="font-semibold text-xs text-slate-900 dark:text-slate-100 truncate">
                               {doc.file_name}
                             </div>
-                            {doc.file_size > 0 && <div style={{ fontSize: 11, color: '#64748b' }}>{formatBytes(doc.file_size)}</div>}
+                            {doc.file_size > 0 && <div className="text-[11px] text-slate-500 dark:text-slate-400">{formatBytes(doc.file_size)}</div>}
                           </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div className="flex items-center gap-1.5">
                           {isPreviewable && (
                             <button
                               type="button"
                               onClick={() => openTeacherDocPreview(activeModal.id, doc.file_name, doc.mime_type, doc.file_data, doc.id)}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                                padding: '5px 10px',
-                                borderRadius: 6,
-                                backgroundColor: '#eff6ff',
-                                color: '#2563eb',
-                                fontSize: 12,
-                                fontWeight: 600,
-                                border: '1px solid #bfdbfe',
-                                cursor: 'pointer'
-                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 text-xs font-semibold border border-blue-500/20 cursor-pointer transition-colors"
                             >
                               <Eye size={12} /> Preview
                             </button>
@@ -1038,22 +879,9 @@ export function StudentAssignments() {
                           <button
                             type="button"
                             onClick={() => handleTeacherDocDownload(activeModal.id, doc.file_name, doc.file_data, doc.id)}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                              padding: '5px 12px',
-                              borderRadius: 6,
-                              backgroundColor: '#2563eb',
-                              color: '#ffffff',
-                              fontSize: 12,
-                              fontWeight: 600,
-                              border: 'none',
-                              cursor: 'pointer',
-                              boxShadow: '0 1px 2px rgba(37,99,235,0.2)'
-                            }}
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold cursor-pointer shadow-sm transition-colors border-0"
                           >
-                            <Download size={12} /> Download Document
+                            <Download size={12} /> Download
                           </button>
                         </div>
                       </div>

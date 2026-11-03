@@ -1848,24 +1848,12 @@ export default function PeopleManagement() {
                   const currentConflict = getMentorConflict(teacherForm.class_id || teacherForm.class_name || teacherForm.class, teacherForm.section_name || teacherForm.section);
                   if (!currentConflict) return null;
                   return (
-                    <div style={{
-                      marginTop: 8,
-                      padding: '10px 14px',
-                      borderRadius: 8,
-                      background: 'rgba(239, 68, 68, 0.1)',
-                      border: '1px solid rgba(239, 68, 68, 0.35)',
-                      color: '#dc2626',
-                      fontSize: 12.5,
-                      fontWeight: 500,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10
-                    }}>
-                      <AlertTriangle size={18} style={{ flexShrink: 0, color: '#dc2626' }} />
+                    <div className="mt-2 p-3 rounded-lg bg-red-500/10 border border-red-500/35 text-red-600 dark:text-red-400 text-xs font-medium flex items-center gap-2.5">
+                      <AlertTriangle size={18} className="shrink-0 text-red-600 dark:text-red-400" />
                       <div>
                         <strong>Assignment Conflict:</strong> {currentConflict.className} - Section {currentConflict.sectionName} is already assigned to mentor <strong>{currentConflict.mentorName}</strong>{currentConflict.employeeId ? ` [${currentConflict.employeeId}]` : ''}.
-                        <div style={{ fontSize: 11.5, opacity: 0.9, marginTop: 2 }}>
-                          A class section can only have one assigned mentor. Please select another section or reassign under Classes & Sections.
+                        <div className="text-[11px] opacity-90 mt-0.5">
+                          A class section can only have one assigned mentor. Please select another section or reassign under Classes &amp; Sections.
                         </div>
                       </div>
                     </div>

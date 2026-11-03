@@ -515,11 +515,6 @@ export default function Analytics() {
               </div>
             </div>
           </div>
-                {(data.lowAttendanceCount ?? 0) > 0 ? <AlertTriangle size={13} /> : <CheckCircle2 size={13} />}
-                {(data.lowAttendanceCount ?? 0) > 0 ? '< 75% threshold' : 'All students ≥ 75%'}
-              </div>
-            </div>
-          </div>
 
           {/* Sub Navigation Tabs */}
           <div className="tabs flex gap-2 border-b border-slate-200 dark:border-slate-700 mb-5 overflow-x-auto pb-1">

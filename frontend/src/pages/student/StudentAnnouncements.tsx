@@ -828,26 +828,18 @@ export function StudentAnnouncements() {
               {/* Reply Action Row — Hidden for Student profile, available only for School Admin / Teacher */}
               {!isStudent && (
                 <>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14, paddingTop: 10, borderTop: '1px solid #e2e8f0' }}>
+                  <div className="flex justify-end mt-3.5 pt-2.5 border-t border-slate-100 dark:border-slate-700/60">
                     <button
                       type="button"
                       onClick={() => {
                         setActiveReplyId(activeReplyId === a.id ? null : a.id);
                         setReplyText('');
                       }}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        padding: '6px 14px',
-                        fontSize: 12.5,
-                        fontWeight: 600,
-                        borderRadius: 6,
-                        border: '1px solid var(--border-strong, #cbd5e1)',
-                        backgroundColor: activeReplyId === a.id ? '#2563eb' : 'var(--card-bg, #ffffff)',
-                        color: activeReplyId === a.id ? '#ffffff' : 'var(--text, #1e293b)',
-                        cursor: 'pointer'
-                      }}
+                      className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded border cursor-pointer transition-colors ${
+                        activeReplyId === a.id
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600'
+                      }`}
                     >
                       <MessageSquare size={13} />
                       {activeReplyId === a.id ? 'Cancel' : 'Reply'}
@@ -856,82 +848,46 @@ export function StudentAnnouncements() {
 
                   {/* Success Notification */}
                   {replySuccessId === a.id && (
-                    <div className="student-notice-reply-success" style={{
-                      marginTop: 10,
-                      padding: '8px 12px',
-                      borderRadius: 6,
-                      fontSize: 12,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6
-                    }}>
+                    <div className="student-notice-reply-success mt-2.5 px-3 py-2 rounded-md text-xs flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400">
                       <CheckCircle2 size={14} /> Your response was submitted to school administration.
                     </div>
                   )}
 
-                  {/* Reply Action Row — Hidden for Student profile, available only for School Admin / Teacher */}
-                  {!isStudent && (
-                    <>
-                      <div className="flex justify-end mt-3.5 pt-2.5 border-t border-slate-100 dark:border-slate-700/60">
+                  {/* Inline Interactive Reply Box */}
+                  {activeReplyId === a.id && (
+                    <div className="student-notice-reply-box mt-3 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-md border border-slate-200 dark:border-slate-700">
+                      <div className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                        <CornerDownRight size={13} className="text-blue-600 dark:text-blue-400" /> Send reply to school administrator:
+                      </div>
+                      <AutoExpandingTextarea
+                        minHeight={38}
+                        maxHeight={160}
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        placeholder="Type your response or question regarding this notice..."
+                        className="w-full px-2.5 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs box-border font-sans outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                      <div className="flex justify-end gap-2 mt-2">
                         <button
                           type="button"
-                          onClick={() => {
-                            setActiveReplyId(activeReplyId === a.id ? null : a.id);
-                            setReplyText('');
-                          }}
-                        className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded border cursor-pointer transition-colors ${
-                          activeReplyId === a.id
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600'
-                        }`}
-                      >
-                        <MessageSquare size={13} />
-                        {activeReplyId === a.id ? 'Cancel' : 'Reply'}
-                      </button>
+                          onClick={() => setActiveReplyId(null)}
+                          className="student-notice-reply-cancel-btn px-3 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={submittingReply || !replyText.trim()}
+                          onClick={() => handleReplySubmit(a.id)}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-sm"
+                        >
+                          <Send size={12} /> {submittingReply ? 'Sending...' : 'Send'}
+                        </button>
+                      </div>
                     </div>
-
-                    {/* Success Notification */}
-                    {replySuccessId === a.id && (
-                      <div className="student-notice-reply-success mt-2.5 px-3 py-2 rounded-md text-xs flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400">
-                        <CheckCircle2 size={14} /> Your response was submitted to school administration.
-                      </div>
-                    )}
-
-                    {/* Inline Interactive Reply Box */}
-                    {activeReplyId === a.id && (
-                      <div className="student-notice-reply-box mt-3 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-md border border-slate-200 dark:border-slate-700">
-                        <div className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                          <CornerDownRight size={13} className="text-blue-600 dark:text-blue-400" /> Send reply to school administrator:
-                        </div>
-                        <AutoExpandingTextarea
-                          minHeight={38}
-                          maxHeight={160}
-                          value={replyText}
-                          onChange={(e) => setReplyText(e.target.value)}
-                          placeholder="Type your response or question regarding this notice..."
-                          className="w-full px-2.5 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs box-border font-sans outline-none focus:ring-1 focus:ring-blue-500"
-                        />
-                        <div className="flex justify-end gap-2 mt-2">
-                          <button
-                            type="button"
-                            onClick={() => setActiveReplyId(null)}
-                            className="student-notice-reply-cancel-btn px-3 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="button"
-                            disabled={submittingReply || !replyText.trim()}
-                            onClick={() => handleReplySubmit(a.id)}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-sm"
-                          >
-                            <Send size={12} /> {submittingReply ? 'Sending...' : 'Send'}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
+                  )}
+                </>
+              )}
               </div>
             );
           })}

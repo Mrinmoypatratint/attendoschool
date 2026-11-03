@@ -128,54 +128,32 @@ export default function TemporaryAssignmentForm({ onSuccess }: Props) {
     : [];
 
   return (
-    <div className="panel" style={{ padding: 24, borderRadius: 12, border: '1px solid var(--border)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-        <PlusCircle size={18} style={{ color: 'var(--primary, #2563eb)' }} />
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
+    <div className="panel p-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
+      <div className="flex items-center gap-2 mb-4">
+        <PlusCircle size={18} className="text-blue-600 dark:text-blue-400" />
+        <h3 className="m-0 text-base font-bold text-slate-900 dark:text-slate-100">
           Create Teacher Substitution
         </h3>
       </div>
 
       {error && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '10px 14px',
-          borderRadius: 8,
-          background: 'rgba(239, 68, 68, 0.1)',
-          color: '#ef4444',
-          border: '1px solid rgba(239, 68, 68, 0.25)',
-          marginBottom: 16,
-          fontSize: 13
-        }}>
-          <AlertCircle size={16} style={{ flexShrink: 0 }} />
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/25 text-red-600 dark:text-red-400 text-xs mb-4">
+          <AlertCircle size={16} className="shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       {successMsg && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '10px 14px',
-          borderRadius: 8,
-          background: 'rgba(16, 185, 129, 0.1)',
-          color: '#10b981',
-          border: '1px solid rgba(16, 185, 129, 0.25)',
-          marginBottom: 16,
-          fontSize: 13
-        }}>
-          <CheckCircle2 size={16} style={{ flexShrink: 0 }} />
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-xs mb-4">
+          <CheckCircle2 size={16} className="shrink-0" />
           <span>{successMsg}</span>
         </div>
       )}
 
       <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 16 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 mb-4">
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
               Substitute Teacher *
             </label>
             <select
@@ -183,7 +161,7 @@ export default function TemporaryAssignmentForm({ onSuccess }: Props) {
               value={form.teacherId}
               onChange={handleChange}
               required
-              style={{ width: '100%', padding: '9px 12px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13 }}
+              className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
             >
               <option value="">Select Teacher</option>
               {teachers.map((t) => {
@@ -197,7 +175,7 @@ export default function TemporaryAssignmentForm({ onSuccess }: Props) {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
               Class *
             </label>
             <select
@@ -205,7 +183,7 @@ export default function TemporaryAssignmentForm({ onSuccess }: Props) {
               value={form.classId}
               onChange={handleChange}
               required
-              style={{ width: '100%', padding: '9px 12px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13 }}
+              className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
             >
               <option value="">Select Class</option>
               {classes.map((c) => (
@@ -215,7 +193,7 @@ export default function TemporaryAssignmentForm({ onSuccess }: Props) {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
               Section *
             </label>
             <select
@@ -224,7 +202,7 @@ export default function TemporaryAssignmentForm({ onSuccess }: Props) {
               onChange={handleChange}
               required
               disabled={!form.classId}
-              style={{ width: '100%', padding: '9px 12px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13 }}
+              className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value="">{form.classId ? 'Select Section' : 'Choose Class first'}</option>
               {filteredSections.map((s) => (
@@ -234,7 +212,7 @@ export default function TemporaryAssignmentForm({ onSuccess }: Props) {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
               Start Date & Time *
             </label>
             <input
@@ -243,13 +221,12 @@ export default function TemporaryAssignmentForm({ onSuccess }: Props) {
               value={form.startAt}
               onChange={handleChange}
               required
-              style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13 }}
-            >
-            </input>
+              className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
+            />
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
               End Date & Time *
             </label>
             <input
@@ -258,18 +235,16 @@ export default function TemporaryAssignmentForm({ onSuccess }: Props) {
               value={form.endAt}
               onChange={handleChange}
               required
-              style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13 }}
-            >
-            </input>
+              className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
+            />
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <div className="flex justify-end">
           <button
             type="submit"
             disabled={loading}
-            className="btn-primary"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 18px', fontSize: 13 }}
+            className="btn-primary inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold cursor-pointer disabled:opacity-60 transition-colors shadow-sm"
           >
             {loading ? (
               <>
