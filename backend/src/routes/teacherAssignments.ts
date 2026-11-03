@@ -13,7 +13,8 @@ import {
   StorageConfigurationError,
   ensureAttachmentStorageTable
 } from '../utils/firebaseStorage';
-import { CLASS_GRADES } from '../routes/schoolData';
+import { CLASS_GRADES, demoClasses, demoSections } from '../routes/schoolData';
+import { inMemoryClassMentors } from '../services/mentorService';
 
 const router = Router();
 
@@ -307,7 +308,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
         return res.status(400).json({ message: v.error || 'Invalid attachment file' });
       }
 
-      const fileId = `doc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const fileId = `doc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const storageKey = buildTeacherAssignmentStorageKey(req.user!.schoolId!, cId, fileId, v.sanitizedName);
 
       try {
@@ -468,111 +469,292 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 });
 
 /**
- * 2. GET /api/teacher/assignments - List published assignments
+ * Helper to check whether a teacher has read or ownership access to an assignment.
+ * - Owner (creator) has full read/write access.
+ * - Class Mentor for the target class/section has read access.
+ * - Other teachers are blocked from reading or mutating.
+ * - Admins (SUPER_ADMIN, SCHOOL_ADMIN) have full access.
+ */
+export async function canTeacherAccessAssignment(
+  schoolId: string,
+  teacherId: string,
+  asg: { teacher_id?: string; class_id: string; section_id?: string | null }
+): Promise<{ allowed: boolean; isOwner: boolean }> {
+  if (asg.teacher_id === teacherId) {
+    return { allowed: true, isOwner: true };
+  }
+
+  if (isPostgresConfigured) {
+    try {
+      const q = await pool.query(
+        `SELECT 1 FROM class_mentors
+         WHERE school_id = $1 AND teacher_id = $2 AND class_id = $3
+           AND (section_id IS NULL OR section_id = $4)`,
+        [schoolId, teacherId, asg.class_id, asg.section_id || null]
+      );
+      if ((q.rowCount ?? 0) > 0) {
+        return { allowed: true, isOwner: false };
+      }
+    } catch (_e) {}
+  } else {
+    const isMentor = inMemoryClassMentors.some(
+      (m) =>
+        isSameSchool(m.school_id, schoolId) &&
+        m.teacher_id === teacherId &&
+        m.class_id === asg.class_id &&
+        (!asg.section_id || asg.section_id === m.section_id)
+    );
+    if (isMentor) {
+      return { allowed: true, isOwner: false };
+    }
+  }
+
+  return { allowed: false, isOwner: false };
+}
+
+interface FetchAssignmentsOptions {
+  view?: string;
+  classId?: string;
+  sectionId?: string;
+  scope?: string;
+}
+
+export async function fetchTeacherAssignmentsList(req: AuthRequest, options: FetchAssignmentsOptions = {}) {
+  const schoolId = req.user!.schoolId!;
+  const teacherId = req.user!.id!;
+  const isTeacher = req.user!.role === 'TEACHER';
+
+  const viewParam = String(options.view || req.query.view || '').trim().toLowerCase();
+  const classId = String(options.classId || req.query.class_id || req.query.classId || '').trim();
+  const sectionId = String(options.sectionId || req.query.section_id || req.query.sectionId || '').trim();
+  const scope = String(options.scope || req.query.scope || '').trim().toLowerCase();
+
+  let effectiveView = 'published_by_me';
+  if (viewParam === 'my_mentored' || viewParam === 'mentored') {
+    effectiveView = 'my_mentored';
+  } else if (!isTeacher && (viewParam === 'all' || scope === 'all')) {
+    effectiveView = 'all';
+  } else {
+    // For TEACHER, always default to published_by_me (even if scope=all was supplied)
+    effectiveView = 'published_by_me';
+  }
+
+  if (isPostgresConfigured) {
+    let query = `
+      SELECT a.id, a.school_id, a.class_id, a.section_id, a.subject_id, a.teacher_id,
+             a.title, a.description,
+             a.created_at::date AS assigned_date,
+             a.due_date, a.max_marks,
+             a.document_url, a.document_name, a.document_size, a.document_mime,
+             a.storage_key,
+             COALESCE(a.attachments, '[]'::jsonb) AS attachments,
+             a.created_at, a.updated_at,
+             c.class_number, sec.name AS section_name, sub.name AS subject_name, u.name AS teacher_name,
+             (SELECT COUNT(*)::int FROM student_assignment_submissions s WHERE s.assignment_id = a.id) AS submission_count,
+             (
+               SELECT COUNT(*)::int FROM assignment_attachments aa WHERE aa.assignment_id = a.id
+             ) AS attachment_table_count
+      FROM student_assignments a
+      LEFT JOIN subjects sub ON sub.id = a.subject_id
+      LEFT JOIN classes c ON c.id = a.class_id
+      LEFT JOIN sections sec ON sec.id = a.section_id
+      LEFT JOIN users u ON u.id = a.teacher_id
+      WHERE a.school_id = $1
+    `;
+    const params: any[] = [schoolId];
+
+    if (effectiveView === 'published_by_me') {
+      params.push(teacherId);
+      query += ` AND a.teacher_id = $${params.length}`;
+    } else if (effectiveView === 'my_mentored') {
+      params.push(teacherId);
+      query += ` AND EXISTS (
+        SELECT 1 FROM class_mentors cm
+        WHERE cm.school_id = a.school_id
+          AND cm.teacher_id = $${params.length}
+          AND cm.class_id = a.class_id
+          AND (a.section_id IS NULL OR a.section_id = cm.section_id)
+      )`;
+    }
+
+    if (classId) {
+      params.push(classId);
+      query += ` AND a.class_id = $${params.length}`;
+    }
+    if (sectionId) {
+      params.push(sectionId);
+      query += ` AND (a.section_id IS NULL OR a.section_id = $${params.length})`;
+    }
+
+    query += ` ORDER BY a.created_at DESC`;
+
+    const q = await pool.query(query, params);
+    return (q.rows || []).map((row: any) => {
+      let attCount = Number(row.attachment_table_count || 0);
+      if (attCount === 0 && Array.isArray(row.attachments)) {
+        attCount = row.attachments.length;
+      } else if (attCount === 0 && (row.document_name || row.storage_key)) {
+        attCount = 1;
+      }
+
+      const sanitizedAttachments = (Array.isArray(row.attachments) ? row.attachments : []).map((att: any) => ({
+        id: att.id,
+        file_name: att.file_name || att.name || 'document',
+        file_size: Number(att.file_size || att.size || 0),
+        mime_type: att.mime_type || att.type || 'application/octet-stream',
+        storage_key: att.storage_key,
+        uploaded_at: att.uploaded_at
+      }));
+
+      const safeDocUrl = row.document_url && String(row.document_url).startsWith('data:')
+        ? `/api/teacher/assignments/${row.id}/document/download`
+        : row.document_url;
+
+      const isOwner = row.teacher_id === teacherId;
+
+      return {
+        ...row,
+        document_data: undefined, // Strip raw base64 from listing API
+        document_url: safeDocUrl,
+        attachments: sanitizedAttachments,
+        attachment_count: attCount,
+        is_owner: isOwner,
+        teacher_name: row.teacher_name || (isOwner ? 'You' : 'Teacher')
+      };
+    });
+  }
+
+  // In-memory fallback
+  let mentoredClassSections: { class_id: string; section_id: string }[] = [];
+  if (effectiveView === 'my_mentored') {
+    mentoredClassSections = inMemoryClassMentors
+      .filter((m) => isSameSchool(m.school_id, schoolId) && m.teacher_id === teacherId)
+      .map((m) => ({ class_id: m.class_id, section_id: m.section_id }));
+  }
+
+  return inMemoryAssignments
+    .filter((a) => {
+      if (!isSameSchool(a.school_id, schoolId)) return false;
+
+      if (effectiveView === 'published_by_me') {
+        if (a.teacher_id !== teacherId) return false;
+      } else if (effectiveView === 'my_mentored') {
+        if (mentoredClassSections.length === 0) return false;
+        const matches = mentoredClassSections.some(
+          (m) => m.class_id === a.class_id && (!a.section_id || a.section_id === m.section_id)
+        );
+        if (!matches) return false;
+      }
+
+      if (classId && a.class_id !== classId) return false;
+      if (sectionId && a.section_id !== null && a.section_id !== undefined && a.section_id !== sectionId) return false;
+      return true;
+    })
+    .map((a) => {
+      const subs = inMemorySubmissions.filter((s) => s.assignment_id === a.id);
+      const attCount = Array.isArray(a.attachments) ? a.attachments.length : (a.document_name ? 1 : 0);
+      const isOwner = a.teacher_id === teacherId;
+      return {
+        ...a,
+        submission_count: subs.length,
+        attachment_count: attCount,
+        is_owner: isOwner,
+        teacher_name: a.teacher_name || (isOwner ? 'You' : 'Teacher')
+      };
+    })
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+}
+
+/**
+ * 2a. GET /api/teacher/assignments/my-published - List assignments published by currently logged-in teacher
+ */
+router.get('/my-published', async (req: AuthRequest, res: Response) => {
+  try {
+    const rows = await fetchTeacherAssignmentsList(req, { view: 'published_by_me' });
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Unable to fetch published assignments' });
+  }
+});
+
+/**
+ * 2b. GET /api/teacher/assignments/my-mentored - List assignments for teacher's mentored class/section
+ */
+router.get('/my-mentored', async (req: AuthRequest, res: Response) => {
+  try {
+    const rows = await fetchTeacherAssignmentsList(req, { view: 'my_mentored' });
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Unable to fetch mentored class assignments' });
+  }
+});
+
+/**
+ * 2c. GET /api/teacher/assignments/mentor-info - Get mentor status and mentored class/section list
+ */
+router.get('/mentor-info', async (req: AuthRequest, res: Response) => {
+  try {
+    const schoolId = req.user!.schoolId!;
+    const teacherId = req.user!.id!;
+
+    let mentoredClasses: any[] = [];
+    if (isPostgresConfigured) {
+      const q = await pool.query(
+        `SELECT cm.id AS mentor_record_id, cm.class_id, cm.section_id, cm.assigned_at,
+                c.class_number, sec.name AS section_name
+         FROM class_mentors cm
+         JOIN classes c ON c.id = cm.class_id
+         JOIN sections sec ON sec.id = cm.section_id
+         WHERE cm.school_id = $1 AND cm.teacher_id = $2
+         ORDER BY c.class_number, sec.name`,
+        [schoolId, teacherId]
+      );
+      mentoredClasses = (q.rows || []).map((row: any) => {
+        const num = Number(row.class_number ?? 1);
+        const classLabel = num === -1 ? 'Class L-KG' : num === 0 ? 'Class U-KG' : `Class ${num}`;
+        return {
+          ...row,
+          class_label: classLabel,
+          display_name: `${classLabel} - Section ${row.section_name || 'A'}`
+        };
+      });
+    } else {
+      const mentors = inMemoryClassMentors.filter(
+        (m) => isSameSchool(m.school_id, schoolId) && m.teacher_id === teacherId
+      );
+      mentoredClasses = mentors.map((m) => {
+        const cls = demoClasses.find((c) => c.id === m.class_id);
+        const sec = demoSections.find((s) => s.id === m.section_id);
+        const num = cls?.class_number ?? 10;
+        const classLabel = num === -1 ? 'Class L-KG' : num === 0 ? 'Class U-KG' : `Class ${num}`;
+        return {
+          mentor_record_id: m.id,
+          class_id: m.class_id,
+          section_id: m.section_id,
+          class_number: num,
+          section_name: sec?.name || 'A',
+          class_label: classLabel,
+          display_name: `${classLabel} - Section ${sec?.name || 'A'}`
+        };
+      });
+    }
+
+    return res.json({
+      has_mentor_class: mentoredClasses.length > 0,
+      mentored_classes: mentoredClasses
+    });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to fetch mentor info' });
+  }
+});
+
+/**
+ * 2. GET /api/teacher/assignments - List assignments (supports view=published_by_me, view=my_mentored)
  */
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
-    const classId = String(req.query.class_id || req.query.classId || '').trim();
-    const sectionId = String(req.query.section_id || req.query.sectionId || '').trim();
-    const scope = String(req.query.scope || '').trim();
-
-    if (isPostgresConfigured) {
-      let query = `
-        SELECT a.id, a.school_id, a.class_id, a.section_id, a.subject_id, a.teacher_id,
-               a.title, a.description,
-               a.created_at::date AS assigned_date,
-               a.due_date, a.max_marks,
-               a.document_url, a.document_name, a.document_size, a.document_mime,
-               a.storage_key,
-               COALESCE(a.attachments, '[]'::jsonb) AS attachments,
-               a.created_at, a.updated_at,
-               c.class_number, sec.name AS section_name, sub.name AS subject_name, u.name AS teacher_name,
-               (SELECT COUNT(*)::int FROM student_assignment_submissions s WHERE s.assignment_id = a.id) AS submission_count,
-               (
-                 SELECT COUNT(*)::int FROM assignment_attachments aa WHERE aa.assignment_id = a.id
-               ) AS attachment_table_count
-        FROM student_assignments a
-        LEFT JOIN subjects sub ON sub.id = a.subject_id
-        LEFT JOIN classes c ON c.id = a.class_id
-        LEFT JOIN sections sec ON sec.id = a.section_id
-        LEFT JOIN users u ON u.id = a.teacher_id
-        WHERE a.school_id = $1
-      `;
-      const params: any[] = [req.user!.schoolId!];
-
-      // By default, filter to current teacher unless scope=all or user is admin
-      if (scope !== 'all' && req.user!.role === 'TEACHER') {
-        params.push(req.user!.id);
-        query += ` AND a.teacher_id = $${params.length}`;
-      }
-
-      if (classId) {
-        params.push(classId);
-        query += ` AND a.class_id = $${params.length}`;
-      }
-      if (sectionId) {
-        params.push(sectionId);
-        query += ` AND (a.section_id IS NULL OR a.section_id = $${params.length})`;
-      }
-
-      query += ` ORDER BY a.created_at DESC`;
-
-      const q = await pool.query(query, params);
-      const rows = (q.rows || []).map((row: any) => {
-        let attCount = Number(row.attachment_table_count || 0);
-        if (attCount === 0 && Array.isArray(row.attachments)) {
-          attCount = row.attachments.length;
-        } else if (attCount === 0 && (row.document_name || row.storage_key)) {
-          attCount = 1;
-        }
-
-        // Lightweight metadata only for listing API (strip raw base64 data URLs)
-        const sanitizedAttachments = (Array.isArray(row.attachments) ? row.attachments : []).map((att: any) => ({
-          id: att.id,
-          file_name: att.file_name || att.name || 'document',
-          file_size: Number(att.file_size || att.size || 0),
-          mime_type: att.mime_type || att.type || 'application/octet-stream',
-          storage_key: att.storage_key,
-          uploaded_at: att.uploaded_at
-        }));
-
-        const safeDocUrl = row.document_url && String(row.document_url).startsWith('data:')
-          ? `/api/teacher/assignments/${row.id}/document/download`
-          : row.document_url;
-
-        return {
-          ...row,
-          document_data: undefined, // Strip raw base64 from listing API
-          document_url: safeDocUrl,
-          attachments: sanitizedAttachments,
-          attachment_count: attCount
-        };
-      });
-
-      return res.json(rows);
-    }
-
-    // In-memory fallback
-    const filtered = inMemoryAssignments
-      .filter((a) => {
-        if (!isSameSchool(a.school_id, req.user!.schoolId!)) return false;
-        if (scope !== 'all' && req.user!.role === 'TEACHER' && a.teacher_id !== req.user!.id) return false;
-        if (classId && a.class_id !== classId) return false;
-        if (sectionId && a.section_id !== null && a.section_id !== sectionId) return false;
-        return true;
-      })
-      .map((a) => {
-        const subs = inMemorySubmissions.filter((s) => s.assignment_id === a.id);
-        const attCount = Array.isArray(a.attachments) ? a.attachments.length : (a.document_name ? 1 : 0);
-        return {
-          ...a,
-          submission_count: subs.length,
-          attachment_count: attCount
-        };
-      })
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-    res.json(filtered);
+    const rows = await fetchTeacherAssignmentsList(req);
+    res.json(rows);
   } catch (err: any) {
     res.status(500).json({ message: err.message || 'Unable to fetch assignments' });
   }
@@ -612,6 +794,13 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 
       const asg = q.rows[0];
 
+      if (req.user!.role === 'TEACHER') {
+        const access = await canTeacherAccessAssignment(req.user!.schoolId!, req.user!.id!, asg);
+        if (!access.allowed) {
+          return res.status(403).json({ message: 'Forbidden: You do not have permission to view this assignment.' });
+        }
+      }
+
       // Query attachment table for attachments
       let atts = Array.isArray(asg.attachments) ? asg.attachments : [];
       try {
@@ -641,6 +830,13 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 
     if (!asg) {
       return res.status(404).json({ message: 'Assignment not found or does not belong to your school' });
+    }
+
+    if (req.user!.role === 'TEACHER') {
+      const access = await canTeacherAccessAssignment(req.user!.schoolId!, req.user!.id!, asg);
+      if (!access.allowed) {
+        return res.status(403).json({ message: 'Forbidden: You do not have permission to view this assignment.' });
+      }
     }
 
     const atts = Array.isArray(asg.attachments) ? asg.attachments : [];
@@ -689,6 +885,10 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       if (!existingAsg) {
         return res.status(404).json({ message: 'Assignment not found or does not belong to your school' });
       }
+    }
+
+    if (req.user!.role === 'TEACHER' && existingAsg.teacher_id !== req.user!.id) {
+      return res.status(403).json({ message: 'Forbidden: Only the author teacher can edit this assignment.' });
     }
 
     // Validate target class and section if being updated
@@ -924,6 +1124,10 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
 
       const asg = asgQ.rows[0];
 
+      if (req.user!.role === 'TEACHER' && asg.teacher_id !== req.user!.id) {
+        return res.status(403).json({ message: 'Forbidden: Only the author teacher can delete this assignment.' });
+      }
+
       // Collect storage keys from JSON attachments
       if (Array.isArray(asg.attachments)) {
         for (const att of asg.attachments) {
@@ -987,6 +1191,9 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
       }
 
       const asg = inMemoryAssignments[idx];
+      if (req.user!.role === 'TEACHER' && asg.teacher_id !== req.user!.id) {
+        return res.status(403).json({ message: 'Forbidden: Only the author teacher can delete this assignment.' });
+      }
       if (Array.isArray(asg.attachments)) {
         for (const att of asg.attachments) {
           if (att?.storage_key) await deleteFromStorage(att.storage_key).catch(() => {});
@@ -1043,6 +1250,10 @@ router.post('/:id/attachments', async (req: AuthRequest, res: Response) => {
     } else {
       asg = inMemoryAssignments.find((a) => a.id === assignmentId && isSameSchool(a.school_id, req.user!.schoolId!));
       if (!asg) return res.status(404).json({ message: 'Assignment not found' });
+    }
+
+    if (req.user!.role === 'TEACHER' && asg.teacher_id !== req.user!.id) {
+      return res.status(403).json({ message: 'Forbidden: Only the author teacher can add attachments to this assignment.' });
     }
 
     const fileId = `doc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -1105,6 +1316,10 @@ router.delete('/:id/attachments/:attachmentId', async (req: AuthRequest, res: Re
       if (!asg) return res.status(404).json({ message: 'Assignment not found' });
     }
 
+    if (req.user!.role === 'TEACHER' && asg.teacher_id !== req.user!.id) {
+      return res.status(403).json({ message: 'Forbidden: Only the author teacher can remove attachments from this assignment.' });
+    }
+
     const currentAttachments: any[] = Array.isArray(asg.attachments) ? asg.attachments : [];
     const targetAtt = currentAttachments.find((a) => a.id === attachmentId);
 
@@ -1157,6 +1372,14 @@ router.get('/:id/submissions', async (req: AuthRequest, res: Response) => {
         return res.status(404).json({ message: 'Assignment not found or does not belong to your school' });
       }
 
+      const asg = asgQ.rows[0];
+      if (req.user!.role === 'TEACHER') {
+        const access = await canTeacherAccessAssignment(req.user!.schoolId!, req.user!.id!, asg);
+        if (!access.allowed) {
+          return res.status(403).json({ message: 'Forbidden: You do not have permission to view submissions for this assignment.' });
+        }
+      }
+
       const q = await pool.query(
         `SELECT sub.*, st.name AS student_name, st.roll_number, st.admission_number
          FROM student_assignment_submissions sub
@@ -1193,6 +1416,13 @@ router.get('/:id/submissions', async (req: AuthRequest, res: Response) => {
     );
     if (!asg) {
       return res.status(404).json({ message: 'Assignment not found or does not belong to your school' });
+    }
+
+    if (req.user!.role === 'TEACHER') {
+      const access = await canTeacherAccessAssignment(req.user!.schoolId!, req.user!.id!, asg);
+      if (!access.allowed) {
+        return res.status(403).json({ message: 'Forbidden: You do not have permission to view submissions for this assignment.' });
+      }
     }
 
     const subs = inMemorySubmissions.filter(
@@ -1312,6 +1542,11 @@ router.put('/:id/submissions/:submissionId/grade', async (req: AuthRequest, res:
         return res.status(404).json({ message: 'Assignment not found or does not belong to your school' });
       }
 
+      const asg = asgQ.rows[0];
+      if (req.user!.role === 'TEACHER' && asg.teacher_id !== req.user!.id) {
+        return res.status(403).json({ message: 'Forbidden: Only the author teacher can grade submissions for this assignment.' });
+      }
+
       const hasUpd = await checkHasUpdatedAtSubmissions();
       const gradeQuery = hasUpd
         ? `UPDATE student_assignment_submissions
@@ -1334,6 +1569,10 @@ router.put('/:id/submissions/:submissionId/grade', async (req: AuthRequest, res:
     const asg = inMemoryAssignments.find((a) => a.id === assignmentId && isSameSchool(a.school_id, req.user!.schoolId!));
     if (!asg) {
       return res.status(404).json({ message: 'Assignment not found or does not belong to your school' });
+    }
+
+    if (req.user!.role === 'TEACHER' && asg.teacher_id !== req.user!.id) {
+      return res.status(403).json({ message: 'Forbidden: Only the author teacher can grade submissions for this assignment.' });
     }
 
     const sub = inMemorySubmissions.find(
@@ -1377,6 +1616,13 @@ router.get('/:id/document/preview', async (req: AuthRequest, res: Response) => {
 
     if (!asg) {
       return res.status(404).json({ message: 'Assignment not found' });
+    }
+
+    if (req.user!.role === 'TEACHER') {
+      const access = await canTeacherAccessAssignment(req.user!.schoolId!, req.user!.id!, asg);
+      if (!access.allowed) {
+        return res.status(403).json({ message: 'Forbidden: You do not have permission to access documents for this assignment.' });
+      }
     }
 
     const attId = req.query.attachmentId ? String(req.query.attachmentId) : null;
@@ -1449,6 +1695,13 @@ router.get('/:id/document/download', async (req: AuthRequest, res: Response) => 
 
     if (!asg) {
       return res.status(404).json({ message: 'Assignment not found' });
+    }
+
+    if (req.user!.role === 'TEACHER') {
+      const access = await canTeacherAccessAssignment(req.user!.schoolId!, req.user!.id!, asg);
+      if (!access.allowed) {
+        return res.status(403).json({ message: 'Forbidden: You do not have permission to access documents for this assignment.' });
+      }
     }
 
     const attId = req.query.attachmentId ? String(req.query.attachmentId) : null;
