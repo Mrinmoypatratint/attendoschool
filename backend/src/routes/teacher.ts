@@ -1817,14 +1817,45 @@ const updateStudentAttendanceHandler = async (req: AuthRequest, res: any) => {
              record.arrivalPeriod || null, record.arrivalTime || null, req.user!.id, userName, sessionId, studentId, pgStudentId]
           );
 
-          await pool.query(
-            `UPDATE attendance_sessions
-             SET present_count=$1, absent_count=$2, left_early_count=$3, late_count=$4,
-                 is_reattendance=TRUE, reattendance_count=COALESCE(reattendance_count, 0) + 1,
-                 last_modified_by=$5, last_modified_name=$6, last_modified_at=NOW()
-             WHERE id=$7`,
-            [presCount, absCount, leftEarlyCount, lateCount, req.user!.id, userName, sessionId]
+          const updatedCounts1 = await pool.query(
+            `UPDATE attendance_sessions s
+             SET
+               present_count = sub.pres,
+               absent_count = sub.abs,
+               left_early_count = sub.le,
+               late_count = sub.late,
+               total_count = sub.tot,
+               is_reattendance = TRUE,
+               reattendance_count = COALESCE(s.reattendance_count, 0) + 1,
+               last_modified_by = $2,
+               last_modified_name = $3,
+               last_modified_at = NOW()
+             FROM (
+               SELECT
+                 COUNT(*) FILTER (WHERE status = 'PRESENT') AS pres,
+                 COUNT(*) FILTER (WHERE status = 'ABSENT') AS abs,
+                 COUNT(*) FILTER (WHERE status = 'LEFT_EARLY') AS le,
+                 COUNT(*) FILTER (WHERE status = 'LATE') AS late,
+                 COUNT(*) AS tot
+               FROM attendance_records
+               WHERE attendance_session_id = $1
+             ) sub
+             WHERE s.id = $1
+             RETURNING s.present_count, s.absent_count, s.left_early_count, s.late_count, s.total_count`,
+            [sessionId, req.user!.id, userName]
           );
+          if (updatedCounts1.rows[0]) {
+            session.present_count = updatedCounts1.rows[0].present_count;
+            session.presentCount = updatedCounts1.rows[0].present_count;
+            session.absent_count = updatedCounts1.rows[0].absent_count;
+            session.absentCount = updatedCounts1.rows[0].absent_count;
+            session.left_early_count = updatedCounts1.rows[0].left_early_count;
+            session.leftEarlyCount = updatedCounts1.rows[0].left_early_count;
+            session.late_count = updatedCounts1.rows[0].late_count;
+            session.lateCount = updatedCounts1.rows[0].late_count;
+            session.total_count = updatedCounts1.rows[0].total_count;
+            session.totalCount = updatedCounts1.rows[0].total_count;
+          }
 
           const isSidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sid);
           if (isSidUuid) {
@@ -2108,14 +2139,45 @@ const batchReattendanceHandler = async (req: AuthRequest, res: any) => {
            r.arrivalPeriod || null, r.arrivalTime || null, req.user!.id, userName, sessionId, studentId]
         );
       }
-      await pool.query(
-        `UPDATE attendance_sessions
-         SET present_count=$1, absent_count=$2, left_early_count=$3, late_count=$4,
-             is_reattendance=TRUE, reattendance_count=COALESCE(reattendance_count, 0) + 1,
-             last_modified_by=$5, last_modified_name=$6, last_modified_at=NOW()
-         WHERE id=$7`,
-        [presCount, absCount, leftEarlyCount, lateCount, req.user!.id, userName, sessionId]
+      const updatedCounts2 = await pool.query(
+        `UPDATE attendance_sessions s
+         SET
+           present_count = sub.pres,
+           absent_count = sub.abs,
+           left_early_count = sub.le,
+           late_count = sub.late,
+           total_count = sub.tot,
+           is_reattendance = TRUE,
+           reattendance_count = COALESCE(s.reattendance_count, 0) + 1,
+           last_modified_by = $2,
+           last_modified_name = $3,
+           last_modified_at = NOW()
+         FROM (
+           SELECT
+             COUNT(*) FILTER (WHERE status = 'PRESENT') AS pres,
+             COUNT(*) FILTER (WHERE status = 'ABSENT') AS abs,
+             COUNT(*) FILTER (WHERE status = 'LEFT_EARLY') AS le,
+             COUNT(*) FILTER (WHERE status = 'LATE') AS late,
+             COUNT(*) AS tot
+           FROM attendance_records
+           WHERE attendance_session_id = $1
+         ) sub
+         WHERE s.id = $1
+         RETURNING s.present_count, s.absent_count, s.left_early_count, s.late_count, s.total_count`,
+        [sessionId, req.user!.id, userName]
       );
+      if (updatedCounts2.rows[0]) {
+        session.present_count = updatedCounts2.rows[0].present_count;
+        session.presentCount = updatedCounts2.rows[0].present_count;
+        session.absent_count = updatedCounts2.rows[0].absent_count;
+        session.absentCount = updatedCounts2.rows[0].absent_count;
+        session.left_early_count = updatedCounts2.rows[0].left_early_count;
+        session.leftEarlyCount = updatedCounts2.rows[0].left_early_count;
+        session.late_count = updatedCounts2.rows[0].late_count;
+        session.lateCount = updatedCounts2.rows[0].late_count;
+        session.total_count = updatedCounts2.rows[0].total_count;
+        session.totalCount = updatedCounts2.rows[0].total_count;
+      }
       const isSidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sid);
       const isSessUuid2 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId);
       if (isSidUuid && isSessUuid2) {

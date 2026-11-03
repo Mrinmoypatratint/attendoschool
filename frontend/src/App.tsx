@@ -5471,31 +5471,6 @@ function TeacherHome() {
                       const displayPres = Number(sec.presentCount || 0);
                       let displayLeftEarly = Number(sec.leftEarlyCount || 0);
                       let displayAbs = Number(sec.absentCount || 0);
-
-                      if (sec.leftEarlyCount && Number(sec.leftEarlyCount) > 0 && displayLeftEarly === 0) {
-                        displayLeftEarly = Number(sec.leftEarlyCount);
-                        if (displayAbs >= displayLeftEarly) {
-                          displayAbs = displayAbs - displayLeftEarly;
-                        }
-                      }
-
-                      // Check date-scoped fallback flag stored during early departure marking
-                      if (displayLeftEarly === 0) {
-                        const storedHasLeftEarly = (typeof window !== 'undefined')
-                          ? (
-                              sessionStorage.getItem(`has_left_early_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
-                              localStorage.getItem(`has_left_early_${schoolDate}_${sec.classId}_${sec.sectionId}`)
-                            )
-                          : null;
-                        if (storedHasLeftEarly && Number(storedHasLeftEarly) > 0) {
-                          const leNum = Number(storedHasLeftEarly);
-                          displayLeftEarly = leNum;
-                          if (displayAbs >= leNum) {
-                            displayAbs = displayAbs - leNum;
-                          }
-                        }
-                      }
-
                       const displayTot = sec.totalCount ? Number(sec.totalCount) : (displayPres + displayAbs + displayLeftEarly);
 
                       // Construct summary breakdown parts: e.g. "0P / 1LA" or "2P / 1A / 1LA"
@@ -15499,8 +15474,24 @@ function Attendance() {
     setChecked(prev => ({ ...prev, [sid]: newStatus === 'PRESENT', [s.id]: newStatus === 'PRESENT' }));
     setStudentStatusMap(prev => ({
       ...prev,
-      [sid]: { ...(prev[sid] || {}), status: newStatus },
-      [s.id]: { ...(prev[s.id] || {}), status: newStatus }
+      [sid]: {
+        ...(prev[sid] || {}),
+        status: newStatus,
+        departurePeriod: null,
+        departureTime: null,
+        arrivalPeriod: null,
+        arrivalTime: null,
+        remarks: ''
+      },
+      [s.id]: {
+        ...(prev[s.id] || {}),
+        status: newStatus,
+        departurePeriod: null,
+        departureTime: null,
+        arrivalPeriod: null,
+        arrivalTime: null,
+        remarks: ''
+      }
     }));
   }
 
@@ -15516,16 +15507,18 @@ function Attendance() {
         if (!status) {
           status = isPres !== undefined ? (isPres ? 'PRESENT' : 'ABSENT') : 'ABSENT';
         }
+        const isLeftEarly = status === 'LEFT_EARLY';
+        const isLate = status === 'LATE';
         return {
           studentId: s.id,
           studentName: s.name,
           rollNumber: s.roll_number,
           status,
-          departurePeriod: st.departurePeriod,
-          departureTime: st.departureTime,
-          arrivalPeriod: st.arrivalPeriod,
-          arrivalTime: st.arrivalTime,
-          remarks: st.remarks
+          departurePeriod: isLeftEarly ? (st.departurePeriod || null) : null,
+          departureTime: isLeftEarly ? (st.departureTime || null) : null,
+          arrivalPeriod: isLate ? (st.arrivalPeriod || null) : null,
+          arrivalTime: isLate ? (st.arrivalTime || null) : null,
+          remarks: isLeftEarly ? (st.remarks || '') : ''
         };
       });
 
