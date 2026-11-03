@@ -52,7 +52,7 @@ import {
   convertRomanClassToDigital,
   parseImportClassAndSection,
 } from "../utils/roman";
-import { assignClassMentor } from "../services/mentorService";
+import { assignClassMentor, inMemoryClassMentors } from "../services/mentorService";
 
 const isUuid = (val: any): boolean =>
   typeof val === "string" &&
@@ -5184,6 +5184,173 @@ r.get("/teachers", ...reader, async (req: AuthRequest, res) => {
   return sendPaginatedTeachers([]);
 });
 
+export async function checkMentorConflict(
+  schoolId: string,
+  classIdOrName: string | null | undefined,
+  sectionIdOrName: string | null | undefined,
+  currentTeacherId?: string | null
+): Promise<{
+  conflict: boolean;
+  message?: string;
+  existingTeacherName?: string;
+  employeeId?: string;
+  classId?: string;
+  sectionId?: string;
+  className?: string;
+  sectionName?: string;
+}> {
+  if (!classIdOrName || !sectionIdOrName) {
+    return { conflict: false };
+  }
+
+  const rawC = String(classIdOrName).trim();
+  const rawS = String(sectionIdOrName).trim();
+  if (!rawC || !rawS) return { conflict: false };
+
+  if (isPostgresConfigured) {
+    try {
+      // 1. Resolve class
+      let targetClassId: string | null = null;
+      let targetClassNumber: number | null = null;
+
+      if (isUuid(rawC)) {
+        const cRes = await pool.query(
+          "SELECT id, class_number FROM classes WHERE school_id = $1 AND id = $2 LIMIT 1",
+          [schoolId, rawC]
+        );
+        if (cRes.rowCount) {
+          targetClassId = cRes.rows[0].id;
+          targetClassNumber = cRes.rows[0].class_number;
+        }
+      }
+
+      if (!targetClassId) {
+        const cleanKey = rawC.replace(/^(class|grade|std|standard)\s*/i, "").trim().toLowerCase();
+        let queryNum: number | null = null;
+        if (/^l.?kg$/i.test(cleanKey) || /^l-kg$/i.test(cleanKey)) queryNum = -1;
+        else if (/^u.?kg$/i.test(cleanKey) || /^u-kg$/i.test(cleanKey)) queryNum = 0;
+        else {
+          const parsed = parseInt(cleanKey, 10);
+          if (!isNaN(parsed)) queryNum = parsed;
+        }
+
+        if (queryNum !== null) {
+          const cRes = await pool.query(
+            "SELECT id, class_number FROM classes WHERE school_id = $1 AND class_number = $2 LIMIT 1",
+            [schoolId, queryNum]
+          );
+          if (cRes.rowCount) {
+            targetClassId = cRes.rows[0].id;
+            targetClassNumber = cRes.rows[0].class_number;
+          }
+        }
+      }
+
+      if (!targetClassId) {
+        return { conflict: false };
+      }
+
+      // 2. Resolve section
+      let targetSectionId: string | null = null;
+      let targetSectionName: string | null = null;
+
+      if (isUuid(rawS)) {
+        const sRes = await pool.query(
+          "SELECT id, name FROM sections WHERE school_id = $1 AND class_id = $2 AND id = $3 LIMIT 1",
+          [schoolId, targetClassId, rawS]
+        );
+        if (sRes.rowCount) {
+          targetSectionId = sRes.rows[0].id;
+          targetSectionName = sRes.rows[0].name;
+        }
+      }
+
+      if (!targetSectionId) {
+        const cleanSec = rawS.replace(/^(section)\s*/i, "").trim();
+        const sRes = await pool.query(
+          "SELECT id, name FROM sections WHERE school_id = $1 AND class_id = $2 AND UPPER(TRIM(name)) = UPPER(TRIM($3)) LIMIT 1",
+          [schoolId, targetClassId, cleanSec]
+        );
+        if (sRes.rowCount) {
+          targetSectionId = sRes.rows[0].id;
+          targetSectionName = sRes.rows[0].name;
+        }
+      }
+
+      if (!targetSectionId) {
+        return { conflict: false };
+      }
+
+      // 3. Check class_mentors for conflict
+      const cmRes = await pool.query(
+        `SELECT cm.teacher_id, u.name AS teacher_name, tp.employee_id
+         FROM class_mentors cm
+         JOIN users u ON u.id = cm.teacher_id
+         LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
+         WHERE cm.school_id = $1 AND cm.class_id = $2 AND cm.section_id = $3
+         LIMIT 1`,
+        [schoolId, targetClassId, targetSectionId]
+      );
+
+      const clsLabel = targetClassNumber === -1 ? 'Class L-KG' : targetClassNumber === 0 ? 'Class U-KG' : `Class ${targetClassNumber}`;
+      const secLabel = targetSectionName || rawS;
+
+      if (cmRes.rowCount && cmRes.rowCount > 0) {
+        const existing = cmRes.rows[0];
+        if (currentTeacherId && String(existing.teacher_id) === String(currentTeacherId)) {
+          return {
+            conflict: false,
+            classId: targetClassId,
+            sectionId: targetSectionId,
+            className: clsLabel,
+            sectionName: secLabel
+          };
+        }
+
+        const empTag = existing.employee_id ? ` [${existing.employee_id}]` : '';
+        return {
+          conflict: true,
+          message: `Assignment Conflict: ${clsLabel} - Section ${secLabel} is already assigned to mentor ${existing.teacher_name}${empTag}. A class section can only have one assigned mentor.`,
+          existingTeacherName: existing.teacher_name,
+          employeeId: existing.employee_id,
+          classId: targetClassId,
+          sectionId: targetSectionId,
+          className: clsLabel,
+          sectionName: secLabel
+        };
+      }
+
+      return {
+        conflict: false,
+        classId: targetClassId,
+        sectionId: targetSectionId,
+        className: clsLabel,
+        sectionName: secLabel
+      };
+    } catch (e: any) {
+      console.warn('[checkMentorConflict] Error checking mentor conflict:', e.message);
+      return { conflict: false };
+    }
+  }
+
+  // Fallback demo/in-memory
+  const matchedMem = inMemoryClassMentors.find(
+    m => isSameSchool(m.school_id, schoolId) &&
+      (m.class_id === rawC || String(m.class_number) === rawC) &&
+      (m.section_id === rawS || String(m.section_name).toUpperCase() === rawS.toUpperCase())
+  );
+  if (matchedMem && (!currentTeacherId || matchedMem.teacher_id !== currentTeacherId)) {
+    return {
+      conflict: true,
+      message: `Assignment Conflict: Selected Class & Section is already assigned to mentor ${matchedMem.teacher_name || 'another teacher'}.`,
+      existingTeacherName: matchedMem.teacher_name,
+      employeeId: matchedMem.employee_id
+    };
+  }
+
+  return { conflict: false };
+}
+
 r.post("/teachers", ...admin, async (req: AuthRequest, res) => {
   const {
     firstName: rawFirst,
@@ -5406,8 +5573,35 @@ r.post("/teachers", ...admin, async (req: AuthRequest, res) => {
   const rawClass = req.body.class_name || req.body.className || req.body.class;
   const rawSection =
     req.body.section_name || req.body.sectionName || req.body.section;
-  const className = rawClass ? String(rawClass).trim() : null;
-  const sectionName = rawSection ? String(rawSection).trim() : null;
+  let className = rawClass ? String(rawClass).trim() : null;
+  let sectionName = rawSection ? String(rawSection).trim() : null;
+
+  const targetClassParam = classId || req.body.class_id || className;
+  const targetSectionParam = sectionId || req.body.section_id || sectionName;
+
+  let verifiedClassId: string | null = null;
+  let verifiedSectionId: string | null = null;
+
+  if (targetClassParam && targetSectionParam && req.user?.schoolId) {
+    const conflictCheck = await checkMentorConflict(
+      req.user.schoolId,
+      targetClassParam,
+      targetSectionParam,
+      null
+    );
+    if (conflictCheck.conflict) {
+      return res.status(409).json({
+        message: conflictCheck.message || "Class & Section is already assigned to another mentor."
+      });
+    }
+    verifiedClassId = conflictCheck.classId || null;
+    verifiedSectionId = conflictCheck.sectionId || null;
+    if (conflictCheck.className) className = conflictCheck.className;
+    if (conflictCheck.sectionName) sectionName = conflictCheck.sectionName;
+  } else if (!targetClassParam || !targetSectionParam) {
+    className = null;
+    sectionName = null;
+  }
 
   try {
     const client = await pool.connect();
@@ -5484,17 +5678,17 @@ r.post("/teachers", ...admin, async (req: AuthRequest, res) => {
       await client.query("COMMIT");
 
       // Assign class mentor AFTER commit so teacher record exists with FK integrity
-      if (assignedClass) {
+      if (verifiedClassId && verifiedSectionId && req.user?.schoolId) {
         try {
           await assignClassMentor(
-            req.user!.schoolId!,
-            assignedClass.class_id,
-            assignedClass.section_id,
+            req.user.schoolId,
+            verifiedClassId,
+            verifiedSectionId,
             u.rows[0].id,
           );
         } catch (assignErr: any) {
+          console.warn('[POST /teachers] Class mentor assignment error:', assignErr.message);
           assignmentWarning = `Teacher created successfully but class assignment failed: ${assignErr.message}`;
-          assignedClass = null;
         }
       }
 
@@ -6916,7 +7110,7 @@ r.put("/teachers/:id", ...admin, async (req: AuthRequest, res) => {
       : req.body.className !== undefined
         ? req.body.className
         : req.body.class;
-  const resolvedClass =
+  let resolvedClass =
     rawClass !== undefined
       ? rawClass
         ? String(rawClass).trim()
@@ -6928,12 +7122,54 @@ r.put("/teachers/:id", ...admin, async (req: AuthRequest, res) => {
       : req.body.sectionName !== undefined
         ? req.body.sectionName
         : req.body.section;
-  const resolvedSection =
+  let resolvedSection =
     rawSection !== undefined
       ? rawSection
         ? String(rawSection).trim()
         : null
       : existingDocData.section_name || demoTeachers[idx]?.section_name || null;
+
+  const targetPutClassParam =
+    classId !== undefined
+      ? classId
+      : req.body.class_id !== undefined
+        ? req.body.class_id
+        : resolvedClass;
+  const targetPutSectionParam =
+    sectionId !== undefined
+      ? sectionId
+      : req.body.section_id !== undefined
+        ? req.body.section_id
+        : resolvedSection;
+
+  let verifiedPutClassId: string | null = null;
+  let verifiedPutSectionId: string | null = null;
+  const effectiveSchoolForConflict = userSchoolId || resolvedSchoolId;
+
+  if (targetPutClassParam && targetPutSectionParam && effectiveSchoolForConflict) {
+    const conflictCheck = await checkMentorConflict(
+      effectiveSchoolForConflict,
+      targetPutClassParam,
+      targetPutSectionParam,
+      tid
+    );
+    if (conflictCheck.conflict) {
+      return res.status(409).json({
+        message: conflictCheck.message || "Class & Section is already assigned to another mentor."
+      });
+    }
+    verifiedPutClassId = conflictCheck.classId || null;
+    verifiedPutSectionId = conflictCheck.sectionId || null;
+    if (conflictCheck.className) resolvedClass = conflictCheck.className;
+    if (conflictCheck.sectionName) resolvedSection = conflictCheck.sectionName;
+  } else if (
+    (targetPutClassParam === "" || targetPutSectionParam === "") ||
+    (rawClass === "" || rawSection === "") ||
+    (classId === "" || sectionId === "")
+  ) {
+    resolvedClass = null;
+    resolvedSection = null;
+  }
   const rawDesig = req.body.designation;
   const resolvedDesig =
     rawDesig !== undefined
@@ -7241,51 +7477,29 @@ r.put("/teachers/:id", ...admin, async (req: AuthRequest, res) => {
     }
 
     // Class Teacher assignment update
-    const rawClassId = String(classId || "").trim();
-    const rawSectionId = String(sectionId || "").trim();
-    if (rawClassId && rawSectionId && userSchoolId) {
-      // Verify ownership
-      const secCheck = await pool.query(
-        `SELECT s.id AS section_id, s.name AS section_name, c.id AS class_id, c.class_number
-         FROM sections s JOIN classes c ON c.id = s.class_id
-         WHERE s.school_id = $1 AND c.school_id = $1 AND c.id = $2 AND s.id = $3 LIMIT 1`,
-        [userSchoolId, rawClassId, rawSectionId],
-      );
-      if (!secCheck.rowCount) {
-        assignmentWarning =
-          "Class/Section not found in this school — assignment not updated.";
-      } else {
-        // Check conflict: is this class/section assigned to a DIFFERENT teacher?
-        const conflict = await pool.query(
-          `SELECT cm.teacher_id FROM class_mentors cm
-           WHERE cm.school_id = $1 AND cm.class_id = $2 AND cm.section_id = $3 LIMIT 1`,
-          [userSchoolId, rawClassId, rawSectionId],
-        );
-        if (conflict.rowCount && conflict.rows[0].teacher_id !== tid) {
-          assignmentWarning =
-            "That class/section is already assigned to another teacher. Assignment not changed.";
-        } else {
-          await assignClassMentor(userSchoolId, rawClassId, rawSectionId, tid);
-          fastCache.delete(`teachers:${userSchoolId}`);
-        }
-      }
+    if (verifiedPutClassId && verifiedPutSectionId && (userSchoolId || resolvedSchoolId)) {
+      const activeSid = userSchoolId || resolvedSchoolId;
+      await assignClassMentor(activeSid, verifiedPutClassId, verifiedPutSectionId, tid);
+      fastCache.delete(`teachers:${activeSid}`);
     } else if (
-      rawClassId === "" &&
-      rawSectionId === "" &&
-      classId !== undefined &&
-      sectionId !== undefined
+      (!resolvedClass && !resolvedSection) ||
+      (classId === "" && sectionId === "") ||
+      (rawClass === "" && rawSection === "")
     ) {
       // Explicit clear: remove this teacher's current assignment if any
-      const existing = await pool.query(
-        `SELECT class_id, section_id FROM class_mentors WHERE school_id = $1 AND teacher_id = $2 LIMIT 1`,
-        [userSchoolId, tid],
-      );
-      if (existing.rowCount) {
-        await pool.query(
-          `DELETE FROM class_mentors WHERE school_id = $1 AND teacher_id = $2`,
-          [userSchoolId, tid],
+      const activeSid = userSchoolId || resolvedSchoolId;
+      if (activeSid) {
+        const existing = await pool.query(
+          `SELECT class_id, section_id FROM class_mentors WHERE school_id = $1 AND teacher_id = $2 LIMIT 1`,
+          [activeSid, tid],
         );
-        fastCache.delete(`teachers:${userSchoolId}`);
+        if (existing.rowCount) {
+          await pool.query(
+            `DELETE FROM class_mentors WHERE school_id = $1 AND teacher_id = $2`,
+            [activeSid, tid],
+          );
+          fastCache.delete(`teachers:${activeSid}`);
+        }
       }
     }
   } catch (updateErr: any) {
