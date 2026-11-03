@@ -731,17 +731,18 @@ export default function PeopleManagement() {
 
   return (
     <div className="feature-page">
-      <div className="page-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14 }}>
+      <div className="page-head flex flex-wrap items-start justify-between gap-3.5 mb-4" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14 }}>
         <div>
-          <p className="eyebrow">INSTITUTIONAL DIRECTORY</p>
-          <h1>People Management</h1>
-          <p className="muted">Centralized directory of enrolled students, parents, and school faculty staff.</p>
+          <p className="eyebrow text-xs font-semibold tracking-wider text-blue-600 uppercase">INSTITUTIONAL DIRECTORY</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">People Management</h1>
+          <p className="muted text-sm text-slate-500">Centralized directory of enrolled students, parents, and school faculty staff.</p>
         </div>
 
         {tab === 'teachers' && (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div className="flex flex-wrap gap-2" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button
               onClick={() => setImportOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md font-medium text-xs md:text-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition"
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#10b981', color: '#ffffff' }}
               title="Import faculty via Excel spreadsheet or CSV with interactive preview"
             >
@@ -749,6 +750,7 @@ export default function PeopleManagement() {
             </button>
             <button
               onClick={() => { setTeacherForm({ sendInviteEmail: true }); setAddTeacherPreview(false); setAddTeacherOpen(true); }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md font-medium text-xs md:text-sm transition"
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <Plus size={16} /> Add Teacher
@@ -758,7 +760,7 @@ export default function PeopleManagement() {
       </div>
 
       {toastNotice && (
-        <div style={{
+        <div className={`p-3 px-4 mb-4 rounded-md flex items-center justify-between gap-3 text-xs md:text-sm font-medium ${toastNotice.type === 'error' ? 'bg-red-50 border border-red-200 text-red-800' : 'bg-emerald-50 border border-emerald-200 text-emerald-800'}`} style={{
           padding: '12px 16px',
           marginBottom: 16,
           borderRadius: 'var(--radius-sm)',
@@ -771,13 +773,14 @@ export default function PeopleManagement() {
           color: toastNotice.type === 'error' ? '#991b1b' : '#166534',
           fontSize: 13
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {toastNotice.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
             <span>{toastNotice.message}</span>
           </div>
           <button
             type="button"
             onClick={() => setToastNotice(null)}
+            className="bg-transparent border-0 cursor-pointer text-base text-inherit p-0 font-bold"
             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'inherit', padding: 0 }}
           >
             ×
@@ -786,7 +789,7 @@ export default function PeopleManagement() {
       )}
 
       {/* ── UNIFIED PEOPLE DIRECTORY BOX WITH INNER SCROLLBAR ── */}
-      <div className="directory-box" ref={directoryTopRef}>
+      <div className="directory-box rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden" ref={directoryTopRef}>
         {/* Top Loading Progress Bar */}
         {loading && (
           <div style={{

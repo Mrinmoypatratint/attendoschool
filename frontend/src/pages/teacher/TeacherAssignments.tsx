@@ -466,14 +466,14 @@ export function TeacherAssignments() {
   });
 
   return (
-    <div style={{ width: '100%', paddingBottom: 60 }}>
+    <div className="w-full pb-16">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-main, #0f172a)' }}>
-            <BookOpen size={28} style={{ color: '#2563eb' }} /> Teacher Assignments
+          <h1 className="text-2xl font-bold m-0 flex items-center gap-2.5 text-slate-900 dark:text-slate-100">
+            <BookOpen size={28} className="text-blue-600" /> Teacher Assignments
           </h1>
-          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 14 }}>
+          <p className="m-0 mt-1 text-slate-500 dark:text-slate-400 text-sm">
             Publish homework assignments, review student submissions, and grade work.
           </p>
         </div>
@@ -481,156 +481,112 @@ export function TeacherAssignments() {
         <button
           type="button"
           onClick={handleOpenCreateModal}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '10px 18px',
-            background: '#2563eb',
-            color: '#fff',
-            borderRadius: 8,
-            border: 'none',
-            fontWeight: 600,
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(37,99,235,0.25)'
-          }}
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg border-none font-semibold cursor-pointer shadow-md shadow-blue-600/20 text-xs transition-colors"
         >
           <Plus size={18} /> Create Assignment
         </button>
       </div>
 
       {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <div className="panel" style={{ padding: 16, borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', background: 'var(--bg-card, #ffffff)' }}>
-          <div style={{ color: 'var(--text-muted, #64748b)', fontSize: 13, fontWeight: 600 }}>TOTAL PUBLISHED</div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text, #0f172a)', marginTop: 4 }}>{assignments.length}</div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="panel p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
+          <div className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase">TOTAL PUBLISHED</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{assignments.length}</div>
         </div>
-        <div className="panel" style={{ padding: 16, borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', background: 'var(--bg-card, #ffffff)' }}>
-          <div style={{ color: 'var(--text-muted, #64748b)', fontSize: 13, fontWeight: 600 }}>SUBMISSIONS RECEIVED</div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: '#2563eb', marginTop: 4 }}>
+        <div className="panel p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
+          <div className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase">SUBMISSIONS RECEIVED</div>
+          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
             {assignments.reduce((acc, a) => acc + (a.submission_count || 0), 0)}
           </div>
         </div>
-        <div className="panel" style={{ padding: 16, borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', background: 'var(--bg-card, #ffffff)' }}>
-          <div style={{ color: 'var(--text-muted, #64748b)', fontSize: 13, fontWeight: 600 }}>PUBLISHING ELIGIBILITY</div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#16a34a', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <CheckCircle2 size={16} /> Server Scoped & Authorized
+        <div className="panel p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
+          <div className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase">PUBLISHING ELIGIBILITY</div>
+          <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1.5">
+            <CheckCircle2 size={16} /> Server Scoped &amp; Authorized
           </div>
         </div>
       </div>
 
       {/* Search Bar */}
-      <div style={{ marginBottom: 20, display: 'flex', gap: 12 }}>
-        <div style={{ position: 'relative', flex: 1, maxWidth: 400 }}>
-          <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-muted, #94a3b8)' }} />
+      <div className="mb-5 flex gap-3">
+        <div className="relative flex-1 max-w-md">
+          <Search size={16} className="absolute left-3 top-2.5 text-slate-400" />
           <input
             type="text"
             placeholder="Search assignments by title or subject..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '8px 12px 8px 36px',
-              borderRadius: 8,
-              border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--bg-card, #ffffff)',
-              color: 'var(--text, #0f172a)',
-              fontSize: 14,
-              outline: 'none'
-            }}
+            className="w-full py-2 pl-9 pr-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
         <button
           type="button"
           onClick={loadAssignments}
           disabled={loading}
-          style={{
-            padding: '8px 14px',
-            borderRadius: 8,
-            border: '1px solid var(--border, #cbd5e1)',
-            background: 'var(--bg-card, #fff)',
-            color: 'var(--text, #1e293b)',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            fontSize: 13,
-            fontWeight: 600,
-            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-          }}
+          className="px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer disabled:cursor-not-allowed inline-flex items-center gap-1.5 text-xs font-semibold shadow-xs transition-colors"
         >
-          <RefreshCw size={14} className={loading ? 'spin' : ''} style={{ color: '#2563eb' }} /> Refresh
+          <RefreshCw size={14} className={`text-blue-600 ${loading ? 'animate-spin' : ''}`} /> Refresh
         </button>
       </div>
 
       {/* Assignment List */}
       {loading ? (
-        <div className="panel" style={{ textAlign: 'center', padding: 50, color: '#94a3b8' }}>
-          <Loader2 size={28} className="animate-spin" style={{ margin: '0 auto 12px' }} />
-          <p>Loading assignments...</p>
+        <div className="panel p-12 text-center text-slate-400">
+          <Loader2 size={28} className="animate-spin mx-auto mb-3 text-blue-600" />
+          <p className="m-0 text-xs">Loading assignments...</p>
         </div>
       ) : error ? (
-        <div className="panel" style={{ padding: 24, color: '#ef4444', textAlign: 'center' }}>
-          <AlertCircle size={28} style={{ margin: '0 auto 12px' }} />
-          <p>{error}</p>
+        <div className="panel p-6 text-red-500 text-center">
+          <AlertCircle size={28} className="mx-auto mb-3" />
+          <p className="m-0 text-xs font-semibold">{error}</p>
         </div>
       ) : filteredAssignments.length === 0 ? (
-        <div className="panel" style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
-          <FileText size={36} style={{ margin: '0 auto 12px', color: '#cbd5e1' }} />
-          <h3>No Assignments Found</h3>
-          <p style={{ fontSize: 14 }}>You haven't created any assignments yet or none match your search.</p>
+        <div className="panel p-10 text-center text-slate-500 dark:text-slate-400">
+          <FileText size={36} className="mx-auto mb-3 text-slate-300 dark:text-slate-600" />
+          <h3 className="m-0 mb-1 text-base font-bold text-slate-900 dark:text-slate-100">No Assignments Found</h3>
+          <p className="m-0 text-xs text-slate-500">You haven't created any assignments yet or none match your search.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 20 }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredAssignments.map((asg) => (
             <div
               key={asg.id}
-              className="panel"
-              style={{
-                padding: 20,
-                borderRadius: 12,
-                border: '1px solid var(--border, #e2e8f0)',
-                background: 'var(--bg-card, #ffffff)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-              }}
+              className="panel p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow"
             >
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
                     {asg.subject_name || 'Subject'}
                   </span>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', fontWeight: 500 }}>
+                  <span className="text-xs text-slate-400 font-medium">
                     Class {asg.class_number || '10'} {asg.section_name ? `- ${asg.section_name}` : ''}
                   </span>
                 </div>
-                <h3 style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, color: 'var(--text, #0f172a)' }}>{asg.title}</h3>
-                <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-secondary, #64748b)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                <h3 className="m-0 mb-2 text-base font-bold text-slate-900 dark:text-slate-100">{asg.title}</h3>
+                <p className="m-0 mb-4 text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
                   {asg.description}
                 </p>
 
-                <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--text-secondary, #475569)', marginBottom: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Clock size={14} style={{ color: '#0284c7' }} />
+                <div className="flex gap-4 text-xs text-slate-600 dark:text-slate-400 mb-3">
+                  <div className="flex items-center gap-1">
+                    <Clock size={14} className="text-sky-600" />
                     <span>Due: <b>{asg.due_date}</b></span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Award size={14} style={{ color: '#d97706' }} />
+                  <div className="flex items-center gap-1">
+                    <Award size={14} className="text-amber-600" />
                     <span>Max Marks: <b>{asg.max_marks}</b></span>
                   </div>
                 </div>
 
                 {/* Attached Document indicator */}
                 {(asg.document_name || (asg.attachments && asg.attachments.length > 0)) && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14, padding: '5px 10px', borderRadius: 6, background: 'rgba(2, 132, 199, 0.08)', border: '1px solid rgba(2, 132, 199, 0.2)', width: 'fit-content', fontSize: 12 }}>
-                    <Paperclip size={13} style={{ color: '#0284c7' }} />
-                    <span style={{ fontWeight: 600, color: '#0369a1' }}>
+                  <div className="flex items-center gap-1.5 mb-3.5 px-2.5 py-1 rounded bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800/50 w-fit text-xs">
+                    <Paperclip size={13} className="text-sky-600" />
+                    <span className="font-semibold text-sky-800 dark:text-sky-300">
                       {asg.document_name || asg.attachments?.[0]?.file_name || 'Attached Document'}
                     </span>
                     {(asg.document_size || asg.attachments?.[0]?.file_size) && (
-                      <span style={{ color: '#64748b' }}>
+                      <span className="text-slate-400 text-[11px]">
                         ({formatBytes(asg.document_size || asg.attachments?.[0]?.file_size)})
                       </span>
                     )}
@@ -638,28 +594,16 @@ export function TeacherAssignments() {
                 )}
               </div>
 
-              <div style={{ paddingTop: 12, borderTop: '1px solid var(--border, #f1f5f9)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
-                  Submissions: <b>{asg.submission_count || 0}</b>
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-700/60 flex justify-between items-center">
+                <span className="text-xs text-slate-500">
+                  Submissions: <b className="text-slate-900 dark:text-slate-100">{asg.submission_count || 0}</b>
                 </span>
                 <button
                   type="button"
                   onClick={() => handleOpenSubmissions(asg)}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--card-subtle, #f8fafc)',
-                    color: 'var(--text, #1e293b)',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6
-                  }}
+                  className="px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5 transition-colors"
                 >
-                  <Eye size={14} /> Review & Grade
+                  <Eye size={14} /> Review &amp; Grade
                 </button>
               </div>
             </div>
@@ -670,18 +614,9 @@ export function TeacherAssignments() {
       {/* Create Assignment Modal */}
       {showCreateModal && (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15,23,42,0.65)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: isCreateModalMaximized ? 8 : 16,
-            transition: 'all 0.2s ease'
-          }}
+          className={`fixed inset-0 bg-slate-950/65 backdrop-blur-xs flex items-center justify-center z-[1000] transition-all ${
+            isCreateModalMaximized ? 'p-2' : 'p-4'
+          }`}
           onClick={(e) => {
             if (e.target === e.currentTarget && !creating) {
               setShowCreateModal(false);
@@ -691,71 +626,27 @@ export function TeacherAssignments() {
           }}
         >
           <div
-            style={{
-              background: 'var(--bg-card, #ffffff)',
-              border: '1px solid var(--border, #e2e8f0)',
-              borderRadius: isCreateModalMaximized ? 8 : 12,
-              width: isCreateModalMaximized ? '97vw' : '100%',
-              maxWidth: isCreateModalMaximized ? 1160 : 560,
-              height: isCreateModalMaximized ? '94vh' : 'auto',
-              maxHeight: isCreateModalMaximized ? '94vh' : 'min(92vh, 750px)',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.25)',
-              color: 'var(--text, #0f172a)',
-              overflow: 'hidden',
-              transition: 'all 0.22s ease'
-            }}
+            className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex flex-col shadow-2xl text-slate-900 dark:text-slate-100 overflow-hidden transition-all ${
+              isCreateModalMaximized
+                ? 'w-[97vw] max-w-6xl h-[94vh] rounded-lg'
+                : 'w-full max-w-xl max-h-[min(92vh,750px)] rounded-xl'
+            }`}
           >
             {/* Modal Header */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '13px 20px',
-                borderBottom: '1px solid var(--border, #e2e8f0)',
-                background: 'var(--modal-header, #f8fafc)',
-                flexShrink: 0
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 8,
-                    background: 'rgba(37, 99, 235, 0.1)',
-                    color: '#2563eb',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
+            <div className="flex justify-between items-center px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center">
                   <BookOpen size={17} />
                 </div>
-                <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                <h2 className="m-0 text-base font-bold text-slate-900 dark:text-slate-100">
                   Publish New Assignment
                 </h2>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalMaximized(!isCreateModalMaximized)}
-                  style={{
-                    border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--surface, #ffffff)',
-                    borderRadius: 6,
-                    padding: '5px 9px',
-                    cursor: 'pointer',
-                    color: 'var(--text, #334155)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    transition: 'all 0.15s ease'
-                  }}
+                  className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded px-2.5 py-1 cursor-pointer text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 inline-flex items-center gap-1 text-xs font-semibold transition-colors"
                   title={isCreateModalMaximized ? 'Restore normal window size' : 'Maximize to full screen'}
                 >
                   {isCreateModalMaximized ? (
@@ -777,17 +668,7 @@ export function TeacherAssignments() {
                     setUploadedDocuments([]);
                     setUploadDocError(null);
                   }}
-                  style={{
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    color: 'var(--text-muted, #64748b)',
-                    padding: 5,
-                    borderRadius: 6,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
+                  className="border-none bg-transparent cursor-pointer text-slate-400 hover:text-slate-600 p-1 flex items-center justify-center"
                   title="Close"
                 >
                   <X size={19} />
@@ -797,38 +678,17 @@ export function TeacherAssignments() {
 
             <form
               onSubmit={handleCreateSubmit}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                flex: 1,
-                minHeight: 0,
-                overflow: 'hidden'
-              }}
+              className="flex flex-col flex-1 min-h-0 overflow-hidden"
             >
               {/* Scrollable Form Body - Guarantees everything fits smoothly on screen */}
-              <div
-                style={{
-                  padding: '16px 20px',
-                  overflowY: 'auto',
-                  flex: 1,
-                  minHeight: 0
-                }}
-              >
+              <div className="p-5 overflow-y-auto flex-1 min-h-0">
                 {createFeedback && (
                   <div
-                    style={{
-                      padding: '10px 14px',
-                      borderRadius: 8,
-                      marginBottom: 14,
-                      fontSize: 13,
-                      fontWeight: 500,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      background: createFeedback.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                      color: createFeedback.type === 'success' ? 'var(--emerald-600, #059669)' : 'var(--rose-600, #dc2626)',
-                      border: `1px solid ${createFeedback.type === 'success' ? 'var(--emerald-border, rgba(16, 185, 129, 0.3))' : 'var(--rose-border, rgba(239, 68, 68, 0.3))'}`
-                    }}
+                    className={`p-3 rounded-lg mb-3.5 text-xs font-medium flex items-center gap-2 ${
+                      createFeedback.type === 'success'
+                        ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/25'
+                        : 'bg-red-500/10 text-red-500 border border-red-500/25'
+                    }`}
                   >
                     {createFeedback.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
                     <span>{createFeedback.message}</span>
@@ -836,40 +696,33 @@ export function TeacherAssignments() {
                 )}
 
                 {loadingOptions ? (
-                  <div style={{ textAlign: 'center', padding: '24px 16px', color: 'var(--text-muted, #94a3b8)' }}>
-                    <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px' }} />
-                    <p style={{ margin: 0, fontSize: 13 }}>Checking mentor-authorized publishing options...</p>
+                  <div className="text-center py-6 px-4 text-slate-400 text-xs">
+                    <Loader2 size={24} className="animate-spin mx-auto mb-2 text-blue-600" />
+                    <p className="m-0">Checking mentor-authorized publishing options...</p>
                   </div>
                 ) : eligibleOptions.length === 0 ? (
-                  <div style={{ padding: '12px 14px', borderRadius: 8, background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#fbbf24', fontSize: 13, marginBottom: 14, lineHeight: 1.45 }}>
-                    <AlertTriangle size={17} style={{ display: 'inline', marginRight: 8, verticalAlign: '-3px' }} />
+                  <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs mb-3.5 leading-relaxed">
+                    <AlertTriangle size={17} className="inline mr-2 align-[-3px]" />
                     <strong>No Mentor-Authorized Allocations:</strong> You do not currently have any class and subject allocations authorized for assignment publishing by the Class Mentor. Please contact your Class Mentor to authorize your subject.
                   </div>
                 ) : null}
 
                 {/* Form fields: 2 columns in maximized mode, clean stacked flow in normal mode */}
-                <div
-                  style={{
-                    display: isCreateModalMaximized ? 'grid' : 'flex',
-                    gridTemplateColumns: isCreateModalMaximized ? '1.05fr 0.95fr' : undefined,
-                    flexDirection: isCreateModalMaximized ? undefined : 'column',
-                    gap: isCreateModalMaximized ? 22 : 13
-                  }}
-                >
+                <div className={`gap-3.5 ${isCreateModalMaximized ? 'grid grid-cols-2' : 'flex flex-col'}`}>
                   {/* Left Column / Primary Info */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div className="flex flex-col gap-3">
                     {/* Dynamic Target Class & Section Dropdown + Subject Dropdown */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div className="grid grid-cols-2 gap-2.5">
                       <div>
-                        <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
-                          Target Class & Section *
+                        <label className="block text-xs font-semibold mb-1 text-slate-700 dark:text-slate-300">
+                          Target Class &amp; Section *
                         </label>
                         <select
                           required
                           disabled={loadingOptions || uniqueClassSections.length === 0}
                           value={createForm.class_id && createForm.section_id ? `${createForm.class_id}:${createForm.section_id}` : ''}
                           onChange={(e) => handleClassSectionChange(e.target.value)}
-                          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13.5, background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)' }}
+                          className="w-full py-1.5 px-2.5 rounded-md border border-slate-300 dark:border-slate-600 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                         >
                           {uniqueClassSections.length === 0 ? (
                             <option value="">No authorized classes</option>
@@ -884,7 +737,7 @@ export function TeacherAssignments() {
                       </div>
 
                       <div>
-                        <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
+                        <label className="block text-xs font-semibold mb-1 text-slate-700 dark:text-slate-300">
                           Subject *
                         </label>
                         <select
@@ -892,7 +745,7 @@ export function TeacherAssignments() {
                           disabled={loadingOptions || availableSubjects.length === 0}
                           value={createForm.subject_id}
                           onChange={(e) => setCreateForm({ ...createForm, subject_id: e.target.value })}
-                          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13.5, background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)' }}
+                          className="w-full py-1.5 px-2.5 rounded-md border border-slate-300 dark:border-slate-600 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                         >
                           {availableSubjects.length === 0 ? (
                             <option value="">No authorized subjects</option>
@@ -908,7 +761,7 @@ export function TeacherAssignments() {
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
+                      <label className="block text-xs font-semibold mb-1 text-slate-700 dark:text-slate-300">
                         Title *
                       </label>
                       <input
@@ -917,12 +770,12 @@ export function TeacherAssignments() {
                         placeholder="e.g. Chapter 4 Calculus Homework"
                         value={createForm.title}
                         onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
-                        style={{ width: '100%', padding: '7px 11px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 13.5 }}
+                        className="w-full py-1.5 px-3 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs"
                       />
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
+                      <label className="block text-xs font-semibold mb-1 text-slate-700 dark:text-slate-300">
                         Description / Instructions
                       </label>
                       <AutoExpandingTextarea
@@ -931,16 +784,16 @@ export function TeacherAssignments() {
                         onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
                         minHeight={isCreateModalMaximized ? 120 : 60}
                         maxHeight={260}
-                        style={{ width: '100%', padding: '7px 11px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 13.5 }}
+                        className="w-full py-1.5 px-3 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs font-sans"
                       />
                     </div>
                   </div>
 
                   {/* Right Column / Schedule & Attachments */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div className="flex flex-col gap-3">
+                    <div className="grid grid-cols-2 gap-2.5">
                       <div>
-                        <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
+                        <label className="block text-xs font-semibold mb-1 text-slate-700 dark:text-slate-300">
                           Due Date *
                         </label>
                         <input
@@ -948,11 +801,11 @@ export function TeacherAssignments() {
                           required
                           value={createForm.due_date}
                           onChange={(e) => setCreateForm({ ...createForm, due_date: e.target.value })}
-                          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 13.5 }}
+                          className="w-full py-1.5 px-2.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs"
                         />
                       </div>
                       <div>
-                        <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
+                        <label className="block text-xs font-semibold mb-1 text-slate-700 dark:text-slate-300">
                           Max Marks
                         </label>
                         <input
@@ -968,27 +821,27 @@ export function TeacherAssignments() {
                             }
                             setCreateForm({ ...createForm, max_marks: val === '' ? ('' as any) : Number(val) });
                           }}
-                          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 13.5 }}
+                          className="w-full py-1.5 px-2.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs"
                         />
                       </div>
                     </div>
 
                     {/* Document Upload Section */}
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                        <label style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Paperclip size={14} style={{ color: '#0284c7' }} />
-                          Upload Document / Study Material <span style={{ fontSize: 11.5, fontWeight: 400, color: 'var(--text-muted, #64748b)' }}>(Optional)</span>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                          <Paperclip size={14} className="text-sky-600" />
+                          Upload Document / Study Material <span className="text-[11px] font-normal text-slate-400">(Optional)</span>
                         </label>
                         {uploadedDocuments.length > 0 && (
-                          <span style={{ fontSize: 11, color: 'var(--text-muted, #64748b)' }}>
+                          <span className="text-[11px] text-slate-400">
                             {uploadedDocuments.length} / 5 files attached
                           </span>
                         )}
                       </div>
 
                       {uploadDocError && (
-                        <div style={{ padding: '6px 10px', borderRadius: 6, background: 'rgba(239, 68, 68, 0.1)', color: '#dc2626', fontSize: 12, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div className="p-2 rounded bg-red-500/10 text-red-500 text-xs mb-2 flex items-center gap-1.5 border border-red-500/25">
                           <AlertCircle size={14} />
                           <span>{uploadDocError}</span>
                         </div>
@@ -996,73 +849,51 @@ export function TeacherAssignments() {
 
                       <div
                         onClick={() => document.getElementById('teacher-assignment-doc-input')?.click()}
-                        style={{
-                          border: '1.5px dashed var(--border, #cbd5e1)',
-                          borderRadius: 8,
-                          padding: isCreateModalMaximized ? '22px 14px' : '10px 12px',
-                          textAlign: 'center',
-                          cursor: 'pointer',
-                          background: 'var(--card-subtle, #f8fafc)',
-                          transition: 'all 0.2s ease',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 3
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#0284c7')}
-                        onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border, #cbd5e1)')}
+                        className={`border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-sky-500 rounded-lg text-center cursor-pointer bg-slate-50 dark:bg-slate-900/50 transition-colors flex flex-col items-center justify-center gap-1 ${
+                          isCreateModalMaximized ? 'p-6' : 'p-3'
+                        }`}
                       >
                         <input
                           id="teacher-assignment-doc-input"
                           type="file"
                           multiple
                           accept=".png,.jpg,.jpeg,.pdf,.xlsx,.doc,.docx"
-                          style={{ display: 'none' }}
+                          className="hidden"
                           onChange={handleTeacherFileChange}
                           disabled={uploadedDocuments.length >= 5}
                         />
-                        <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(2, 132, 199, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284c7' }}>
+                        <div className="w-7 h-7 rounded-full bg-sky-50 dark:bg-sky-950/50 flex items-center justify-center text-sky-600">
                           <Upload size={15} />
                         </div>
-                        <p style={{ margin: '2px 0 0', fontSize: 12.5, fontWeight: 600, color: 'var(--text, #1e293b)' }}>
+                        <p className="m-0 text-xs font-semibold text-slate-800 dark:text-slate-200">
                           Click or drop document files here
                         </p>
-                        <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted, #64748b)' }}>
+                        <p className="m-0 text-[11px] text-slate-400">
                           PDF, DOC, DOCX, XLSX, PNG, JPG (Max 10MB per file)
                         </p>
                       </div>
 
                       {/* Attached Documents List */}
                       {uploadedDocuments.length > 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 8 }}>
+                        <div className="flex flex-col gap-1.5 mt-2">
                           {uploadedDocuments.map((doc, idx) => (
                             <div
                               key={idx}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: '6px 10px',
-                                borderRadius: 6,
-                                background: 'var(--card-subtle, #f1f5f9)',
-                                border: '1px solid var(--border, #e2e8f0)',
-                                fontSize: 12
-                              }}
+                              className="flex items-center justify-between p-1.5 px-2.5 rounded bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-xs"
                             >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 7, overflow: 'hidden' }}>
-                                <FileText size={14} style={{ color: '#0284c7', flexShrink: 0 }} />
-                                <span style={{ fontWeight: 500, color: 'var(--text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: isCreateModalMaximized ? 420 : 260 }}>
+                              <div className="flex items-center gap-1.5 overflow-hidden">
+                                <FileText size={14} className="text-sky-600 shrink-0" />
+                                <span className={`font-medium text-slate-900 dark:text-slate-100 truncate ${isCreateModalMaximized ? 'max-w-md' : 'max-w-[260px]'}`}>
                                   {doc.name}
                                 </span>
-                                <span style={{ color: 'var(--text-muted, #64748b)', fontSize: 11 }}>
+                                <span className="text-slate-400 text-[11px]">
                                   ({formatBytes(doc.size)})
                                 </span>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveDoc(idx)}
-                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444', padding: 2, display: 'flex' }}
+                                className="border-none bg-transparent cursor-pointer text-red-500 hover:text-red-700 p-0.5 flex"
                                 title="Remove file"
                               >
                                 <X size={14} />
@@ -1077,18 +908,7 @@ export function TeacherAssignments() {
               </div>
 
               {/* Fixed Modal Footer - Always visible on screen, never cut off */}
-              <div
-                style={{
-                  padding: '11px 20px',
-                  borderTop: '1px solid var(--border, #e2e8f0)',
-                  background: 'var(--modal-footer, #f8fafc)',
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  alignItems: 'center',
-                  gap: 10,
-                  flexShrink: 0
-                }}
-              >
+              <div className="px-5 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex justify-end items-center gap-2.5 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
@@ -1096,35 +916,14 @@ export function TeacherAssignments() {
                     setUploadedDocuments([]);
                     setUploadDocError(null);
                   }}
-                  style={{
-                    padding: '7px 15px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--card-subtle, #fff)',
-                    color: 'var(--text, #475569)',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    fontSize: 13
-                  }}
+                  className="px-3.5 py-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 font-semibold cursor-pointer text-xs transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={creating || loadingOptions || eligibleOptions.length === 0 || !createForm.class_id || !createForm.subject_id}
-                  style={{
-                    padding: '7px 18px',
-                    borderRadius: 6,
-                    border: 'none',
-                    background: (creating || eligibleOptions.length === 0) ? '#94a3b8' : '#2563eb',
-                    color: '#fff',
-                    fontWeight: 600,
-                    cursor: (creating || eligibleOptions.length === 0) ? 'not-allowed' : 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    fontSize: 13
-                  }}
+                  className="px-4 py-1.5 rounded-md border-none text-white font-semibold cursor-pointer inline-flex items-center gap-1.5 text-xs bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm transition-colors"
                 >
                   {creating ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />} Publish Assignment
                 </button>
@@ -1136,41 +935,32 @@ export function TeacherAssignments() {
 
       {/* Submissions & Grading Modal */}
       {activeAssignment && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: isSubmissionsMaximized ? 8 : 16, transition: 'all 0.2s ease' }}>
-          <div style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: isSubmissionsMaximized ? 8 : 12, width: isSubmissionsMaximized ? '97vw' : '100%', maxWidth: isSubmissionsMaximized ? 1200 : 780, height: isSubmissionsMaximized ? '94vh' : 'auto', maxHeight: isSubmissionsMaximized ? '94vh' : 'min(92vh, 800px)', overflowY: 'auto', padding: isSubmissionsMaximized ? '18px 24px' : '20px 24px', color: 'var(--text, #0f172a)', transition: 'all 0.22s ease' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid var(--border, #f1f5f9)', paddingBottom: 12 }}>
+        <div className={`fixed inset-0 bg-slate-950/65 backdrop-blur-xs flex items-center justify-center z-[1000] transition-all ${isSubmissionsMaximized ? 'p-2' : 'p-4'}`}>
+          <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-y-auto text-slate-900 dark:text-slate-100 shadow-2xl transition-all ${
+            isSubmissionsMaximized
+              ? 'w-[97vw] max-w-7xl h-[94vh] rounded-lg p-5'
+              : 'w-full max-w-3xl max-h-[min(92vh,800px)] rounded-xl p-6'
+          }`}>
+            <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-700/60 pb-3">
               <div>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                <h2 className="m-0 text-lg font-bold text-slate-900 dark:text-slate-100">
                   Submissions: {activeAssignment.title}
                 </h2>
-                <span style={{ fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
+                <span className="text-xs text-slate-500">
                   Max Marks: <b>{activeAssignment.max_marks}</b> | Due: <b>{activeAssignment.due_date}</b>
                 </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setIsSubmissionsMaximized(!isSubmissionsMaximized)}
-                  style={{
-                    border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--surface, #ffffff)',
-                    borderRadius: 6,
-                    padding: '5px 9px',
-                    cursor: 'pointer',
-                    color: 'var(--text, #334155)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    transition: 'all 0.15s ease'
-                  }}
+                  className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded px-2.5 py-1 cursor-pointer text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 inline-flex items-center gap-1 text-xs font-semibold transition-colors"
                   title={isSubmissionsMaximized ? 'Restore standard window size' : 'Maximize to full screen'}
                 >
                   {isSubmissionsMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                   <span>{isSubmissionsMaximized ? 'Restore' : 'Maximize'}</span>
                 </button>
-                <button type="button" onClick={() => setActiveAssignment(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)', padding: 5, borderRadius: 6 }}>
+                <button type="button" onClick={() => setActiveAssignment(null)} className="border-none bg-transparent cursor-pointer text-slate-400 hover:text-slate-600 p-1 rounded">
                   <X size={20} />
                 </button>
               </div>
@@ -1178,18 +968,11 @@ export function TeacherAssignments() {
 
             {gradeFeedback && (
               <div
-                style={{
-                  padding: '10px 14px',
-                  borderRadius: 8,
-                  marginBottom: 16,
-                  fontSize: 13,
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  background: gradeFeedback.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                  color: gradeFeedback.type === 'success' ? 'var(--emerald-600, #059669)' : 'var(--rose-600, #dc2626)'
-                }}
+                className={`p-3 rounded-lg mb-4 text-xs font-medium flex items-center gap-2 ${
+                  gradeFeedback.type === 'success'
+                    ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/25'
+                    : 'bg-red-500/10 text-red-500 border border-red-500/25'
+                }`}
               >
                 {gradeFeedback.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
                 <span>{gradeFeedback.message}</span>
@@ -1198,26 +981,26 @@ export function TeacherAssignments() {
 
             {/* Grading Form Modal section if submission selected */}
             {selectedSubmission ? (
-              <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 16, borderRadius: 8, border: '1px solid var(--border, #cbd5e1)', marginBottom: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+              <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700 mb-5">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="m-0 text-sm font-bold text-slate-900 dark:text-slate-100">
                     Grade Submission for <PersonProfileLink kind="student" id={selectedSubmission.student_id} name={selectedSubmission.student_name || 'Student'} person={selectedSubmission as any} /> (Roll #{selectedSubmission.roll_number || '—'})
                   </h3>
-                  <button type="button" onClick={() => setSelectedSubmission(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                  <button type="button" onClick={() => setSelectedSubmission(null)} className="border-none bg-transparent cursor-pointer text-xs text-slate-500 hover:text-slate-700">
                     Cancel Grading
                   </button>
                 </div>
 
-                <div style={{ background: 'var(--bg-card, #fff)', padding: 12, borderRadius: 6, border: '1px solid var(--border, #e2e8f0)', fontSize: 13, marginBottom: 12 }}>
-                  <b style={{ color: 'var(--text)' }}>Submission Content:</b>
-                  <p style={{ margin: '4px 0 0', color: 'var(--text-secondary, #334155)', whiteSpace: 'pre-wrap' }}>{selectedSubmission.submission_text || 'No text provided.'}</p>
+                <div className="bg-white dark:bg-slate-800 p-3 rounded border border-slate-200 dark:border-slate-700 text-xs mb-3">
+                  <b className="text-slate-900 dark:text-slate-100">Submission Content:</b>
+                  <p className="m-0 mt-1 text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{selectedSubmission.submission_text || 'No text provided.'}</p>
 
                   {selectedSubmission.attachments && selectedSubmission.attachments.length > 0 && (
-                    <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border, #f1f5f9)' }}>
-                      <b style={{ display: 'block', marginBottom: 6, color: 'var(--text, #334155)' }}>
+                    <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-700/60">
+                      <b className="block mb-1.5 text-slate-700 dark:text-slate-300">
                         Student Attachments ({selectedSubmission.attachments.length}):
                       </b>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div className="flex flex-col gap-1.5">
                         {selectedSubmission.attachments.map((att) => {
                           const isPreviewable =
                             att.mime_type?.startsWith('image/') ||
@@ -1230,43 +1013,23 @@ export function TeacherAssignments() {
                           return (
                             <div
                               key={att.id}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                background: 'var(--card-subtle, #f8fafc)',
-                                border: '1px solid var(--border, #cbd5e1)',
-                                borderRadius: 6,
-                                padding: '6px 10px',
-                                fontSize: 12
-                              }}
+                              className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded p-1.5 px-2.5 text-xs"
                             >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', maxWidth: '65%' }}>
-                                <Paperclip size={13} color="var(--text-muted, #64748b)" />
-                                <span title={att.file_name} style={{ fontWeight: 500, color: 'var(--text, #1e293b)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <div className="flex items-center gap-1.5 overflow-hidden max-w-[65%]">
+                                <Paperclip size={13} className="text-slate-400 shrink-0" />
+                                <span title={att.file_name} className="font-medium text-slate-800 dark:text-slate-200 truncate">
                                   {att.file_name}
                                 </span>
-                                <span style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 11 }}>
+                                <span className="text-slate-400 text-[11px] shrink-0">
                                   ({formatBytes(att.file_size)})
                                 </span>
                               </div>
-                              <div style={{ display: 'flex', gap: 6 }}>
+                              <div className="flex gap-1.5">
                                 {isPreviewable && (
                                   <button
                                     type="button"
                                     onClick={() => handleTeacherPreview(activeAssignment.id, selectedSubmission.id, att)}
-                                    style={{
-                                      border: '1px solid var(--border, #cbd5e1)',
-                                      background: 'var(--bg-card, #fff)',
-                                      borderRadius: 4,
-                                      padding: '3px 8px',
-                                      cursor: 'pointer',
-                                      fontSize: 11,
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: 4,
-                                      color: 'var(--text, #334155)'
-                                    }}
+                                    className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded px-2 py-0.5 cursor-pointer text-[11px] inline-flex items-center gap-1 text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition-colors"
                                   >
                                     <Eye size={12} /> Preview
                                   </button>
@@ -1274,18 +1037,7 @@ export function TeacherAssignments() {
                                 <button
                                   type="button"
                                   onClick={() => handleTeacherDownload(activeAssignment.id, selectedSubmission.id, att)}
-                                  style={{
-                                    border: '1px solid #2563eb',
-                                    background: 'rgba(37, 99, 235, 0.12)',
-                                    borderRadius: 4,
-                                    padding: '3px 8px',
-                                    cursor: 'pointer',
-                                    fontSize: 11,
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 4,
-                                    color: 'var(--sidebar-accent, #3b82f6)'
-                                  }}
+                                  className="border border-blue-500 bg-blue-50 dark:bg-blue-950/40 rounded px-2 py-0.5 cursor-pointer text-[11px] inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:bg-blue-100 transition-colors"
                                 >
                                   <Download size={12} /> Download
                                 </button>
@@ -1298,10 +1050,10 @@ export function TeacherAssignments() {
                   )}
                 </div>
 
-                <form onSubmit={handleGradeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
+                <form onSubmit={handleGradeSubmit} className="flex flex-col gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: 'var(--text)' }}>Marks Obtained *</label>
+                      <label className="block text-xs font-semibold mb-1 text-slate-700 dark:text-slate-300">Marks Obtained *</label>
                       <input
                         type="number"
                         min={0}
@@ -1317,23 +1069,23 @@ export function TeacherAssignments() {
                           }
                           setGradeForm({ ...gradeForm, marks_obtained: val === '' ? ('' as any) : Number(val) });
                         }}
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--bg-card)', color: 'var(--text)' }}
+                        className="w-full py-1.5 px-2.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs"
                       />
                     </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: 'var(--text)' }}>Feedback / Evaluation Comments</label>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-semibold mb-1 text-slate-700 dark:text-slate-300">Feedback / Evaluation Comments</label>
                       <input
                         type="text"
                         placeholder="e.g. Excellent solution structure!"
                         value={gradeForm.feedback}
                         onChange={(e) => setGradeForm({ ...gradeForm, feedback: e.target.value })}
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--bg-card)', color: 'var(--text)' }}
+                        className="w-full py-1.5 px-2.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs"
                       />
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                    <button type="submit" disabled={grading} style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#16a34a', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
+                  <div className="flex justify-end gap-2.5">
+                    <button type="submit" disabled={grading} className="px-4 py-1.5 rounded-md border-none bg-emerald-600 hover:bg-emerald-700 text-white font-semibold cursor-pointer text-xs shadow-sm transition-colors">
                       {grading ? 'Saving...' : 'Save Grade'}
                     </button>
                   </div>
@@ -1342,104 +1094,82 @@ export function TeacherAssignments() {
             ) : null}
 
             {loadingSubmissions ? (
-              <div style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted, #94a3b8)' }}>
-                <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px' }} />
-                <p>Loading student submissions...</p>
+              <div className="text-center py-8 text-slate-400 text-xs">
+                <Loader2 size={24} className="animate-spin mx-auto mb-2 text-blue-600" />
+                <p className="m-0">Loading student submissions...</p>
               </div>
             ) : submissionsError ? (
-              <div style={{ padding: 16, color: '#ef4444', textAlign: 'center' }}>
-                <p>{submissionsError}</p>
+              <div className="p-4 text-red-500 text-center text-xs font-semibold">
+                <p className="m-0">{submissionsError}</p>
               </div>
             ) : submissions.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted, #64748b)' }}>
-                <p>No student submissions received for this assignment yet.</p>
+              <div className="text-center py-8 text-slate-500 text-xs">
+                <p className="m-0">No student submissions received for this assignment yet.</p>
               </div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ background: 'var(--card-subtle, #f8fafc)', borderBottom: '2px solid var(--border, #e2e8f0)', textAlign: 'left' }}>
-                    <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Student</th>
-                    <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Submitted Date</th>
-                    <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Status</th>
-                    <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Score</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-muted)' }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {submissions.map((sub) => (
-                    <tr key={sub.id} style={{ borderBottom: '1px solid var(--border, #f1f5f9)' }}>
-                      <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text)' }}>
-                        <PersonProfileLink kind="student" id={sub.student_id} name={sub.student_name || 'Student'} person={sub as any} />
-                        {sub.roll_number && <span style={{ color: 'var(--text-muted, #64748b)', fontWeight: 400 }}> (Roll #{sub.roll_number})</span>}
-                        {sub.attachments && sub.attachments.length > 0 && (
-                          <span
-                            title={`${sub.attachments.length} attachment(s)`}
-                            style={{
-                              marginLeft: 6,
-                              fontSize: 11,
-                              background: 'var(--card-subtle, #f1f5f9)',
-                              border: '1px solid var(--border, #cbd5e1)',
-                              padding: '1px 6px',
-                              borderRadius: 4,
-                              color: 'var(--text-secondary, #475569)',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 3,
-                              fontWeight: 500
-                            }}
-                          >
-                            <Paperclip size={11} /> {sub.attachments.length}
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ padding: '10px 12px', color: 'var(--text-muted, #64748b)' }}>
-                        {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString() : '—'}
-                      </td>
-                      <td style={{ padding: '10px 12px' }}>
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            padding: '2px 8px',
-                            borderRadius: 4,
-                            background: sub.status === 'GRADED' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                            color: sub.status === 'GRADED' ? '#34d399' : '#fbbf24'
-                          }}
-                        >
-                          {sub.status}
-                        </span>
-                      </td>
-                      <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text)' }}>
-                        {sub.status === 'GRADED' ? `${sub.marks_obtained} / ${activeAssignment.max_marks}` : '—'}
-                      </td>
-                      <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedSubmission(sub);
-                            setGradeForm({
-                              marks_obtained: Number(sub.marks_obtained ?? 0),
-                              feedback: sub.feedback || ''
-                            });
-                          }}
-                          style={{
-                            padding: '4px 10px',
-                            borderRadius: 6,
-                            border: '1px solid #2563eb',
-                            background: 'rgba(37, 99, 235, 0.12)',
-                            color: 'var(--sidebar-accent, #3b82f6)',
-                            fontSize: 12,
-                            fontWeight: 600,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {sub.status === 'GRADED' ? 'Edit Grade' : 'Grade'}
-                        </button>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-900/50 border-b-2 border-slate-200 dark:border-slate-700">
+                      <th className="p-2.5 px-3 text-slate-500 dark:text-slate-400 font-semibold">Student</th>
+                      <th className="p-2.5 px-3 text-slate-500 dark:text-slate-400 font-semibold">Submitted Date</th>
+                      <th className="p-2.5 px-3 text-slate-500 dark:text-slate-400 font-semibold">Status</th>
+                      <th className="p-2.5 px-3 text-slate-500 dark:text-slate-400 font-semibold">Score</th>
+                      <th className="p-2.5 px-3 text-slate-500 dark:text-slate-400 text-right font-semibold">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {submissions.map((sub) => (
+                      <tr key={sub.id} className="border-b border-slate-100 dark:border-slate-700/60 hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors">
+                        <td className="p-2.5 px-3 font-semibold text-slate-900 dark:text-slate-100">
+                          <PersonProfileLink kind="student" id={sub.student_id} name={sub.student_name || 'Student'} person={sub as any} />
+                          {sub.roll_number && <span className="text-slate-400 font-normal"> (Roll #{sub.roll_number})</span>}
+                          {sub.attachments && sub.attachments.length > 0 && (
+                            <span
+                              title={`${sub.attachments.length} attachment(s)`}
+                              className="ml-1.5 text-[11px] bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300 inline-flex items-center gap-1 font-medium"
+                            >
+                              <Paperclip size={11} /> {sub.attachments.length}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-2.5 px-3 text-slate-500">
+                          {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString() : '—'}
+                        </td>
+                        <td className="p-2.5 px-3">
+                          <span
+                            className={`text-[11px] font-bold px-2 py-0.5 rounded ${
+                              sub.status === 'GRADED'
+                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-400'
+                            }`}
+                          >
+                            {sub.status}
+                          </span>
+                        </td>
+                        <td className="p-2.5 px-3 font-semibold text-slate-900 dark:text-slate-100">
+                          {sub.status === 'GRADED' ? `${sub.marks_obtained} / ${activeAssignment.max_marks}` : '—'}
+                        </td>
+                        <td className="p-2.5 px-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedSubmission(sub);
+                              setGradeForm({
+                                marks_obtained: Number(sub.marks_obtained ?? 0),
+                                feedback: sub.feedback || ''
+                              });
+                            }}
+                            className="px-2.5 py-1 rounded border border-blue-500 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 text-xs font-semibold cursor-pointer transition-colors"
+                          >
+                            {sub.status === 'GRADED' ? 'Edit Grade' : 'Grade'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </div>
@@ -1447,59 +1177,16 @@ export function TeacherAssignments() {
 
       {/* Teacher Attachment Preview Modal */}
       {teacherPreview && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15,23,42,0.75)',
-            backdropFilter: 'blur(3px)',
-            zIndex: 1100,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 16
-          }}
-        >
-          <div
-            style={{
-              background: 'var(--bg-card, #fff)',
-              border: '1px solid var(--border, #e2e8f0)',
-              borderRadius: 12,
-              width: 'min(900px, 95vw)',
-              height: 'min(85vh, 800px)',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)',
-              overflow: 'hidden'
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '12px 18px',
-                borderBottom: '1px solid var(--border, #e2e8f0)',
-                background: 'var(--card-subtle, #f8fafc)'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                <Paperclip size={16} color="var(--text-muted, #64748b)" />
-                <h3
-                  style={{
-                    margin: 0,
-                    fontSize: 15,
-                    fontWeight: 700,
-                    color: 'var(--text, #0f172a)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
+        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-xs z-[1100] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl w-full max-w-4xl h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+              <div className="flex items-center gap-2 overflow-hidden">
+                <Paperclip size={16} className="text-slate-400 shrink-0" />
+                <h3 className="m-0 text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
                   {teacherPreview.fileName}
                 </h3>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() =>
@@ -1509,76 +1196,48 @@ export function TeacherAssignments() {
                       { file_name: teacherPreview.fileName, id: teacherPreview.attachmentId }
                     )
                   }
-                  style={{
-                    border: '1px solid #cbd5e1',
-                    background: '#fff',
-                    borderRadius: 6,
-                    padding: '5px 10px',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    color: 'var(--text, #1e293b)'
-                  }}
+                  className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-50 rounded px-2.5 py-1 text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-300 transition-colors"
                 >
                   <Download size={13} /> Download
                 </button>
                 <button
                   type="button"
                   onClick={closeTeacherPreview}
-                  style={{
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    color: '#64748b',
-                    padding: 4
-                  }}
+                  className="border-none bg-transparent cursor-pointer text-slate-400 hover:text-slate-600 p-1"
                 >
                   <X size={20} />
                 </button>
               </div>
             </div>
 
-            <div
-              style={{
-                flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: 16,
-                background: '#0f172a08',
-                overflow: 'auto'
-              }}
-            >
+            <div className="flex-1 flex items-center justify-center p-4 bg-slate-100/50 dark:bg-slate-900/50 overflow-auto">
               {teacherPreview.loading ? (
-                <div style={{ textAlign: 'center', color: '#64748b' }}>
-                  <Loader2 size={32} className="animate-spin" style={{ margin: '0 auto 8px' }} />
-                  <p style={{ margin: 0, fontSize: 14 }}>Loading preview securely...</p>
+                <div className="text-center text-slate-500">
+                  <Loader2 size={32} className="animate-spin mx-auto mb-2 text-blue-600" />
+                  <p className="m-0 text-sm">Loading preview securely...</p>
                 </div>
               ) : teacherPreview.error ? (
-                <div style={{ textAlign: 'center', color: '#ef4444', padding: 20 }}>
-                  <AlertCircle size={32} style={{ margin: '0 auto 8px' }} />
-                  <p style={{ margin: 0, fontSize: 14 }}>{teacherPreview.error}</p>
+                <div className="text-center text-red-500 p-5">
+                  <AlertCircle size={32} className="mx-auto mb-2" />
+                  <p className="m-0 text-sm">{teacherPreview.error}</p>
                 </div>
               ) : teacherPreview.blobUrl && teacherPreview.mimeType?.startsWith('image/') ? (
                 <img
                   src={teacherPreview.blobUrl}
                   alt={teacherPreview.fileName}
-                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 4 }}
+                  className="max-w-full max-h-full object-contain rounded"
                 />
               ) : teacherPreview.blobUrl && teacherPreview.mimeType === 'application/pdf' ? (
                 <iframe
                   src={teacherPreview.blobUrl}
                   title={teacherPreview.fileName}
-                  style={{ width: '100%', height: '100%', border: 'none', borderRadius: 4 }}
+                  className="w-full h-full border-none rounded"
                 />
               ) : (
-                <div style={{ textAlign: 'center', padding: 30, color: '#475569' }}>
-                  <FileText size={48} color="#94a3b8" style={{ margin: '0 auto 12px' }} />
-                  <h4 style={{ margin: '0 0 6px', fontSize: 16 }}>Inline preview not supported for this file type</h4>
-                  <p style={{ margin: '0 0 16px', fontSize: 13, color: '#64748b' }}>
+                <div className="text-center p-8 text-slate-600 dark:text-slate-400">
+                  <FileText size={48} className="text-slate-400 mx-auto mb-3" />
+                  <h4 className="m-0 mb-1.5 text-base font-bold text-slate-900 dark:text-slate-100">Inline preview not supported for this file type</h4>
+                  <p className="m-0 mb-4 text-xs text-slate-500">
                     Word and Excel documents can be downloaded to view with your preferred software.
                   </p>
                   <button
@@ -1590,18 +1249,7 @@ export function TeacherAssignments() {
                         { file_name: teacherPreview.fileName, id: teacherPreview.attachmentId }
                       )
                     }
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: 6,
-                      background: '#2563eb',
-                      color: '#fff',
-                      border: 'none',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6
-                    }}
+                    className="px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs cursor-pointer inline-flex items-center gap-1.5 shadow-sm transition-colors"
                   >
                     <Download size={14} /> Download Document
                   </button>

@@ -188,19 +188,19 @@ export function ClassMentorWorkspace() {
 
   if (loadingClasses) {
     return (
-      <div className="panel" style={{ textAlign: 'center', padding: 50, color: 'var(--text-muted)' }}>
-        <Loader2 size={28} className="animate-spin" style={{ margin: '0 auto 12px' }} />
-        <p>Loading your Class Mentor workspace...</p>
+      <div className="panel p-12 text-center text-slate-500">
+        <Loader2 size={28} className="animate-spin mx-auto mb-3 text-blue-600" />
+        <p className="m-0 text-sm">Loading your Class Mentor workspace...</p>
       </div>
     );
   }
 
   if (classesError) {
     return (
-      <div className="panel" style={{ textAlign: 'center', padding: 40, color: '#ef4444' }}>
-        <AlertCircle size={32} style={{ margin: '0 auto 12px' }} />
-        <p style={{ fontWeight: 600, fontSize: 16 }}>{classesError}</p>
-        <button type="button" className="btn-secondary" onClick={loadMyClasses} style={{ marginTop: 16 }}>
+      <div className="panel p-10 text-center text-red-500">
+        <AlertCircle size={32} className="mx-auto mb-3" />
+        <p className="font-semibold text-base m-0">{classesError}</p>
+        <button type="button" className="btn-secondary mt-4 px-4 py-2 text-xs font-semibold rounded" onClick={loadMyClasses}>
           Retry Loading
         </button>
       </div>
@@ -210,17 +210,17 @@ export function ClassMentorWorkspace() {
   // EMPTY STATE: Logged-in teacher is not assigned as mentor for any section
   if (mentoredClasses.length === 0) {
     return (
-      <div className="panel" style={{ textAlign: 'center', padding: '60px 20px', maxWidth: 640, margin: '40px auto' }}>
-        <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(56, 189, 248, 0.12)', border: '1px solid var(--border-focus, rgba(56, 189, 248, 0.3))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--sidebar-accent)', margin: '0 auto 16px' }}>
+      <div className="panel text-center p-14 max-w-xl mx-auto my-10">
+        <div className="w-14 h-14 rounded-full bg-sky-50 dark:bg-sky-950/40 border border-sky-300 dark:border-sky-800 flex items-center justify-center text-sky-600 mx-auto mb-4">
           <Users size={28} />
         </div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px' }}>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 m-0 mb-2">
           No Class Mentor Assignments
         </h2>
-        <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 24px' }}>
+        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed m-0 mb-6">
           You are not currently assigned as a Class Mentor for any class or section. Class Mentors are designated by your School Administration to oversee section attendance analytics and authorize subject teacher assignment publishing.
         </p>
-        <button type="button" className="btn-secondary" onClick={loadMyClasses} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <button type="button" className="btn-secondary inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded" onClick={loadMyClasses}>
           <RefreshCw size={15} /> Check For New Assignments
         </button>
       </div>
@@ -230,25 +230,25 @@ export function ClassMentorWorkspace() {
   return (
     <div className="as-mentor-workspace">
       {/* Workspace Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
+      <div className="flex justify-between items-center flex-wrap gap-4 mb-5">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: 'var(--text)' }}>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold m-0 text-slate-900 dark:text-slate-100">
               Class Mentor Workspace
             </h1>
-            <span style={{ fontSize: 11.5, fontWeight: 700, background: 'rgba(37, 99, 235, 0.1)', color: 'var(--sidebar-accent)', border: '1px solid var(--border-focus)', padding: '2px 8px', borderRadius: 9999 }}>
+            <span className="text-[11.5px] font-bold bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded-full">
               Mentor Access
             </span>
           </div>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0' }}>
+          <p className="text-xs text-slate-500 dark:text-slate-400 m-0 mt-1">
             Manage subject teacher assignment-publishing permissions and inspect section attendance analytics.
           </p>
         </div>
 
         {/* Section Switcher (Supports multiple mentored sections) */}
         {mentoredClasses.length > 1 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card)', padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)' }}>
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Select Section:</span>
+          <div className="flex items-center gap-2.5 bg-white dark:bg-slate-800 p-1.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700">
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">Select Section:</span>
             <select
               value={`${selectedSection?.class_id}:${selectedSection?.section_id}`}
               onChange={e => {
@@ -256,7 +256,7 @@ export function ClassMentorWorkspace() {
                 const found = mentoredClasses.find(m => m.class_id === cId && m.section_id === sId);
                 if (found) setSelectedSection(found);
               }}
-              style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontWeight: 600 }}
+              className="py-1 px-2.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs font-semibold"
             >
               {mentoredClasses.map(m => (
                 <option key={`${m.class_id}:${m.section_id}`} value={`${m.class_id}:${m.section_id}`}>
@@ -270,14 +270,14 @@ export function ClassMentorWorkspace() {
 
       {/* Single Section Badge Banner if only 1 section mentored */}
       {mentoredClasses.length === 1 && selectedSection && (
-        <div style={{ padding: '10px 16px', borderRadius: 8, background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(56, 189, 248, 0.05))', border: '1px solid var(--border-focus, rgba(56, 189, 248, 0.3))', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <ShieldCheck size={18} style={{ color: 'var(--sidebar-accent)' }} />
-            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+        <div className="p-3 px-4 rounded-lg bg-gradient-to-r from-blue-500/10 to-sky-500/5 border border-sky-300 dark:border-sky-800/60 mb-5 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <ShieldCheck size={18} className="text-blue-600 dark:text-blue-400" />
+            <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
               Assigned Mentor for Class {selectedSection.class_number} — Section {selectedSection.section_name}
             </span>
           </div>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+          <span className="text-xs text-slate-400">
             Section ID: {selectedSection.section_id.slice(0, 8)}...
           </span>
         </div>
@@ -285,12 +285,16 @@ export function ClassMentorWorkspace() {
 
       {/* Multi-Section Tabs */}
       {mentoredClasses.length > 1 && (
-        <div className="student-tab-bar" style={{ marginBottom: 16 }}>
+        <div className="student-tab-bar mb-4 flex gap-1 border-b border-slate-200 dark:border-slate-700">
           {mentoredClasses.map(m => (
             <button
               key={`${m.class_id}:${m.section_id}`}
               type="button"
-              className={`student-tab-btn ${selectedSection?.class_id === m.class_id && selectedSection?.section_id === m.section_id ? 'active' : ''}`}
+              className={`student-tab-btn px-4 py-2 text-xs font-semibold border-b-2 cursor-pointer transition-colors ${
+                selectedSection?.class_id === m.class_id && selectedSection?.section_id === m.section_id
+                  ? 'active border-blue-600 text-blue-600 bg-blue-50/50 dark:bg-blue-950/30'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
               onClick={() => setSelectedSection(m)}
             >
               Class {m.class_number} - Section {m.section_name}
@@ -300,42 +304,26 @@ export function ClassMentorWorkspace() {
       )}
 
       {/* Sub-Tab Navigation: Permissions vs Attendance */}
-      <div style={{ display: 'flex', gap: 12, borderBottom: '1px solid var(--border-strong)', marginBottom: 20, paddingBottom: 2 }}>
+      <div className="flex gap-3 border-b border-slate-200 dark:border-slate-700 mb-5 pb-0.5">
         <button
           type="button"
           onClick={() => setActiveTab('PERMISSIONS')}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: '8px 16px',
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: 'pointer',
-            color: activeTab === 'PERMISSIONS' ? 'var(--sidebar-accent)' : 'var(--text-muted)',
-            borderBottom: activeTab === 'PERMISSIONS' ? '2px solid var(--sidebar-accent)' : '2px solid transparent',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8
-          }}
+          className={`bg-transparent border-none py-2 px-4 text-sm font-semibold cursor-pointer inline-flex items-center gap-2 border-b-2 transition-colors ${
+            activeTab === 'PERMISSIONS'
+              ? 'text-blue-600 dark:text-blue-400 border-blue-600'
+              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 border-transparent'
+          }`}
         >
           <ShieldCheck size={16} /> Assignment Publishing Permissions
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('ATTENDANCE')}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: '8px 16px',
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: 'pointer',
-            color: activeTab === 'ATTENDANCE' ? 'var(--sidebar-accent)' : 'var(--text-muted)',
-            borderBottom: activeTab === 'ATTENDANCE' ? '2px solid var(--sidebar-accent)' : '2px solid transparent',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8
-          }}
+          className={`bg-transparent border-none py-2 px-4 text-sm font-semibold cursor-pointer inline-flex items-center gap-2 border-b-2 transition-colors ${
+            activeTab === 'ATTENDANCE'
+              ? 'text-blue-600 dark:text-blue-400 border-blue-600'
+              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 border-transparent'
+          }`}
         >
           <BarChart3 size={16} /> Class Attendance Analytics
         </button>
@@ -345,9 +333,9 @@ export function ClassMentorWorkspace() {
       {activeTab === 'PERMISSIONS' && (
         <div className="as-permissions-pane">
           {/* Header Callout Notice */}
-          <div style={{ padding: '12px 16px', borderRadius: 8, background: 'var(--bg)', border: '1px solid var(--border)', marginBottom: 20 }}>
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              <Info size={15} style={{ display: 'inline', marginRight: 6, color: 'var(--sidebar-accent)', verticalAlign: '-2px' }} />
+          <div className="p-3 px-4 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 mb-5">
+            <p className="m-0 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              <Info size={15} className="inline mr-1.5 text-blue-600 align-[-2px]" />
               As Class Mentor for <strong>Class {selectedSection?.class_number} Section {selectedSection?.section_name}</strong>, you decide which <strong>Primary Subject Teachers</strong> are authorized to publish assignments for this section. Alternate teachers are strictly prohibited by system rule.
             </p>
           </div>
@@ -355,19 +343,11 @@ export function ClassMentorWorkspace() {
           {/* Feedback Notice */}
           {permissionFeedback && (
             <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '10px 14px',
-                borderRadius: 8,
-                marginBottom: 16,
-                background: permissionFeedback.type === 'success' ? 'var(--emerald-50, rgba(16, 185, 129, 0.12))' : 'var(--rose-50, rgba(239, 68, 68, 0.12))',
-                border: permissionFeedback.type === 'success' ? '1px solid var(--emerald-border, rgba(16, 185, 129, 0.3))' : '1px solid var(--rose-border, rgba(239, 68, 68, 0.3))',
-                color: permissionFeedback.type === 'success' ? 'var(--emerald-600, #059669)' : 'var(--rose-600, #dc2626)',
-                fontSize: 13,
-                fontWeight: 500
-              }}
+              className={`flex items-center gap-2.5 p-2.5 px-3.5 rounded-lg mb-4 text-xs font-medium ${
+                permissionFeedback.type === 'success'
+                  ? 'bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-red-500/10 border border-red-500/25 text-red-500'
+              }`}
             >
               {permissionFeedback.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
               <span>{permissionFeedback.message}</span>
@@ -375,94 +355,95 @@ export function ClassMentorWorkspace() {
           )}
 
           {loadingPermissions ? (
-            <div className="panel" style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
-              <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 10px' }} />
-              <p>Loading subject teacher permissions...</p>
+            <div className="panel p-10 text-center text-slate-500">
+              <Loader2 size={24} className="animate-spin mx-auto mb-2.5 text-blue-600" />
+              <p className="m-0 text-xs">Loading subject teacher permissions...</p>
             </div>
           ) : permissionError ? (
-            <div className="panel" style={{ textAlign: 'center', padding: 30, color: '#ef4444' }}>
-              <AlertCircle size={24} style={{ margin: '0 auto 10px' }} />
-              <p>{permissionError}</p>
-              <button type="button" className="btn-secondary" onClick={loadPermissions} style={{ marginTop: 12 }}>
+            <div className="panel p-8 text-center text-red-500">
+              <AlertCircle size={24} className="mx-auto mb-2.5" />
+              <p className="m-0 text-xs">{permissionError}</p>
+              <button type="button" className="btn-secondary mt-3 px-3 py-1.5 text-xs font-semibold rounded" onClick={loadPermissions}>
                 Retry Loading
               </button>
             </div>
           ) : permissions.length === 0 ? (
-            <div className="panel" style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
-              <Users size={28} style={{ margin: '0 auto 10px', opacity: 0.6 }} />
-              <p>No subject teaching allocations found for this class and section.</p>
+            <div className="panel p-10 text-center text-slate-500">
+              <Users size={28} className="mx-auto mb-2.5 opacity-60" />
+              <p className="m-0 text-xs">No subject teaching allocations found for this class and section.</p>
             </div>
           ) : (
-            <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
-                <thead>
-                  <tr style={{ background: 'var(--gray-50, rgba(255,255,255,0.03))', borderBottom: '1px solid var(--border)' }}>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Subject</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Faculty Member</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Role Type</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Publishing Permission</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)', textAlign: 'right' }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {permissions.map((item) => {
-                    const key = `${item.subject_id}:${item.teacher_id}`;
-                    const isPending = updatingId === key;
+            <div className="panel p-0 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
+                      <th className="p-3 px-4 font-semibold text-slate-600 dark:text-slate-400">Subject</th>
+                      <th className="p-3 px-4 font-semibold text-slate-600 dark:text-slate-400">Faculty Member</th>
+                      <th className="p-3 px-4 font-semibold text-slate-600 dark:text-slate-400">Role Type</th>
+                      <th className="p-3 px-4 font-semibold text-slate-600 dark:text-slate-400">Publishing Permission</th>
+                      <th className="p-3 px-4 font-semibold text-slate-600 dark:text-slate-400 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {permissions.map((item) => {
+                      const key = `${item.subject_id}:${item.teacher_id}`;
+                      const isPending = updatingId === key;
 
-                    return (
-                      <tr key={key} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text)' }}>
-                          {item.subject_name}
-                        </td>
-                        <td style={{ padding: '14px 16px', color: 'var(--text)', fontWeight: 500 }}>
-                          <PersonProfileLink kind="teacher" id={item.teacher_id} name={item.teacher_name} person={item as any} />
-                        </td>
-                        <td style={{ padding: '14px 16px' }}>
-                          {item.is_primary ? (
-                            <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 600, background: 'rgba(37, 99, 235, 0.1)', color: 'var(--sidebar-accent)', border: '1px solid var(--border-focus)' }}>
-                              Primary Teacher
-                            </span>
-                          ) : (
-                            <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 600, background: 'var(--gray-100, rgba(148, 163, 184, 0.12))', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-                              Alternate Teacher
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ padding: '14px 16px' }}>
-                          {item.is_alternate ? (
-                            <span className="badge rejected" style={{ textTransform: 'none', borderRadius: 6, fontSize: 11.5, fontWeight: 600, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                              <Lock size={12} /> Strictly Blocked
-                            </span>
-                          ) : item.is_authorized ? (
-                            <span className="badge approved" style={{ textTransform: 'none', borderRadius: 6, fontSize: 11.5, fontWeight: 600, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                              <Check size={12} /> Authorized to Publish
-                            </span>
-                          ) : (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, fontSize: 11.5, fontWeight: 600, background: 'var(--gray-100, rgba(148, 163, 184, 0.12))', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-                              <Lock size={12} /> Not Authorized
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                          {item.is_alternate ? (
-                            <span style={{ fontSize: 11.5, color: 'var(--text-muted)', fontStyle: 'italic' }}>Blocked by System Rule</span>
-                          ) : (
-                            <button
-                              type="button"
-                              className={item.is_authorized ? 'btn-secondary' : 'btn-primary'}
-                              disabled={isPending}
-                              onClick={() => handleTogglePermission(item)}
-                              style={{ padding: '5px 12px', fontSize: 12.5, minWidth: 110 }}
-                            >
-                              {isPending ? 'Updating...' : item.is_authorized ? 'Revoke Access' : 'Authorize Publish'}
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                      return (
+                        <tr key={key} className="border-b border-slate-100 dark:border-slate-700/60 hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors">
+                          <td className="p-3.5 px-4 font-semibold text-slate-900 dark:text-slate-100">
+                            {item.subject_name}
+                          </td>
+                          <td className="p-3.5 px-4 font-medium text-slate-900 dark:text-slate-100">
+                            <PersonProfileLink kind="teacher" id={item.teacher_id} name={item.teacher_name} person={item as any} />
+                          </td>
+                          <td className="p-3.5 px-4">
+                            {item.is_primary ? (
+                              <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                Primary Teacher
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-700/60 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                                Alternate Teacher
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3.5 px-4">
+                            {item.is_alternate ? (
+                              <span className="badge rejected normal-case rounded-md text-[11px] font-semibold px-2.5 py-1 inline-flex items-center gap-1 bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400">
+                                <Lock size={12} /> Strictly Blocked
+                              </span>
+                            ) : item.is_authorized ? (
+                              <span className="badge approved normal-case rounded-md text-[11px] font-semibold px-2.5 py-1 inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
+                                <Check size={12} /> Authorized to Publish
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-700/60 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                                <Lock size={12} /> Not Authorized
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3.5 px-4 text-right">
+                            {item.is_alternate ? (
+                              <span className="text-[11px] text-slate-400 italic">Blocked by System Rule</span>
+                            ) : (
+                              <button
+                                type="button"
+                                className={`${item.is_authorized ? 'btn-secondary' : 'btn-primary'} px-3 py-1.5 text-xs font-semibold rounded cursor-pointer min-w-[110px] transition-colors`}
+                                disabled={isPending}
+                                onClick={() => handleTogglePermission(item)}
+                              >
+                                {isPending ? 'Updating...' : item.is_authorized ? 'Revoke Access' : 'Authorize Publish'}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
@@ -472,138 +453,139 @@ export function ClassMentorWorkspace() {
       {activeTab === 'ATTENDANCE' && (
         <div className="as-attendance-pane">
           {/* Date Filter Bar */}
-          <div className="panel" style={{ marginBottom: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className="panel p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 mb-5 shadow-sm">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
                   <Calendar size={15} /> Date Range:
                 </span>
                 <input
                   type="date"
                   value={fromDate}
                   onChange={e => setFromDate(e.target.value)}
-                  style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13 }}
+                  className="py-1 px-2.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs"
                 />
-                <span style={{ color: 'var(--text-muted)' }}>to</span>
+                <span className="text-slate-400 text-xs">to</span>
                 <input
                   type="date"
                   value={toDate}
                   onChange={e => setToDate(e.target.value)}
-                  style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13 }}
+                  className="py-1 px-2.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs"
                 />
                 {(fromDate || toDate) && (
                   <button
                     type="button"
-                    className="btn-secondary"
+                    className="btn-secondary px-2.5 py-1 text-xs rounded"
                     onClick={() => { setFromDate(''); setToDate(''); }}
-                    style={{ padding: '5px 10px', fontSize: 12 }}
                   >
                     Clear Filter
                   </button>
                 )}
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 220 }}>
-                <Search size={15} style={{ color: 'var(--text-muted)' }} />
+              <div className="flex items-center gap-2 min-w-[220px]">
+                <Search size={15} className="text-slate-400 shrink-0" />
                 <input
                   type="text"
                   placeholder="Filter student name or roll..."
                   value={studentSearch}
                   onChange={e => setStudentSearch(e.target.value)}
-                  style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13 }}
+                  className="w-full py-1.5 px-2.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
             </div>
           </div>
 
           {loadingAttendance ? (
-            <div className="panel" style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
-              <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 10px' }} />
-              <p>Calculating attendance metrics for Class {selectedSection?.class_number} Section {selectedSection?.section_name}...</p>
+            <div className="panel p-10 text-center text-slate-500">
+              <Loader2 size={24} className="animate-spin mx-auto mb-2.5 text-blue-600" />
+              <p className="m-0 text-xs">Calculating attendance metrics for Class {selectedSection?.class_number} Section {selectedSection?.section_name}...</p>
             </div>
           ) : attendanceError ? (
-            <div className="panel" style={{ textAlign: 'center', padding: 30, color: '#ef4444' }}>
-              <AlertCircle size={24} style={{ margin: '0 auto 10px' }} />
-              <p>{attendanceError}</p>
-              <button type="button" className="btn-secondary" onClick={loadAttendance} style={{ marginTop: 12 }}>
+            <div className="panel p-8 text-center text-red-500">
+              <AlertCircle size={24} className="mx-auto mb-2.5" />
+              <p className="m-0 text-xs">{attendanceError}</p>
+              <button type="button" className="btn-secondary mt-3 px-3.5 py-1.5 text-xs font-semibold rounded" onClick={loadAttendance}>
                 Retry Analysis
               </button>
             </div>
           ) : attendanceData ? (
             <>
               {/* Summary Metric Cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
-                <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Enrolled Students</span>
-                  <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: 'var(--text)' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+                <div className="panel p-4 px-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm m-0">
+                  <span className="text-[11px] font-semibold text-slate-400 uppercase">Enrolled Students</span>
+                  <h2 className="text-2xl font-bold m-0 mt-1 text-slate-900 dark:text-slate-100">
                     {attendanceData.total_students}
                   </h2>
                 </div>
-                <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--sidebar-accent)', textTransform: 'uppercase' }}>Overall Attendance Rate</span>
-                  <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: 'var(--sidebar-accent)' }}>
+                <div className="panel p-4 px-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm m-0">
+                  <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase">Overall Attendance Rate</span>
+                  <h2 className="text-2xl font-bold m-0 mt-1 text-blue-600 dark:text-blue-400">
                     {attendanceData.overall_percentage}%
                   </h2>
                 </div>
-                <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--emerald-600, #059669)', textTransform: 'uppercase' }}>Total Present Days</span>
-                  <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: 'var(--emerald-600, #059669)' }}>
+                <div className="panel p-4 px-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm m-0">
+                  <span className="text-[11px] font-semibold text-emerald-600 uppercase">Total Present Days</span>
+                  <h2 className="text-2xl font-bold m-0 mt-1 text-emerald-600">
                     {attendanceData.students.reduce((acc, r) => acc + (Number(r.present_days) || 0), 0)}
                   </h2>
                 </div>
-                <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--rose-600, #dc2626)', textTransform: 'uppercase' }}>Total Absent Days</span>
-                  <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: 'var(--rose-600, #dc2626)' }}>
+                <div className="panel p-4 px-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm m-0">
+                  <span className="text-[11px] font-semibold text-red-600 uppercase">Total Absent Days</span>
+                  <h2 className="text-2xl font-bold m-0 mt-1 text-red-600">
                     {attendanceData.students.reduce((acc, r) => acc + (Number(r.absent_days) || 0), 0)}
                   </h2>
                 </div>
               </div>
 
               {/* Student Attendance Breakdown Table */}
-              <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
-                <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
+              <div className="panel p-0 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
+                <div className="p-3.5 px-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+                  <h3 className="m-0 text-sm font-bold text-slate-900 dark:text-slate-100">
                     Student Attendance Breakdown ({filteredStudents.length})
                   </h3>
                 </div>
                 {filteredStudents.length === 0 ? (
-                  <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <div className="p-8 text-center text-slate-500 text-xs">
                     No student attendance records matching search filter.
                   </div>
                 ) : (
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
-                    <thead>
-                      <tr style={{ background: 'var(--gray-50, rgba(255,255,255,0.03))', borderBottom: '1px solid var(--border)' }}>
-                        <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Roll No.</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Student Name</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Days Present</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Days Absent</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Total Marked</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)', textAlign: 'right' }}>Attendance %</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredStudents.map(st => {
-                        const pct = Number(st.attendance_percentage || 0);
-                        const isLow = pct < 75;
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-left text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
+                          <th className="p-3 px-4 font-semibold text-slate-600 dark:text-slate-400">Roll No.</th>
+                          <th className="p-3 px-4 font-semibold text-slate-600 dark:text-slate-400">Student Name</th>
+                          <th className="p-3 px-4 font-semibold text-slate-600 dark:text-slate-400">Days Present</th>
+                          <th className="p-3 px-4 font-semibold text-slate-600 dark:text-slate-400">Days Absent</th>
+                          <th className="p-3 px-4 font-semibold text-slate-600 dark:text-slate-400">Total Marked</th>
+                          <th className="p-3 px-4 font-semibold text-slate-600 dark:text-slate-400 text-right">Attendance %</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredStudents.map(st => {
+                          const pct = Number(st.attendance_percentage || 0);
+                          const isLow = pct < 75;
 
-                        return (
-                          <tr key={st.student_id} style={{ borderBottom: '1px solid var(--border)' }}>
-                            <td style={{ padding: '12px 16px', color: 'var(--text-secondary)', fontWeight: 600 }}>{st.roll || '—'}</td>
-                            <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text)' }}><PersonProfileLink kind="student" id={st.student_id} name={st.student_name} person={st as any} /></td>
-                            <td style={{ padding: '12px 16px', color: 'var(--emerald-600, #059669)', fontWeight: 600 }}>{st.present_days}</td>
-                            <td style={{ padding: '12px 16px', color: 'var(--rose-600, #dc2626)', fontWeight: 600 }}>{st.absent_days}</td>
-                            <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>{st.marked_days}</td>
-                            <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                              <span style={{ fontWeight: 700, color: isLow ? 'var(--rose-600, #dc2626)' : 'var(--emerald-600, #059669)' }}>
-                                {pct}%
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                          return (
+                            <tr key={st.student_id} className="border-b border-slate-100 dark:border-slate-700/60 hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors">
+                              <td className="p-3 px-4 text-slate-500 font-semibold">{st.roll || '—'}</td>
+                              <td className="p-3 px-4 font-semibold text-slate-900 dark:text-slate-100"><PersonProfileLink kind="student" id={st.student_id} name={st.student_name} person={st as any} /></td>
+                              <td className="p-3 px-4 text-emerald-600 font-semibold">{st.present_days}</td>
+                              <td className="p-3 px-4 text-red-600 font-semibold">{st.absent_days}</td>
+                              <td className="p-3 px-4 text-slate-500">{st.marked_days}</td>
+                              <td className="p-3 px-4 text-right">
+                                <span className={`font-bold ${isLow ? 'text-red-600' : 'text-emerald-600'}`}>
+                                  {pct}%
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             </>

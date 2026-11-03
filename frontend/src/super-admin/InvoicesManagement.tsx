@@ -203,15 +203,15 @@ export const InvoicesManagement: React.FC = () => {
   return (
     <div className="super-admin-content-inner">
       {/* Header */}
-      <div className="section-header-row">
+      <div className="section-header-row flex flex-wrap items-center justify-between gap-4 mb-4">
         <div>
-          <h2 className="section-title">Tax Invoices & GST Receipts</h2>
-          <p className="section-subtitle">
+          <h2 className="section-title text-2xl font-bold tracking-tight text-slate-900 m-0">Tax Invoices & GST Receipts</h2>
+          <p className="section-subtitle text-sm text-slate-500 m-0 mt-1">
             Generate, audit, customize, download, and dispatch official GST-compliant institutional tax invoices.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="sa-btn-secondary" onClick={loadInvoices} disabled={loading}>
+        <div className="flex items-center gap-2.5" style={{ display: 'flex', gap: '10px' }}>
+          <button className="sa-btn-secondary inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs md:text-sm font-medium transition hover:bg-slate-50" onClick={loadInvoices} disabled={loading}>
             <RefreshCw size={14} className={loading ? 'spin' : ''} />
             <span>Refresh</span>
           </button>
@@ -219,41 +219,41 @@ export const InvoicesManagement: React.FC = () => {
       </div>
 
       {toastMessage && (
-        <div style={{ margin: '14px 0', padding: '12px 16px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="toast-pill p-3 px-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs md:text-sm flex items-center gap-2 my-3.5" style={{ margin: '14px 0', padding: '12px 16px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <CheckCircle2 size={18} />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {error && (
-        <div className="error-banner" style={{ margin: '16px 0', padding: '12px 16px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+        <div className="error-banner p-3 px-4 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm my-4" style={{ margin: '16px 0', padding: '12px 16px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
           <AlertCircle size={16} style={{ display: 'inline', marginRight: '6px' }} />
           {error}
         </div>
       )}
 
       {/* KPI Cards Strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', margin: '20px 0' }}>
-        <div className="card" style={{ padding: '18px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 my-5" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', margin: '20px 0' }}>
+        <div className="card rounded-xl border border-slate-200 bg-white p-4 shadow-sm" style={{ padding: '18px' }}>
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500" style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Total Invoiced Amount
           </div>
-          <div style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', marginTop: '6px' }}>
+          <div className="text-2xl font-bold tracking-tight text-slate-900 mt-1.5" style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', marginTop: '6px' }}>
             ₹{totalBilled.toLocaleString('en-IN')}
           </div>
-          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+          <div className="text-xs text-slate-500 mt-1" style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
             Across all billing cycles
           </div>
         </div>
 
-        <div className="card" style={{ padding: '18px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div className="card rounded-xl border border-slate-200 bg-white p-4 shadow-sm" style={{ padding: '18px' }}>
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500" style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             GST Liability (18%)
           </div>
-          <div style={{ fontSize: '24px', fontWeight: '800', color: '#2563eb', marginTop: '6px' }}>
+          <div className="text-2xl font-bold tracking-tight text-blue-600 mt-1.5" style={{ fontSize: '24px', fontWeight: '800', color: '#2563eb', marginTop: '6px' }}>
             ₹{totalGst.toLocaleString('en-IN')}
           </div>
-          <div style={{ fontSize: '12px', color: '#10b981', marginTop: '4px' }}>
+          <div className="text-xs text-emerald-600 font-medium mt-1" style={{ fontSize: '12px', color: '#10b981', marginTop: '4px' }}>
             CGST (9%) + SGST (9%)
           </div>
         </div>

@@ -20,65 +20,45 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
   const isPublish = confirmText.toLowerCase().includes('publish') || confirmText.toLowerCase().includes('broadcast');
 
   return (
-    <div
-      className="overlay"
-      style={{
-        zIndex: 10060,
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(15, 23, 42, 0.65)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16
-      }}
-    >
+    <div className="overlay fixed inset-0 z-[10060] bg-slate-900/65 backdrop-blur-md flex items-center justify-center p-4">
       <div
-        className="modal"
-        style={{
-          width: 'min(500px, 95vw)',
-          background: 'var(--bg-card, #ffffff)',
-          border: isPublish ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid #fecaca',
-          borderRadius: 16,
-          boxShadow: isPublish ? '0 25px 50px -12px rgba(16, 185, 129, 0.25)' : '0 25px 50px -12px rgba(220, 38, 38, 0.25)',
-          overflow: 'hidden',
-          padding: 0
-        }}
+        className={`modal w-[min(500px,95vw)] bg-white dark:bg-slate-900 rounded-2xl overflow-hidden p-0 border transition-all ${
+          isPublish
+            ? 'border-emerald-500/35 shadow-2xl shadow-emerald-500/20'
+            : 'border-rose-200 dark:border-rose-900/40 shadow-2xl shadow-rose-600/20'
+        }`}
       >
         {/* Header */}
         <div
-          style={{
-            padding: '20px 24px 16px',
-            borderBottom: isPublish ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)',
-            background: isPublish ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}
+          className={`px-6 py-5 pb-4 border-b flex items-center justify-between ${
+            isPublish
+              ? 'border-emerald-500/25 bg-emerald-50 dark:bg-emerald-950/40'
+              : 'border-rose-500/25 bg-rose-50 dark:bg-rose-950/40'
+          }`}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="flex items-center gap-3">
             <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                background: isPublish ? 'rgba(16, 185, 129, 0.22)' : 'rgba(239, 68, 68, 0.22)',
-                color: isPublish ? '#10b981' : '#ef4444',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}
+              className={`w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0 ${
+                isPublish
+                  ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400'
+              }`}
             >
               {isPublish ? <Send size={20} /> : <AlertTriangle size={22} />}
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: isPublish ? 'var(--text, #0f172a)' : '#ef4444' }}>
+              <h3
+                className={`m-0 text-[17px] font-extrabold ${
+                  isPublish ? 'text-slate-900 dark:text-slate-100' : 'text-rose-600 dark:text-rose-400'
+                }`}
+              >
                 {title || (isPublish ? `Publish ${entityType}` : `Delete ${entityType}`)}
               </h3>
-              <p style={{ margin: '2px 0 0', fontSize: 12.5, color: isPublish ? 'var(--text-muted, #10b981)' : 'var(--text-secondary, #fca5a5)' }}>
+              <p
+                className={`m-0 mt-0.5 text-[12.5px] ${
+                  isPublish ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'
+                }`}
+              >
                 {isPublish ? 'Broadcast & delivery confirmation' : 'Destructive operation confirmation'}
               </p>
             </div>
@@ -87,48 +67,23 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
             type="button"
             onClick={onClose}
             disabled={loading}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              color: isPublish ? 'var(--text-muted, #64748b)' : '#ef4444',
-              padding: 4
-            }}
+            className={`p-1 bg-transparent border-0 cursor-pointer disabled:cursor-not-allowed transition-colors hover:opacity-75 ${
+              isPublish ? 'text-slate-500 dark:text-slate-400' : 'text-rose-500'
+            }`}
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Body */}
-        <div style={{ padding: '20px 24px' }}>
+        <div className="p-6">
           {error && (
-            <div
-              style={{
-                padding: '10px 14px',
-                borderRadius: 8,
-                background: 'rgba(239, 68, 68, 0.15)',
-                border: '1px solid rgba(239, 68, 68, 0.35)',
-                color: '#fca5a5',
-                fontSize: 13,
-                marginBottom: 14
-              }}
-            >
+            <div className="p-2.5 px-3.5 rounded-lg bg-rose-500/15 border border-rose-500/35 text-rose-600 dark:text-rose-300 text-[13px] mb-3.5">
               {error}
             </div>
           )}
 
-          <div
-            style={{
-              padding: '12px 16px',
-              borderRadius: 10,
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.25)',
-              color: 'var(--text, #fca5a5)',
-              fontSize: 13.5,
-              marginBottom: 16,
-              lineHeight: 1.5
-            }}
-          >
+          <div className="p-3 px-4 rounded-[10px] bg-rose-500/10 border border-rose-500/25 text-slate-800 dark:text-rose-200 text-[13.5px] mb-4 leading-relaxed">
             {warningMessage || (
               <span>
                 Are you sure you want to permanently remove <strong>{entityName}</strong> from active institutional records? This operation will revoke portal access.
@@ -138,33 +93,17 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
 
           {/* Affected Entity Details Card */}
           {details.length > 0 && (
-            <div
-              style={{
-                background: 'var(--bg, #f8fafc)',
-                border: '1px solid var(--border, #e2e8f0)',
-                borderRadius: 10,
-                padding: '12px 14px'
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  color: 'var(--text-muted, #64748b)',
-                  display: 'block',
-                  marginBottom: 8
-                }}
-              >
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-[10px] p-3 px-3.5">
+              <span className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 block mb-2">
                 Target Record Details
               </span>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div className="grid grid-cols-2 gap-2">
                 {details.map((d, i) => (
                   <div key={i}>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted, #64748b)', display: 'block' }}>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
                       {d.label}
                     </span>
-                    <strong style={{ fontSize: 13, color: 'var(--text, #0f172a)' }}>
+                    <strong className="text-[13px] text-slate-900 dark:text-slate-100">
                       {String(d.value)}
                     </strong>
                   </div>
@@ -175,29 +114,12 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
         </div>
 
         {/* Footer */}
-        <div
-          style={{
-            padding: '14px 24px',
-            borderTop: '1px solid var(--border, #e2e8f0)',
-            background: 'var(--bg, #f8fafc)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            gap: 10
-          }}
-        >
+        <div className="px-6 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 flex items-center justify-end gap-2.5">
           <button
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="btn-secondary"
-            style={{
-              padding: '9px 16px',
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: loading ? 'not-allowed' : 'pointer'
-            }}
+            className="btn-secondary px-4 py-2 rounded-lg text-[13px] font-semibold cursor-pointer disabled:cursor-not-allowed border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
           >
             Cancel
           </button>
@@ -205,20 +127,11 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 20px',
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              border: 'none',
-              background: isPublish ? '#10b981' : '#dc2626',
-              color: '#ffffff',
-              boxShadow: isPublish ? '0 2px 6px rgba(16, 185, 129, 0.35)' : '0 2px 6px rgba(220, 38, 38, 0.3)'
-            }}
+            className={`inline-flex items-center gap-2 px-5 py-2 rounded-lg text-[13px] font-bold text-white border-0 cursor-pointer disabled:cursor-not-allowed transition-all shadow-sm ${
+              isPublish
+                ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'
+                : 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/30'
+            }`}
           >
             {loading ? (
               <>

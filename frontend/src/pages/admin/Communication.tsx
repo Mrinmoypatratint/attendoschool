@@ -836,20 +836,21 @@ export default function Communication() {
   ];
 
   return (
-    <div className="as-communication-page" style={{ width: '100%', maxWidth: '100%', margin: 0, padding: 0, marginTop: -8, boxSizing: 'border-box' }}>
-      <div className="as-communication-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+    <div className="as-communication-page w-full max-w-full m-0 p-0 box-border" style={{ width: '100%', maxWidth: '100%', margin: 0, padding: 0, marginTop: -8, boxSizing: 'border-box' }}>
+      <div className="as-communication-header-row flex flex-wrap items-center justify-between gap-3 mb-4" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Announcement</h1>
-          <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 m-0" style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Announcement</h1>
+          <p className="muted text-xs md:text-sm text-slate-500 m-0 mt-1" style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
             Multi-channel institutional announcements, role-based audience broadcasts, and threaded replies.
           </p>
         </div>
 
         {/* Tab switch */}
-        <div style={{ display: 'flex', gap: 8, backgroundColor: 'var(--card-subtle, #f1f5f9)', padding: 4, borderRadius: 8, flexWrap: 'wrap' }}>
+        <div className="flex flex-wrap gap-2 bg-slate-100 p-1 rounded-lg" style={{ display: 'flex', gap: 8, backgroundColor: 'var(--card-subtle, #f1f5f9)', padding: 4, borderRadius: 8, flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={() => setActiveTab('announcements')}
+            className={`px-3.5 py-1.5 text-xs md:text-sm font-semibold rounded-md border-0 cursor-pointer transition ${activeTab === 'announcements' ? 'bg-white text-slate-900 shadow-sm' : 'bg-transparent text-slate-500'}`}
             style={{
               padding: '6px 14px',
               fontSize: 13,
@@ -870,6 +871,7 @@ export default function Communication() {
               setActiveTab('all-replies');
               loadAllReplies();
             }}
+            className={`px-3.5 py-1.5 text-xs md:text-sm font-semibold rounded-md border-0 cursor-pointer transition ${activeTab === 'all-replies' ? 'bg-white text-slate-900 shadow-sm' : 'bg-transparent text-slate-500'}`}
             style={{
               padding: '6px 14px',
               fontSize: 13,
@@ -888,7 +890,7 @@ export default function Communication() {
       </div>
 
       {msg && (
-        <div style={{
+        <div className="p-2.5 px-3.5 mb-4 rounded-md bg-blue-50 border border-blue-200 text-blue-800 text-xs md:text-sm flex justify-between items-center w-full box-border" style={{
           padding: '10px 14px',
           marginBottom: 16,
           backgroundColor: '#eff6ff',
@@ -903,14 +905,14 @@ export default function Communication() {
           width: '100%'
         }}>
           <span>{msg}</span>
-          <button onClick={() => setMsg('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1e40af' }}>✕</button>
+          <button onClick={() => setMsg('')} className="bg-transparent border-0 cursor-pointer text-blue-800 font-bold" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1e40af' }}>✕</button>
         </div>
       )}
 
       {activeTab === 'announcements' ? (
         <>
           {/* New Announcement Form */}
-          <div className="form-card as-announcement-card" style={{
+          <div className="form-card as-announcement-card rounded-lg border border-slate-200 bg-white p-5 mb-6 shadow-sm w-full max-w-full box-border" style={{
             backgroundColor: 'var(--bg-card, #ffffff)',
             border: '1px solid var(--border, #e2e8f0)',
             borderRadius: 8,
@@ -922,7 +924,7 @@ export default function Communication() {
             minWidth: 0,
             boxSizing: 'border-box'
           }}>
-            <h3 style={{ margin: '0 0 14px', fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h3 className="text-base font-bold text-slate-900 m-0 mb-3.5 flex items-center gap-2" style={{ margin: '0 0 14px', fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <MessageSquare size={18} color="#2563eb" /> New Broadcast Announcement
             </h3>
 

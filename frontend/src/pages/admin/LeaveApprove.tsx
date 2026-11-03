@@ -166,17 +166,17 @@ export default function LeaveApprove() {
   }, [isTeacher, counts, leaves]);
 
   return (
-    <div className="student-subpage" style={{ width: '100%', paddingBottom: 40 }}>
+    <div className="student-subpage w-full pb-10">
       {/* ── Page Header (Matching screenshot style) ── */}
-      <div className="student-subpage-header" style={{ marginBottom: 20 }}>
+      <div className="student-subpage-header mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="student-subpage-title-row">
-          <Link to="/dashboard" className="student-back-link" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#2563EB', fontWeight: 600, fontSize: 13, textDecoration: 'none', marginBottom: 4 }}>
+          <Link to="/dashboard" className="student-back-link inline-flex items-center gap-1.5 text-blue-600 font-semibold text-xs no-underline mb-1 hover:text-blue-700 transition-colors">
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
-          <h1 className="student-subpage-title" style={{ fontSize: 24, fontWeight: 800, color: 'var(--text, #0F172A)', margin: '2px 0 4px' }}>
+          <h1 className="student-subpage-title text-2xl font-extrabold text-slate-900 dark:text-white my-1">
             {isTeacher ? 'Student Leave Review' : 'Leave Review'}
           </h1>
-          <p className="student-subpage-desc" style={{ fontSize: 14, color: 'var(--text-secondary, #64748B)', margin: 0 }}>
+          <p className="student-subpage-desc text-sm text-slate-500 dark:text-slate-400 m-0">
             {isTeacher
               ? 'Review, evaluate, and approve submitted student leave applications for your mentored class-section.'
               : 'Review, evaluate, and approve submitted student leave applications.'}
@@ -186,8 +186,7 @@ export default function LeaveApprove() {
         <button
           type="button"
           onClick={loadLeaves}
-          className="student-btn-secondary"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border, #E2E8F0)', background: 'var(--surface, #FFF)', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text, #0F172A)' }}
+          className="student-btn-secondary inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-semibold text-xs cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors"
         >
           <RefreshCw size={14} className={loading ? 'spin' : ''} />
           <span>Refresh</span>
@@ -197,26 +196,19 @@ export default function LeaveApprove() {
       {/* Feedback Banner */}
       {feedback && (
         <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '10px 16px',
-            borderRadius: 8,
-            marginBottom: 16,
-            background: feedback.type === 'success' ? '#F0FDF4' : '#FEF2F2',
-            border: `1px solid ${feedback.type === 'success' ? '#BBF7D0' : '#FECACA'}`,
-            color: feedback.type === 'success' ? '#166534' : '#991B1B',
-            fontSize: 13.5
-          }}
+          className={`flex items-center justify-between p-2.5 px-4 rounded-xl mb-4 text-sm border ${
+            feedback.type === 'success'
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+              : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300'
+          }`}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="flex items-center gap-2">
             {feedback.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
             <span>{feedback.message}</span>
           </div>
           <button
             onClick={() => setFeedback(null)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 2 }}
+            className="bg-transparent border-0 cursor-pointer text-inherit p-0.5 hover:opacity-75 transition-opacity"
           >
             <X size={15} />
           </button>
@@ -224,77 +216,49 @@ export default function LeaveApprove() {
       )}
 
       {/* ── Tabs ── */}
-      <div className="student-tab-bar" style={{ display: 'flex', gap: 6, borderBottom: '1px solid var(--border, #E2E8F0)', marginBottom: 20 }}>
+      <div className="student-tab-bar flex gap-1.5 border-b border-slate-200 dark:border-slate-700 mb-5 overflow-x-auto pb-px">
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'ALL' ? 'active' : ''}`}
+          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'ALL'
+              ? 'border-blue-600 text-blue-600 dark:text-blue-400 active'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
           onClick={() => setActiveTab('ALL')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            padding: '8px 16px',
-            fontSize: 13.5,
-            fontWeight: 600,
-            cursor: 'pointer',
-            borderBottom: activeTab === 'ALL' ? '2px solid #2563EB' : '2px solid transparent',
-            color: activeTab === 'ALL' ? '#2563EB' : 'var(--text-secondary, #64748B)',
-            transition: 'all 0.15s'
-          }}
         >
           All ({displayCounts.all})
         </button>
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'PENDING' ? 'active' : ''}`}
+          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'PENDING'
+              ? 'border-blue-600 text-blue-600 dark:text-blue-400 active'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
           onClick={() => setActiveTab('PENDING')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            padding: '8px 16px',
-            fontSize: 13.5,
-            fontWeight: 600,
-            cursor: 'pointer',
-            borderBottom: activeTab === 'PENDING' ? '2px solid #2563EB' : '2px solid transparent',
-            color: activeTab === 'PENDING' ? '#2563EB' : 'var(--text-secondary, #64748B)',
-            transition: 'all 0.15s'
-          }}
         >
           Pending ({displayCounts.pending})
         </button>
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'SEEN' ? 'active' : ''}`}
+          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'SEEN'
+              ? 'border-blue-600 text-blue-600 dark:text-blue-400 active'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
           onClick={() => setActiveTab('SEEN')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            padding: '8px 16px',
-            fontSize: 13.5,
-            fontWeight: 600,
-            cursor: 'pointer',
-            borderBottom: activeTab === 'SEEN' ? '2px solid #2563EB' : '2px solid transparent',
-            color: activeTab === 'SEEN' ? '#2563EB' : 'var(--text-secondary, #64748B)',
-            transition: 'all 0.15s'
-          }}
         >
           Seen ({displayCounts.seen || 0})
         </button>
         {!isTeacher && (
           <button
             type="button"
-            className={`student-tab-btn ${activeTab === 'APPROVED' ? 'active' : ''}`}
+            className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
+              activeTab === 'APPROVED'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400 active'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
             onClick={() => setActiveTab('APPROVED')}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              padding: '8px 16px',
-              fontSize: 13.5,
-              fontWeight: 600,
-              cursor: 'pointer',
-              borderBottom: activeTab === 'APPROVED' ? '2px solid #2563EB' : '2px solid transparent',
-              color: activeTab === 'APPROVED' ? '#2563EB' : 'var(--text-secondary, #64748B)',
-              transition: 'all 0.15s'
-            }}
           >
             Approved ({counts.approved})
           </button>
@@ -302,28 +266,20 @@ export default function LeaveApprove() {
       </div>
 
       {/* Search and Role Filter Bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
-        <div style={{ position: 'relative', minWidth: 260, flex: 1, maxWidth: 400 }}>
-          <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
+        <div className="relative min-w-[260px] flex-1 max-w-sm">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder={isTeacher ? "Search by student name or reason..." : "Search by student name, roll no, reason..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '8px 12px 8px 36px',
-              borderRadius: 8,
-              border: '1px solid var(--border, #E2E8F0)',
-              background: 'var(--surface, #FFF)',
-              fontSize: 13,
-              color: 'var(--text, #0F172A)'
-            }}
+            className="w-full py-2 pl-9 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 bg-transparent border-0 cursor-pointer text-slate-400 hover:text-slate-600 p-0.5"
             >
               <X size={14} />
             </button>
@@ -331,23 +287,18 @@ export default function LeaveApprove() {
         </div>
 
         {!isTeacher && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Filter size={14} style={{ color: '#64748B' }} />
-            <span style={{ fontSize: 13, color: '#64748B', fontWeight: 500 }}>Role:</span>
+          <div className="flex items-center gap-2">
+            <Filter size={14} className="text-slate-500" />
+            <span className="text-sm text-slate-500 font-medium">Role:</span>
             {(['ALL', 'STUDENT', 'TEACHER'] as const).map((role) => (
               <button
                 key={role}
                 onClick={() => setRoleFilter(role)}
-                style={{
-                  background: roleFilter === role ? 'rgba(37, 99, 235, 0.12)' : 'transparent',
-                  color: roleFilter === role ? '#3b82f6' : 'var(--text-secondary, #64748B)',
-                  border: roleFilter === role ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid var(--border, #E2E8F0)',
-                  padding: '4px 10px',
-                  borderRadius: 6,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
+                className={`py-1 px-2.5 rounded-md text-xs font-semibold cursor-pointer transition-colors ${
+                  roleFilter === role
+                    ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
+                    : 'bg-transparent text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                }`}
               >
                 {role === 'ALL' ? 'All Roles' : role === 'STUDENT' ? 'Students' : 'Teachers'}
               </button>
@@ -358,20 +309,20 @@ export default function LeaveApprove() {
 
       {/* Main Content Area */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748B', fontSize: 14 }}>
-          <RefreshCw size={24} className="spin" style={{ marginBottom: 12, display: 'inline-block', color: '#2563EB' }} />
+        <div className="text-center py-16 px-5 text-slate-500 text-sm">
+          <RefreshCw size={24} className="spin mb-3 inline-block text-blue-600" />
           <div>Loading leave applications...</div>
         </div>
       ) : filteredLeaves.length === 0 ? (
         /* Empty State matching user's screenshot */
-        <div className="student-empty-state" style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary, #64748B)', fontSize: 14, background: 'var(--surface, #FFF)', border: '1px dashed var(--border, #E2E8F0)', borderRadius: 12 }}>
-          <Calendar size={36} style={{ color: '#CBD5E1', marginBottom: 12 }} />
-          <p style={{ margin: 0, fontWeight: 500, fontSize: 15, color: 'var(--text, #334155)' }}>
+        <div className="student-empty-state text-center py-16 px-5 text-slate-500 dark:text-slate-400 text-sm bg-white dark:bg-slate-800 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
+          <Calendar size={36} className="text-slate-300 dark:text-slate-600 mb-3 mx-auto" />
+          <p className="m-0 font-medium text-base text-slate-700 dark:text-slate-300">
             {isTeacher && counts.all === 0
               ? 'No student leave applications found for your mentored class-section.'
               : 'No leave requests found in this category.'}
           </p>
-          <p style={{ fontSize: 13, color: '#94A3B8', marginTop: 4 }}>
+          <p className="text-xs text-slate-400 mt-1">
             {isTeacher && counts.all === 0
               ? 'Leave review duties are routed exclusively to assigned class mentors.'
               : activeTab === 'PENDING' ? 'No pending leave applications awaiting approval.' : 'No leave records to display.'}
@@ -379,109 +330,64 @@ export default function LeaveApprove() {
         </div>
       ) : (
         /* Leave Cards Grid */
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
-            gap: 20
-          }}
-        >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredLeaves.map((leave) => {
             const numDays = calculateDays(leave.start_date, leave.end_date);
             return (
               <div
                 key={leave.id}
                 onClick={leave.status === 'SEEN' || (isTeacher && leave.status === 'APPROVED') ? () => setViewingLeave(leave) : undefined}
-                style={{
-                  background: 'var(--surface, #FFFFFF)',
-                  border: '1px solid var(--border, #E2E8F0)',
-                  borderRadius: 14,
-                  overflow: 'hidden',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                  transition: 'box-shadow 0.2s, transform 0.2s',
-                  cursor: (leave.status === 'SEEN' || (isTeacher && leave.status === 'APPROVED')) ? 'pointer' : 'default'
-                }}
+                className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden flex flex-col shadow-xs hover:shadow-md transition-all ${
+                  (leave.status === 'SEEN' || (isTeacher && leave.status === 'APPROVED')) ? 'cursor-pointer' : 'cursor-default'
+                }`}
               >
                 {/* Header: Status and Submission Time */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px 16px',
-                    borderBottom: '1px solid var(--border, #E2E8F0)',
-                    background: 'var(--bg-card-header, #FAFAFA)'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div className="flex items-center justify-between p-3 px-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/40">
+                  <div className="flex items-center gap-1.5">
                     {leave.status === 'PENDING' ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
+                      <span className="inline-flex items-center gap-1 bg-amber-500/15 text-amber-600 dark:text-amber-400 py-0.5 px-2 rounded-full text-xs font-bold">
                         <Clock size={12} /> Pending Review
                       </span>
                     ) : (isTeacher || leave.status === 'SEEN') ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
+                      <span className="inline-flex items-center gap-1 bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 py-0.5 px-2 rounded-full text-xs font-bold">
                         <Eye size={12} /> Seen
                       </span>
                     ) : leave.status === 'APPROVED' ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
+                      <span className="inline-flex items-center gap-1 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 py-0.5 px-2 rounded-full text-xs font-bold">
                         <CheckCircle2 size={12} /> Approved
                       </span>
                     ) : (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
+                      <span className="inline-flex items-center gap-1 bg-rose-500/15 text-rose-600 dark:text-rose-400 py-0.5 px-2 rounded-full text-xs font-bold">
                         <XCircle size={12} /> Rejected
                       </span>
                     )}
                   </div>
 
-                  <span style={{ fontSize: 11.5, color: '#64748B' }}>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
                     Submitted {leave.created_at ? new Date(leave.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
                   </span>
                 </div>
 
                 {/* Candidate Info */}
-                <div style={{ padding: '16px 16px 12px', flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                    <div
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: '50%',
-                        background: 'rgba(37, 99, 235, 0.12)',
-                        color: '#3b82f6',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 16,
-                        fontWeight: 700,
-                        border: '1px solid rgba(59, 130, 246, 0.25)',
-                        overflow: 'hidden',
-                        flexShrink: 0
-                      }}
-                    >
+                <div className="p-4 flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-11 h-11 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center text-base font-bold border border-blue-200 dark:border-blue-800 overflow-hidden shrink-0">
                       {leave.photo_url ? (
-                        <img src={leave.photo_url} alt={leave.applicant_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={leave.photo_url} alt={leave.applicant_name} className="w-full h-full object-cover" />
                       ) : (
                         leave.applicant_name.charAt(0).toUpperCase()
                       )}
                     </div>
 
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="flex-1 min-w-0">
                       {!isTeacher && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div className="flex items-center gap-1.5">
                           <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 3,
-                              fontSize: 11,
-                              fontWeight: 700,
-                              padding: '2px 6px',
-                              borderRadius: 4,
-                              background: leave.applicant_type === 'STUDENT' ? 'rgba(59, 130, 246, 0.12)' : 'rgba(168, 85, 247, 0.12)',
-                              color: leave.applicant_type === 'STUDENT' ? '#3b82f6' : '#a855f7'
-                            }}
+                            className={`inline-flex items-center gap-1 text-[11px] font-bold py-0.5 px-1.5 rounded ${
+                              leave.applicant_type === 'STUDENT'
+                                ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400'
+                                : 'bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400'
+                            }`}
                           >
                             {leave.applicant_type === 'STUDENT' ? <User size={11} /> : <GraduationCap size={11} />}
                             {leave.applicant_type === 'STUDENT' ? 'Student' : 'Teacher'}
@@ -489,83 +395,53 @@ export default function LeaveApprove() {
                         </div>
                       )}
 
-                      <h3 style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 700, color: 'var(--text, #0F172A)' }}>
+                      <h3 className="m-0 mt-0.5 text-sm font-bold text-slate-900 dark:text-white truncate">
                         <PersonProfileLink kind={leave.applicant_type === 'TEACHER' ? 'teacher' : 'student'} id={leave.applicant_id} name={leave.applicant_name} person={leave as any} />
                       </h3>
 
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)' }}>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
                         {leave.detail || `ID: ${leave.identifier || 'N/A'}`}
                       </div>
                     </div>
                   </div>
 
                   {/* Dates Box */}
-                  <div
-                    style={{
-                      background: 'var(--card-subtle, rgba(255, 255, 255, 0.04))',
-                      border: '1px solid var(--border, #E2E8F0)',
-                      borderRadius: 10,
-                      padding: '10px 12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: 12
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Calendar size={16} style={{ color: '#3b82f6' }} />
+                  <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 px-3 flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Calendar size={16} className="text-blue-600 dark:text-blue-400" />
                       <div>
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary, #64748B)', fontWeight: 600 }}>LEAVE PERIOD</div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text, #0F172A)' }}>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">LEAVE PERIOD</div>
+                        <div className="text-xs font-bold text-slate-900 dark:text-white">
                           {formatDate(leave.start_date)} → {formatDate(leave.end_date)}
                         </div>
                       </div>
                     </div>
 
-                    <span
-                      style={{
-                        background: 'rgba(37, 99, 235, 0.12)',
-                        color: '#3b82f6',
-                        fontSize: 12,
-                        fontWeight: 700,
-                        padding: '4px 8px',
-                        borderRadius: 6
-                      }}
-                    >
+                    <span className="bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 text-xs font-bold py-1 px-2 rounded-md">
                       {numDays} {numDays === 1 ? 'Day' : 'Days'}
                     </span>
                   </div>
 
                   {/* Reason Box */}
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 4 }}>
+                  <div className="mb-3">
+                    <div className="flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
                       <FileText size={12} /> REASON
                     </div>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        color: 'var(--text, #334155)',
-                        background: 'var(--card-subtle, rgba(255, 255, 255, 0.03))',
-                        padding: '8px 12px',
-                        borderRadius: 8,
-                        border: '1px solid var(--border, #E2E8F0)',
-                        lineHeight: 1.45
-                      }}
-                    >
+                    <div className="text-xs text-slate-700 dark:text-slate-300 bg-slate-50/70 dark:bg-slate-900/40 p-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 leading-relaxed line-clamp-3">
                       {leave.reason}
                     </div>
                   </div>
 
                   {/* Approval / Rejection Notes */}
                   {leave.status === 'APPROVED' && (
-                    <div style={{ fontSize: 12, color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '6px 10px', borderRadius: 6 }}>
+                    <div className="text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 p-1.5 px-2.5 rounded-md">
                       Approved {leave.reviewer_name ? `by ${leave.reviewer_name}` : ''}
                       {leave.review_notes ? ` · Note: ${leave.review_notes}` : ''}
                     </div>
                   )}
 
                   {leave.status === 'REJECTED' && (
-                    <div style={{ fontSize: 12, color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '6px 10px', borderRadius: 6 }}>
+                    <div className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 p-1.5 px-2.5 rounded-md">
                       Rejected {leave.reviewer_name ? `by ${leave.reviewer_name}` : ''}
                       {leave.review_notes ? ` · Reason: ${leave.review_notes}` : ''}
                     </div>
@@ -574,35 +450,14 @@ export default function LeaveApprove() {
 
                 {/* View button is only shown for PENDING leaves; in SEEN section it is hidden */}
                 {(leave.status === 'PENDING' || (!isTeacher && leave.status !== 'SEEN')) && (
-                  <div
-                    style={{
-                      padding: '12px 16px',
-                      borderTop: '1px solid var(--border, #E2E8F0)',
-                      background: 'var(--bg-card-footer, #FAFAFA)'
-                    }}
-                  >
+                  <div className="p-3 px-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/40">
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleViewLeave(leave);
                       }}
-                      style={{
-                        width: '100%',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 7,
-                        background: '#2563EB',
-                        color: '#FFF',
-                        border: 'none',
-                        borderRadius: 8,
-                        padding: '9px 16px',
-                        fontSize: 13,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'background 0.15s'
-                      }}
+                      className="w-full inline-flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-lg py-2 px-4 text-xs font-semibold cursor-pointer transition-colors shadow-xs"
                     >
                       <Eye size={15} />
                       <span>View</span>
@@ -618,42 +473,24 @@ export default function LeaveApprove() {
       {/* ── View Application Details Modal ── */}
       {viewingLeave && (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(3px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10000,
-            padding: 20
-          }}
+          className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center z-50 p-5"
           onClick={() => setViewingLeave(null)}
         >
           <div
-            style={{
-              background: 'var(--bg-card, #1e293b)',
-              borderRadius: 16,
-              maxWidth: 520,
-              width: '100%',
-              padding: 24,
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-              border: '1px solid var(--border, #E2E8F0)'
-            }}
+            className="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 animate-scale-up"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, borderBottom: '1px solid var(--border, #E2E8F0)', paddingBottom: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(37, 99, 235, 0.12)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="flex items-center justify-between mb-4 border-b border-slate-200 dark:border-slate-700 pb-3.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
                   <FileText size={20} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text, #0F172A)' }}>
+                  <h3 className="m-0 text-base font-bold text-slate-900 dark:text-white">
                     Leave Application Details
                   </h3>
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)' }}>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
                     Submitted {viewingLeave.created_at ? new Date(viewingLeave.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
                   </span>
                 </div>
@@ -661,66 +498,39 @@ export default function LeaveApprove() {
               <button
                 type="button"
                 onClick={() => setViewingLeave(null)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  fontSize: 22,
-                  lineHeight: 1,
-                  color: '#94A3B8',
-                  cursor: 'pointer',
-                  padding: 4
-                }}
+                className="bg-transparent border-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer text-xl leading-none p-1"
               >
                 ×
               </button>
             </div>
 
             {/* Applicant Profile */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', background: 'var(--card-subtle, rgba(255, 255, 255, 0.04))', borderRadius: 12, marginBottom: 18, border: '1px solid var(--border, #E2E8F0)' }}>
-              <div
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: '50%',
-                  background: 'rgba(37, 99, 235, 0.12)',
-                  color: '#3b82f6',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 18,
-                  fontWeight: 700,
-                  border: '2px solid rgba(59, 130, 246, 0.25)',
-                  overflow: 'hidden',
-                  flexShrink: 0
-                }}
-              >
+            <div className="flex items-center gap-3.5 p-3 px-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl mb-4 border border-slate-200 dark:border-slate-700">
+              <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg font-bold border-2 border-blue-200 dark:border-blue-800 overflow-hidden shrink-0">
                 {viewingLeave.photo_url ? (
-                  <img src={viewingLeave.photo_url} alt={viewingLeave.applicant_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={viewingLeave.photo_url} alt={viewingLeave.applicant_name} className="w-full h-full object-cover" />
                 ) : (
                   viewingLeave.applicant_name.charAt(0).toUpperCase()
                 )}
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                  <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0F172A)' }}>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <h4 className="m-0 text-sm font-bold text-slate-900 dark:text-white">
                     <PersonProfileLink kind={viewingLeave.applicant_type === 'TEACHER' ? 'teacher' : 'student'} id={viewingLeave.applicant_id} name={viewingLeave.applicant_name} person={viewingLeave as any} />
                   </h4>
                   {!isTeacher && (
                     <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        padding: '2px 8px',
-                        borderRadius: 10,
-                        background: viewingLeave.applicant_type === 'STUDENT' ? '#EFF6FF' : '#F3E8FF',
-                        color: viewingLeave.applicant_type === 'STUDENT' ? '#1D4ED8' : '#7E22CE'
-                      }}
+                      className={`text-[11px] font-bold py-0.5 px-2 rounded-full ${
+                        viewingLeave.applicant_type === 'STUDENT'
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                          : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
+                      }`}
                     >
                       {viewingLeave.applicant_type === 'STUDENT' ? 'Student' : 'Teacher'}
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: 13, color: 'var(--text-secondary, #64748B)' }}>
+                <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
                   {viewingLeave.detail || `Admission No: ${viewingLeave.identifier || 'N/A'}`}
                 </div>
               </div>
@@ -728,19 +538,19 @@ export default function LeaveApprove() {
               {/* Status Badge */}
               <div>
                 {(viewingLeave.status === 'SEEN' || (isTeacher && viewingLeave.status === 'APPROVED')) ? (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>
+                  <span className="inline-flex items-center gap-1 bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 py-1 px-2.5 rounded-full text-xs font-bold">
                     <Eye size={13} /> Seen
                   </span>
                 ) : viewingLeave.status === 'PENDING' ? (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>
+                  <span className="inline-flex items-center gap-1 bg-amber-500/15 text-amber-600 dark:text-amber-400 py-1 px-2.5 rounded-full text-xs font-bold">
                     <Clock size={13} /> Pending Review
                   </span>
                 ) : viewingLeave.status === 'APPROVED' ? (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>
+                  <span className="inline-flex items-center gap-1 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 py-1 px-2.5 rounded-full text-xs font-bold">
                     <CheckCircle2 size={13} /> Approved
                   </span>
                 ) : (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>
+                  <span className="inline-flex items-center gap-1 bg-rose-500/15 text-rose-600 dark:text-rose-400 py-1 px-2.5 rounded-full text-xs font-bold">
                     <XCircle size={13} /> Rejected
                   </span>
                 )}
@@ -748,81 +558,42 @@ export default function LeaveApprove() {
             </div>
 
             {/* Leave Details Box */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
-              <div
-                style={{
-                  background: 'var(--card-subtle, rgba(255, 255, 255, 0.04))',
-                  border: '1px solid var(--border, #E2E8F0)',
-                  borderRadius: 10,
-                  padding: '12px 14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Calendar size={18} style={{ color: '#3b82f6' }} />
+            <div className="flex flex-col gap-3.5 mb-5">
+              <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl p-3 px-3.5 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Calendar size={18} className="text-blue-600 dark:text-blue-400" />
                   <div>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary, #64748B)', fontWeight: 600 }}>REQUESTED DURATION</div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text, #0F172A)' }}>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">REQUESTED DURATION</div>
+                    <div className="text-sm font-bold text-slate-900 dark:text-white">
                       {formatDate(viewingLeave.start_date)} → {formatDate(viewingLeave.end_date)}
                     </div>
                   </div>
                 </div>
-                <span
-                  style={{
-                    background: 'rgba(37, 99, 235, 0.12)',
-                    color: '#3b82f6',
-                    fontSize: 12.5,
-                    fontWeight: 700,
-                    padding: '4px 10px',
-                    borderRadius: 8
-                  }}
-                >
+                <span className="bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 text-xs font-bold py-1 px-2.5 rounded-md">
                   {calculateDays(viewingLeave.start_date, viewingLeave.end_date)} {calculateDays(viewingLeave.start_date, viewingLeave.end_date) === 1 ? 'Day' : 'Days'}
                 </span>
               </div>
 
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #64748B)', marginBottom: 6 }}>
+                <div className="flex items-center gap-1 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                   <FileText size={13} /> REASON FOR LEAVE
                 </div>
-                <div
-                  style={{
-                    fontSize: 13.5,
-                    color: 'var(--text, #334155)',
-                    background: 'var(--card-subtle, rgba(255, 255, 255, 0.03))',
-                    padding: '12px 14px',
-                    borderRadius: 10,
-                    border: '1px solid var(--border, #E2E8F0)',
-                    lineHeight: 1.5,
-                    minHeight: 60
-                  }}
-                >
+                <div className="text-xs text-slate-700 dark:text-slate-300 bg-slate-50/70 dark:bg-slate-900/40 p-3 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 leading-relaxed min-h-[60px]">
                   {viewingLeave.reason}
                 </div>
               </div>
             </div>
 
             {/* Modal Actions */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 14, borderTop: '1px solid var(--border, #E2E8F0)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#16A34A', fontWeight: 600 }}>
+            <div className="flex items-center justify-between pt-3.5 border-t border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
                 <CheckCircle2 size={16} />
                 <span>Marked as Seen in Student Portal</span>
               </div>
               <button
                 type="button"
                 onClick={() => setViewingLeave(null)}
-                style={{
-                  padding: '9px 18px',
-                  borderRadius: 8,
-                  border: 'none',
-                  background: '#2563EB',
-                  color: '#FFF',
-                  fontWeight: 600,
-                  fontSize: 13,
-                  cursor: 'pointer'
-                }}
+                className="py-2 px-4.5 rounded-lg border-0 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs cursor-pointer shadow-xs transition-colors"
               >
                 Close
               </button>

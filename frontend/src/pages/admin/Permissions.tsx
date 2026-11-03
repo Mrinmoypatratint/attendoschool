@@ -340,63 +340,29 @@ export default function Permissions() {
   }
 
   return (
-    <div className="feature-page" style={{ paddingBottom: 60 }}>
+    <div className="feature-page pb-16">
       {/* ─── Institutional Header ─── */}
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 16,
-          marginBottom: 24
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 12,
-              background: 'rgba(37, 99, 235, 0.12)',
-              border: '1px solid rgba(37, 99, 235, 0.25)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--sidebar-accent, #3b82f6)'
-            }}
-          >
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
             <ShieldCheck size={26} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text)' }}>
+            <h1 className="m-0 text-xl font-bold text-slate-900 dark:text-white">
               Permissions & Roles
             </h1>
-            <p style={{ margin: '4px 0 0', fontSize: 13.5, color: 'var(--text-secondary)' }}>
+            <p className="m-0 mt-1 text-xs text-slate-500 dark:text-slate-400">
               Institutional role definitions, granular privileges, and multi-tenant access control policy.
             </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={loadData}
             disabled={loading}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 16px',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              background: 'var(--bg-card)',
-              color: 'var(--text)',
-              fontSize: 13.5,
-              fontWeight: 600,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.15s ease'
-            }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors"
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             <span>Refresh</span>
@@ -406,20 +372,9 @@ export default function Permissions() {
             type="button"
             onClick={handleSeedDefaults}
             disabled={seeding || loading}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 18px',
-              borderRadius: 8,
-              border: '1px solid var(--sidebar-accent, #3b82f6)',
-              background: 'var(--sidebar-accent, #3b82f6)',
-              color: '#ffffff',
-              fontSize: 13.5,
-              fontWeight: 600,
-              cursor: seeding ? 'not-allowed' : 'pointer',
-              transition: 'opacity 0.15s ease'
-            }}
+            className={`inline-flex items-center gap-2 px-4.5 py-2 rounded-lg border-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors ${
+              seeding ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
+            }`}
           >
             <Sparkles size={15} />
             <span>{seeding ? 'Seeding...' : 'Seed Defaults'}</span>
@@ -430,41 +385,20 @@ export default function Permissions() {
       {/* ─── Feedback Alert ─── */}
       {feedback && (
         <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            padding: '12px 18px',
-            borderRadius: 10,
-            marginBottom: 20,
-            background:
-              feedback.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-            border:
-              feedback.type === 'success'
-                ? '1px solid rgba(16, 185, 129, 0.3)'
-                : '1px solid rgba(239, 68, 68, 0.3)',
-            color: feedback.type === 'success' ? '#10b981' : '#ef4444',
-            fontSize: 13.5,
-            fontWeight: 500
-          }}
+          className={`flex items-center justify-between gap-3 p-3 px-4.5 rounded-xl mb-5 text-sm font-medium border ${
+            feedback.type === 'success'
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+              : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300'
+          }`}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="flex items-center gap-2.5">
             {feedback.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
             <span>{feedback.message}</span>
           </div>
           <button
             type="button"
             onClick={() => setFeedback(null)}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'inherit',
-              cursor: 'pointer',
-              fontSize: 18,
-              fontWeight: 'bold',
-              lineHeight: 1
-            }}
+            className="bg-transparent border-0 text-inherit cursor-pointer text-lg font-bold leading-none"
           >
             &times;
           </button>
@@ -472,27 +406,12 @@ export default function Permissions() {
       )}
 
       {/* ─── Tenant Isolation Security Callout ─── */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 12,
-          padding: '14px 18px',
-          borderRadius: 10,
-          background: 'rgba(37, 99, 235, 0.08)',
-          border: '1px solid rgba(37, 99, 235, 0.2)',
-          marginBottom: 24
-        }}
-      >
+      <div className="flex items-start gap-3 p-3.5 px-4.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/60 mb-6">
         <Info
           size={18}
-          style={{
-            color: 'var(--sidebar-accent, #3b82f6)',
-            flexShrink: 0,
-            marginTop: 2
-          }}
+          className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5"
         />
-        <div style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text)' }}>
+        <div className="text-xs leading-relaxed text-slate-800 dark:text-slate-200">
           <strong>Multi-Tenant Institutional Security Boundary:</strong> Custom role configurations and
           assigned rights are strictly scoped to your school domain. Operational privileges are verified on
           every API request, safeguarding student records, biometric roll calls, and financial records.
@@ -500,157 +419,58 @@ export default function Permissions() {
       </div>
 
       {/* ─── 4 Summary KPI Metric Cards ─── */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
-          gap: 16,
-          marginBottom: 24
-        }}
-      >
-        <div
-          style={{
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            borderRadius: 12,
-            padding: '18px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 16,
-            boxShadow: 'var(--shadow-sm)'
-          }}
-        >
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: 'rgba(37, 99, 235, 0.12)',
-              color: 'var(--sidebar-accent, #3b82f6)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0
-            }}
-          >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center gap-4 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
             <Users size={22} />
           </div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Configured Roles
             </div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', marginTop: 2 }}>
+            <div className="text-2xl font-extrabold text-slate-900 dark:text-white mt-0.5">
               {roles.length}
             </div>
           </div>
         </div>
 
-        <div
-          style={{
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            borderRadius: 12,
-            padding: '18px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 16,
-            boxShadow: 'var(--shadow-sm)'
-          }}
-        >
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: 'rgba(16, 185, 129, 0.12)',
-              color: '#10b981',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0
-            }}
-          >
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center gap-4 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
             <KeyRound size={22} />
           </div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               System Permissions
             </div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', marginTop: 2 }}>
+            <div className="text-2xl font-extrabold text-slate-900 dark:text-white mt-0.5">
               {permissions.length}
             </div>
           </div>
         </div>
 
-        <div
-          style={{
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            borderRadius: 12,
-            padding: '18px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 16,
-            boxShadow: 'var(--shadow-sm)'
-          }}
-        >
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: 'rgba(168, 85, 247, 0.12)',
-              color: 'var(--purple-500, #a855f7)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0
-            }}
-          >
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center gap-4 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
             <Shield size={22} />
           </div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Isolation Level
             </div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginTop: 4 }}>
+            <div className="text-sm font-bold text-slate-900 dark:text-white mt-1">
               Strict Tenant-Scoped
             </div>
           </div>
         </div>
 
-        <div
-          style={{
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            borderRadius: 12,
-            padding: '18px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 16,
-            boxShadow: 'var(--shadow-sm)'
-          }}
-        >
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: 'rgba(245, 158, 11, 0.12)',
-              color: '#f59e0b',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0
-            }}
-          >
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center gap-4 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center shrink-0">
             <CheckCircle2 size={22} />
           </div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Access Enforcement
             </div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginTop: 4 }}>
+            <div className="text-sm font-bold text-slate-900 dark:text-white mt-1">
               Active RBAC Engine
             </div>
           </div>

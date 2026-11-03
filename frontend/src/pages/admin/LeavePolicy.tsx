@@ -276,72 +276,37 @@ export default function LeavePolicy() {
       )}
 
       {/* Header Row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
+      <div className="flex justify-between items-start flex-wrap gap-4 mb-6">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+          <div className="flex items-center gap-2.5">
+            <h1 className="m-0 text-2xl font-bold text-slate-900 dark:text-white">
               Leave Policy
             </h1>
-            <span style={{
-              background: 'rgba(37, 99, 235, 0.12)',
-              color: '#2563eb',
-              fontSize: 12,
-              fontWeight: 700,
-              padding: '3px 9px',
-              borderRadius: 999,
-              letterSpacing: '0.04em'
-            }}>
+            <span className="bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 text-xs font-bold py-1 px-2.5 rounded-full tracking-wider">
               ADMIN CONFIGURATION
             </span>
           </div>
-          <p style={{ margin: '6px 0 0', fontSize: 13.5, color: 'var(--text-muted, #64748b)', maxWidth: 700 }}>
+          <p className="m-0 mt-1.5 text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
             Define school leave types, allowed entitlement counts, and renewal frequency on a <b>Yearly</b> or <b>Half-Yearly</b> basis. All rules are fully dynamic.
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={() => fetchPolicies(true)}
             disabled={refreshing}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 14px',
-              borderRadius: 6,
-              border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--bg-card, #ffffff)',
-              color: 'var(--text, #334155)',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: refreshing ? 'not-allowed' : 'pointer',
-              transition: 'all 0.15s ease'
-            }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors cursor-pointer"
             title="Refresh policies from database"
           >
-            <RefreshCw size={14} style={{ animation: refreshing ? 'spinAnim 0.8s linear infinite' : 'none' }} />
+            <RefreshCw size={14} className={refreshing ? 'spin' : ''} />
             <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
           </button>
 
           <button
             type="button"
             onClick={handleOpenCreateModal}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 18px',
-              borderRadius: 6,
-              border: 'none',
-              background: '#2563eb',
-              color: '#ffffff',
-              fontSize: 13.5,
-              fontWeight: 600,
-              cursor: 'pointer',
-              boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
-              transition: 'background 0.15s ease'
-            }}
+            className="inline-flex items-center gap-2 px-4.5 py-2 rounded-lg border-0 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-xs transition-colors cursor-pointer"
           >
             <Plus size={16} />
             <span>Create Leave Policy</span>
@@ -350,143 +315,62 @@ export default function LeavePolicy() {
       </div>
 
       {/* KPI Stats Grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: 16,
-        marginBottom: 24
-      }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {/* Total Policies */}
-        <div style={{
-          background: 'var(--bg-card, #ffffff)',
-          border: '1px solid var(--border, #e2e8f0)',
-          borderRadius: 10,
-          padding: '16px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 14,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-        }}>
-          <div style={{
-            width: 44,
-            height: 44,
-            borderRadius: 10,
-            background: 'rgba(37, 99, 235, 0.12)',
-            color: '#2563eb',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0
-          }}>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center gap-3.5 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
             <Layers size={22} />
           </div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase' }}>
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
               Total Policies
             </div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)', marginTop: 2 }}>
+            <div className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
               {stats.total}
             </div>
           </div>
         </div>
 
         {/* Yearly Cycle */}
-        <div style={{
-          background: 'var(--bg-card, #ffffff)',
-          border: '1px solid var(--border, #e2e8f0)',
-          borderRadius: 10,
-          padding: '16px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 14,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-        }}>
-          <div style={{
-            width: 44,
-            height: 44,
-            borderRadius: 10,
-            background: 'rgba(14, 165, 233, 0.12)',
-            color: '#0284c7',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0
-          }}>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center gap-3.5 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
             <Calendar size={22} />
           </div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase' }}>
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
               Yearly Accrual
             </div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)', marginTop: 2 }}>
+            <div className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
               {stats.yearly}
             </div>
           </div>
         </div>
 
         {/* Half-Yearly Cycle */}
-        <div style={{
-          background: 'var(--bg-card, #ffffff)',
-          border: '1px solid var(--border, #e2e8f0)',
-          borderRadius: 10,
-          padding: '16px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 14,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-        }}>
-          <div style={{
-            width: 44,
-            height: 44,
-            borderRadius: 10,
-            background: 'rgba(147, 51, 234, 0.12)',
-            color: '#9333ea',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0
-          }}>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center gap-3.5 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
             <Clock size={22} />
           </div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase' }}>
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
               Half-Yearly Accrual
             </div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)', marginTop: 2 }}>
+            <div className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
               {stats.halfYearly}
             </div>
           </div>
         </div>
 
         {/* Active Policies */}
-        <div style={{
-          background: 'var(--bg-card, #ffffff)',
-          border: '1px solid var(--border, #e2e8f0)',
-          borderRadius: 10,
-          padding: '16px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 14,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-        }}>
-          <div style={{
-            width: 44,
-            height: 44,
-            borderRadius: 10,
-            background: 'rgba(16, 185, 129, 0.12)',
-            color: '#10b981',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0
-          }}>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center gap-3.5 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
             <CheckCircle size={22} />
           </div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase' }}>
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
               Active Rules
             </div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)', marginTop: 2 }}>
+            <div className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
               {stats.active}
             </div>
           </div>
@@ -494,53 +378,26 @@ export default function LeavePolicy() {
       </div>
 
       {/* Filter Toolbar */}
-      <div style={{
-        background: 'var(--bg-card, #ffffff)',
-        border: '1px solid var(--border, #e2e8f0)',
-        borderRadius: 8,
-        padding: '12px 16px',
-        marginBottom: 18,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        flexWrap: 'wrap'
-      }}>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 px-4 mb-4.5 flex items-center gap-3 flex-wrap shadow-xs">
         {/* Search */}
-        <div style={{ position: 'relative', flex: '1 1 240px', minWidth: 200 }}>
-          <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search policy name, code, description..."
-            style={{
-              width: '100%',
-              padding: '7px 10px 7px 32px',
-              borderRadius: 6,
-              border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--bg, #ffffff)',
-              color: 'var(--text, #0f172a)',
-              fontSize: 13,
-              boxSizing: 'border-box'
-            }}
+            className="w-full py-2 pl-8 pr-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           />
         </div>
 
         {/* Accrual Cycle Filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', fontWeight: 600 }}>CYCLE:</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">CYCLE:</span>
           <select
             value={cycleFilter}
             onChange={e => setCycleFilter(e.target.value as any)}
-            style={{
-              padding: '7px 10px',
-              borderRadius: 6,
-              border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--bg, #ffffff)',
-              color: 'var(--text, #0f172a)',
-              fontSize: 13,
-              cursor: 'pointer'
-            }}
+            className="py-1.5 px-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs cursor-pointer outline-none"
           >
             <option value="ALL">All Cycles</option>
             <option value="YEARLY">Yearly Only</option>
@@ -549,20 +406,12 @@ export default function LeavePolicy() {
         </div>
 
         {/* Role Filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', fontWeight: 600 }}>APPLICABLE TO:</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">APPLICABLE TO:</span>
           <select
             value={roleFilter}
             onChange={e => setRoleFilter(e.target.value as any)}
-            style={{
-              padding: '7px 10px',
-              borderRadius: 6,
-              border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--bg, #ffffff)',
-              color: 'var(--text, #0f172a)',
-              fontSize: 13,
-              cursor: 'pointer'
-            }}
+            className="py-1.5 px-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs cursor-pointer outline-none"
           >
             <option value="ALL">All Roles</option>
             <option value="TEACHER">Faculty / Teachers</option>
@@ -572,20 +421,12 @@ export default function LeavePolicy() {
         </div>
 
         {/* Status Filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', fontWeight: 600 }}>STATUS:</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">STATUS:</span>
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value as any)}
-            style={{
-              padding: '7px 10px',
-              borderRadius: 6,
-              border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--bg, #ffffff)',
-              color: 'var(--text, #0f172a)',
-              fontSize: 13,
-              cursor: 'pointer'
-            }}
+            className="py-1.5 px-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs cursor-pointer outline-none"
           >
             <option value="ALL">All Status</option>
             <option value="ACTIVE">Active Only</option>
@@ -602,16 +443,7 @@ export default function LeavePolicy() {
               setRoleFilter('ALL');
               setStatusFilter('ALL');
             }}
-            style={{
-              padding: '6px 12px',
-              borderRadius: 6,
-              border: '1px solid #cbd5e1',
-              background: 'transparent',
-              color: '#64748b',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
+            className="py-1.5 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-transparent text-slate-500 dark:text-slate-400 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
           >
             Clear Filters
           </button>

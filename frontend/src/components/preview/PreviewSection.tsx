@@ -11,74 +11,32 @@ export const PreviewSection: React.FC<PreviewSectionData> = ({
 }) => {
   if (!fields || fields.length === 0) return null;
 
-  const badgeBg =
-    badgeColor === 'green' ? '#dcfce7' :
-    badgeColor === 'amber' ? '#fef3c7' :
-    badgeColor === 'purple' ? '#faf5ff' : '#eff6ff';
-
-  const badgeTextColor =
-    badgeColor === 'green' ? '#15803d' :
-    badgeColor === 'amber' ? '#b45309' :
-    badgeColor === 'purple' ? '#9333ea' : '#1d4ed8';
+  const badgeClasses =
+    badgeColor === 'green'
+      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+      : badgeColor === 'amber'
+      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+      : badgeColor === 'purple'
+      ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300'
+      : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300';
 
   return (
-    <div
-      style={{
-        background: 'var(--bg-card, #ffffff)',
-        border: '1px solid var(--border, #e2e8f0)',
-        borderRadius: 12,
-        padding: '16px 18px',
-        marginBottom: 16,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 12,
-          paddingBottom: 8,
-          borderBottom: '1px solid var(--border, #f1f5f9)'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {icon && <span style={{ color: '#2563eb', display: 'inline-flex' }}>{icon}</span>}
-          <h4
-            style={{
-              margin: 0,
-              fontSize: 14,
-              fontWeight: 700,
-              color: 'var(--text, #0f172a)',
-              letterSpacing: '-0.01em'
-            }}
-          >
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 sm:p-4.5 mb-4 shadow-sm transition-colors">
+      <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center gap-2">
+          {icon && <span className="text-blue-600 dark:text-blue-400 inline-flex">{icon}</span>}
+          <h4 className="m-0 text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">
             {title}
           </h4>
         </div>
         {badge && (
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              padding: '2px 8px',
-              borderRadius: 12,
-              background: badgeBg,
-              color: badgeTextColor
-            }}
-          >
+          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${badgeClasses}`}>
             {badge}
           </span>
         )}
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: 10
-        }}
-      >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
         {fields.map((f, i) => (
           <PreviewField key={f.label || i} {...f} />
         ))}

@@ -201,46 +201,28 @@ export function TeacherAnnouncements() {
   const highTotal = announcements.filter(n => n.priority === 'HIGH').length;
 
   return (
-    <div style={{ width: '100%', paddingBottom: 60 }}>
+    <div className="w-full pb-16">
       {/* ── Top Header / Breadcrumbs ── */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-2">
           <Link
             to="/dashboard"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-              fontSize: 13,
-              color: 'var(--primary, #2563eb)',
-              textDecoration: 'none',
-              fontWeight: 600
-            }}
+            className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 no-underline font-semibold hover:underline"
           >
             <ArrowLeft size={14} /> Back to Dashboard
           </Link>
-          <span style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 13 }}>/</span>
-          <span style={{ fontSize: 13, color: 'var(--text-muted, #64748b)', fontWeight: 500 }}>
-            Announcements & Circulars
+          <span className="text-slate-400 text-xs">/</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+            Announcements &amp; Circulars
           </span>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
+        <div className="flex justify-between items-start flex-wrap gap-4">
           <div>
-            <h1
-              style={{
-                margin: '0 0 6px',
-                fontSize: 26,
-                fontWeight: 800,
-                color: 'var(--text, #0f172a)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10
-              }}
-            >
-              <Megaphone size={26} color="#2563eb" /> School Announcements
+            <h1 className="m-0 mb-1.5 text-2xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
+              <Megaphone size={26} className="text-blue-600" /> School Announcements
             </h1>
-            <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted, #64748b)', maxWidth: 680 }}>
+            <p className="m-0 text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
               Official school notices, faculty briefings, and interactive administration response channel for teachers.
             </p>
           </div>
@@ -249,22 +231,9 @@ export function TeacherAnnouncements() {
             type="button"
             onClick={() => loadNotices(true)}
             disabled={refreshing}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 16px',
-              fontSize: 13,
-              fontWeight: 600,
-              borderRadius: 8,
-              border: '1px solid var(--border, #cbd5e1)',
-              backgroundColor: 'var(--card, #ffffff)',
-              color: 'var(--text, #1e293b)',
-              cursor: refreshing ? 'not-allowed' : 'pointer',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-            }}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer disabled:cursor-not-allowed shadow-sm transition-colors"
           >
-            <RefreshCw size={14} className={refreshing ? 'spin' : ''} />
+            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
             {refreshing ? 'Refreshing...' : 'Refresh Feed'}
           </button>
         </div>
@@ -280,37 +249,17 @@ export function TeacherAnnouncements() {
       />
 
       {/* ── Search & Filter Controls ── */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 12,
-          padding: '12px 16px',
-          backgroundColor: 'var(--card, #ffffff)',
-          borderRadius: 10,
-          border: '1px solid var(--border, #e2e8f0)',
-          marginBottom: 20,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-        }}
-      >
+      <div className="flex justify-between items-center flex-wrap gap-3 p-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 mb-5 shadow-sm">
         {/* Filter Pills */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <div className="flex gap-1.5 flex-wrap">
           <button
             type="button"
             onClick={() => setPriorityFilter('ALL')}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 6,
-              fontSize: 12.5,
-              fontWeight: 600,
-              cursor: 'pointer',
-              border: 'none',
-              backgroundColor: priorityFilter === 'ALL' ? '#2563eb' : 'var(--surface-subtle, #f1f5f9)',
-              color: priorityFilter === 'ALL' ? '#ffffff' : 'var(--text, #334155)',
-              transition: 'all 0.15s ease'
-            }}
+            className={`px-3.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer border-none transition-colors ${
+              priorityFilter === 'ALL'
+                ? 'bg-blue-600 text-white'
+                : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300'
+            }`}
           >
             All Notices ({announcements.length})
           </button>
@@ -319,17 +268,11 @@ export function TeacherAnnouncements() {
             <button
               type="button"
               onClick={() => setPriorityFilter('UNREAD')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 6,
-                fontSize: 12.5,
-                fontWeight: 600,
-                cursor: 'pointer',
-                border: 'none',
-                backgroundColor: priorityFilter === 'UNREAD' ? '#0284c7' : 'rgba(2, 132, 199, 0.15)',
-                color: priorityFilter === 'UNREAD' ? '#ffffff' : 'var(--sidebar-accent, #0284c7)',
-                transition: 'all 0.15s ease'
-              }}
+              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer border-none transition-colors ${
+                priorityFilter === 'UNREAD'
+                  ? 'bg-sky-600 text-white'
+                  : 'bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300'
+              }`}
             >
               Unread ({unreadTotal})
             </button>
@@ -339,17 +282,11 @@ export function TeacherAnnouncements() {
             <button
               type="button"
               onClick={() => setPriorityFilter('EMERGENCY')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 6,
-                fontSize: 12.5,
-                fontWeight: 600,
-                cursor: 'pointer',
-                border: 'none',
-                backgroundColor: priorityFilter === 'EMERGENCY' ? '#dc2626' : 'rgba(220, 38, 38, 0.15)',
-                color: priorityFilter === 'EMERGENCY' ? '#ffffff' : '#ef4444',
-                transition: 'all 0.15s ease'
-              }}
+              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer border-none transition-colors ${
+                priorityFilter === 'EMERGENCY'
+                  ? 'bg-red-600 text-white'
+                  : 'bg-red-50 hover:bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400'
+              }`}
             >
               Emergency ({emergencyTotal})
             </button>
@@ -359,17 +296,11 @@ export function TeacherAnnouncements() {
             <button
               type="button"
               onClick={() => setPriorityFilter('HIGH')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 6,
-                fontSize: 12.5,
-                fontWeight: 600,
-                cursor: 'pointer',
-                border: 'none',
-                backgroundColor: priorityFilter === 'HIGH' ? '#ea580c' : 'rgba(234, 88, 12, 0.15)',
-                color: priorityFilter === 'HIGH' ? '#ffffff' : '#f97316',
-                transition: 'all 0.15s ease'
-              }}
+              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer border-none transition-colors ${
+                priorityFilter === 'HIGH'
+                  ? 'bg-amber-600 text-white'
+                  : 'bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400'
+              }`}
             >
               High Priority ({highTotal})
             </button>
@@ -377,50 +308,31 @@ export function TeacherAnnouncements() {
         </div>
 
         {/* Search input */}
-        <div style={{ position: 'relative', minWidth: 240 }}>
-          <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: 10, top: 10 }} />
+        <div className="relative min-w-[240px]">
+          <Search size={14} className="text-slate-400 absolute left-2.5 top-2.5" />
           <input
             type="text"
             placeholder="Search circulars..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '6px 12px 6px 32px',
-              borderRadius: 6,
-              border: '1px solid var(--border, #cbd5e1)',
-              backgroundColor: 'var(--bg-card, #ffffff)',
-              color: 'var(--text, #0f172a)',
-              fontSize: 13,
-              outline: 'none',
-              boxSizing: 'border-box'
-            }}
+            className="w-full py-1.5 pl-8 pr-3 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500 box-border"
           />
         </div>
       </div>
 
       {/* ── Announcements Content List ── */}
       {loading ? (
-        <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
-          <RefreshCw size={24} className="spin" style={{ margin: '0 auto 12px', display: 'block', color: '#2563eb' }} />
+        <div className="p-12 text-center text-slate-500 dark:text-slate-400">
+          <RefreshCw size={24} className="animate-spin mx-auto mb-3 block text-blue-600" />
           Loading faculty announcements...
         </div>
       ) : filteredNotices.length === 0 ? (
-        <div
-          style={{
-            padding: '48px 24px',
-            textAlign: 'center',
-            backgroundColor: 'var(--card, #ffffff)',
-            borderRadius: 12,
-            border: '1px dashed var(--border, #cbd5e1)',
-            color: 'var(--text-muted, #64748b)'
-          }}
-        >
-          <Bell size={36} color="#94a3b8" style={{ margin: '0 auto 12px', display: 'block', opacity: 0.6 }} />
-          <h3 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 700, color: 'var(--text, #1e293b)' }}>
+        <div className="p-12 text-center bg-white dark:bg-slate-800 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400">
+          <Bell size={36} className="text-slate-400 mx-auto mb-3 block opacity-60" />
+          <h3 className="m-0 mb-1.5 text-base font-bold text-slate-800 dark:text-slate-200">
             No Announcements Found
           </h3>
-          <p style={{ margin: 0, fontSize: 13.5 }}>
+          <p className="m-0 text-xs text-slate-500">
             {searchQuery
               ? `No circulars match "${searchQuery}". Try a different keyword.`
               : fromDate || toDate
@@ -431,20 +343,7 @@ export function TeacherAnnouncements() {
             <button
               type="button"
               onClick={handleResetDateFilter}
-              style={{
-                marginTop: 14,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 14px',
-                fontSize: 12.5,
-                fontWeight: 600,
-                borderRadius: 6,
-                border: 'none',
-                backgroundColor: 'var(--primary, #2563eb)',
-                color: '#ffffff',
-                cursor: 'pointer'
-              }}
+              className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-md border-none bg-blue-600 hover:bg-blue-700 text-white cursor-pointer shadow-sm transition-colors"
             >
               <RotateCcw size={13} />
               Reset Date Filter
@@ -452,7 +351,7 @@ export function TeacherAnnouncements() {
           )}
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 20 }}>
+        <div className="grid gap-5">
           {filteredNotices.map(notice => {
             const replies = repliesMap[notice.id] || [];
             const isUnread = !notice.read_at;
@@ -463,69 +362,36 @@ export function TeacherAnnouncements() {
             return (
               <div
                 key={notice.id}
-                style={{
-                  backgroundColor: 'var(--card, #ffffff)',
-                  borderRadius: 12,
-                  border: notice.priority === 'EMERGENCY'
-                    ? '2px solid #ef4444'
+                className={`bg-white dark:bg-slate-800 rounded-xl overflow-hidden transition-all ${
+                  notice.priority === 'EMERGENCY'
+                    ? 'border-2 border-red-500 shadow-md'
                     : isUnread
-                    ? '1.5px solid #3b82f6'
-                    : '1px solid var(--border, #e2e8f0)',
-                  boxShadow: isUnread
-                    ? '0 4px 12px rgba(59, 130, 246, 0.08)'
-                    : '0 1px 4px rgba(0, 0, 0, 0.04)',
-                  overflow: 'hidden',
-                  transition: 'all 0.2s ease'
-                }}
+                    ? 'border border-blue-500 shadow-md shadow-blue-500/5'
+                    : 'border border-slate-200 dark:border-slate-700 shadow-sm'
+                }`}
               >
                 {/* Notice Header Row */}
                 <div
-                  style={{
-                    padding: '16px 20px',
-                    borderBottom: '1px solid var(--border, #f1f5f9)',
-                    backgroundColor: isUnread ? 'rgba(59, 130, 246, 0.03)' : 'transparent',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: 10
-                  }}
+                  className={`p-4 px-5 border-b border-slate-100 dark:border-slate-700/60 flex justify-between items-center flex-wrap gap-2.5 ${
+                    isUnread ? 'bg-blue-50/40 dark:bg-blue-950/20' : 'bg-transparent'
+                  }`}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <div className="flex items-center gap-2.5 flex-wrap">
                     {/* Priority Badge */}
                     <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        padding: '3px 8px',
-                        borderRadius: 5,
-                        backgroundColor:
-                          notice.priority === 'EMERGENCY'
-                            ? 'rgba(239, 68, 68, 0.15)'
-                            : notice.priority === 'HIGH'
-                            ? 'rgba(249, 115, 22, 0.15)'
-                            : 'rgba(37, 99, 235, 0.15)',
-                        color:
-                          notice.priority === 'EMERGENCY'
-                            ? '#ef4444'
-                            : notice.priority === 'HIGH'
-                            ? '#f97316'
-                            : 'var(--sidebar-accent, #3b82f6)'
-                      }}
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded ${
+                        notice.priority === 'EMERGENCY'
+                          ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400'
+                          : notice.priority === 'HIGH'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-400'
+                          : 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400'
+                      }`}
                     >
                       {notice.priority}
                     </span>
 
                     {/* Date */}
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        fontSize: 12.5,
-                        color: 'var(--text-muted, #64748b)'
-                      }}
-                    >
+                    <span className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
                       <Calendar size={13} />
                       {notice.published_at
                         ? new Date(notice.published_at).toLocaleDateString('en-GB', {
@@ -538,8 +404,8 @@ export function TeacherAnnouncements() {
 
                     {/* Author */}
                     {notice.author_name && (
-                      <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
-                        From: <b>{notice.author_name}</b>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        From: <b className="text-slate-800 dark:text-slate-200">{notice.author_name}</b>
                       </span>
                     )}
                   </div>
@@ -550,33 +416,12 @@ export function TeacherAnnouncements() {
                       <button
                         type="button"
                         onClick={() => handleMarkRead(notice)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          padding: '4px 10px',
-                          fontSize: 12,
-                          fontWeight: 600,
-                          borderRadius: 6,
-                          border: '1px solid var(--border-focus, #3b82f6)',
-                          backgroundColor: 'rgba(37, 99, 235, 0.12)',
-                          color: 'var(--sidebar-accent, #3b82f6)',
-                          cursor: 'pointer'
-                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded border border-blue-400 dark:border-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 cursor-pointer transition-colors"
                       >
                         <Check size={13} /> Mark as Read
                       </button>
                     ) : (
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          fontSize: 11.5,
-                          fontWeight: 600,
-                          color: '#059669'
-                        }}
-                      >
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                         <CheckCircle2 size={13} /> Read
                       </span>
                     )}
@@ -584,96 +429,42 @@ export function TeacherAnnouncements() {
                 </div>
 
                 {/* Notice Body */}
-                <div style={{ padding: '20px 20px 16px' }}>
-                  <h3
-                    style={{
-                      margin: '0 0 10px',
-                      fontSize: 17,
-                      fontWeight: 700,
-                      color: 'var(--text, #0f172a)',
-                      lineHeight: 1.35
-                    }}
-                  >
+                <div className="p-5 pb-4">
+                  <h3 className="m-0 mb-2.5 text-base font-bold text-slate-900 dark:text-slate-100 leading-snug">
                     {notice.title}
                   </h3>
 
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: 14,
-                      lineHeight: 1.6,
-                      color: 'var(--text, #334155)',
-                      whiteSpace: 'pre-wrap'
-                    }}
-                  >
+                  <p className="m-0 text-sm leading-relaxed text-slate-700 dark:text-slate-200 whitespace-pre-wrap">
                     {notice.message}
                   </p>
                 </div>
 
                 {/* ── Threaded Discussion / Replies Section ── */}
-                <div
-                  style={{
-                    backgroundColor: 'var(--surface-subtle, #f8fafc)',
-                    borderTop: '1px solid var(--border, #e2e8f0)',
-                    padding: '16px 20px'
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: 'var(--text, #1e293b)',
-                      marginBottom: 12
-                    }}
-                  >
-                    <MessageSquare size={15} color="#2563eb" />
-                    <span>Responses & Discussion ({replies.length})</span>
+                <div className="bg-slate-50 dark:bg-slate-900/40 border-t border-slate-100 dark:border-slate-700/60 p-4 px-5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200 mb-3">
+                    <MessageSquare size={15} className="text-blue-600" />
+                    <span>Responses &amp; Discussion ({replies.length})</span>
                   </div>
 
                   {/* List of existing replies */}
                   {replies.length > 0 && (
-                    <div style={{ display: 'grid', gap: 10, marginBottom: 14 }}>
+                    <div className="grid gap-2.5 mb-3.5">
                       {replies.map(rep => (
                         <div
                           key={rep.id}
-                          style={{
-                            backgroundColor: 'var(--card-subtle, #f8fafc)',
-                            borderRadius: 8,
-                            padding: '10px 14px',
-                            border: '1px solid var(--border, #e2e8f0)',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-                          }}
+                          className="bg-white dark:bg-slate-800 rounded-lg p-3 px-3.5 border border-slate-200 dark:border-slate-700 shadow-xs"
                         >
-                          <div
-                            style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              marginBottom: 4
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                          <div className="flex justify-between items-center mb-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
                                 {rep.author_name || 'Faculty Member'}
                               </span>
                               <span
-                                style={{
-                                  fontSize: 10,
-                                  fontWeight: 700,
-                                  padding: '1px 6px',
-                                  borderRadius: 4,
-                                  backgroundColor:
-                                    rep.author_role === 'SCHOOL_ADMIN' || rep.author_role === 'SUPER_ADMIN'
-                                      ? 'rgba(37, 99, 235, 0.15)'
-                                      : 'rgba(16, 185, 129, 0.15)',
-                                  color:
-                                    rep.author_role === 'SCHOOL_ADMIN' || rep.author_role === 'SUPER_ADMIN'
-                                      ? '#60a5fa'
-                                      : '#34d399'
-                                }}
+                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                  rep.author_role === 'SCHOOL_ADMIN' || rep.author_role === 'SUPER_ADMIN'
+                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
+                                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                }`}
                               >
                                 {rep.author_role === 'SCHOOL_ADMIN'
                                   ? 'Admin'
@@ -683,7 +474,7 @@ export function TeacherAnnouncements() {
                               </span>
                             </div>
 
-                            <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>
+                            <span className="text-[11px] text-slate-400">
                               {rep.created_at
                                 ? new Date(rep.created_at).toLocaleDateString('en-GB', {
                                     day: 'numeric',
@@ -695,7 +486,7 @@ export function TeacherAnnouncements() {
                             </span>
                           </div>
 
-                          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary, #334155)', lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
+                          <p className="m-0 text-xs text-slate-700 dark:text-slate-300 leading-normal whitespace-pre-wrap">
                             {rep.reply_text}
                           </p>
                         </div>
@@ -705,29 +496,16 @@ export function TeacherAnnouncements() {
 
                   {/* Success notification banner */}
                   {successMsg && (
-                    <div
-                      style={{
-                        marginBottom: 12,
-                        padding: '8px 12px',
-                        backgroundColor: 'rgba(16, 185, 129, 0.12)',
-                        border: '1px solid var(--emerald-border, rgba(16, 185, 129, 0.3))',
-                        borderRadius: 6,
-                        color: 'var(--emerald-600, #059669)',
-                        fontSize: 12.5,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6
-                      }}
-                    >
-                      <CheckCircle2 size={15} color="#059669" />
+                    <div className="mb-3 px-3 py-2 bg-emerald-500/10 border border-emerald-500/25 rounded-md text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-1.5">
+                      <CheckCircle2 size={15} />
                       <span>{successMsg}</span>
                     </div>
                   )}
 
                   {/* ── Quick Acknowledgment Options (Hidden for Student profile, available for Admin & Teacher) ── */}
                   {!isStudent && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                      <span style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)', fontWeight: 600 }}>Quick Replies:</span>
+                    <div className="flex items-center gap-1.5 flex-wrap mb-2.5">
+                      <span className="text-[11.5px] text-slate-500 dark:text-slate-400 font-semibold">Quick Replies:</span>
                       {[
                         '👍 Acknowledged and noted.',
                         '✅ Received with thanks.',
@@ -737,16 +515,7 @@ export function TeacherAnnouncements() {
                           key={tag}
                           type="button"
                           onClick={() => handleQuickReply(notice.id, tag)}
-                          style={{
-                            padding: '3px 9px',
-                            fontSize: 11.5,
-                            borderRadius: 14,
-                            border: '1px solid var(--border, #cbd5e1)',
-                            backgroundColor: 'var(--card-subtle, #f8fafc)',
-                            color: 'var(--text, #334155)',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease'
-                          }}
+                          className="px-2.5 py-1 text-[11.5px] rounded-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
                         >
                           {tag}
                         </button>
@@ -756,7 +525,7 @@ export function TeacherAnnouncements() {
 
                   {/* ── Reply Input Box (Hidden for Student profile, available for Admin & Teacher) ── */}
                   {!isStudent && (
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <div className="flex gap-2 items-start">
                       <AutoExpandingTextarea
                         minHeight={40}
                         maxHeight={180}
@@ -768,44 +537,16 @@ export function TeacherAnnouncements() {
                           }))
                         }
                         placeholder="Type your response, clarification, or question for administration..."
-                        style={{
-                          flex: 1,
-                          padding: '9px 12px',
-                          borderRadius: 8,
-                          border: '1px solid var(--border, #cbd5e1)',
-                          backgroundColor: 'var(--bg-card, #ffffff)',
-                          color: 'var(--text, #0f172a)',
-                          fontSize: 13,
-                          lineHeight: 1.45,
-                          fontFamily: 'inherit',
-                          outline: 'none',
-                          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
-                        }}
+                        className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs font-sans outline-none focus:ring-1 focus:ring-blue-500"
                       />
 
                       <button
                         type="button"
                         disabled={isSubmitting || !inputValue.trim()}
                         onClick={() => handleSendReply(notice.id)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          padding: '10px 18px',
-                          borderRadius: 8,
-                          border: 'none',
-                          backgroundColor: '#2563eb',
-                          color: '#ffffff',
-                          fontSize: 13,
-                          fontWeight: 600,
-                          cursor: inputValue.trim() && !isSubmitting ? 'pointer' : 'not-allowed',
-                          opacity: inputValue.trim() && !isSubmitting ? 1 : 0.6,
-                          height: 40,
-                          whiteSpace: 'nowrap',
-                          boxShadow: '0 1px 3px rgba(37,99,235,0.2)'
-                        }}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border-none bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer h-10 whitespace-nowrap shadow-sm transition-colors"
                       >
-                        <Send size={14} className={isSubmitting ? 'spin' : ''} />
+                        <Send size={14} className={isSubmitting ? 'animate-spin' : ''} />
                         {isSubmitting ? 'Sending...' : 'Send Reply'}
                       </button>
                     </div>

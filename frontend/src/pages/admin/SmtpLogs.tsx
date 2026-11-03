@@ -443,36 +443,19 @@ export default function SmtpLogs() {
   };
 
   return (
-    <div style={{ padding: '24px 28px', maxWidth: 1400, margin: '0 auto', width: '100%' }}>
+    <div className="py-6 px-7 max-w-7xl mx-auto w-full">
       {/* ── Page Header ── */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        flexWrap: 'wrap',
-        gap: 16,
-        marginBottom: 24
-      }}>
+      <div className="flex justify-between items-start flex-wrap gap-4 mb-6">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            <div style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffffff',
-              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
-            }}>
+          <div className="flex items-center gap-2.5 mb-1">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
               <Mail size={22} />
             </div>
             <div>
-              <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--text, #0f172a)', letterSpacing: '-0.02em' }}>
+              <h1 className="m-0 text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                 SMTP Email Activity Logs
               </h1>
-              <p style={{ margin: 0, fontSize: 13.5, color: '#64748b' }}>
+              <p className="m-0 text-xs text-slate-500 dark:text-slate-400">
                 School-isolated delivery audit trail. Every record dynamically reflects admission no. / employee ID, recipient name, email ID, and delivery status.
               </p>
             </div>
@@ -480,27 +463,14 @@ export default function SmtpLogs() {
         </div>
 
         {/* Action Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div className="flex items-center gap-2.5 flex-wrap">
           <button
             type="button"
             onClick={handleExportExcel}
             disabled={loading || filteredLogs.length === 0}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '8px 16px',
-              fontSize: 13.5,
-              fontWeight: 600,
-              borderRadius: 8,
-              border: '1px solid #16a34a',
-              background: '#16a34a',
-              color: '#ffffff',
-              cursor: loading || filteredLogs.length === 0 ? 'not-allowed' : 'pointer',
-              opacity: loading || filteredLogs.length === 0 ? 0.6 : 1,
-              transition: 'all 0.2s ease',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-            }}
+            className={`inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg border border-emerald-600 bg-emerald-600 text-white transition-all shadow-xs ${
+              loading || filteredLogs.length === 0 ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-emerald-700'
+            }`}
             title={filteredLogs.length === 0 ? 'No logs to export' : `Export ${filteredLogs.length} record(s) to Excel`}
           >
             <Download size={15} />
@@ -511,141 +481,94 @@ export default function SmtpLogs() {
             type="button"
             onClick={() => fetchLogs(true)}
             disabled={refreshing || loading}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '8px 16px',
-              fontSize: 13.5,
-              fontWeight: 600,
-              borderRadius: 8,
-              border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--bg-card, #ffffff)',
-              color: 'var(--text, #1e293b)',
-              cursor: refreshing || loading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s ease',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-            }}
+            className={`inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 transition-all shadow-xs ${
+              refreshing || loading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60'
+            }`}
           >
-            <RefreshCw size={15} className={refreshing ? 'spin' : ''} style={{ color: '#2563eb' }} />
+            <RefreshCw size={15} className={`${refreshing ? 'spin' : ''} text-blue-600 dark:text-blue-400`} />
             <span>{refreshing ? 'Refreshing...' : 'Refresh Logs'}</span>
           </button>
         </div>
       </div>
 
       {/* ── KPI Metrics Cards ── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: 14,
-        marginBottom: 24
-      }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 mb-6">
         {/* Total Emails */}
-        <div style={{
-          background: 'var(--bg-card, #ffffff)',
-          border: '1px solid var(--border, #e2e8f0)',
-          borderRadius: 12,
-          padding: '16px 18px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-xs">
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Total Logs
             </span>
-            <Mail size={16} color="#64748b" />
+            <Mail size={16} className="text-slate-400" />
           </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text, #0f172a)', marginTop: 6 }}>
+          <div className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1.5">
             {loading ? '—' : metrics.total}
           </div>
-          <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 2 }}>
+          <div className="text-[11px] text-slate-400 mt-0.5">
             {selectedMonthLabel ? `Logs for ${selectedMonthLabel}` : 'School records fetched'}
           </div>
         </div>
 
         {/* Successfully Delivered */}
-        <div style={{
-          background: 'var(--bg-card, #ffffff)',
-          border: '1px solid #bbf7d0',
-          borderRadius: 12,
-          padding: '16px 18px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <div className="bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800/80 rounded-xl p-4 shadow-xs">
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
               Sent
             </span>
-            <CheckCircle2 size={16} color="#16a34a" />
+            <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
           </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#15803d', marginTop: 6 }}>
+          <div className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1.5">
             {loading ? '—' : metrics.sent}
           </div>
-          <div style={{ fontSize: 11.5, color: '#16a34a', marginTop: 2 }}>
+          <div className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5">
             {selectedMonthLabel ? `Delivered in ${selectedMonthLabel}` : 'Successfully delivered'}
           </div>
         </div>
 
         {/* Failed Alerts */}
-        <div style={{
-          background: 'var(--bg-card, #ffffff)',
-          border: '1px solid #fecaca',
-          borderRadius: 12,
-          padding: '16px 18px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <div className="bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-800/80 rounded-xl p-4 shadow-xs">
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
               Failed
             </span>
-            <XCircle size={16} color="#dc2626" />
+            <XCircle size={16} className="text-rose-600 dark:text-rose-400" />
           </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#b91c1c', marginTop: 6 }}>
+          <div className="text-2xl font-extrabold text-rose-700 dark:text-rose-400 mt-1.5">
             {loading ? '—' : metrics.failed}
           </div>
-          <div style={{ fontSize: 11.5, color: '#dc2626', marginTop: 2 }}>
+          <div className="text-[11px] text-rose-600 dark:text-rose-400 mt-0.5">
             {selectedMonthLabel ? `Errors in ${selectedMonthLabel}` : 'Transmission errors'}
           </div>
         </div>
 
         {/* In Queue / Retrying */}
-        <div style={{
-          background: 'var(--bg-card, #ffffff)',
-          border: '1px solid #bfdbfe',
-          borderRadius: 12,
-          padding: '16px 18px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <div className="bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-800/80 rounded-xl p-4 shadow-xs">
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
               Queued / Retrying
             </span>
-            <Clock size={16} color="#2563eb" />
+            <Clock size={16} className="text-blue-600 dark:text-blue-400" />
           </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#1d4ed8', marginTop: 6 }}>
+          <div className="text-2xl font-extrabold text-blue-700 dark:text-blue-400 mt-1.5">
             {loading ? '—' : (metrics.queued + metrics.retrying)}
           </div>
-          <div style={{ fontSize: 11.5, color: '#2563eb', marginTop: 2 }}>
+          <div className="text-[11px] text-blue-600 dark:text-blue-400 mt-0.5">
             {selectedMonthLabel ? `Pending in ${selectedMonthLabel}` : 'Pending dispatch worker'}
           </div>
         </div>
 
         {/* Dummy / Unsent */}
-        <div style={{
-          background: 'var(--bg-card, #ffffff)',
-          border: '1px solid #cbd5e1',
-          borderRadius: 12,
-          padding: '16px 18px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-xs">
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Unsent (Dummy)
             </span>
-            <EyeOff size={16} color="#64748b" />
+            <EyeOff size={16} className="text-slate-400" />
           </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#334155', marginTop: 6 }}>
+          <div className="text-2xl font-extrabold text-slate-700 dark:text-slate-200 mt-1.5">
             {loading ? '—' : metrics.unsent}
           </div>
-          <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 2 }}>
+          <div className="text-[11px] text-slate-400 mt-0.5">
             {selectedMonthLabel ? `Suppressed in ${selectedMonthLabel}` : 'Suppressed mock / placeholder'}
           </div>
         </div>
@@ -653,34 +576,15 @@ export default function SmtpLogs() {
 
       {/* ── Error Notice Banner ── */}
       {error && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: '#fef2f2',
-          border: '1px solid #fecaca',
-          borderRadius: 8,
-          padding: '12px 16px',
-          marginBottom: 20,
-          color: '#b91c1c'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="flex items-center justify-between bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl p-3 px-4 mb-5 text-rose-700 dark:text-rose-300">
+          <div className="flex items-center gap-2.5">
             <AlertTriangle size={18} />
-            <span style={{ fontSize: 13.5, fontWeight: 500 }}>{error}</span>
+            <span className="text-xs font-medium">{error}</span>
           </div>
           <button
             type="button"
             onClick={() => fetchLogs()}
-            style={{
-              padding: '4px 10px',
-              fontSize: 12,
-              fontWeight: 600,
-              background: '#b91c1c',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: 6,
-              cursor: 'pointer'
-            }}
+            className="py-1 px-2.5 text-xs font-semibold bg-rose-600 text-white border-0 rounded-md cursor-pointer hover:bg-rose-700 transition-colors"
           >
             Try Again
           </button>

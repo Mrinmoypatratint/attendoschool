@@ -793,42 +793,27 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
   }
 
   return (
-    <div className="feature-page" style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 20px' }}>
+    <div className="feature-page max-w-7xl mx-auto py-6 px-5 pb-16">
       {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, color: 'var(--text, #0f172a)' }}>
+      <div className="mb-6">
+        <h1 className="text-3xl font-extrabold m-0 text-slate-900 dark:text-white tracking-tight">
           Academic Calendar &amp; Holidays
         </h1>
-        <p className="muted" style={{ margin: '6px 0 0', fontSize: 14 }}>
+        <p className="muted m-0 mt-1.5 text-sm text-slate-500 dark:text-slate-400">
           Authoritative institutional calendar: Configure academic sessions, weekly working days, weekend policies, gazetted holidays, and verify working day calculations without double counting.
         </p>
       </div>
 
       {/* Tabs Navigation */}
-      <div style={{
-        display: 'flex',
-        gap: 8,
-        borderBottom: '2px solid var(--border, #e2e8f0)',
-        marginBottom: 24,
-        flexWrap: 'wrap'
-      }}>
+      <div className="flex gap-2 border-b-2 border-slate-200 dark:border-slate-700 mb-6 flex-wrap pb-px">
         <button
           type="button"
           onClick={() => setActiveTab('sessions')}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: '12px 18px',
-            fontSize: 14,
-            fontWeight: activeTab === 'sessions' ? 700 : 500,
-            color: activeTab === 'sessions' ? '#2563eb' : 'var(--text-muted, #64748b)',
-            borderBottom: activeTab === 'sessions' ? '2px solid #2563eb' : '2px solid transparent',
-            marginBottom: -2,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8
-          }}
+          className={`bg-transparent border-0 py-3 px-4.5 text-sm font-semibold cursor-pointer flex items-center gap-2 border-b-2 -mb-0.5 transition-colors ${
+            activeTab === 'sessions'
+              ? 'text-blue-600 dark:text-blue-400 border-b-blue-600'
+              : 'text-slate-500 dark:text-slate-400 border-b-transparent hover:text-slate-700 dark:hover:text-slate-300'
+          }`}
         >
           <Clock size={16} /> Academic Sessions
         </button>
@@ -836,20 +821,11 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
         <button
           type="button"
           onClick={() => setActiveTab('working-days')}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: '12px 18px',
-            fontSize: 14,
-            fontWeight: activeTab === 'working-days' ? 700 : 500,
-            color: activeTab === 'working-days' ? '#2563eb' : 'var(--text-muted, #64748b)',
-            borderBottom: activeTab === 'working-days' ? '2px solid #2563eb' : '2px solid transparent',
-            marginBottom: -2,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8
-          }}
+          className={`bg-transparent border-0 py-3 px-4.5 text-sm font-semibold cursor-pointer flex items-center gap-2 border-b-2 -mb-0.5 transition-colors ${
+            activeTab === 'working-days'
+              ? 'text-blue-600 dark:text-blue-400 border-b-blue-600'
+              : 'text-slate-500 dark:text-slate-400 border-b-transparent hover:text-slate-700 dark:hover:text-slate-300'
+          }`}
         >
           <Sliders size={16} /> Weekly Working Days &amp; Weekend Rules
         </button>
@@ -857,20 +833,11 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
         <button
           type="button"
           onClick={() => setActiveTab('holidays')}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: '12px 18px',
-            fontSize: 14,
-            fontWeight: activeTab === 'holidays' ? 700 : 500,
-            color: activeTab === 'holidays' ? '#2563eb' : 'var(--text-muted, #64748b)',
-            borderBottom: activeTab === 'holidays' ? '2px solid #2563eb' : '2px solid transparent',
-            marginBottom: -2,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8
-          }}
+          className={`bg-transparent border-0 py-3 px-4.5 text-sm font-semibold cursor-pointer flex items-center gap-2 border-b-2 -mb-0.5 transition-colors ${
+            activeTab === 'holidays'
+              ? 'text-blue-600 dark:text-blue-400 border-b-blue-600'
+              : 'text-slate-500 dark:text-slate-400 border-b-transparent hover:text-slate-700 dark:hover:text-slate-300'
+          }`}
         >
           <CalendarCheck size={16} /> Holiday Manager ({holidays.length})
         </button>
@@ -878,20 +845,11 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
         <button
           type="button"
           onClick={() => setActiveTab('calculator')}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: '12px 18px',
-            fontSize: 14,
-            fontWeight: activeTab === 'calculator' ? 700 : 500,
-            color: activeTab === 'calculator' ? '#2563eb' : 'var(--text-muted, #64748b)',
-            borderBottom: activeTab === 'calculator' ? '2px solid #2563eb' : '2px solid transparent',
-            marginBottom: -2,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8
-          }}
+          className={`bg-transparent border-0 py-3 px-4.5 text-sm font-semibold cursor-pointer flex items-center gap-2 border-b-2 -mb-0.5 transition-colors ${
+            activeTab === 'calculator'
+              ? 'text-blue-600 dark:text-blue-400 border-b-blue-600'
+              : 'text-slate-500 dark:text-slate-400 border-b-transparent hover:text-slate-700 dark:hover:text-slate-300'
+          }`}
         >
           <CalendarDays size={16} /> Working Day &amp; Weekend/Holiday Calculator
         </button>
@@ -899,20 +857,11 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
         <button
           type="button"
           onClick={() => setActiveTab('academic-calendar')}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: '12px 18px',
-            fontSize: 14,
-            fontWeight: activeTab === 'academic-calendar' ? 700 : 500,
-            color: activeTab === 'academic-calendar' ? '#2563eb' : 'var(--text-muted, #64748b)',
-            borderBottom: activeTab === 'academic-calendar' ? '2px solid #2563eb' : '2px solid transparent',
-            marginBottom: -2,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8
-          }}
+          className={`bg-transparent border-0 py-3 px-4.5 text-sm font-semibold cursor-pointer flex items-center gap-2 border-b-2 -mb-0.5 transition-colors ${
+            activeTab === 'academic-calendar'
+              ? 'text-blue-600 dark:text-blue-400 border-b-blue-600'
+              : 'text-slate-500 dark:text-slate-400 border-b-transparent hover:text-slate-700 dark:hover:text-slate-300'
+          }`}
         >
           <Calendar size={16} /> Academic Holiday Calendar
         </button>

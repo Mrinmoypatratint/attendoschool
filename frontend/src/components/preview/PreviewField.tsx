@@ -14,7 +14,7 @@ export const PreviewField: React.FC<PreviewFieldData> = ({
   const renderValue = () => {
     if (isNullOrEmpty) {
       return (
-        <span style={{ color: 'var(--text-muted, #94a3b8)', fontStyle: 'italic', fontSize: 13 }}>
+        <span className="text-slate-400 dark:text-slate-500 italic text-[13px]">
           — (Not Specified)
         </span>
       );
@@ -24,19 +24,17 @@ export const PreviewField: React.FC<PreviewFieldData> = ({
       const isTrue = Boolean(value) && value !== 'false' && value !== '0';
       return (
         <span
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '3px 9px',
-            borderRadius: 20,
-            fontSize: 11.5,
-            fontWeight: 700,
-            background: isTrue ? '#dcfce7' : '#fee2e2',
-            color: isTrue ? '#15803d' : '#b91c1c'
-          }}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11.5px] font-bold ${
+            isTrue
+              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+              : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+          }`}
         >
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: isTrue ? '#16a34a' : '#ef4444' }} />
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${
+              isTrue ? 'bg-emerald-600 dark:bg-emerald-400' : 'bg-rose-600 dark:bg-rose-400'
+            }`}
+          />
           {isTrue ? 'Yes / Enabled' : 'No / Disabled'}
         </span>
       );
@@ -48,20 +46,23 @@ export const PreviewField: React.FC<PreviewFieldData> = ({
       const isWarning = strVal === 'PENDING' || strVal === 'LATE' || strVal === 'HALF_DAY';
       return (
         <span
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '3px 10px',
-            borderRadius: 20,
-            fontSize: 11.5,
-            fontWeight: 700,
-            letterSpacing: '0.03em',
-            background: isPositive ? '#dcfce7' : isWarning ? '#fef3c7' : '#fee2e2',
-            color: isPositive ? '#15803d' : isWarning ? '#b45309' : '#b91c1c'
-          }}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11.5px] font-bold tracking-wide ${
+            isPositive
+              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+              : isWarning
+              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+              : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+          }`}
         >
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: isPositive ? '#16a34a' : isWarning ? '#f59e0b' : '#ef4444' }} />
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${
+              isPositive
+                ? 'bg-emerald-600 dark:bg-emerald-400'
+                : isWarning
+                ? 'bg-amber-500 dark:bg-amber-400'
+                : 'bg-rose-600 dark:bg-rose-400'
+            }`}
+          />
           {strVal}
         </span>
       );
@@ -69,18 +70,7 @@ export const PreviewField: React.FC<PreviewFieldData> = ({
 
     if (type === 'code') {
       return (
-        <code
-          style={{
-            background: 'var(--bg, #f1f5f9)',
-            border: '1px solid var(--border, #cbd5e1)',
-            borderRadius: 6,
-            padding: '2px 8px',
-            fontFamily: 'monospace',
-            fontSize: 12.5,
-            fontWeight: 600,
-            color: 'var(--text, #0f172a)'
-          }}
-        >
+        <code className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-2 py-0.5 font-mono text-[12.5px] font-semibold text-slate-900 dark:text-slate-100">
           {String(value)}
         </code>
       );
@@ -88,18 +78,7 @@ export const PreviewField: React.FC<PreviewFieldData> = ({
 
     if (type === 'badge' || type === 'pill') {
       return (
-        <span
-          style={{
-            display: 'inline-block',
-            padding: '3px 9px',
-            borderRadius: 6,
-            background: 'var(--bg, #eff6ff)',
-            color: 'var(--primary, #2563eb)',
-            fontSize: 12,
-            fontWeight: 600,
-            border: '1px solid #bfdbfe'
-          }}
-        >
+        <span className="inline-block px-2.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900 text-xs font-semibold">
           {String(value)}
         </span>
       );
@@ -107,7 +86,7 @@ export const PreviewField: React.FC<PreviewFieldData> = ({
 
     if (type === 'email') {
       return (
-        <span style={{ color: '#2563eb', fontWeight: 500, fontSize: 13.5, wordBreak: 'break-all' }}>
+        <span className="text-blue-600 dark:text-blue-400 font-medium text-[13.5px] break-all">
           {String(value)}
         </span>
       );
@@ -115,14 +94,14 @@ export const PreviewField: React.FC<PreviewFieldData> = ({
 
     if (type === 'phone') {
       return (
-        <span style={{ fontFamily: 'monospace', fontWeight: 600, fontSize: 13, color: 'var(--text, #1e293b)' }}>
+        <span className="font-mono font-semibold text-[13px] text-slate-800 dark:text-slate-200">
           {String(value)}
         </span>
       );
     }
 
     return (
-      <span style={{ color: 'var(--text, #0f172a)', fontWeight: 600, fontSize: 13.5, wordBreak: 'break-word' }}>
+      <span className="text-slate-900 dark:text-slate-100 font-semibold text-[13.5px] break-words">
         {String(value)}
       </span>
     );
@@ -130,28 +109,13 @@ export const PreviewField: React.FC<PreviewFieldData> = ({
 
   return (
     <div
-      style={{
-        gridColumn: span === 2 ? 'span 2' : 'span 1',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 3,
-        padding: '8px 12px',
-        borderRadius: 8,
-        background: 'var(--bg, #f8fafc)',
-        border: '1px solid var(--border, #f1f5f9)'
-      }}
+      className={`flex flex-col gap-1 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 transition-colors ${
+        span === 2 ? 'col-span-2' : 'col-span-1'
+      }`}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-        {icon && <span style={{ color: 'var(--text-muted, #64748b)', display: 'inline-flex' }}>{icon}</span>}
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            color: 'var(--text-muted, #64748b)'
-          }}
-        >
+      <div className="flex items-center gap-1.5">
+        {icon && <span className="text-slate-500 dark:text-slate-400 inline-flex">{icon}</span>}
+        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
           {label}
         </span>
       </div>

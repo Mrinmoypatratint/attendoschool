@@ -122,7 +122,7 @@ export const HandwritingQuoteTyping: React.FC = () => {
   return (
     <div className="as-handwriting-container">
       {/* Top Controls */}
-      <div className="as-hw-badge-row" style={{ justifyContent: 'flex-end', marginBottom: 6 }}>
+      <div className="as-hw-badge-row flex justify-end mb-1.5">
         <div className="as-hw-controls">
           <button
             type="button"
