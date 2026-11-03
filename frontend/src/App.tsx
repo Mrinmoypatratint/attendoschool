@@ -5472,11 +5472,7 @@ function TeacherHome() {
                       let displayLeftEarly = Number(sec.leftEarlyCount || 0);
                       let displayAbs = Number(sec.absentCount || 0);
 
-                      // If storedFinalized was saved with older code where leftEarly was lumped into absentCount,
-                      // or if sec has leftEarlyCount:
-                      if (displayLeftEarly > 0 && storedFinalized?.leftEarlyCount === undefined && displayAbs >= displayLeftEarly) {
-                        displayAbs = displayAbs - displayLeftEarly;
-                      } else if (sec.leftEarlyCount && Number(sec.leftEarlyCount) > 0 && displayLeftEarly === 0) {
+                      if (sec.leftEarlyCount && Number(sec.leftEarlyCount) > 0 && displayLeftEarly === 0) {
                         displayLeftEarly = Number(sec.leftEarlyCount);
                         if (displayAbs >= displayLeftEarly) {
                           displayAbs = displayAbs - displayLeftEarly;
