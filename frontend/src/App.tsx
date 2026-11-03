@@ -124,6 +124,24 @@ export const sortAcademicYearsAscending = (list: any[]) => {
   });
 };
 
+// Purge legacy attendance locks from localStorage / sessionStorage on startup
+if (typeof window !== 'undefined') {
+  try {
+    const purgeKeys = (storage: Storage) => {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < storage.length; i++) {
+        const k = storage.key(i);
+        if (k && (k.startsWith('finalized_attendance_') || k.startsWith('finalized_att_') || k.startsWith('has_left_early_'))) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach(k => storage.removeItem(k));
+    };
+    purgeKeys(localStorage);
+    purgeKeys(sessionStorage);
+  } catch {}
+}
+
 function AttendoEmblem({ size = 32 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" fill="none" style={{ flexShrink: 0 }}>
@@ -5438,91 +5456,39 @@ function TeacherHome() {
                         ? new Date(sec.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                         : null;
 
-                      const storedRaw = (typeof window !== 'undefined')
-                        ? (
-                            sessionStorage.getItem(`finalized_att_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
-                            localStorage.getItem(`finalized_att_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
-                            sessionStorage.getItem(`finalized_att_${sec.classId}_${sec.sectionId}`) ||
-                            localStorage.getItem(`finalized_att_${sec.classId}_${sec.sectionId}`) ||
-                            sessionStorage.getItem(`finalized_att_${sec.classNumber}_${sec.sectionName}`) ||
-                            localStorage.getItem(`finalized_att_${sec.classNumber}_${sec.sectionName}`) ||
-                            sessionStorage.getItem(`finalized_attendance_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
-                            localStorage.getItem(`finalized_attendance_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
-                            sessionStorage.getItem(`finalized_attendance_${sec.classId}_${sec.sectionId}`) ||
-                            localStorage.getItem(`finalized_attendance_${sec.classId}_${sec.sectionId}`) ||
-                            sessionStorage.getItem(`finalized_attendance_${sec.classNumber}_${sec.sectionName}`) ||
-                            localStorage.getItem(`finalized_attendance_${sec.classNumber}_${sec.sectionName}`)
-                          )
-                        : null;
-
-                      let storedFinalized: any = null;
-                      if (storedRaw) {
+                      // Past midnight check: attendance is only finalized if for a past date (after midnight 12:00 AM)
+                      const getTodayIST = () => {
                         try {
-                          const parsed = JSON.parse(storedRaw);
-                          if (!parsed.date || parsed.date === schoolDate) {
-                            storedFinalized = parsed;
-                          }
+                          return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
                         } catch {
-                          storedFinalized = { finalized: true };
+                          return new Date().toLocaleDateString('en-CA');
                         }
-                      }
+                      };
+                      const todayIST = getTodayIST();
+                      const isPastDate = sec.attendanceDate ? (sec.attendanceDate < todayIST) : false;
+                      const isFinalized = Boolean(sec.hasSubmitted && isPastDate);
 
-                      // Finalized only applies if attendance has already been submitted for today
-                      const isFinalized = Boolean(
-                        sec.hasSubmitted && (
-                          sec.isReattendance ||
-                          (sec.reattendanceCount && Number(sec.reattendanceCount) > 0) ||
-                          storedFinalized?.finalized ||
-                          storedRaw === '1'
-                        )
-                      );
-
-                      const displayPres = storedFinalized?.presentCount !== undefined ? Number(storedFinalized.presentCount) : Number(sec.presentCount || 0);
-                      let displayLeftEarly = storedFinalized?.leftEarlyCount !== undefined ? Number(storedFinalized.leftEarlyCount) : Number(sec.leftEarlyCount || 0);
-                      let displayAbs = storedFinalized?.absentCount !== undefined ? Number(storedFinalized.absentCount) : Number(sec.absentCount || 0);
-
-                      // If storedFinalized was saved with older code where leftEarly was lumped into absentCount,
-                      // or if sec has leftEarlyCount:
-                      if (displayLeftEarly > 0 && storedFinalized?.leftEarlyCount === undefined && displayAbs >= displayLeftEarly) {
-                        displayAbs = displayAbs - displayLeftEarly;
-                      } else if (sec.leftEarlyCount && Number(sec.leftEarlyCount) > 0 && displayLeftEarly === 0) {
-                        displayLeftEarly = Number(sec.leftEarlyCount);
-                        if (displayAbs >= displayLeftEarly) {
-                          displayAbs = displayAbs - displayLeftEarly;
-                        }
-                      }
-
-                      // Check fallback flag stored during early departure marking
-                      if (displayLeftEarly === 0) {
-                        const storedHasLeftEarly = (typeof window !== 'undefined')
-                          ? (
-                              sessionStorage.getItem(`has_left_early_${sec.classId}_${sec.sectionId}`) ||
-                              localStorage.getItem(`has_left_early_${sec.classId}_${sec.sectionId}`) ||
-                              sessionStorage.getItem(`has_left_early_${sec.classNumber}_${sec.sectionName}`) ||
-                              localStorage.getItem(`has_left_early_${sec.classNumber}_${sec.sectionName}`)
-                            )
-                          : null;
-                        if (storedHasLeftEarly && Number(storedHasLeftEarly) > 0) {
-                          const leNum = Number(storedHasLeftEarly);
-                          displayLeftEarly = leNum;
-                          if (displayAbs >= leNum) {
-                            displayAbs = displayAbs - leNum;
-                          }
-                        }
-                      }
-
+                      const displayPres = Number(sec.presentCount || 0);
+                      let displayLeftEarly = Number(sec.leftEarlyCount || 0);
+                      let displayAbs = Number(sec.absentCount || 0);
                       const displayTot = sec.totalCount ? Number(sec.totalCount) : (displayPres + displayAbs + displayLeftEarly);
 
-                      // Construct summary breakdown parts: e.g. "0P / 1LA" or "2P / 1A / 1LA"
-                      const summaryParts: string[] = [`${displayPres}P`];
-                      if (displayAbs > 0) {
-                        summaryParts.push(`${displayAbs}A`);
+                      // Construct summary breakdown parts: e.g. "1P / 1A" or "1LA / 1A" or "2P / 0A"
+                      const summaryParts: string[] = [];
+                      if (displayPres > 0) {
+                        summaryParts.push(`${displayPres}P`);
                       }
                       if (displayLeftEarly > 0) {
                         summaryParts.push(`${displayLeftEarly}LA`);
                       }
-                      if (summaryParts.length === 1 && displayAbs === 0 && displayLeftEarly === 0) {
-                        summaryParts.push('0A');
+                      if (displayAbs > 0) {
+                        summaryParts.push(`${displayAbs}A`);
+                      }
+                      if (summaryParts.length === 0) {
+                        summaryParts.push('0P / 0A');
+                      } else if (summaryParts.length === 1) {
+                        if (displayPres > 0) summaryParts.push('0A');
+                        else if (displayAbs > 0) summaryParts.unshift('0P');
                       }
                       const summaryBreakdown = summaryParts.join(' / ');
 
@@ -10232,6 +10198,7 @@ function Teachers() {
   const [allocSections, setAllocSections] = useState<any[]>([]);
   const [allocSessions, setAllocSessions] = useState<any[]>([]);
   const [allocDesignations, setAllocDesignations] = useState<any[]>([]);
+  const [allocMentors, setAllocMentors] = useState<any[]>([]);
 
   async function load() {
     setLoading(true);
@@ -10245,13 +10212,14 @@ function Teachers() {
     }, 120);
 
     try {
-      const [tRes, aRes, subRes, clsRes, secRes, desigRes] = await Promise.all([
+      const [tRes, aRes, subRes, clsRes, secRes, desigRes, mRes] = await Promise.all([
         api.get('/teachers'),
         api.get('/teacher-assignments').catch(() => ({ data: [] })),
         api.get('/subjects').catch(() => ({ data: [] })),
         api.get('/classes').catch(() => ({ data: [] })),
         api.get('/sections').catch(() => ({ data: [] })),
-        api.get('/designations').catch(() => ({ data: [] }))
+        api.get('/designations').catch(() => ({ data: [] })),
+        api.get('/admin/mentors').catch(() => ({ data: [] }))
       ]);
       setLoadProgress(95);
       setRows(tRes.data || []);
@@ -10260,6 +10228,7 @@ function Teachers() {
       setAllocClasses(Array.isArray(clsRes.data) ? clsRes.data : []);
       setAllocSections(Array.isArray(secRes.data) ? secRes.data : []);
       setAllocDesignations(Array.isArray(desigRes.data) ? desigRes.data : (desigRes.data?.data || []));
+      setAllocMentors(Array.isArray(mRes?.data) ? mRes.data : []);
       setLoadProgress(100);
       const now = new Date();
       setLastFetchedAt(now);
@@ -10499,6 +10468,50 @@ function Teachers() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  }
+
+  function getMentorConflict(classIdOrName: string, sectionIdOrName: string, teacherId?: string) {
+    if (!classIdOrName || !sectionIdOrName || !allocMentors.length) return null;
+
+    const clsObj = allocClasses.find(c =>
+      String(c.id) === String(classIdOrName) ||
+      String(c.class_number) === String(classIdOrName).replace(/^Class\s*/i, '').trim() ||
+      (c.class_number === -1 && /l-?kg/i.test(classIdOrName)) ||
+      (c.class_number === 0 && /u-?kg/i.test(classIdOrName))
+    );
+
+    const matchedMentor = allocMentors.find(m => {
+      if (!m.teacher_id) return false;
+      if (teacherId && String(m.teacher_id) === String(teacherId)) return false;
+
+      const classMatch = clsObj
+        ? String(m.class_id) === String(clsObj.id) || m.class_number === clsObj.class_number
+        : String(m.class_id) === String(classIdOrName) || String(m.class_number) === String(classIdOrName).replace(/^Class\s*/i, '').trim();
+
+      if (!classMatch) return false;
+
+      const sIdOrNameNorm = String(sectionIdOrName).replace(/^Section\s*/i, '').trim().toUpperCase();
+      const secNorm = String(m.section_name || '').replace(/^Section\s*/i, '').trim().toUpperCase();
+      const sectionMatch = String(m.section_id) === String(sectionIdOrName) || secNorm === sIdOrNameNorm;
+
+      return sectionMatch;
+    });
+
+    if (!matchedMentor) return null;
+
+    const cDisplay = matchedMentor.class_number === -1 ? 'Class L-KG' : matchedMentor.class_number === 0 ? 'Class U-KG' : `Class ${matchedMentor.class_number}`;
+    const sDisplay = matchedMentor.section_name || sectionIdOrName;
+    const tDisplay = matchedMentor.teacher_name || 'Another Teacher';
+    const empDisplay = matchedMentor.employee_id ? ` [${matchedMentor.employee_id}]` : '';
+
+    return {
+      conflict: true,
+      mentorName: tDisplay,
+      employeeId: matchedMentor.employee_id,
+      className: cDisplay,
+      sectionName: sDisplay,
+      message: `Assignment Conflict: ${cDisplay} - Section ${sDisplay} is already assigned to mentor ${tDisplay}${empDisplay}. A class section can only have one assigned mentor.`
+    };
   }
 
   async function handleInitiateTeacherSave(e: React.FormEvent) {
@@ -12313,13 +12326,46 @@ function Teachers() {
                         ));
                       }
                       uniqueNames.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
-                      return uniqueNames.map(secName => (
-                        <option key={secName} value={secName}>Section {secName}</option>
-                      ));
+                      return uniqueNames.map(secName => {
+                        const secConflict = getMentorConflict(f.class_id || f.class_name || f.class, secName, editingTeacher?.id);
+                        const secLabelExtra = secConflict ? ` (Already Assigned: ${secConflict.mentorName})` : '';
+                        return (
+                          <option key={secName} value={secName}>Section {secName}{secLabelExtra}</option>
+                        );
+                      });
                     })()}
                   </select>
                 </label>
               </div>
+
+              {/* Class Mentor Conflict Banner */}
+              {(() => {
+                const currentConflict = getMentorConflict(f.class_id || f.class_name || f.class, f.section_name || f.section, editingTeacher?.id);
+                if (!currentConflict) return null;
+                return (
+                  <div style={{
+                    marginTop: 8,
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                    color: '#dc2626',
+                    fontSize: 12.5,
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10
+                  }}>
+                    <AlertTriangle size={18} style={{ flexShrink: 0, color: '#dc2626' }} />
+                    <div>
+                      <strong>Assignment Conflict:</strong> {currentConflict.className} - Section {currentConflict.sectionName} is already assigned to mentor <strong>{currentConflict.mentorName}</strong>{currentConflict.employeeId ? ` [${currentConflict.employeeId}]` : ''}.
+                      <div style={{ fontSize: 11.5, opacity: 0.9, marginTop: 2 }}>
+                        A class section can only have one assigned mentor. Please select another section or reassign under Classes & Sections.
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {editingTeacher && (
                 <label>Account Status
@@ -14703,38 +14749,19 @@ function Attendance() {
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
   const rosterTopRef = useRef<HTMLDivElement>(null);
 
-  // Existing session & Re-attendance state
+  // Existing session & Re-attendance state (multiple edits allowed until midnight 12:00 AM)
   const [existingSession, setExistingSession] = useState<any>(null);
-  const isAlreadyEdited = Boolean(
-    existingSession && (
-      existingSession.is_reattendance ||
-      existingSession.isReattendance ||
-      (Number(existingSession.reattendance_count || 0) > 0) ||
-      (Number(existingSession.reattendanceCount || 0) > 0) ||
-      (typeof window !== 'undefined' && (
-        (selectedClassId && selectedSectionId && (
-          sessionStorage.getItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`) ||
-          localStorage.getItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`) ||
-          sessionStorage.getItem(`finalized_attendance_${selectedClassId}_${selectedSectionId}`) ||
-          localStorage.getItem(`finalized_attendance_${selectedClassId}_${selectedSectionId}`)
-        )) ||
-        (classes.length > 0 && sections.length > 0 && (() => {
-          const cObj = classes.find((c: any) => String(c.id) === String(selectedClassId));
-          const sObj = sections.find((s: any) => String(s.id) === String(selectedSectionId));
-          if (!cObj || !sObj) return false;
-          const cNum = cObj.class_number ?? cObj.classNumber;
-          const sName = sObj.name ?? sObj.sectionName;
-          return Boolean(
-            sessionStorage.getItem(`finalized_attendance_${attendanceDate}_${cNum}_${sName}`) ||
-            localStorage.getItem(`finalized_attendance_${attendanceDate}_${cNum}_${sName}`) ||
-            sessionStorage.getItem(`finalized_attendance_${cNum}_${sName}`) ||
-            localStorage.getItem(`finalized_attendance_${cNum}_${sName}`)
-          );
-        })())
-      ))
-    )
-  );
-  const canEditAttendance = Boolean(existingSession && !isAlreadyEdited);
+  const getTodayIST = () => {
+    try {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+    } catch {
+      return new Date().toLocaleDateString('en-CA');
+    }
+  };
+  const isPastMidnight = Boolean(attendanceDate && attendanceDate < getTodayIST());
+  // Sessions are only finalized after midnight (12:00 AM) of that attendance date
+  const isAlreadyEdited = Boolean(existingSession && isPastMidnight);
+  const canEditAttendance = Boolean(existingSession && !isPastMidnight);
 
   useEffect(() => {
     if (isAlreadyEdited) {
@@ -15371,18 +15398,7 @@ function Attendance() {
       }));
       setChecked(prev => ({ ...prev, [sid]: false, [selectedStudent.id]: false }));
 
-      if (selectedClassId && selectedSectionId) {
-        sessionStorage.setItem(`has_left_early_${selectedClassId}_${selectedSectionId}`, '1');
-        localStorage.setItem(`has_left_early_${selectedClassId}_${selectedSectionId}`, '1');
-      }
-      const cObjEarly = classes.find((c: any) => String(c.id) === String(selectedClassId));
-      const sObjEarly = sections.find((s: any) => String(s.id) === String(selectedSectionId));
-      if (cObjEarly && sObjEarly) {
-        const cNumEarly = cObjEarly.class_number ?? cObjEarly.classNumber;
-        const sNameEarly = sObjEarly.name ?? sObjEarly.sectionName;
-        sessionStorage.setItem(`has_left_early_${cNumEarly}_${sNameEarly}`, '1');
-        localStorage.setItem(`has_left_early_${cNumEarly}_${sNameEarly}`, '1');
-      }
+
 
       if (existingSession?.id) {
         const res = await api.put(`/teacher/attendance/${existingSession.id}/student/${selectedStudent.id}`, {
@@ -15461,8 +15477,24 @@ function Attendance() {
     setChecked(prev => ({ ...prev, [sid]: newStatus === 'PRESENT', [s.id]: newStatus === 'PRESENT' }));
     setStudentStatusMap(prev => ({
       ...prev,
-      [sid]: { ...(prev[sid] || {}), status: newStatus },
-      [s.id]: { ...(prev[s.id] || {}), status: newStatus }
+      [sid]: {
+        ...(prev[sid] || {}),
+        status: newStatus,
+        departurePeriod: undefined,
+        departureTime: undefined,
+        arrivalPeriod: undefined,
+        arrivalTime: undefined,
+        remarks: ''
+      },
+      [s.id]: {
+        ...(prev[s.id] || {}),
+        status: newStatus,
+        departurePeriod: undefined,
+        departureTime: undefined,
+        arrivalPeriod: undefined,
+        arrivalTime: undefined,
+        remarks: ''
+      }
     }));
   }
 
@@ -15478,16 +15510,18 @@ function Attendance() {
         if (!status) {
           status = isPres !== undefined ? (isPres ? 'PRESENT' : 'ABSENT') : 'ABSENT';
         }
+        const isLeftEarly = status === 'LEFT_EARLY';
+        const isLate = status === 'LATE';
         return {
           studentId: s.id,
           studentName: s.name,
           rollNumber: s.roll_number,
           status,
-          departurePeriod: st.departurePeriod,
-          departureTime: st.departureTime,
-          arrivalPeriod: st.arrivalPeriod,
-          arrivalTime: st.arrivalTime,
-          remarks: st.remarks
+          departurePeriod: isLeftEarly ? (st.departurePeriod || null) : null,
+          departureTime: isLeftEarly ? (st.departureTime || null) : null,
+          arrivalPeriod: isLate ? (st.arrivalPeriod || null) : null,
+          arrivalTime: isLate ? (st.arrivalTime || null) : null,
+          remarks: isLeftEarly ? (st.remarks || '') : ''
         };
       });
 
@@ -15505,26 +15539,10 @@ function Attendance() {
         submittedAt: new Date().toISOString()
       };
 
+      // Keep counts in session storage for immediate local UI sync
       if (selectedClassId && selectedSectionId) {
-        sessionStorage.setItem(`finalized_att_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
-        localStorage.setItem(`finalized_att_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
-        sessionStorage.setItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, '1');
-        localStorage.setItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, '1');
-        sessionStorage.setItem(`finalized_att_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
-        localStorage.setItem(`finalized_att_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
-        sessionStorage.setItem(`finalized_attendance_${selectedClassId}_${selectedSectionId}`, '1');
-        localStorage.setItem(`finalized_attendance_${selectedClassId}_${selectedSectionId}`, '1');
-      }
-
-      const cObj = classes.find((c: any) => String(c.id) === String(selectedClassId));
-      const sObj = sections.find((s: any) => String(s.id) === String(selectedSectionId));
-      if (cObj && sObj) {
-        const cNum = cObj.class_number ?? cObj.classNumber;
-        const sName = sObj.name ?? sObj.sectionName;
-        sessionStorage.setItem(`finalized_att_${cNum}_${sName}`, JSON.stringify(finalizedPayload));
-        localStorage.setItem(`finalized_att_${cNum}_${sName}`, JSON.stringify(finalizedPayload));
-        sessionStorage.setItem(`finalized_attendance_${cNum}_${sName}`, '1');
-        localStorage.setItem(`finalized_attendance_${cNum}_${sName}`, '1');
+        sessionStorage.setItem(`today_counts_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
+        localStorage.setItem(`today_counts_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
       }
 
       let res: any = null;
@@ -15535,7 +15553,10 @@ function Attendance() {
           notifyParents: false
         });
       } catch (err: any) {
-        console.warn('Reattendance API error (using optimistic state):', err);
+        console.error('Reattendance API error:', err);
+        alert(err?.response?.data?.message || 'Failed to update attendance');
+        setBusy(false);
+        return;
       }
 
       setExistingSession({
@@ -15548,14 +15569,13 @@ function Attendance() {
         leftEarlyCount: leftEarlyCount,
         is_reattendance: true,
         isReattendance: true,
-        reattendance_count: 1,
-        reattendanceCount: 1
+        reattendance_count: (Number(existingSession?.reattendance_count || 0) + 1),
+        reattendanceCount: (Number(existingSession?.reattendanceCount || 0) + 1)
       });
       setIsEditingAttendance(false);
-      setReattendanceSuccessMsg('✓ Attendance successfully updated and finalized. Redirecting to dashboard...');
-      setTimeout(() => {
-        nav('/dashboard');
-      }, 1200);
+      setReattendanceSuccessMsg('✓ Attendance successfully updated.');
+      setTimeout(() => setReattendanceSuccessMsg(''), 4000);
+      await checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
     } catch (e: any) {
       console.error('submitWholeClassReattendance error:', e);
     } finally {
@@ -15612,16 +15632,7 @@ function Attendance() {
       const presCount = recordsPayload.filter(r => r.status === 'PRESENT' || r.status === 'LATE').length;
       const leftEarlyCount = recordsPayload.filter(r => r.status === 'LEFT_EARLY').length;
       const absCount = recordsPayload.filter(r => r.status === 'ABSENT').length;
-      if (leftEarlyCount > 0 && selectedClassId && selectedSectionId) {
-        sessionStorage.setItem(`has_left_early_${selectedClassId}_${selectedSectionId}`, String(leftEarlyCount));
-        localStorage.setItem(`has_left_early_${selectedClassId}_${selectedSectionId}`, String(leftEarlyCount));
-      }
-      if (leftEarlyCount > 0 && cObj && sObj) {
-        const cNum = cObj.class_number ?? cObj.classNumber;
-        const sName = sObj.name ?? sObj.sectionName;
-        sessionStorage.setItem(`has_left_early_${cNum}_${sName}`, String(leftEarlyCount));
-        localStorage.setItem(`has_left_early_${cNum}_${sName}`, String(leftEarlyCount));
-      }
+
       setSummary(res.data);
       setDone(true);
       checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
@@ -15748,10 +15759,10 @@ function Attendance() {
             </div>
             <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--text-muted)' }}>
               {isAlreadyEdited
-                ? '✓ Attendance has been submitted and edited. This session is now finalized and locked (no further edits permitted).'
+                ? '✓ Attendance has been finalized and locked after midnight 12:00 AM (no further edits permitted).'
                 : isEditingAttendance
-                ? '✏️ Attendance Edit Mode Active: Change student status between Present and Absent. Click "Submit Updated Attendance" below to finalize.'
-                : 'Attendance for this class section has been submitted for today. Need to correct a mistake? Click "Edit Attendance" to update records once.'}
+                ? '✏️ Attendance Edit Mode Active: Change student status between Present and Absent. Click "Submit Updated Attendance" below to save.'
+                : 'Attendance for this class section has been submitted for today. Need to correct a mistake? Click "Edit Attendance" to update records anytime before midnight.'}
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -16283,10 +16294,10 @@ function Attendance() {
         <span>
           {existingSession
             ? (isAlreadyEdited
-                ? 'Attendance Finalized: Attendance has been edited and locked. No further edits are permitted.'
+                ? 'Attendance Finalized: Past attendance (after midnight 12:00 AM) is locked. No further edits are permitted.'
                 : isEditingAttendance
-                ? 'Attendance Edit Mode Active: You can update attendance once. When finished, click "Submit Updated Attendance" to finalize.'
-                : 'Re-attendance Station Active: All assigned teachers can adjust early departures (e.g. student left after 1st period), record late arrivals, or save a re-roll call.')
+                ? 'Attendance Edit Mode Active: You can update student statuses. When finished, click "Submit Updated Attendance" to save.'
+                : 'Attendance Submitted: You can edit attendance multiple times until midnight 12:00 AM.')
             : 'Check only students who are physically present. Unchecked students are marked absent and their parents will be notified.'}
         </span>
       </div>
