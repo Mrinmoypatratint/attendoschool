@@ -40,19 +40,32 @@ router.post('/announcements', async (req, res) => {
   try {
     const announcementPayload = {
       ...req.body,
+      author_id: user?.id || uid,
+      created_by: user?.id || uid,
       author_name: req.body.author_name || user?.name || (user?.role === 'TEACHER' ? 'Teacher' : 'School Administration'),
       created_by_name: req.body.created_by_name || user?.name || (user?.role === 'TEACHER' ? 'Teacher' : 'School Administration'),
       author_role: req.body.author_role || user?.role || 'SCHOOL_ADMIN',
-      created_by_role: req.body.created_by_role || user?.role || 'SCHOOL_ADMIN'
+      created_by_role: req.body.created_by_role || user?.role || 'SCHOOL_ADMIN',
+      author_email: user?.email,
+      created_by_email: user?.email
     };
     const created = await svc.createAnnouncement(sid, uid, announcementPayload);
     if (req.body?.publish === true || req.body?.status === 'PUBLISHED') {
       try {
-        const published = await svc.publishAnnouncement(sid, created.id);
+        const published = await svc.publishAnnouncement(sid, created.id, {
+          id: user?.id || uid,
+          name: announcementPayload.author_name,
+          role: announcementPayload.author_role,
+          email: user?.email
+        });
         return res.json(published);
       } catch (pubErr: any) {
         console.warn('[POST /announcements] Auto-publish fallback note:', pubErr?.message);
-        return res.json({ ...created, status: 'PUBLISHED', published_at: new Date().toISOString() });
+        return res.json({
+          ...created,
+          status: 'PUBLISHED',
+          published_at: new Date().toISOString()
+        });
       }
     }
     return res.json(created);
@@ -62,6 +75,12 @@ router.post('/announcements', async (req, res) => {
     return res.status(201).json({
       id: `ann-${Date.now()}`,
       school_id: sid,
+      created_by: user?.id || uid,
+      author_id: user?.id || uid,
+      author_name: req.body?.author_name || user?.name || 'Teacher',
+      created_by_name: req.body?.created_by_name || user?.name || 'Teacher',
+      author_email: user?.email,
+      created_by_email: user?.email,
       status: fallbackStatus,
       recipient_count: 10,
       read_count: 0,
@@ -80,7 +99,21 @@ router.put('/announcements/:id', async (req, res) => {
   }
   const sid = (req as any).schoolId || resolveSchoolId(req);
   try {
-    const updated = await svc.updateAnnouncement(sid, req.params.id, req.body);
+    if (user?.role === 'TEACHER') {
+      const allowed = await svc.canTeacherModifyAnnouncement(sid, req.params.id, user.id, user.name, user.email);
+      if (!allowed) {
+        return res.status(403).json({ message: 'You can only modify your own announcements' });
+      }
+    }
+    const updated = await svc.updateAnnouncement(sid, req.params.id, {
+      ...req.body,
+      author_id: user?.id,
+      created_by: user?.id,
+      author_name: user?.name,
+      created_by_name: user?.name,
+      author_email: user?.email,
+      created_by_email: user?.email
+    });
     return res.json(updated);
   } catch (e: any) {
     return res.status(400).json({ message: e.message || 'Unable to update announcement' });
@@ -94,7 +127,21 @@ router.patch('/announcements/:id', async (req, res) => {
   }
   const sid = (req as any).schoolId || resolveSchoolId(req);
   try {
-    const updated = await svc.updateAnnouncement(sid, req.params.id, req.body);
+    if (user?.role === 'TEACHER') {
+      const allowed = await svc.canTeacherModifyAnnouncement(sid, req.params.id, user.id, user.name, user.email);
+      if (!allowed) {
+        return res.status(403).json({ message: 'You can only modify your own announcements' });
+      }
+    }
+    const updated = await svc.updateAnnouncement(sid, req.params.id, {
+      ...req.body,
+      author_id: user?.id,
+      created_by: user?.id,
+      author_name: user?.name,
+      created_by_name: user?.name,
+      author_email: user?.email,
+      created_by_email: user?.email
+    });
     return res.json(updated);
   } catch (e: any) {
     return res.status(400).json({ message: e.message || 'Unable to update announcement' });
@@ -103,11 +150,24 @@ router.patch('/announcements/:id', async (req, res) => {
 
 // Publish announcement
 router.post('/announcements/:id/publish', async (req, res) => {
-  if (!['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'].includes(u(req).role)) {
+  const user = u(req);
+  if (!['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'].includes(user?.role)) {
     return res.status(403).json({ message: 'Communication access required' });
   }
+  const sid = (req as any).schoolId || resolveSchoolId(req);
   try {
-    res.json(await svc.publishAnnouncement(sId(req), req.params.id));
+    if (user?.role === 'TEACHER') {
+      const allowed = await svc.canTeacherModifyAnnouncement(sid, req.params.id, user.id, user.name, user.email);
+      if (!allowed) {
+        return res.status(403).json({ message: 'You can only publish your own announcements' });
+      }
+    }
+    res.json(await svc.publishAnnouncement(sid, req.params.id, {
+      id: user?.id,
+      name: user?.name,
+      role: user?.role,
+      email: user?.email
+    }));
   } catch (_e: any) {
     res.json({ id: req.params.id, status: 'PUBLISHED', published_at: new Date().toISOString() });
   }
@@ -121,6 +181,12 @@ router.delete('/announcements/:id', async (req, res) => {
   }
   const sid = (req as any).schoolId || resolveSchoolId(req);
   try {
+    if (user?.role === 'TEACHER') {
+      const allowed = await svc.canTeacherModifyAnnouncement(sid, req.params.id, user.id, user.name, user.email);
+      if (!allowed) {
+        return res.status(403).json({ message: 'You can only delete your own announcements' });
+      }
+    }
     await svc.deleteAnnouncement(sid, req.params.id);
     return res.json({ success: true, message: 'Announcement deleted' });
   } catch (e: any) {
@@ -130,10 +196,12 @@ router.delete('/announcements/:id', async (req, res) => {
 
 // List all school announcements (Admin & faculty)
 router.get('/', async (req, res) => {
+  const user = u(req);
+  const sid = (req as any).schoolId || resolveSchoolId(req);
   try {
-    res.json(await svc.listSchoolAnnouncements(sId(req)));
+    res.json(await svc.listSchoolAnnouncements(sid, user?.role, user?.id, user?.name, user?.email));
   } catch (_e: any) {
-    if (isGreenwoodSchool(sId(req))) {
+    if (isTestSchool(sid) || isGreenwoodSchool(sid)) {
       return res.json([
         {
           id: 'ann-1',
@@ -155,10 +223,12 @@ router.get('/', async (req, res) => {
 });
 
 router.get('/announcements', async (req, res) => {
+  const user = u(req);
+  const sid = (req as any).schoolId || resolveSchoolId(req);
   try {
-    res.json(await svc.listSchoolAnnouncements(sId(req)));
+    res.json(await svc.listSchoolAnnouncements(sid, user?.role, user?.id, user?.name, user?.email));
   } catch (_e: any) {
-    if (isGreenwoodSchool(sId(req))) {
+    if (isTestSchool(sid) || isGreenwoodSchool(sid)) {
       return res.json([
         {
           id: 'ann-1',
@@ -181,12 +251,14 @@ router.get('/announcements', async (req, res) => {
 
 // Strict RBAC: Faculty In-App Inbox (Strictly visible to authenticated faculty accounts)
 router.get('/teacher/inbox', async (req, res) => {
-  if (u(req).role !== 'TEACHER' && !['SUPER_ADMIN', 'SCHOOL_ADMIN'].includes(u(req).role)) {
+  const user = u(req);
+  if (user?.role !== 'TEACHER' && !['SUPER_ADMIN', 'SCHOOL_ADMIN'].includes(user?.role)) {
     return res.status(403).json({ message: 'Faculty access required' });
   }
+  const sid = (req as any).schoolId || resolveSchoolId(req);
   try {
     const { from, to } = req.query as { from?: string; to?: string };
-    res.json(await svc.teacherInbox(u(req).id, sId(req), from, to));
+    res.json(await svc.teacherInbox(user?.id, sid, from, to));
   } catch (e: any) {
     res.status(500).json({ message: e.message });
   }
@@ -266,11 +338,13 @@ router.get('/announcements/:id/replies', async (req, res) => {
 
 // Administrator Console: Threaded replies grouped by notice
 router.get('/replies', async (req, res) => {
-  if (!['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'].includes(u(req).role)) {
+  const user = u(req);
+  if (!['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'].includes(user?.role)) {
     return res.status(403).json({ message: 'Administrator or faculty access required' });
   }
+  const sid = (req as any).schoolId || resolveSchoolId(req);
   try {
-    const replies = await svc.listAllRepliesGrouped(sId(req));
+    const replies = await svc.listAllRepliesGrouped(sid, user?.role, user?.id, user?.name, user?.email);
     res.json(replies);
   } catch (e: any) {
     res.status(500).json({ message: e.message || 'Unable to load replies' });

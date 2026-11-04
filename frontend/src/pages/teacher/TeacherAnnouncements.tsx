@@ -50,8 +50,12 @@ export interface AnnouncementItem {
   published_at?: string;
   created_at?: string;
   author_name?: string;
+  author_role?: string;
+  author_email?: string;
   created_by?: string;
   created_by_name?: string;
+  created_by_role?: string;
+  created_by_email?: string;
   read_at?: string | null;
   recipient_id?: string;
   recipient_count?: number;
@@ -721,6 +725,12 @@ export function TeacherAnnouncements() {
         classId: editForm.classId || undefined,
         sectionId: editForm.sectionId || undefined,
         priority: 'NORMAL',
+        author_id: user?.id,
+        created_by: user?.id,
+        author_name: user?.name,
+        created_by_name: user?.name,
+        author_email: user?.email,
+        created_by_email: user?.email,
         attachment_url: editAttachment ? editAttachment.data : null,
         attachment_name: editAttachment ? editAttachment.name : null,
         attachment_type: editAttachment ? editAttachment.type : null,
@@ -760,6 +770,12 @@ export function TeacherAnnouncements() {
         classId: editForm.classId || undefined,
         sectionId: editForm.sectionId || undefined,
         priority: 'NORMAL',
+        author_id: user?.id,
+        created_by: user?.id,
+        author_name: user?.name,
+        created_by_name: user?.name,
+        author_email: user?.email,
+        created_by_email: user?.email,
         attachment_url: editAttachment ? editAttachment.data : null,
         attachment_name: editAttachment ? editAttachment.name : null,
         attachment_type: editAttachment ? editAttachment.type : null,
@@ -793,7 +809,25 @@ export function TeacherAnnouncements() {
         api.get('/communication/announcements').catch(() => ({ data: [] }))
       ]);
 
-      const inboxData: AnnouncementItem[] = Array.isArray(inboxRes.data) ? inboxRes.data : [];
+      const rawInbox: AnnouncementItem[] = Array.isArray(inboxRes.data) ? inboxRes.data : [];
+      // Only keep genuine school/admin notices sent to faculty, never teacher-created student broadcasts
+      const inboxData = rawInbox.filter(item => {
+        // Must NOT be authored or created by any teacher
+        if (item.author_role === 'TEACHER' || item.created_by_role === 'TEACHER') return false;
+        // Must NOT be created by current teacher
+        if (user?.id && (item.created_by === user.id || (item as any).author_id === user.id)) return false;
+        if (user?.name && (
+          (item.author_name && item.author_name.trim().toLowerCase() === user.name.trim().toLowerCase()) ||
+          (item.created_by_name && item.created_by_name.trim().toLowerCase() === user.name.trim().toLowerCase())
+        )) return false;
+        if (user?.email && (
+          ((item as any).author_email && (item as any).author_email.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
+          ((item as any).created_by_email && (item as any).created_by_email.trim().toLowerCase() === user.email.trim().toLowerCase())
+        )) return false;
+        // Broadcasts to students, classes, or sections are student notices, never faculty receive notices
+        if (['STUDENT', 'CLASS', 'SECTION', 'PARENTS'].includes(item.audience_type)) return false;
+        return true;
+      });
       setReceivedNotices(inboxData);
 
       // Load replies for received notices in background
@@ -804,13 +838,16 @@ export function TeacherAnnouncements() {
       // Filter sent notices created by this teacher
       const allData: AnnouncementItem[] = Array.isArray(allAnnRes.data) ? allAnnRes.data : [];
       const teacherSent = allData.filter(a => {
-        const role = ((a as any).author_role || (a as any).created_by_role || '').toUpperCase();
-        if (['SCHOOL_ADMIN', 'ADMIN', 'SUPER_ADMIN'].includes(role)) return false;
-        if (user?.id && (a.created_by === user.id || (a as any).author_id === user.id)) return true;
-        if (user?.name && (a.author_name === user.name || a.created_by_name === user.name)) return true;
-        if (role === 'TEACHER') return true;
-        if (['STUDENT', 'CLASS', 'SECTION'].includes(a.audience_type) && !a.author_name?.toLowerCase().includes('admin')) return true;
-        return false;
+        const matchesId = Boolean(user?.id && (a.created_by === user.id || (a as any).author_id === user.id));
+        const matchesEmail = Boolean(user?.email && (
+          ((a as any).author_email && (a as any).author_email.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
+          ((a as any).created_by_email && (a as any).created_by_email.trim().toLowerCase() === user.email.trim().toLowerCase())
+        ));
+        const matchesName = Boolean(user?.name && (
+          (a.author_name && a.author_name.trim().toLowerCase() === user.name.trim().toLowerCase()) ||
+          (a.created_by_name && a.created_by_name.trim().toLowerCase() === user.name.trim().toLowerCase())
+        ));
+        return matchesId || matchesEmail || matchesName;
       });
       setSentNotices(teacherSent);
 
@@ -994,8 +1031,12 @@ export function TeacherAnnouncements() {
         priority: 'NORMAL',
         publish: true,
         status: 'PUBLISHED',
+        author_id: user?.id,
+        created_by: user?.id,
         author_name: user?.name,
         created_by_name: user?.name,
+        author_email: user?.email,
+        created_by_email: user?.email,
         author_role: 'TEACHER',
         created_by_role: 'TEACHER',
         attachment_url: attachment ? attachment.data : undefined,
@@ -1046,8 +1087,12 @@ export function TeacherAnnouncements() {
         priority: 'NORMAL',
         publish: false,
         status: 'DRAFT',
+        author_id: user?.id,
+        created_by: user?.id,
         author_name: user?.name,
         created_by_name: user?.name,
+        author_email: user?.email,
+        created_by_email: user?.email,
         author_role: 'TEACHER',
         created_by_role: 'TEACHER',
         attachment_url: attachment ? attachment.data : undefined,
@@ -2184,86 +2229,6 @@ export function TeacherAnnouncements() {
                 onReset={handleResetDateFilter}
                 loading={loading || refreshing}
               />
-              {/* Filter controls */}
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: 12,
-                  padding: '12px 16px',
-                  backgroundColor: 'var(--card, #ffffff)',
-                  borderRadius: 10,
-                  border: '1px solid var(--border, #e2e8f0)',
-                  marginBottom: 16,
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-                }}
-              >
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    onClick={() => setTableFilter('SENT')}
-                    style={{
-                      padding: '5px 12px',
-                      borderRadius: 6,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      backgroundColor: '#eff6ff',
-                      color: '#1d4ed8',
-                      border: '1px solid #bfdbfe',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    View Sent Broadcasts ({sentNotices.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTableFilter('RECEIVE')}
-                    style={{
-                      padding: '5px 12px',
-                      borderRadius: 6,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      backgroundColor: '#f0fdf4',
-                      color: '#15803d',
-                      border: '1px solid #bbf7d0',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    View Received Notices ({receivedNotices.length})
-                  </button>
-                </div>
-
-                <div style={{ position: 'relative', width: 260 }}>
-                  <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted, #94a3b8)' }} />
-                  <input
-                    type="text"
-                    placeholder="Search all notices..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '7px 10px 7px 32px',
-                      fontSize: 12.5,
-                      borderRadius: 6,
-                      border: '1px solid var(--border, #cbd5e1)',
-                      backgroundColor: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #0f172a)',
-                      boxSizing: 'border-box'
-                    }}
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery('')}
-                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 2 }}
-                    >
-                      <X size={13} />
-                    </button>
-                  )}
-                </div>
-              </div>
 
               {/* Combined List Grid */}
               <div className="table-wrap" style={{ border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, overflow: 'hidden', overflowX: 'auto', backgroundColor: 'var(--bg-card, #ffffff)', width: '100%', boxSizing: 'border-box' }}>
