@@ -452,35 +452,37 @@ export default function TeacherLeaveRequest() {
           style={{
             background: 'var(--surface, #FFF)',
             border: '1px solid var(--border, #E2E8F0)',
-            borderRadius: 12,
+            borderRadius: 14,
             padding: '18px 20px',
             display: 'flex',
-            alignItems: 'center',
+            flexDirection: 'column',
             justifyContent: 'space-between',
+            minHeight: 116,
             boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
           }}
         >
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Total Requests
-            </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text, #0F172A)', marginTop: 4 }}>
+          <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-secondary, #475569)', letterSpacing: '-0.01em' }}>
+            Total Requests
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
+            <div style={{ fontSize: 34, fontWeight: 800, color: 'var(--text, #0F172A)', lineHeight: 1 }}>
               {counts.all}
             </div>
-          </div>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: 'rgba(37, 99, 235, 0.12)',
-              color: '#3b82f6',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <FileText size={22} />
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 11,
+                background: 'rgba(37, 99, 235, 0.12)',
+                color: '#3b82f6',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <FileText size={22} />
+            </div>
           </div>
         </div>
 
@@ -488,35 +490,37 @@ export default function TeacherLeaveRequest() {
           style={{
             background: 'var(--surface, #FFF)',
             border: '1px solid var(--border, #E2E8F0)',
-            borderRadius: 12,
+            borderRadius: 14,
             padding: '18px 20px',
             display: 'flex',
-            alignItems: 'center',
+            flexDirection: 'column',
             justifyContent: 'space-between',
+            minHeight: 116,
             boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
           }}
         >
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Pending Review
-            </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#d97706', marginTop: 4 }}>
+          <div style={{ fontSize: 17, fontWeight: 700, color: '#f59e0b', letterSpacing: '-0.01em' }}>
+            Pending Review
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
+            <div style={{ fontSize: 34, fontWeight: 800, color: '#d97706', lineHeight: 1 }}>
               {counts.pending}
             </div>
-          </div>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: 'rgba(245, 158, 11, 0.15)',
-              color: '#f59e0b',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <Clock size={22} />
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 11,
+                background: 'rgba(245, 158, 11, 0.15)',
+                color: '#f59e0b',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <Clock size={22} />
+            </div>
           </div>
         </div>
 
@@ -524,35 +528,37 @@ export default function TeacherLeaveRequest() {
           style={{
             background: 'var(--surface, #FFF)',
             border: '1px solid var(--border, #E2E8F0)',
-            borderRadius: 12,
+            borderRadius: 14,
             padding: '18px 20px',
             display: 'flex',
-            alignItems: 'center',
+            flexDirection: 'column',
             justifyContent: 'space-between',
+            minHeight: 116,
             boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
           }}
         >
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Approved
-            </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#059669', marginTop: 4 }}>
+          <div style={{ fontSize: 17, fontWeight: 700, color: '#10b981', letterSpacing: '-0.01em' }}>
+            Approved
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
+            <div style={{ fontSize: 34, fontWeight: 800, color: '#059669', lineHeight: 1 }}>
               {counts.approved}
             </div>
-          </div>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: 'rgba(16, 185, 129, 0.15)',
-              color: '#10b981',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <CheckCircle2 size={22} />
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 11,
+                background: 'rgba(16, 185, 129, 0.15)',
+                color: '#10b981',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <CheckCircle2 size={22} />
+            </div>
           </div>
         </div>
 
@@ -560,35 +566,37 @@ export default function TeacherLeaveRequest() {
           style={{
             background: 'var(--surface, #FFF)',
             border: '1px solid var(--border, #E2E8F0)',
-            borderRadius: 12,
+            borderRadius: 14,
             padding: '18px 20px',
             display: 'flex',
-            alignItems: 'center',
+            flexDirection: 'column',
             justifyContent: 'space-between',
+            minHeight: 116,
             boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
           }}
         >
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Rejected
-            </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#dc2626', marginTop: 4 }}>
+          <div style={{ fontSize: 17, fontWeight: 700, color: '#ef4444', letterSpacing: '-0.01em' }}>
+            Rejected
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
+            <div style={{ fontSize: 34, fontWeight: 800, color: '#dc2626', lineHeight: 1 }}>
               {counts.rejected}
             </div>
-          </div>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: 'rgba(239, 68, 68, 0.15)',
-              color: '#ef4444',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <XCircle size={22} />
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 11,
+                background: 'rgba(239, 68, 68, 0.15)',
+                color: '#ef4444',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <XCircle size={22} />
+            </div>
           </div>
         </div>
 
