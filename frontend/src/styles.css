@@ -2,6 +2,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Share+Tech+Mono&display=swap');
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ═══════════════════════════════════════════════════════════════
    School Attendance SaaS — Institutional Enterprise Design System
    Modeled after industry-leading SIS platforms (PowerSchool, Veracross)
@@ -80,6 +84,8 @@
 
   --text: #0f172a;
   --text-main: #0f172a;
+  --text-color: #0f172a;
+  --input-disabled-bg: #f1f5f9;
   --bg-muted: #f1f5f9;
   --text-secondary: #475569;
   --text-muted: #64748b;
@@ -146,6 +152,8 @@ html.dark {
 
   --text: #f8fafc;
   --text-main: #f8fafc;
+  --text-color: #f8fafc;
+  --input-disabled-bg: #1e293b;
   --bg-muted: #17223b;
   --text-secondary: #cbd5e1;
   --text-muted: #94a3b8;
@@ -14012,9 +14020,10 @@ header {
 
 /* ─── Institutional Features & RBAC Components (Light & Dark Mode) ─── */
 .feature-page {
-  max-width: 1320px;
-  margin: 0 auto;
-  padding: 24px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0 0 40px 0;
   color: var(--text);
   font-family: var(--font);
 }

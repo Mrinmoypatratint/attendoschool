@@ -114,31 +114,31 @@ export const MonitoringHealth: React.FC = () => {
   return (
     <div className="super-admin-content-inner">
       {/* Header */}
-      <div className="section-header-row">
+      <div className="section-header-row flex flex-wrap items-center justify-between gap-4 mb-4">
         <div>
-          <h2 className="section-title">System Health & Live Monitoring</h2>
-          <p className="section-subtitle">
+          <h2 className="section-title text-2xl font-bold tracking-tight text-slate-900 m-0">System Health & Live Monitoring</h2>
+          <p className="section-subtitle text-sm text-slate-500 m-0 mt-1">
             Realtime telemetry across API microservices, Firestore persistence engine, background cron workers, and daily attendance throughput.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn-secondary" onClick={loadMonitorData} disabled={refreshing}>
+        <div className="flex items-center gap-2.5" style={{ display: 'flex', gap: '10px' }}>
+          <button className="btn-secondary inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs md:text-sm font-medium transition hover:bg-slate-50" onClick={loadMonitorData} disabled={refreshing}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={refreshing ? 'spinning' : ''}>
               <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
             </svg>
             {refreshing ? 'Probing...' : 'Refresh Health'}
           </button>
-          <button className="btn-secondary" onClick={handleProbeDatabase} disabled={runningAction !== null}>
+          <button className="btn-secondary inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs md:text-sm font-medium transition hover:bg-slate-50" onClick={handleProbeDatabase} disabled={runningAction !== null}>
             Ping Services
           </button>
-          <button className="btn-primary" onClick={handleExpireCheck} disabled={runningAction !== null}>
+          <button className="btn-primary inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs md:text-sm font-medium transition shadow-sm" onClick={handleExpireCheck} disabled={runningAction !== null}>
             {runningAction === 'expire' ? 'Auditing...' : 'Audit Expirations'}
           </button>
         </div>
       </div>
 
       {actionNotice && (
-        <div style={{ margin: '14px 0', padding: '12px 16px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="p-3 px-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs md:text-sm flex items-center gap-2 my-3.5" style={{ margin: '14px 0', padding: '12px 16px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="20 6 9 17 4 12" />
           </svg>
@@ -147,9 +147,9 @@ export const MonitoringHealth: React.FC = () => {
       )}
 
       {/* Services Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', margin: '20px 0' }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 my-5" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', margin: '20px 0' }}>
         {/* Core API Probe */}
-        <div className="card" style={{ padding: '20px' }}>
+        <div className="card rounded-xl border border-slate-200 bg-white p-5 shadow-sm" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
@@ -165,7 +165,7 @@ export const MonitoringHealth: React.FC = () => {
         </div>
 
         {/* Firestore Database Probe */}
-        <div className="card" style={{ padding: '20px' }}>
+        <div className="card rounded-xl border border-slate-200 bg-white p-5 shadow-sm" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />

@@ -292,14 +292,14 @@ export function ClassMentorWorkspace() {
 
       {/* Single Section Badge Banner if only 1 section mentored */}
       {mentoredClasses.length === 1 && selectedSection && (
-        <div style={{ padding: '10px 16px', borderRadius: 8, background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(56, 189, 248, 0.05))', border: '1px solid var(--border-focus, rgba(56, 189, 248, 0.3))', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <ShieldCheck size={18} style={{ color: 'var(--sidebar-accent)' }} />
-            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+        <div className="p-3 px-4 rounded-xl bg-gradient-to-r from-blue-500/10 to-sky-500/5 border border-blue-500/20 mb-5 flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2.5">
+            <ShieldCheck size={18} className="text-blue-600 dark:text-blue-400" />
+            <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
               Assigned Mentor for Class {selectedSection.class_number} — Section {selectedSection.section_name}
             </span>
           </div>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+          <span className="text-xs text-slate-500 dark:text-slate-400">
             Section ID: {selectedSection.section_id.slice(0, 8)}...
           </span>
         </div>
@@ -307,7 +307,7 @@ export function ClassMentorWorkspace() {
 
       {/* Multi-Section Tabs */}
       {mentoredClasses.length > 1 && (
-        <div className="student-tab-bar" style={{ marginBottom: 16 }}>
+        <div className="student-tab-bar mb-4">
           {mentoredClasses.map(m => (
             <button
               key={`${m.class_id}:${m.section_id}`}
@@ -322,42 +322,18 @@ export function ClassMentorWorkspace() {
       )}
 
       {/* Sub-Tab Navigation: Assignments vs Reports */}
-      <div style={{ display: 'flex', gap: 12, borderBottom: '1px solid var(--border-strong)', marginBottom: 20, paddingBottom: 2 }}>
+      <div className="flex gap-3 border-b border-slate-200 dark:border-slate-700 mb-5 pb-0.5">
         <button
           type="button"
           onClick={() => { setActiveTab('ASSIGNMENTS'); setSearchParams({ tab: 'ASSIGNMENTS' }); }}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: '8px 16px',
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: 'pointer',
-            color: activeTab === 'ASSIGNMENTS' ? 'var(--sidebar-accent)' : 'var(--text-muted)',
-            borderBottom: activeTab === 'ASSIGNMENTS' ? '2px solid var(--sidebar-accent)' : '2px solid transparent',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8
-          }}
+          className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors ${activeTab === 'ASSIGNMENTS' ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:text-slate-700 dark:hover:text-slate-300'}`}
         >
           <BookOpen size={16} /> Teacher Assignments
         </button>
         <button
           type="button"
           onClick={() => { setActiveTab('REPORTS'); setSearchParams({ tab: 'REPORTS' }); }}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: '8px 16px',
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: 'pointer',
-            color: activeTab === 'REPORTS' ? 'var(--sidebar-accent)' : 'var(--text-muted)',
-            borderBottom: activeTab === 'REPORTS' ? '2px solid var(--sidebar-accent)' : '2px solid transparent',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8
-          }}
+          className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors ${activeTab === 'REPORTS' ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:text-slate-700 dark:hover:text-slate-300'}`}
         >
           <FileText size={16} /> Reports
         </button>
@@ -367,34 +343,34 @@ export function ClassMentorWorkspace() {
       {activeTab === 'ASSIGNMENTS' && (
         <div className="as-teacher-assignments-pane">
           {/* Header Callout & Filters Bar */}
-          <div className="panel" style={{ padding: '16px 20px', marginBottom: 20, borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14, marginBottom: 14 }}>
+          <div className="panel p-4 md:p-5 mb-5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="flex justify-between items-center flex-wrap gap-3.5 mb-3.5">
               <div>
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <BookOpen size={18} style={{ color: 'var(--sidebar-accent)' }} />
+                <h3 className="m-0 text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <BookOpen size={18} className="text-blue-600 dark:text-blue-400" />
                   Subject Teacher Assignment Tracking
                 </h3>
-                <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
+                <p className="mt-1 m-0 text-xs text-slate-500 dark:text-slate-400">
                   All teachers taking classes for <strong>Class {selectedSection?.class_number} Section {selectedSection?.section_name}</strong> can publish assignments. Filter by date to inspect daily assignments given.
                 </p>
               </div>
 
               {/* Stats badges */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <div style={{ padding: '6px 12px', borderRadius: 8, background: 'rgba(37, 99, 235, 0.08)', border: '1px solid rgba(37, 99, 235, 0.2)', fontSize: 12.5, fontWeight: 600, color: 'var(--sidebar-accent)' }}>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <div className="px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs font-semibold text-blue-600 dark:text-blue-400">
                   {filteredTeachers.length} Subject Teachers
                 </div>
-                <div style={{ padding: '6px 12px', borderRadius: 8, background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', fontSize: 12.5, fontWeight: 600, color: '#059669' }}>
+                <div className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                   {totalAssignmentsCount} Total Assignments
                 </div>
               </div>
             </div>
 
             {/* Filter Controls Row */}
-            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+            <div className="flex items-center flex-wrap gap-3 pt-3 border-t border-slate-200 dark:border-slate-700">
               {/* Date Filter Inputs */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)' }}>From:</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">From:</span>
                 <input
                   type="date"
                   min="1900-01-01"
@@ -405,12 +381,12 @@ export function ClassMentorWorkspace() {
                     setActivePreset('custom');
                   }}
                   onBlur={e => setFromDate(formatStrict4DigitDate(e.target.value))}
-                  style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13 }}
+                  className="px-2.5 py-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)' }}>To:</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">To:</span>
                 <input
                   type="date"
                   min="1900-01-01"
@@ -421,97 +397,60 @@ export function ClassMentorWorkspace() {
                     setActivePreset('custom');
                   }}
                   onBlur={e => setToDate(formatStrict4DigitDate(e.target.value))}
-                  style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13 }}
+                  className="px-2.5 py-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
 
               {/* Quick Presets */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => handlePreset('today')}
-                  style={{
-                    padding: '5px 10px',
-                    borderRadius: 6,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    background: activePreset === 'today' ? 'var(--sidebar-accent)' : 'var(--bg)',
-                    color: activePreset === 'today' ? '#ffffff' : 'var(--text-secondary)',
-                    border: '1px solid var(--border)'
-                  }}
+                  className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer border transition-colors ${activePreset === 'today' ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
                 >
                   Today
                 </button>
                 <button
                   type="button"
                   onClick={() => handlePreset('week')}
-                  style={{
-                    padding: '5px 10px',
-                    borderRadius: 6,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    background: activePreset === 'week' ? 'var(--sidebar-accent)' : 'var(--bg)',
-                    color: activePreset === 'week' ? '#ffffff' : 'var(--text-secondary)',
-                    border: '1px solid var(--border)'
-                  }}
+                  className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer border transition-colors ${activePreset === 'week' ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
                 >
                   This Week
                 </button>
                 <button
                   type="button"
                   onClick={() => handlePreset('month')}
-                  style={{
-                    padding: '5px 10px',
-                    borderRadius: 6,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    background: activePreset === 'month' ? 'var(--sidebar-accent)' : 'var(--bg)',
-                    color: activePreset === 'month' ? '#ffffff' : 'var(--text-secondary)',
-                    border: '1px solid var(--border)'
-                  }}
+                  className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer border transition-colors ${activePreset === 'month' ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
                 >
                   This Month
                 </button>
                 <button
                   type="button"
                   onClick={() => handlePreset('all')}
-                  style={{
-                    padding: '5px 10px',
-                    borderRadius: 6,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    background: activePreset === 'all' ? 'var(--sidebar-accent)' : 'var(--bg)',
-                    color: activePreset === 'all' ? '#ffffff' : 'var(--text-secondary)',
-                    border: '1px solid var(--border)'
-                  }}
+                  className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer border transition-colors ${activePreset === 'all' ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
                 >
                   All Time
                 </button>
               </div>
 
               {/* Search Teacher or Subject */}
-              <div style={{ flex: 1, minWidth: 200, display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '0 10px' }}>
-                <Search size={14} style={{ color: 'var(--text-muted)' }} />
+              <div className="flex-1 min-w-[200px] flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-md px-2.5 py-1">
+                <Search size={14} className="text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search teacher or subject..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  style={{ border: 'none', background: 'transparent', outline: 'none', color: 'var(--text)', fontSize: 13, width: '100%', padding: '6px 0' }}
+                  className="border-none bg-transparent outline-none text-slate-900 dark:text-slate-100 text-xs w-full py-0.5"
                 />
               </div>
 
               {/* Refresh button */}
               <button
                 type="button"
-                className="btn-secondary"
+                className="btn-secondary inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-semibold cursor-pointer transition-colors"
                 onClick={loadTeacherAssignments}
                 disabled={loadingTeachers}
-                style={{ padding: '6px 12px', fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
                 <RefreshCw size={13} className={loadingTeachers ? 'animate-spin' : ''} />
                 Refresh
@@ -520,32 +459,36 @@ export function ClassMentorWorkspace() {
           </div>
 
           {loadingTeachers ? (
-            <div className="panel" style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
-              <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 10px' }} />
-              <p>Loading subject teachers and assignment activity...</p>
+            <div className="panel p-10 text-center text-slate-500 dark:text-slate-400 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+              <Loader2 size={24} className="animate-spin mx-auto mb-2 text-blue-600" />
+              <p className="text-xs">Loading subject teachers and assignment activity...</p>
             </div>
           ) : teachersError ? (
-            <div className="panel" style={{ textAlign: 'center', padding: 30, color: '#ef4444' }}>
-              <AlertCircle size={24} style={{ margin: '0 auto 10px' }} />
-              <p>{teachersError}</p>
-              <button type="button" className="btn-secondary" onClick={loadTeacherAssignments} style={{ marginTop: 12 }}>
+            <div className="panel p-8 text-center text-red-500 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+              <AlertCircle size={24} className="mx-auto mb-2" />
+              <p className="text-xs">{teachersError}</p>
+              <button
+                type="button"
+                className="btn-secondary mt-3 px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-600 text-xs font-semibold cursor-pointer"
+                onClick={loadTeacherAssignments}
+              >
                 Retry Loading
               </button>
             </div>
           ) : filteredTeachers.length === 0 ? (
-            <div className="panel" style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
-              <Users size={28} style={{ margin: '0 auto 10px', opacity: 0.6 }} />
-              <p>No subject teaching allocations found matching your search.</p>
+            <div className="panel p-10 text-center text-slate-500 dark:text-slate-400 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+              <Users size={28} className="mx-auto mb-2 opacity-60" />
+              <p className="text-xs">No subject teaching allocations found matching your search.</p>
             </div>
           ) : (
-            <div className="panel" style={{ padding: 0, overflow: 'hidden', borderRadius: 10 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
+            <div className="panel p-0 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
+              <table className="w-full border-collapse text-left text-xs md:text-sm">
                 <thead>
-                  <tr style={{ background: 'var(--gray-50, rgba(255,255,255,0.03))', borderBottom: '1px solid var(--border)' }}>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Subject</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Faculty Member</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Role Type</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)', textAlign: 'right' }}>Assignments Given</th>
+                  <tr className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
+                    <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-400">Subject</th>
+                    <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-400">Faculty Member</th>
+                    <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-400">Role Type</th>
+                    <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-400 text-right">Assignments Given</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -556,43 +499,36 @@ export function ClassMentorWorkspace() {
 
                     return (
                       <React.Fragment key={key}>
-                        <tr style={{ borderBottom: '1px solid var(--border)', background: isExpanded ? 'rgba(37, 99, 235, 0.02)' : 'transparent' }}>
-                          <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text)' }}>
+                        <tr className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors ${isExpanded ? 'bg-blue-50/20 dark:bg-blue-950/20' : ''}`}>
+                          <td className="px-4 py-3.5 font-semibold text-slate-900 dark:text-slate-100">
                             {item.subject_name}
                           </td>
-                          <td style={{ padding: '14px 16px', color: 'var(--text)', fontWeight: 500 }}>
+                          <td className="px-4 py-3.5 text-slate-800 dark:text-slate-200 font-medium">
                             <PersonProfileLink kind="teacher" id={item.teacher_id} name={item.teacher_name} person={item as any} />
                           </td>
-                          <td style={{ padding: '14px 16px' }}>
+                          <td className="px-4 py-3.5">
                             {item.is_primary ? (
-                              <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 600, background: 'rgba(37, 99, 235, 0.1)', color: 'var(--sidebar-accent)', border: '1px solid var(--border-focus)' }}>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                                 Primary Teacher
                               </span>
                             ) : item.is_alternate ? (
-                              <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 600, background: 'var(--gray-100, rgba(148, 163, 184, 0.12))', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-500/10 text-slate-500 dark:text-slate-400 border border-slate-500/20">
                                 Alternate Teacher
                               </span>
                             ) : (
-                              <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 600, background: 'rgba(16, 185, 129, 0.1)', color: '#059669', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                                 Subject Teacher
                               </span>
                             )}
                           </td>
-                          <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                          <td className="px-4 py-3.5 text-right">
+                            <div className="inline-flex items-center gap-2">
                               <span
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 6,
-                                  padding: '4px 10px',
-                                  borderRadius: 9999,
-                                  fontSize: 12,
-                                  fontWeight: 700,
-                                  background: count > 0 ? 'rgba(16, 185, 129, 0.12)' : 'var(--gray-100, rgba(148, 163, 184, 0.1))',
-                                  color: count > 0 ? '#059669' : 'var(--text-muted)',
-                                  border: count > 0 ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border)'
-                                }}
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
+                                  count > 0
+                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25'
+                                    : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                                }`}
                               >
                                 {count} {count === 1 ? 'Assignment' : 'Assignments'}
                               </span>
@@ -601,19 +537,7 @@ export function ClassMentorWorkspace() {
                                 <button
                                   type="button"
                                   onClick={() => toggleExpand(key)}
-                                  style={{
-                                    border: 'none',
-                                    background: 'none',
-                                    cursor: 'pointer',
-                                    color: 'var(--sidebar-accent)',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 4,
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    padding: '4px 8px',
-                                    borderRadius: 6
-                                  }}
+                                  className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 cursor-pointer transition-colors border-0 bg-transparent"
                                   title={isExpanded ? 'Hide assignments' : 'View assignments'}
                                 >
                                   {isExpanded ? 'Hide' : 'View'}
@@ -626,32 +550,23 @@ export function ClassMentorWorkspace() {
 
                         {/* Collapsible Assignment Details Row */}
                         {isExpanded && count > 0 && (
-                          <tr style={{ background: 'var(--gray-50, rgba(255, 255, 255, 0.02))', borderBottom: '1px solid var(--border)' }}>
-                            <td colSpan={4} style={{ padding: '12px 20px 16px' }}>
-                              <div style={{ background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)', padding: '12px 16px' }}>
-                                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  <FileCheck2 size={14} style={{ color: 'var(--sidebar-accent)' }} />
+                          <tr className="bg-slate-50/50 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800">
+                            <td colSpan={4} className="px-5 py-3">
+                              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-3">
+                                <div className="text-xs font-bold text-slate-600 dark:text-slate-400 mb-2 flex items-center gap-1.5">
+                                  <FileCheck2 size={14} className="text-blue-600 dark:text-blue-400" />
                                   Assignments Published by {item.teacher_name} ({item.subject_name}):
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <div className="flex flex-col gap-1.5">
                                   {item.assignments.map((asg, idx) => (
                                     <div
                                       key={asg.id || idx}
-                                      style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        padding: '8px 12px',
-                                        borderRadius: 6,
-                                        background: 'var(--bg-card)',
-                                        border: '1px solid var(--border)',
-                                        fontSize: 12.5
-                                      }}
+                                      className="flex justify-between items-center p-2 rounded-md bg-slate-50/70 dark:bg-slate-900/50 border border-slate-200/70 dark:border-slate-700/70 text-xs"
                                     >
-                                      <div style={{ fontWeight: 600, color: 'var(--text)' }}>
+                                      <div className="font-semibold text-slate-900 dark:text-slate-100">
                                         {asg.title || 'Untitled Assignment'}
                                       </div>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: 14, color: 'var(--text-muted)', fontSize: 11.5 }}>
+                                      <div className="flex items-center gap-3.5 text-slate-500 dark:text-slate-400 text-[11px]">
                                         {asg.assigned_date && (
                                           <span>Assigned: <strong>{asg.assigned_date}</strong></span>
                                         )}

@@ -75,6 +75,7 @@ const PAGE_ITEMS: (SearchItem & { keywords: string[] })[] = [
     to: '/student/assignments',
     icon: FileCheck
   },
+  /*
   {
     id: 'page-exams',
     category: 'page',
@@ -85,6 +86,7 @@ const PAGE_ITEMS: (SearchItem & { keywords: string[] })[] = [
     to: '/student/exams',
     icon: GraduationCap
   },
+  */
   {
     id: 'page-announcements',
     category: 'page',

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useAuth } from '../../hooks/useAuth';
 import {
-  BookOpen, Plus, FileText, CheckCircle2, Clock, AlertTriangle, AlertCircle,
+  BookOpen, GraduationCap, Plus, FileText, CheckCircle2, Clock, AlertTriangle, AlertCircle,
   Loader2, RefreshCw, Send, Eye, X, Award, Search, Paperclip, Download, Upload,
-  Maximize2, Minimize2, Edit, Trash2, Calendar, Check, FileCheck
+  Maximize2, Minimize2, Edit, Trash2, Calendar, Check, FileCheck, Image
 } from 'lucide-react';
 import { api } from '../../api';
 import { PersonProfileLink } from '../../components/PersonProfileLink';
@@ -46,6 +47,7 @@ interface AssignmentRecord {
   document_data?: string;
   storage_key?: string | null;
   attachments?: AssignmentAttachmentItem[];
+  is_owner?: boolean;
 }
 
 interface UploadDocItem {
@@ -104,8 +106,111 @@ const formatBytes = (bytes?: number | null) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 };
 
+export function formatAssignmentDate(dateStr?: string | null): string {
+  if (!dateStr) return '—';
+  const s = String(dateStr).trim();
+  if (!s || s === 'N/A') return '—';
+  const match = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    const year = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1;
+    const day = parseInt(match[3], 10);
+    if (s.includes('T') || s.includes(':')) {
+      const d = new Date(s);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          timeZone: 'Asia/Kolkata'
+        });
+      }
+    }
+    const d = new Date(year, month, day);
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return s;
+  return d.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'Asia/Kolkata'
+  });
+}
+
+const getFileIcon = (fileName?: string, mimeType?: string) => {
+  const lowerName = (fileName || '').toLowerCase();
+  const lowerMime = (mimeType || '').toLowerCase();
+
+  if (lowerMime === 'application/pdf' || lowerName.endsWith('.pdf')) {
+    return <FileText size={18} color="#dc2626" />;
+  }
+  if (
+    lowerMime.startsWith('image/') ||
+    lowerName.endsWith('.png') ||
+    lowerName.endsWith('.jpg') ||
+    lowerName.endsWith('.jpeg') ||
+    lowerName.endsWith('.webp') ||
+    lowerName.endsWith('.gif')
+  ) {
+    return <Image size={18} color="#2563eb" />;
+  }
+  if (lowerName.endsWith('.doc') || lowerName.endsWith('.docx')) {
+    return <FileText size={18} color="#2563eb" />;
+  }
+  if (lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx') || lowerName.endsWith('.csv')) {
+    return <FileCheck size={18} color="#16a34a" />;
+  }
+  return <Paperclip size={18} color="#2563eb" />;
+};
+
+const isPreviewableFile = (fileName?: string, mimeType?: string) => {
+  const lower = (fileName || '').toLowerCase();
+  const m = (mimeType || '').toLowerCase();
+  return (
+    m === 'application/pdf' ||
+    m.startsWith('image/') ||
+    lower.endsWith('.pdf') ||
+    lower.endsWith('.png') ||
+    lower.endsWith('.jpg') ||
+    lower.endsWith('.jpeg') ||
+    lower.endsWith('.webp') ||
+    lower.endsWith('.gif')
+  );
+};
+
+function clampTo4DigitYear(val: string): string {
+  if (!val) return '';
+  const parts = val.split('-');
+  if (parts[0] && parts[0].length > 4) {
+    parts[0] = parts[0].slice(0, 4);
+    return parts.join('-');
+  }
+  return val;
+}
 export function TeacherAssignments() {
-  const [assignments, setAssignments] = useState<AssignmentRecord[]>([]);
+  const { user } = useAuth();
+
+  // Two-Section Dashboard State: 'published' = Published by Me, 'mentored' = My Mentored Class
+  const [activeTab, setActiveTab] = useState<'published' | 'mentored'>('published');
+  const [publishedAssignments, setPublishedAssignments] = useState<AssignmentRecord[]>([]);
+  const [mentoredAssignments, setMentoredAssignments] = useState<AssignmentRecord[]>([]);
+  const [mentorInfo, setMentorInfo] = useState<{
+    has_mentor_class: boolean;
+    mentored_classes: Array<{
+      mentor_record_id: string;
+      class_id: string;
+      section_id: string;
+      class_number: number;
+      class_label: string;
+      section_name: string;
+      display_name: string;
+    }>;
+  }>({
+    has_mentor_class: false,
+    mentored_classes: []
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -178,13 +283,21 @@ export function TeacherAssignments() {
   const [gradeFeedback, setGradeFeedback] = useState<string>('');
   const [savingGrade, setSavingGrade] = useState(false);
 
-  // 1. Load Published Assignments
+  // 1. Load Published and Mentored Class Assignments
   const loadAssignments = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await api.get('/teacher/assignments?scope=all');
-      setAssignments(Array.isArray(res.data) ? res.data : []);
+      const [pubRes, mentRes, infoRes] = await Promise.all([
+        api.get('/teacher/assignments/my-published'),
+        api.get('/teacher/assignments/my-mentored'),
+        api.get('/teacher/assignments/mentor-info').catch(() => ({ data: { has_mentor_class: false, mentored_classes: [] } }))
+      ]);
+      setPublishedAssignments(Array.isArray(pubRes.data) ? pubRes.data : []);
+      setMentoredAssignments(Array.isArray(mentRes.data) ? mentRes.data : []);
+      if (infoRes?.data) {
+        setMentorInfo(infoRes.data);
+      }
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Failed to load assignments.');
     } finally {
@@ -203,7 +316,7 @@ export function TeacherAssignments() {
         res.data.forEach((row: any) => {
           if (row.class_id && !cMap.has(row.class_id)) {
             const num = Number(row.class_number ?? 1);
-            const lbl = row.class_label || (num === -1 ? 'L-KG' : num === 0 ? 'U-KG' : `Class ${num}`);
+            const lbl = row.class_label || (num === -1 ? 'Class L KG' : num === 0 ? 'Class U KG' : `Class ${num}`);
             cMap.set(row.class_id, {
               id: row.class_id,
               class_number: num,
@@ -238,7 +351,7 @@ export function TeacherAssignments() {
 
       const mappedClasses: ClassOption[] = clsArr.map((c: any) => {
         const num = Number(c.class_number ?? c.classNumber ?? 1);
-        const lbl = c.label || c.name || (num === -1 ? 'L-KG' : num === 0 ? 'U-KG' : `Class ${num}`);
+        const lbl = c.label || c.name || (num === -1 ? 'Class L KG' : num === 0 ? 'Class U KG' : `Class ${num}`);
         return {
           id: c.id,
           class_number: num,
@@ -417,6 +530,58 @@ export function TeacherAssignments() {
       URL.revokeObjectURL(url);
     } catch (err: any) {
       alert(err?.response?.data?.message || 'Failed to download attachment.');
+    }
+  };
+
+  const openSubAttachmentPreview = async (
+    assignmentId: string,
+    submissionId: string,
+    attachmentId: string,
+    fileName: string,
+    mimeType: string
+  ) => {
+    setPreviewState({
+      open: true,
+      fileName,
+      mimeType,
+      blobUrl: null,
+      loading: true,
+      error: null,
+      assignmentId
+    });
+    try {
+      const res = await api.get(
+        `/teacher/assignments/${assignmentId}/submissions/${submissionId}/attachments/${attachmentId}/preview`,
+        { responseType: 'blob' }
+      );
+      const objectUrl = URL.createObjectURL(res.data);
+      setPreviewState((prev) => (prev ? { ...prev, blobUrl: objectUrl, loading: false } : null));
+    } catch (_e) {
+      setPreviewState((prev) => (prev ? { ...prev, loading: false, error: 'Failed to load attachment preview.' } : null));
+    }
+  };
+
+  const downloadSubAttachment = async (
+    assignmentId: string,
+    submissionId: string,
+    attachmentId: string,
+    fileName: string
+  ) => {
+    try {
+      const res = await api.get(
+        `/teacher/assignments/${assignmentId}/submissions/${submissionId}/attachments/${attachmentId}/download`,
+        { responseType: 'blob' }
+      );
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Failed to download student attachment.');
     }
   };
 
@@ -605,22 +770,27 @@ export function TeacherAssignments() {
     }
   };
 
+  // Active list based on selected tab: Section 1 (Published by Me) vs Section 2 (My Mentored Class)
+  const currentList = activeTab === 'published' ? publishedAssignments : mentoredAssignments;
+
   // Filtered assignments
   const filteredAssignments = useMemo(() => {
-    return assignments.filter((a) => {
+    return currentList.filter((a) => {
       const matchesSearch =
-        searchQuery === '' ||
+        searchQuery.trim() === '' ||
         a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (a.description && a.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (a.teacher_name && a.teacher_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (a.subject_name && a.subject_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (a.section_name && a.section_name.toLowerCase().includes(searchQuery.toLowerCase()));
 
       const matchesClass = filterClass === '' || a.class_id === filterClass;
       return matchesSearch && matchesClass;
     });
-  }, [assignments, searchQuery, filterClass]);
+  }, [currentList, searchQuery, filterClass]);
 
   return (
-    <div className="teacher-assignments-page" style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 20px', fontFamily: 'inherit' }}>
+    <div className="teacher-assignments-page" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0', fontFamily: 'inherit' }}>
       {/* Header Bar */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 24 }}>
         <div>
@@ -676,6 +846,141 @@ export function TeacherAssignments() {
           </button>
         </div>
       </div>
+
+      {/* Two-Section Switcher: SECTION 1 (Published by Me) vs SECTION 2 (My Mentored Class) */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          borderBottom: '2px solid var(--border, #e2e8f0)',
+          marginBottom: 16
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setActiveTab('published')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'published' ? '3px solid #4f46e5' : '3px solid transparent',
+            color: activeTab === 'published' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            fontWeight: activeTab === 'published' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <BookOpen size={18} />
+          <span>Published by Me</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 12,
+              background: activeTab === 'published' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
+              color: activeTab === 'published' ? '#4338ca' : '#64748b',
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {publishedAssignments.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('mentored')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'mentored' ? '3px solid #4f46e5' : '3px solid transparent',
+            color: activeTab === 'mentored' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            fontWeight: activeTab === 'mentored' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <GraduationCap size={18} />
+          <span>My Mentored Class</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 12,
+              background: activeTab === 'mentored' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
+              color: activeTab === 'mentored' ? '#4338ca' : '#64748b',
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {mentoredAssignments.length}
+          </span>
+        </button>
+      </div>
+
+      {/* Context Banner */}
+      {activeTab === 'published' ? (
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: 8,
+            background: 'var(--card-subtle, #f8fafc)',
+            border: '1px solid var(--border, #e2e8f0)',
+            marginBottom: 20,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            fontSize: 13,
+            color: 'var(--text-secondary, #475569)'
+          }}
+        >
+          <BookOpen size={16} color="#4f46e5" />
+          <span>
+            Showing assignments published by <strong>you</strong> across all classes. You have full edit, delete, and submission grading permissions.
+          </span>
+        </div>
+      ) : (
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: 8,
+            background: mentorInfo.has_mentor_class ? '#f0fdf4' : '#fffbeb',
+            border: mentorInfo.has_mentor_class ? '1px solid #bbf7d0' : '1px solid #fde68a',
+            marginBottom: 20,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            fontSize: 13,
+            color: mentorInfo.has_mentor_class ? '#166534' : '#92400e'
+          }}
+        >
+          <GraduationCap size={16} color={mentorInfo.has_mentor_class ? '#16a34a' : '#d97706'} />
+          <span>
+            {mentorInfo.has_mentor_class ? (
+              <>
+                Showing assignments published for your mentored class (
+                <strong>
+                  {mentorInfo.mentored_classes.map((c) => c.display_name).join(', ')}
+                </strong>
+                ) by all teachers. Assignments created by other teachers are read-only.
+              </>
+            ) : (
+              <>
+                You are not currently assigned as a class mentor to any section. Mentor assignments are configured by school administrators.
+              </>
+            )}
+          </span>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div
@@ -746,7 +1051,7 @@ export function TeacherAssignments() {
       >
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
-            Published Assignments ({filteredAssignments.length})
+            {activeTab === 'published' ? 'Assignments Published by Me' : 'Mentored Class Assignments'} ({filteredAssignments.length})
           </h2>
         </div>
 
@@ -775,49 +1080,83 @@ export function TeacherAssignments() {
             </button>
           </div>
         ) : filteredAssignments.length === 0 ? (
-          <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
-            <BookOpen size={40} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
-            <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: 'var(--text, #1e293b)' }}>No Assignments Found</h3>
-            <p style={{ margin: '0 0 16px', fontSize: 14 }}>Create and publish your first assignment to get started.</p>
-            <button
-              type="button"
-              onClick={() => setShowCreateModal(true)}
-              style={{
-                padding: '8px 16px',
-                borderRadius: 8,
-                border: 'none',
-                background: '#4f46e5',
-                color: '#ffffff',
-                fontWeight: 600,
-                fontSize: 13,
-                cursor: 'pointer'
-              }}
-            >
-              <Plus size={14} style={{ display: 'inline', marginRight: 6 }} /> Create Assignment
-            </button>
-          </div>
+          activeTab === 'published' ? (
+            <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
+              <BookOpen size={40} style={{ margin: '0 auto 12px', opacity: 0.5, color: '#4f46e5' }} />
+              <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: 'var(--text, #1e293b)' }}>No Assignments Published by You</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 14 }}>Create and publish your first assignment across any class or section.</p>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(true)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: '#4f46e5',
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer'
+                }}
+              >
+                <Plus size={14} style={{ display: 'inline', marginRight: 6 }} /> Create Assignment
+              </button>
+            </div>
+          ) : !mentorInfo.has_mentor_class ? (
+            <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
+              <GraduationCap size={40} style={{ margin: '0 auto 12px', opacity: 0.5, color: '#d97706' }} />
+              <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: 'var(--text, #1e293b)' }}>No Mentored Class Assigned</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 14, maxWidth: 440, marginInline: 'auto' }}>
+                You are not currently assigned as a class mentor to any section. Mentor assignments are configured by school administrators.
+              </p>
+            </div>
+          ) : (
+            <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
+              <BookOpen size={40} style={{ margin: '0 auto 12px', opacity: 0.5, color: '#16a34a' }} />
+              <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: 'var(--text, #1e293b)' }}>No Assignments for Mentored Class</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 14 }}>
+                No assignments have been published for {mentorInfo.mentored_classes.map((c) => c.display_name).join(', ')} yet.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(true)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: '#4f46e5',
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer'
+                }}
+              >
+                <Plus size={14} style={{ display: 'inline', marginRight: 6 }} /> Create Assignment
+              </button>
+            </div>
+          )
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table className="as-assignment-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: 'var(--card-subtle, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>Assignment Title</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>Class & Section</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>Assigned Date</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>Due Date</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)', textAlign: 'center' }}>Attachments</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>Published On</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)', textAlign: 'right' }}>Actions</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)', minWidth: 200 }}>Assignment Title</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)', minWidth: 140 }}>Class & Section</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)', minWidth: 130 }}>Assigned Date</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)', minWidth: 130 }}>Due Date</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)', textAlign: 'center', minWidth: 110 }}>Attachments</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)', minWidth: 130 }}>Published On</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)', textAlign: 'right', minWidth: 320 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredAssignments.map((asg) => {
                   const attCount = asg.attachment_count ?? (Array.isArray(asg.attachments) ? asg.attachments.length : (asg.document_name ? 1 : 0));
                   const classDisplay = asg.class_number !== undefined
-                    ? (asg.class_number === -1 ? 'L-KG' : asg.class_number === 0 ? 'U-KG' : `Class ${asg.class_number}`)
+                    ? (asg.class_number === -1 ? 'Class L KG' : asg.class_number === 0 ? 'Class U KG' : `Class ${asg.class_number}`)
                     : 'Class';
                   const sectionDisplay = asg.section_name ? `Sec ${asg.section_name}` : 'All Sections';
-                  const pubDate = asg.created_at ? new Date(asg.created_at).toLocaleDateString() : 'N/A';
+                  const pubDate = formatAssignmentDate(asg.created_at);
 
                   return (
                     <tr
@@ -828,24 +1167,37 @@ export function TeacherAssignments() {
                     >
                       <td style={{ padding: '14px 16px' }}>
                         <div style={{ fontWeight: 600, color: 'var(--text, #0f172a)', marginBottom: 2 }}>{asg.title}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748b)', maxWidth: 280, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748b)', maxWidth: 300, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4 }}>
                           {asg.description}
                         </div>
+                        {activeTab === 'mentored' && (
+                          <div>
+                            {asg.is_owner ? (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '1px 6px', borderRadius: 4, background: '#dbeafe', color: '#1e40af', fontSize: 11, fontWeight: 600 }}>
+                                Published by You
+                              </span>
+                            ) : (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '1px 6px', borderRadius: 4, background: '#f1f5f9', color: '#475569', fontSize: 11, fontWeight: 500 }}>
+                                By: {asg.teacher_name || 'Other Teacher'} (Read-Only)
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
-                      <td style={{ padding: '14px 16px' }}>
+                      <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
                         <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: 6, background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', fontSize: 12, fontWeight: 600 }}>
                           {classDisplay} • {sectionDisplay}
                         </span>
                       </td>
                       <td style={{ padding: '14px 16px', color: 'var(--text, #334155)', whiteSpace: 'nowrap' }}>
                         <Calendar size={13} style={{ display: 'inline', marginRight: 4, color: '#64748b' }} />
-                        {asg.assigned_date || (asg.created_at ? asg.created_at.slice(0, 10) : 'N/A')}
+                        {formatAssignmentDate(asg.assigned_date || asg.created_at)}
                       </td>
                       <td style={{ padding: '14px 16px', color: 'var(--text, #334155)', whiteSpace: 'nowrap' }}>
                         <Clock size={13} style={{ display: 'inline', marginRight: 4, color: '#d97706' }} />
-                        <span style={{ fontWeight: 600 }}>{asg.due_date}</span>
+                        <span style={{ fontWeight: 600 }}>{formatAssignmentDate(asg.due_date)}</span>
                       </td>
-                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                      <td style={{ padding: '14px 16px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                         {attCount > 0 ? (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 12, background: 'rgba(2, 132, 199, 0.1)', color: 'var(--primary-400, #38bdf8)', fontSize: 12, fontWeight: 600 }}>
                             <Paperclip size={12} /> {attCount}
@@ -858,7 +1210,7 @@ export function TeacherAssignments() {
                         {pubDate}
                       </td>
                       <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'inline-flex', gap: 6 }}>
+                        <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
                           <button
                             type="button"
                             title="View Assignment"
@@ -880,47 +1232,52 @@ export function TeacherAssignments() {
                             <Eye size={13} /> View
                           </button>
 
-                          <button
-                            type="button"
-                            title="Edit Assignment"
-                            onClick={() => handleOpenEdit(asg)}
-                            style={{
-                              padding: '6px 10px',
-                              borderRadius: 6,
-                              border: '1px solid var(--border, #cbd5e1)',
-                              background: 'var(--bg, #ffffff)',
-                              color: '#0284c7',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                              fontSize: 12,
-                              fontWeight: 500
-                            }}
-                          >
-                            <Edit size={13} /> Edit
-                          </button>
+                          {/* Only author can Edit or Delete */}
+                          {asg.is_owner && (
+                            <>
+                              <button
+                                type="button"
+                                title="Edit Assignment"
+                                onClick={() => handleOpenEdit(asg)}
+                                style={{
+                                  padding: '6px 10px',
+                                  borderRadius: 6,
+                                  border: '1px solid var(--border, #cbd5e1)',
+                                  background: 'var(--bg, #ffffff)',
+                                  color: '#0284c7',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  fontSize: 12,
+                                  fontWeight: 500
+                                }}
+                              >
+                                <Edit size={13} /> Edit
+                              </button>
 
-                          <button
-                            type="button"
-                            title="Delete Assignment"
-                            onClick={() => setDeleteTarget(asg)}
-                            style={{
-                              padding: '6px 10px',
-                              borderRadius: 6,
-                              border: '1px solid rgba(239, 68, 68, 0.3)',
-                              background: 'rgba(239, 68, 68, 0.12)',
-                              color: '#ef4444',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                              fontSize: 12,
-                              fontWeight: 500
-                            }}
-                          >
-                            <Trash2 size={13} /> Delete
-                          </button>
+                              <button
+                                type="button"
+                                title="Delete Assignment"
+                                onClick={() => setDeleteTarget(asg)}
+                                style={{
+                                  padding: '6px 10px',
+                                  borderRadius: 6,
+                                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                                  background: 'rgba(239, 68, 68, 0.12)',
+                                  color: '#ef4444',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  fontSize: 12,
+                                  fontWeight: 500
+                                }}
+                              >
+                                <Trash2 size={13} /> Delete
+                              </button>
+                            </>
+                          )}
 
                           <button
                             type="button"
@@ -1103,8 +1460,10 @@ export function TeacherAssignments() {
                   </label>
                   <input
                     type="date"
+                    min="1900-01-01"
+                    max="9999-12-31"
                     value={createForm.assigned_date}
-                    onChange={(e) => setCreateForm({ ...createForm, assigned_date: e.target.value })}
+                    onChange={(e) => setCreateForm({ ...createForm, assigned_date: clampTo4DigitYear(e.target.value) })}
                     style={{
                       width: '100%',
                       padding: '10px 12px',
@@ -1124,8 +1483,10 @@ export function TeacherAssignments() {
                   </label>
                   <input
                     type="date"
+                    min="1900-01-01"
+                    max="9999-12-31"
                     value={createForm.due_date}
-                    onChange={(e) => setCreateForm({ ...createForm, due_date: e.target.value })}
+                    onChange={(e) => setCreateForm({ ...createForm, due_date: clampTo4DigitYear(e.target.value) })}
                     style={{
                       width: '100%',
                       padding: '10px 12px',
@@ -1163,118 +1524,149 @@ export function TeacherAssignments() {
                 />
               </div>
 
-              {/* Upload Multiple Attachments */}
+              {/* Attach Document / File */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 4 }}>
-                  Attachments (PDF, JPG, PNG, DOCX, XLSX)
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                  Attach Document / File
                 </label>
-                <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
-                  Upload up to 5 files. Max 10MB per file, 25MB total.
-                </p>
-
-                <div
-                  className="as-assignment-upload-zone"
-                  style={{
-                    border: '2px dashed var(--border, #cbd5e1)',
-                    borderRadius: 8,
-                    padding: '16px 20px',
-                    textAlign: 'center',
-                    background: 'var(--card-subtle, #f8fafc)',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => document.getElementById('create-file-input')?.click()}
-                >
-                  <Upload size={24} style={{ color: '#6366f1', margin: '0 auto 8px' }} />
-                  <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)' }}>
-                    Click to select files or browse
-                  </p>
-                  <span style={{ fontSize: 11, color: '#64748b' }}>Supports PDF, JPG, PNG, DOC, DOCX</span>
-                  <input
-                    id="create-file-input"
-                    type="file"
-                    multiple
-                    style={{ display: 'none' }}
-                    onChange={(e) =>
-                      handleFileSelection(
-                        e,
-                        createFiles.length,
-                        createFiles.reduce((acc, f) => acc + f.size, 0),
-                        (newItems) => setCreateFiles((prev) => [...prev, ...newItems]),
-                        (msg) => setCreateError(msg)
-                      )
-                    }
-                  />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <label
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '7px 14px',
+                      borderRadius: 6,
+                      border: '1px dashed var(--border, #cbd5e1)',
+                      backgroundColor: 'var(--card-subtle, #f8fafc)',
+                      color: 'var(--text, #334155)',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                    title="Attach files to this assignment"
+                  >
+                    <Paperclip size={15} color="#2563eb" />
+                    <span>{createFiles.length > 0 ? 'Attach More Files' : 'Attach Document / File'}</span>
+                    <input
+                      id="create-file-input"
+                      type="file"
+                      multiple
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg"
+                      style={{ display: 'none' }}
+                      onChange={(e) =>
+                        handleFileSelection(
+                          e,
+                          createFiles.length,
+                          createFiles.reduce((acc, f) => acc + f.size, 0),
+                          (newItems) => setCreateFiles((prev) => [...prev, ...newItems]),
+                          (msg) => setCreateError(msg)
+                        )
+                      }
+                    />
+                  </label>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                    {createFiles.length > 0
+                      ? `${createFiles.length}/5 files selected (${formatBytes(createFiles.reduce((acc, f) => acc + f.size, 0))})`
+                      : 'Supports PDF, JPG, PNG, DOCX, XLSX (up to 5 files, max 10MB each)'}
+                  </span>
                 </div>
 
                 {/* Pre-Publish Attachment List */}
                 {createFiles.length > 0 && (
-                  <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {createFiles.map((fileItem, idx) => (
-                      <div
-                        key={idx}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '8px 12px',
-                          borderRadius: 8,
-                          background: 'var(--bg, #ffffff)',
-                          border: '1px solid var(--border, #e2e8f0)'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                          <Paperclip size={14} style={{ color: '#4f46e5', flexShrink: 0 }} />
-                          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {fileItem.name}
-                          </span>
-                          <span style={{ fontSize: 11, color: '#64748b', flexShrink: 0 }}>
-                            ({formatBytes(fileItem.size)})
-                          </span>
-                        </div>
+                  <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {createFiles.map((fileItem, idx) => {
+                      const isPreviewable = isPreviewableFile(fileItem.name, fileItem.mimeType);
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '8px 12px',
+                            borderRadius: 6,
+                            background: 'var(--card, #ffffff)',
+                            border: '1px solid var(--border, #cbd5e1)',
+                            gap: 10
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                            <div style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 6,
+                              backgroundColor: '#eff6ff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              {getFileIcon(fileItem.name, fileItem.mimeType)}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{
+                                fontSize: 13,
+                                fontWeight: 600,
+                                color: 'var(--text, #0f172a)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {fileItem.name}
+                              </div>
+                              <div style={{ fontSize: 11, color: '#64748b' }}>
+                                {formatBytes(fileItem.size)}
+                              </div>
+                            </div>
+                          </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                          {(fileItem.mimeType.startsWith('image/') || fileItem.mimeType === 'application/pdf') && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                            {isPreviewable && (
+                              <button
+                                type="button"
+                                onClick={() => openPreview(fileItem.name, fileItem.mimeType, fileItem.blobUrl)}
+                                style={{
+                                  padding: '4px 10px',
+                                  borderRadius: 5,
+                                  border: '1px solid #bfdbfe',
+                                  background: '#eff6ff',
+                                  color: '#2563eb',
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4
+                                }}
+                              >
+                                <Eye size={12} /> Preview
+                              </button>
+                            )}
                             <button
                               type="button"
-                              onClick={() => openPreview(fileItem.name, fileItem.mimeType, fileItem.blobUrl)}
+                              title="Remove attachment"
+                              onClick={() => {
+                                if (fileItem.blobUrl) URL.revokeObjectURL(fileItem.blobUrl);
+                                setCreateFiles((prev) => prev.filter((_, i) => i !== idx));
+                              }}
                               style={{
-                                padding: '4px 8px',
-                                borderRadius: 4,
-                                border: '1px solid var(--border, #cbd5e1)',
-                                background: 'transparent',
-                                color: '#0284c7',
-                                fontSize: 12,
+                                background: 'none',
+                                border: 'none',
                                 cursor: 'pointer',
+                                color: '#ef4444',
+                                padding: 4,
                                 display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4
+                                alignItems: 'center'
                               }}
                             >
-                              <Eye size={12} /> Preview
+                              <X size={15} />
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            title="Remove attachment"
-                            onClick={() => {
-                              if (fileItem.blobUrl) URL.revokeObjectURL(fileItem.blobUrl);
-                              setCreateFiles((prev) => prev.filter((_, i) => i !== idx));
-                            }}
-                            style={{
-                              padding: '4px 6px',
-                              borderRadius: 4,
-                              border: '1px solid rgba(239, 68, 68, 0.3)',
-                              background: 'rgba(239, 68, 68, 0.15)',
-                              color: '#ef4444',
-                              fontSize: 12,
-                              cursor: 'pointer'
-                            }}
-                          >
-                            <X size={13} />
-                          </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -1380,19 +1772,19 @@ export function TeacherAssignments() {
                 <div>
                   <span style={{ display: 'block', color: '#64748b', fontSize: 11, fontWeight: 600 }}>ASSIGNED DATE</span>
                   <span style={{ fontWeight: 600, color: 'var(--text, #1e293b)' }}>
-                    {viewAssignment.assigned_date || (viewAssignment.created_at ? viewAssignment.created_at.slice(0, 10) : 'N/A')}
+                    {formatAssignmentDate(viewAssignment.assigned_date || viewAssignment.created_at)}
                   </span>
                 </div>
                 <div>
                   <span style={{ display: 'block', color: '#64748b', fontSize: 11, fontWeight: 600 }}>DUE DATE</span>
                   <span style={{ fontWeight: 600, color: '#d97706' }}>
-                    {viewAssignment.due_date}
+                    {formatAssignmentDate(viewAssignment.due_date)}
                   </span>
                 </div>
                 <div>
                   <span style={{ display: 'block', color: '#64748b', fontSize: 11, fontWeight: 600 }}>PUBLISHED ON</span>
                   <span style={{ fontWeight: 600, color: 'var(--text, #1e293b)' }}>
-                    {viewAssignment.created_at ? new Date(viewAssignment.created_at).toLocaleDateString() : 'N/A'}
+                    {formatAssignmentDate(viewAssignment.created_at)}
                   </span>
                 </div>
                 <div>
@@ -1414,8 +1806,16 @@ export function TeacherAssignments() {
 
               {/* Attachments List */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #64748b)', marginBottom: 6 }}>
-                  ATTACHMENTS ({Array.isArray(viewAssignment.attachments) ? viewAssignment.attachments.length : (viewAssignment.document_name ? 1 : 0)})
+                <label style={{
+                  display: 'block',
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  color: 'var(--text-muted, #64748b)',
+                  marginBottom: 8
+                }}>
+                  Attached Documents ({Array.isArray(viewAssignment.attachments) ? viewAssignment.attachments.length : (viewAssignment.document_name ? 1 : 0)})
                 </label>
 
                 {((Array.isArray(viewAssignment.attachments) && viewAssignment.attachments.length > 0) || viewAssignment.document_name) ? (
@@ -1428,71 +1828,102 @@ export function TeacherAssignments() {
                           file_size: viewAssignment.document_size || 0,
                           mime_type: viewAssignment.document_mime || 'application/pdf'
                         }]
-                    ).map((att, idx) => (
-                      <div
-                        key={att.id || idx}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '10px 14px',
-                          borderRadius: 8,
-                          background: 'var(--bg, #ffffff)',
-                          border: '1px solid var(--border, #e2e8f0)'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                          <Paperclip size={16} style={{ color: '#0284c7', flexShrink: 0 }} />
-                          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #0f172a)' }}>
-                            {att.file_name}
-                          </span>
-                          {att.file_size ? (
-                            <span style={{ fontSize: 11, color: '#64748b' }}>({formatBytes(att.file_size)})</span>
-                          ) : null}
-                        </div>
+                    ).map((att, idx) => {
+                      const isPreviewable = isPreviewableFile(att.file_name, att.mime_type);
+                      return (
+                        <div
+                          key={att.id || idx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '12px 16px',
+                            borderRadius: 8,
+                            backgroundColor: 'var(--card-subtle, #f8fafc)',
+                            border: '1px solid var(--border, #cbd5e1)',
+                            gap: 12,
+                            flexWrap: 'wrap'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                            <div style={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: 6,
+                              backgroundColor: '#eff6ff',
+                              color: '#2563eb',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              {getFileIcon(att.file_name, att.mime_type)}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{
+                                fontWeight: 600,
+                                fontSize: 13.5,
+                                color: 'var(--text, #0f172a)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {att.file_name}
+                              </div>
+                              {att.file_size ? (
+                                <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>
+                                  {formatBytes(att.file_size)}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
 
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button
-                            type="button"
-                            onClick={() => openPreview(att.file_name, att.mime_type, null, viewAssignment.id, att.id)}
-                            style={{
-                              padding: '6px 12px',
-                              borderRadius: 6,
-                              border: '1px solid var(--border, #cbd5e1)',
-                              background: 'transparent',
-                              color: '#0284c7',
-                              fontSize: 12,
-                              fontWeight: 500,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4
-                            }}
-                          >
-                            <Eye size={13} /> Preview Attachment
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => downloadAttachment(viewAssignment.id, att.file_name, att.id)}
-                            style={{
-                              padding: '6px 12px',
-                              borderRadius: 6,
-                              border: '1px solid var(--border, #cbd5e1)',
-                              background: 'transparent',
-                              color: 'var(--text, #334155)',
-                              fontSize: 12,
-                              fontWeight: 500,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4
-                            }}
-                          >
-                            <Download size={13} /> Download Attachment
-                          </button>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {isPreviewable && (
+                              <button
+                                type="button"
+                                onClick={() => openPreview(att.file_name, att.mime_type, null, viewAssignment.id, att.id)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  padding: '7px 14px',
+                                  borderRadius: 6,
+                                  backgroundColor: '#eff6ff',
+                                  color: '#2563eb',
+                                  fontSize: 12.5,
+                                  fontWeight: 600,
+                                  border: '1px solid #bfdbfe',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <Eye size={14} /> Preview
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => downloadAttachment(viewAssignment.id, att.file_name, att.id)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '7px 14px',
+                                borderRadius: 6,
+                                backgroundColor: '#2563eb',
+                                color: '#ffffff',
+                                fontSize: 12.5,
+                                fontWeight: 600,
+                                border: 'none',
+                                cursor: 'pointer',
+                                boxShadow: '0 1px 2px rgba(37,99,235,0.2)'
+                              }}
+                            >
+                              <Download size={14} /> Download File
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <p style={{ fontSize: 13, color: 'var(--text-muted, #94a3b8)', fontStyle: 'italic', margin: 0 }}>
@@ -1662,8 +2093,10 @@ export function TeacherAssignments() {
                   </label>
                   <input
                     type="date"
+                    min="1900-01-01"
+                    max="9999-12-31"
                     value={editForm.assigned_date}
-                    onChange={(e) => setEditForm({ ...editForm, assigned_date: e.target.value })}
+                    onChange={(e) => setEditForm({ ...editForm, assigned_date: clampTo4DigitYear(e.target.value) })}
                     style={{
                       width: '100%',
                       padding: '10px 12px',
@@ -1683,8 +2116,10 @@ export function TeacherAssignments() {
                   </label>
                   <input
                     type="date"
+                    min="1900-01-01"
+                    max="9999-12-31"
                     value={editForm.due_date}
-                    onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value })}
+                    onChange={(e) => setEditForm({ ...editForm, due_date: clampTo4DigitYear(e.target.value) })}
                     style={{
                       width: '100%',
                       padding: '10px 12px',
@@ -1730,6 +2165,7 @@ export function TeacherAssignments() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {editExistingAtts.map((att) => {
                       const isMarked = editRemovedIds.includes(att.id || '');
+                      const isPreviewable = isPreviewableFile(att.file_name, att.mime_type);
                       return (
                         <div
                           key={att.id}
@@ -1738,26 +2174,73 @@ export function TeacherAssignments() {
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             padding: '8px 12px',
-                            borderRadius: 8,
+                            borderRadius: 6,
                             background: isMarked ? '#fee2e2' : 'var(--card-subtle, #f8fafc)',
-                            border: `1px solid ${isMarked ? '#fca5a5' : 'var(--border, #e2e8f0)'}`,
-                            opacity: isMarked ? 0.6 : 1
+                            border: `1px solid ${isMarked ? '#fca5a5' : 'var(--border, #cbd5e1)'}`,
+                            opacity: isMarked ? 0.6 : 1,
+                            gap: 10
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                            <Paperclip size={14} style={{ color: '#0284c7' }} />
-                            <span style={{ fontSize: 13, textDecoration: isMarked ? 'line-through' : 'none', color: isMarked ? '#991b1b' : 'var(--text, #0f172a)' }}>
-                              {att.file_name}
-                            </span>
-                            {att.file_size ? <span style={{ fontSize: 11, color: '#64748b' }}>({formatBytes(att.file_size)})</span> : null}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                            <div style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 6,
+                              backgroundColor: isMarked ? '#fecaca' : '#eff6ff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              {getFileIcon(att.file_name, att.mime_type)}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{
+                                fontSize: 13,
+                                fontWeight: 600,
+                                textDecoration: isMarked ? 'line-through' : 'none',
+                                color: isMarked ? '#991b1b' : 'var(--text, #0f172a)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {att.file_name}
+                              </div>
+                              {att.file_size ? (
+                                <div style={{ fontSize: 11, color: '#64748b' }}>
+                                  {formatBytes(att.file_size)}
+                                </div>
+                              ) : null}
+                            </div>
                           </div>
 
-                          <div style={{ display: 'flex', gap: 6 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                            {!isMarked && isPreviewable && editAssignment && (
+                              <button
+                                type="button"
+                                onClick={() => openPreview(att.file_name, att.mime_type, null, editAssignment.id, att.id)}
+                                style={{
+                                  padding: '4px 8px',
+                                  borderRadius: 5,
+                                  border: '1px solid #bfdbfe',
+                                  background: '#eff6ff',
+                                  color: '#2563eb',
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4
+                                }}
+                              >
+                                <Eye size={12} /> Preview
+                              </button>
+                            )}
                             {isMarked ? (
                               <button
                                 type="button"
                                 onClick={() => setEditRemovedIds((prev) => prev.filter((id) => id !== att.id))}
-                                style={{ padding: '3px 8px', borderRadius: 4, border: 'none', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', fontSize: 12, cursor: 'pointer' }}
+                                style={{ padding: '4px 10px', borderRadius: 5, border: 'none', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                               >
                                 Undo
                               </button>
@@ -1765,7 +2248,7 @@ export function TeacherAssignments() {
                               <button
                                 type="button"
                                 onClick={() => setEditRemovedIds((prev) => [...prev, att.id || ''])}
-                                style={{ padding: '3px 8px', borderRadius: 4, border: 'none', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', fontSize: 12, cursor: 'pointer' }}
+                                style={{ padding: '4px 10px', borderRadius: 5, border: 'none', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                               >
                                 Remove
                               </button>
@@ -1780,73 +2263,140 @@ export function TeacherAssignments() {
 
               {/* Add New Attachments */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 4 }}>
-                  Add New Attachments
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                  Attach Document / File
                 </label>
-                <div
-                  style={{
-                    border: '2px dashed var(--border, #cbd5e1)',
-                    borderRadius: 8,
-                    padding: '14px 20px',
-                    textAlign: 'center',
-                    background: 'var(--card-subtle, #f8fafc)',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => document.getElementById('edit-file-input')?.click()}
-                >
-                  <Upload size={20} style={{ color: '#6366f1', margin: '0 auto 6px' }} />
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)' }}>
-                    Select new files to attach
-                  </p>
-                  <input
-                    id="edit-file-input"
-                    type="file"
-                    multiple
-                    style={{ display: 'none' }}
-                    onChange={(e) =>
-                      handleFileSelection(
-                        e,
-                        editExistingAtts.filter((a) => !editRemovedIds.includes(a.id || '')).length + editNewFiles.length,
-                        editNewFiles.reduce((acc, f) => acc + f.size, 0),
-                        (newItems) => setEditNewFiles((prev) => [...prev, ...newItems]),
-                        (msg) => setEditError(msg)
-                      )
-                    }
-                  />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <label
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '7px 14px',
+                      borderRadius: 6,
+                      border: '1px dashed var(--border, #cbd5e1)',
+                      backgroundColor: 'var(--card-subtle, #f8fafc)',
+                      color: 'var(--text, #334155)',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                    title="Attach new files"
+                  >
+                    <Paperclip size={15} color="#2563eb" />
+                    <span>Attach Document / File</span>
+                    <input
+                      id="edit-file-input"
+                      type="file"
+                      multiple
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg"
+                      style={{ display: 'none' }}
+                      onChange={(e) =>
+                        handleFileSelection(
+                          e,
+                          editExistingAtts.filter((a) => !editRemovedIds.includes(a.id || '')).length + editNewFiles.length,
+                          editNewFiles.reduce((acc, f) => acc + f.size, 0),
+                          (newItems) => setEditNewFiles((prev) => [...prev, ...newItems]),
+                          (msg) => setEditError(msg)
+                        )
+                      }
+                    />
+                  </label>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                    {editNewFiles.length > 0
+                      ? `${editNewFiles.length} new file(s) selected`
+                      : 'Upload additional files (max 5 total cumulative).'}
+                  </span>
                 </div>
 
+                {/* New Files List */}
                 {editNewFiles.length > 0 && (
                   <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {editNewFiles.map((fileItem, idx) => (
-                      <div
-                        key={idx}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '6px 10px',
-                          borderRadius: 6,
-                          background: 'var(--bg, #ffffff)',
-                          border: '1px solid var(--border, #e2e8f0)'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Paperclip size={13} style={{ color: '#16a34a' }} />
-                          <span style={{ fontSize: 13, color: 'var(--text, #0f172a)' }}>{fileItem.name}</span>
-                          <span style={{ fontSize: 11, color: '#64748b' }}>({formatBytes(fileItem.size)})</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (fileItem.blobUrl) URL.revokeObjectURL(fileItem.blobUrl);
-                            setEditNewFiles((prev) => prev.filter((_, i) => i !== idx));
+                    {editNewFiles.map((fileItem, idx) => {
+                      const isPreviewable = isPreviewableFile(fileItem.name, fileItem.mimeType);
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '6px 10px',
+                            borderRadius: 6,
+                            background: 'var(--card, #ffffff)',
+                            border: '1px solid var(--border, #cbd5e1)',
+                            gap: 10
                           }}
-                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#b91c1c' }}
                         >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ))}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                            <div style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: 4,
+                              backgroundColor: '#eff6ff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              {getFileIcon(fileItem.name, fileItem.mimeType)}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {fileItem.name}
+                              </span>
+                              <span style={{ fontSize: 11, color: '#64748b', marginLeft: 6 }}>
+                                ({formatBytes(fileItem.size)})
+                              </span>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                            {isPreviewable && (
+                              <button
+                                type="button"
+                                onClick={() => openPreview(fileItem.name, fileItem.mimeType, fileItem.blobUrl)}
+                                style={{
+                                  padding: '3px 8px',
+                                  borderRadius: 4,
+                                  border: '1px solid #bfdbfe',
+                                  background: '#eff6ff',
+                                  color: '#2563eb',
+                                  fontSize: 11.5,
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 3
+                                }}
+                              >
+                                <Eye size={11} /> Preview
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              title="Remove attachment"
+                              onClick={() => {
+                                if (fileItem.blobUrl) URL.revokeObjectURL(fileItem.blobUrl);
+                                setEditNewFiles((prev) => prev.filter((_, i) => i !== idx));
+                              }}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: '#ef4444',
+                                padding: 2,
+                                display: 'inline-flex',
+                                alignItems: 'center'
+                              }}
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -2141,7 +2691,7 @@ export function TeacherAssignments() {
                   Student Submissions: {submissionsAsg.title}
                 </h3>
                 <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
-                  Due: {submissionsAsg.due_date} | Total Submissions: {submissions.length}
+                  Due: {formatAssignmentDate(submissionsAsg.due_date)} | Total Submissions: {submissions.length}
                 </span>
               </div>
               <button
@@ -2189,7 +2739,7 @@ export function TeacherAssignments() {
                           )}
                         </td>
                         <td style={{ padding: '12px', color: 'var(--text-secondary, #64748b)' }}>
-                          {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString() : '—'}
+                          {sub.submitted_at ? formatAssignmentDate(sub.submitted_at) : '—'}
                         </td>
                         <td style={{ padding: '12px' }}>
                           <span
@@ -2227,7 +2777,7 @@ export function TeacherAssignments() {
                               cursor: 'pointer'
                             }}
                           >
-                            {sub.status === 'GRADED' ? 'Edit Grade' : 'Grade'}
+                            {submissionsAsg.is_owner ? (sub.status === 'GRADED' ? 'Edit Grade' : 'Grade') : 'View Work'}
                           </button>
                         </td>
                       </tr>
@@ -2249,7 +2799,102 @@ export function TeacherAssignments() {
                     </div>
                   )}
 
-                  <form onSubmit={handleGradeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {gradingSub.attachments && gradingSub.attachments.length > 0 && (
+                    <div style={{ marginBottom: 12 }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748b', display: 'block', marginBottom: 6 }}>
+                        SUBMITTED ATTACHMENTS ({gradingSub.attachments.length})
+                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {gradingSub.attachments.map((att) => {
+                          const isPreviewable = isPreviewableFile(att.file_name, att.mime_type);
+                          return (
+                            <div
+                              key={att.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '10px 14px',
+                                borderRadius: 8,
+                                backgroundColor: '#ffffff',
+                                border: '1px solid var(--border, #cbd5e1)',
+                                gap: 10
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                                <div style={{
+                                  width: 32,
+                                  height: 32,
+                                  borderRadius: 6,
+                                  backgroundColor: '#eff6ff',
+                                  color: '#2563eb',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0
+                                }}>
+                                  {getFileIcon(att.file_name, att.mime_type)}
+                                </div>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {att.file_name}
+                                  </div>
+                                  <div style={{ fontSize: 11, color: '#64748b' }}>
+                                    {formatBytes(att.file_size)}
+                                  </div>
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {isPreviewable && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openSubAttachmentPreview(submissionsAsg.id, gradingSub.id, att.id, att.file_name, att.mime_type)}
+                                    style={{
+                                      padding: '5px 10px',
+                                      borderRadius: 6,
+                                      border: '1px solid #bfdbfe',
+                                      backgroundColor: '#eff6ff',
+                                      color: '#2563eb',
+                                      fontSize: 12,
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 4
+                                    }}
+                                  >
+                                    <Eye size={13} /> Preview
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => downloadSubAttachment(submissionsAsg.id, gradingSub.id, att.id, att.file_name)}
+                                  style={{
+                                    padding: '5px 12px',
+                                    borderRadius: 6,
+                                    border: 'none',
+                                    backgroundColor: '#2563eb',
+                                    color: '#ffffff',
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4
+                                  }}
+                                >
+                                  <Download size={13} /> Download File
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {submissionsAsg.is_owner ? (
+                    <form onSubmit={handleGradeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <div style={{ display: 'flex', gap: 12 }}>
                       <div style={{ flex: '0 0 140px' }}>
                         <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
@@ -2312,6 +2957,20 @@ export function TeacherAssignments() {
                       </button>
                     </div>
                   </form>
+                ) : (
+                  <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, color: '#64748b' }}>
+                      Read-only: Only the assignment author ({submissionsAsg.teacher_name || 'Author'}) can submit or modify grades.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setGradingSub(null)}
+                      style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#ffffff', cursor: 'pointer', fontSize: 12 }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                )}
                 </div>
               )}
             </div>

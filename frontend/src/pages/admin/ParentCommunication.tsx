@@ -62,76 +62,62 @@ export default function ParentCommunication() {
   }, []);
 
   return (
-    <div className="feature-page" style={{ padding: '24px 28px', maxWidth: 900, margin: '0 auto' }}>
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Parent Messages & Notices</h1>
-        <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
+    <div className="feature-page w-full max-w-none m-0 pb-10" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
+      <div className="mb-5">
+        <h1 className="m-0 text-2xl font-bold text-slate-900 dark:text-slate-100">Parent Messages &amp; Notices</h1>
+        <p className="muted m-0 mt-1 text-xs text-slate-500 dark:text-slate-400">
           Official announcements, academic notices, and direct interactive reply communication.
         </p>
       </div>
 
       {msg && (
-        <div style={{ padding: '10px 14px', marginBottom: 16, backgroundColor: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: 6, color: '#ef4444', fontSize: 13 }}>
+        <div className="px-3.5 py-2.5 mb-4 bg-red-500/10 border border-red-500/25 rounded-md text-red-500 text-xs">
           {msg}
         </div>
       )}
 
-      <div style={{ display: 'grid', gap: 16 }}>
+      <div className="grid gap-4">
         {items.map(x => (
           <article
             key={x.recipient_id || x.id}
-            style={{
-              backgroundColor: 'var(--bg-card, #ffffff)',
-              border: x.priority === 'EMERGENCY' ? '1.5px solid #ef4444' : '1px solid var(--border, #e2e8f0)',
-              borderRadius: 8,
-              padding: 20,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-            }}
+            className={`rounded-lg p-5 shadow-sm bg-white dark:bg-slate-800 transition-colors ${
+              x.priority === 'EMERGENCY'
+                ? 'border-2 border-red-500'
+                : 'border border-slate-200 dark:border-slate-700'
+            }`}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+            <div className="flex justify-between items-start mb-2.5">
               <div>
-                <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  padding: '2px 7px',
-                  borderRadius: 4,
-                  backgroundColor: x.priority === 'EMERGENCY' ? '#fee2e2' : x.priority === 'HIGH' ? '#ffedd5' : '#f1f5f9',
-                  color: x.priority === 'EMERGENCY' ? '#b91c1c' : x.priority === 'HIGH' ? '#c2410c' : '#475569',
-                  marginBottom: 6
-                }}>
+                <span
+                  className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded mb-1.5 ${
+                    x.priority === 'EMERGENCY'
+                      ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400'
+                      : x.priority === 'HIGH'
+                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-400'
+                      : 'bg-slate-100 text-slate-600 dark:bg-slate-700/60 dark:text-slate-300'
+                  }`}
+                >
                   {x.priority === 'EMERGENCY' && <AlertTriangle size={12} />}
                   {x.priority}
                 </span>
-                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text, #0f172a)' }}>{x.title}</h3>
+                <h3 className="m-0 text-[17px] font-bold text-slate-900 dark:text-slate-100">{x.title}</h3>
               </div>
-              <span style={{ fontSize: 12, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span className="text-xs text-slate-400 flex items-center gap-1">
                 <Clock size={12} /> {x.published_at ? new Date(x.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
               </span>
             </div>
 
-            <p style={{ margin: '10px 0 16px', lineHeight: 1.6, fontSize: 14, color: 'var(--text, #334155)', whiteSpace: 'pre-wrap' }}>
+            <p className="my-2.5 mb-4 leading-relaxed text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap">
               {x.message}
             </p>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border, #f1f5f9)', paddingTop: 12 }}>
-              <div style={{ display: 'flex', gap: 8 }}>
+            <div className="flex justify-between items-center border-t border-slate-100 dark:border-slate-700/60 pt-3">
+              <div className="flex gap-2">
                 {!x.read_at && (
                   <button
                     type="button"
                     onClick={() => read(x.recipient_id)}
-                    style={{
-                      padding: '5px 12px',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      backgroundColor: '#f1f5f9',
-                      color: '#475569',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: 5,
-                      cursor: 'pointer'
-                    }}
+                    className="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded cursor-pointer transition-colors"
                   >
                     Mark as Read
                   </button>
@@ -143,26 +129,18 @@ export default function ParentCommunication() {
                     setActiveReplyId(activeReplyId === x.id ? null : x.id);
                     setReplyText('');
                   }}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    padding: '5px 12px',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    backgroundColor: activeReplyId === x.id ? '#2563eb' : '#eff6ff',
-                    color: activeReplyId === x.id ? '#ffffff' : '#1d4ed8',
-                    border: '1px solid #bfdbfe',
-                    borderRadius: 5,
-                    cursor: 'pointer'
-                  }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded cursor-pointer border transition-colors ${
+                    activeReplyId === x.id
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                  }`}
                 >
                   <MessageSquare size={13} /> {activeReplyId === x.id ? 'Cancel Reply' : 'Reply'}
                 </button>
               </div>
 
               {x.read_at && (
-                <span style={{ fontSize: 11.5, color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span className="text-xs text-emerald-500 flex items-center gap-1 font-medium">
                   <CheckCircle2 size={13} /> Read
                 </span>
               )}
@@ -170,16 +148,16 @@ export default function ParentCommunication() {
 
             {/* Success toast after reply */}
             {replySuccessId === x.id && (
-              <div style={{ marginTop: 12, padding: '8px 12px', backgroundColor: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 6, color: '#10b981', fontSize: 12.5, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div className="mt-3 px-3 py-2 bg-emerald-500/10 border border-emerald-500/25 rounded-md text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-1.5">
                 <CheckCircle2 size={14} /> Reply submitted successfully to school administration.
               </div>
             )}
 
             {/* Inline Interactive Reply Box */}
             {activeReplyId === x.id && (
-              <div style={{ marginTop: 14, backgroundColor: 'var(--card-subtle, #f8fafc)', padding: 14, borderRadius: 6, border: '1px solid var(--border, #e2e8f0)' }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <CornerDownRight size={13} color="#2563eb" /> Write a response to school administration:
+              <div className="mt-3.5 bg-slate-50 dark:bg-slate-900/50 p-3.5 rounded-md border border-slate-200 dark:border-slate-700">
+                <div className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <CornerDownRight size={13} className="text-blue-600 dark:text-blue-400" /> Write a response to school administration:
                 </div>
                 <AutoExpandingTextarea
                   value={replyText}
@@ -187,21 +165,13 @@ export default function ParentCommunication() {
                   placeholder="Type your reply or acknowledgement here..."
                   minHeight={60}
                   maxHeight={200}
-                  style={{
-                    width: '100%',
-                    padding: '8px 10px',
-                    borderRadius: 5,
-                    border: '1px solid #cbd5e1',
-                    fontSize: 13,
-                    boxSizing: 'border-box',
-                    fontFamily: 'inherit'
-                  }}
+                  className="w-full px-2.5 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs box-border font-sans focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+                <div className="flex justify-end gap-2 mt-2">
                   <button
                     type="button"
                     onClick={() => setActiveReplyId(null)}
-                    style={{ padding: '6px 12px', fontSize: 12, borderRadius: 5, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #ffffff)', color: 'var(--text)', cursor: 'pointer' }}
+                    className="px-3 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
                   >
                     Cancel
                   </button>
@@ -209,20 +179,7 @@ export default function ParentCommunication() {
                     type="button"
                     disabled={submittingReply || !replyText.trim()}
                     onClick={() => submitReply(x.id, x.student_id)}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 5,
-                      padding: '6px 14px',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      borderRadius: 5,
-                      border: 'none',
-                      backgroundColor: '#2563eb',
-                      color: '#ffffff',
-                      cursor: replyText.trim() ? 'pointer' : 'not-allowed',
-                      opacity: replyText.trim() ? 1 : 0.6
-                    }}
+                    className="inline-flex items-center gap-1 px-3.5 py-1.5 text-xs font-semibold rounded text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-sm"
                   >
                     <Send size={12} /> {submittingReply ? 'Sending...' : 'Send Reply'}
                   </button>
@@ -234,7 +191,7 @@ export default function ParentCommunication() {
       </div>
 
       {!items.length && !msg && (
-        <div style={{ padding: 40, textAlign: 'center', backgroundColor: 'var(--bg-card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, color: 'var(--text-secondary, #94a3b8)' }}>
+        <div className="p-10 text-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-400 dark:text-slate-500">
           No messages or announcements received yet.
         </div>
       )}

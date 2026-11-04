@@ -54,6 +54,12 @@ api.interceptors.request.use((c) => {
     }
     c.headers.Authorization = `Bearer ${t}`;
   }
+  const currentAcademicSession = typeof localStorage !== 'undefined'
+    ? (localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year'))
+    : null;
+  if (currentAcademicSession && !c.headers['x-academic-session']) {
+    c.headers['x-academic-session'] = encodeURIComponent(currentAcademicSession);
+  }
   return c;
 });
 

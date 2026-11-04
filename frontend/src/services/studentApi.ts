@@ -79,6 +79,10 @@ export interface StudentDashboardData {
     date: string;
     description: string;
     priority: string;
+    author_name?: string;
+    author_role?: string;
+    created_by_role?: string;
+    created_by_name?: string;
   }>;
   pendingAssignments: Array<{
     id: string;
@@ -204,6 +208,10 @@ export interface Announcement {
   attachment_size?: number;
   class_number?: number;
   section_name?: string;
+  status?: string;
+  recipient_count?: number;
+  read_count?: number;
+  reply_count?: number;
 }
 
 export interface LeaveRequest {
@@ -228,6 +236,10 @@ export const studentApi = {
     api.get<Announcement[]>('/student/announcements', { params: { from, to } }).then((r) => r.data),
   markAnnouncementRead: (id: string) => api.post<{ success: boolean; read_at: string }>('/student/announcements/' + id + '/read').then((r) => r.data),
   replyToAnnouncement: (id: string, replyText: string) => api.post('/communication/announcements/' + id + '/reply', { replyText }).then((r) => r.data),
+  previewAnnouncementAttachment: (id: string) =>
+    api.get<Blob>(`/communication/announcements/${id}/attachment/preview`, { responseType: 'blob' }).then((r) => r.data),
+  downloadAnnouncementAttachment: (id: string) =>
+    api.get<Blob>(`/communication/announcements/${id}/attachment/download`, { responseType: 'blob' }).then((r) => r.data),
   getAssignments: () => api.get<Assignment[]>('/student/assignments').then((r) => r.data),
   submitAssignment: (
     id: string,
@@ -288,6 +300,6 @@ export const studentApi = {
     api.put('/student/change-password', { currentPassword, newPassword }).then((r) => r.data),
   updatePhoto: (photoUrl: string) =>
     api.put<{ success: boolean; photoUrl?: string; pendingPhotoUrl?: string; pendingApproval?: boolean; message: string }>('/student/photo', { photoUrl }).then((r) => r.data),
-  updateProfile: (data: { gender?: string; dateOfBirth?: string; address?: string }) =>
+  updateProfile: (data: { gender?: string; dateOfBirth?: string; address?: string; email?: string }) =>
     api.put<{ success: boolean; message: string }>('/student/profile', data).then((r) => r.data)
 };

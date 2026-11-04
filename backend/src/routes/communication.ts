@@ -1,23 +1,27 @@
-import { Router, Request } from 'express';
+import { Router, Request, Response } from 'express';
+import { isInlinePreviewMime, downloadFromStorage } from '../utils/firebaseStorage';
+import { pool, isPostgresConfigured } from '../db';
 import * as svc from '../services/communicationService';
-import { isTestSchool } from './auth';
+import { isTestSchool, canonicalSchoolId, isGreenwoodSchool, isSameSchool } from '../utils/tenant';
 
 const router = Router();
 const u = (r: Request) => (r as any).user;
 
 function resolveSchoolId(req: Request): string {
   const user = u(req);
-  return (
+  const raw = (
     user?.schoolId ||
     user?.school_id ||
     (req.headers['x-school-id'] as string) ||
     (req.headers['x-tenant-id'] as string) ||
     req.body?.schoolId ||
     req.body?.school_id ||
-    (req.query?.schoolId as string) ||
-    '00000000-0000-0000-0000-000000000001'
+    (req.query?.schoolId as string)
   );
+  return canonicalSchoolId(raw) || raw || '00000000-0000-0000-0000-000000000001';
 }
+
+const sId = (req: Request) => (req as any).schoolId || resolveSchoolId(req);
 
 router.use((req, res, next) => {
   const sid = resolveSchoolId(req);
@@ -197,7 +201,7 @@ router.get('/', async (req, res) => {
   try {
     res.json(await svc.listSchoolAnnouncements(sid, user?.role, user?.id, user?.name, user?.email));
   } catch (_e: any) {
-    if (isTestSchool(sid)) {
+    if (isTestSchool(sid) || isGreenwoodSchool(sid)) {
       return res.json([
         {
           id: 'ann-1',
@@ -224,7 +228,7 @@ router.get('/announcements', async (req, res) => {
   try {
     res.json(await svc.listSchoolAnnouncements(sid, user?.role, user?.id, user?.name, user?.email));
   } catch (_e: any) {
-    if (isTestSchool(sid)) {
+    if (isTestSchool(sid) || isGreenwoodSchool(sid)) {
       return res.json([
         {
           id: 'ann-1',
@@ -275,7 +279,7 @@ router.post('/teacher/read/:id', async (req, res) => {
 router.get('/parent/inbox', async (req, res) => {
   if (u(req).role !== 'PARENT') return res.status(403).json({ message: 'Parent access required' });
   try {
-    res.json(await svc.parentInbox(u(req).id, u(req).schoolId));
+    res.json(await svc.parentInbox(u(req).id, sId(req)));
   } catch (e: any) {
     res.status(500).json({ message: e.message });
   }
@@ -293,7 +297,7 @@ router.post('/parent/read/:id', async (req, res) => {
 router.get('/parent/preferences', async (req, res) => {
   if (u(req).role !== 'PARENT') return res.status(403).json({ message: 'Parent access required' });
   try {
-    res.json(await svc.preferences(u(req).id, u(req).schoolId));
+    res.json(await svc.preferences(u(req).id, sId(req)));
   } catch (e: any) {
     res.status(500).json({ message: e.message });
   }
@@ -302,7 +306,7 @@ router.get('/parent/preferences', async (req, res) => {
 router.put('/parent/preferences', async (req, res) => {
   if (u(req).role !== 'PARENT') return res.status(403).json({ message: 'Parent access required' });
   try {
-    res.json(await svc.updatePreferences(u(req).id, u(req).schoolId, req.body));
+    res.json(await svc.updatePreferences(u(req).id, sId(req), req.body));
   } catch (e: any) {
     res.status(400).json({ message: e.message });
   }
@@ -315,7 +319,7 @@ router.post('/announcements/:id/reply', async (req, res) => {
     return res.status(403).json({ message: 'Authentication required to post reply' });
   }
   try {
-    const result = await svc.createReply(u(req).schoolId, req.params.id, u(req).id, role, req.body);
+    const result = await svc.createReply(sId(req), req.params.id, u(req).id, role, req.body);
     res.status(201).json(result);
   } catch (e: any) {
     res.status(400).json({ message: e.message || 'Unable to submit reply' });
@@ -325,7 +329,7 @@ router.post('/announcements/:id/reply', async (req, res) => {
 // Threaded replies for a specific announcement (School Admins & Users)
 router.get('/announcements/:id/replies', async (req, res) => {
   try {
-    const replies = await svc.getAnnouncementReplies(u(req).schoolId, req.params.id);
+    const replies = await svc.getAnnouncementReplies(sId(req), req.params.id);
     res.json(replies);
   } catch (e: any) {
     res.status(500).json({ message: e.message || 'Unable to load replies' });
@@ -363,10 +367,136 @@ router.get('/delivery-summary', async (req, res) => {
     return res.status(403).json({ message: 'Admin access required' });
   }
   try {
-    res.json(await svc.deliverySummary(u(req).schoolId));
+    res.json(await svc.deliverySummary(sId(req)));
   } catch (e: any) {
     res.status(500).json({ message: e.message });
   }
 });
+
+
+/**
+ * GET /api/communication/announcements/:id/attachment/preview
+ * GET /api/communication/announcements/:id/attachment/download
+ */
+async function handleAnnouncementAttachment(req: Request, res: Response, isPreview: boolean) {
+  const user = u(req);
+  if (!user) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+
+  const sid = (req as any).schoolId || resolveSchoolId(req);
+  const id = String(req.params.id);
+  const isSuperAdmin = user.role === 'SUPER_ADMIN';
+
+  const ann = await svc.getAnnouncementById(sid, id, isSuperAdmin);
+  if (!ann) {
+    return res.status(404).json({ message: 'Announcement not found' });
+  }
+
+  // Tenant isolation check
+  if (!isSuperAdmin && !isSameSchool(ann.school_id, sid)) {
+    return res.status(404).json({ message: 'Announcement not found' });
+  }
+
+  // Audience & publication check for non-admin roles
+  if (!['SUPER_ADMIN', 'SCHOOL_ADMIN'].includes(user.role)) {
+    if (ann.status !== 'PUBLISHED' && ann.created_by !== user.id) {
+      return res.status(404).json({ message: 'Announcement not found' });
+    }
+
+    const aud = String(ann.audience_type || '').toUpperCase();
+    if (user.role === 'STUDENT' && aud === 'TEACHER') {
+      return res.status(403).json({ message: 'Access denied to this announcement attachment' });
+    }
+    if (user.role === 'PARENT' && aud === 'TEACHER') {
+      return res.status(403).json({ message: 'Access denied to this announcement attachment' });
+    }
+  }
+
+  if (!ann.attachment_url && !ann.attachment_name) {
+    return res.status(404).json({ message: 'No attachment found for this announcement' });
+  }
+
+  const fileName = ann.attachment_name || 'announcement-attachment';
+  let mimeType = ann.attachment_type || '';
+  let buffer: Buffer | null = null;
+
+  // 1. Base64 data URL
+  if (ann.attachment_url && ann.attachment_url.startsWith('data:')) {
+    const match = ann.attachment_url.match(/^data:([^;]+);base64,(.*)$/);
+    if (match) {
+      if (!mimeType) mimeType = match[1];
+      buffer = Buffer.from(match[2], 'base64');
+    } else {
+      const commaIdx = ann.attachment_url.indexOf(',');
+      if (commaIdx !== -1) {
+        buffer = Buffer.from(ann.attachment_url.substring(commaIdx + 1), 'base64');
+      }
+    }
+  } else if (ann.attachment_url && !ann.attachment_url.startsWith('http://') && !ann.attachment_url.startsWith('https://')) {
+    // 2. Storage key (PostgreSQL attachment_blobs or Firebase Storage)
+    try {
+      const dl = await downloadFromStorage(ann.attachment_url);
+      buffer = dl.buffer;
+      if (dl.mimeType) mimeType = dl.mimeType;
+    } catch (_e) {}
+  } else if (ann.attachment_url && (ann.attachment_url.startsWith('http://') || ann.attachment_url.startsWith('https://'))) {
+    // 3. Remote URL
+    try {
+      const fetchRes = await fetch(ann.attachment_url);
+      if (fetchRes.ok) {
+        const ab = await fetchRes.arrayBuffer();
+        buffer = Buffer.from(ab);
+        const ct = fetchRes.headers.get('content-type');
+        if (ct) mimeType = ct;
+      }
+    } catch (_e) {}
+  }
+
+  // Fallback: Check attachment_blobs directly
+  if (!buffer && pool && isPostgresConfigured) {
+    try {
+      const bRes = await pool.query(
+        `SELECT file_data, mime_type FROM attachment_blobs WHERE storage_key = $1 OR storage_key = $2 LIMIT 1`,
+        [ann.attachment_url, `announcements/${ann.id}`]
+      );
+      if (bRes.rowCount && bRes.rows[0]) {
+        buffer = bRes.rows[0].file_data;
+        if (bRes.rows[0].mime_type) mimeType = bRes.rows[0].mime_type;
+      }
+    } catch (_e) {}
+  }
+
+  if (!buffer) {
+    return res.status(404).json({ message: 'Attachment content is unavailable' });
+  }
+
+  // Determine mimeType if still missing
+  if (!mimeType || mimeType === 'application/octet-stream') {
+    const lowerName = fileName.toLowerCase();
+    if (lowerName.endsWith('.pdf')) mimeType = 'application/pdf';
+    else if (lowerName.endsWith('.png')) mimeType = 'image/png';
+    else if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) mimeType = 'image/jpeg';
+    else if (lowerName.endsWith('.webp')) mimeType = 'image/webp';
+    else if (lowerName.endsWith('.gif')) mimeType = 'image/gif';
+    else if (lowerName.endsWith('.doc')) mimeType = 'application/msword';
+    else if (lowerName.endsWith('.docx')) mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    else if (lowerName.endsWith('.xls')) mimeType = 'application/vnd.ms-excel';
+    else if (lowerName.endsWith('.xlsx')) mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    else mimeType = 'application/octet-stream';
+  }
+
+  const inlineAllowed = isPreview && isInlinePreviewMime(mimeType);
+  const dispositionType = inlineAllowed ? 'inline' : 'attachment';
+
+  res.setHeader('Content-Type', mimeType);
+  res.setHeader('Content-Disposition', `${dispositionType}; filename="${encodeURIComponent(fileName)}"`);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'private, max-age=3600');
+  return res.send(buffer);
+}
+
+router.get('/announcements/:id/attachment/preview', (req, res) => handleAnnouncementAttachment(req, res, true));
+router.get('/announcements/:id/attachment/download', (req, res) => handleAnnouncementAttachment(req, res, false));
 
 export default router;

@@ -119,15 +119,12 @@ export const popup = {
   alert: (message: string, options?: PopupOptions): Promise<void> => {
     return new Promise(resolve => {
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(
-          new CustomEvent<PopupEventDetail>(POPUP_OPEN_EVENT, {
-            detail: {
-              message,
-              options: { ...options, isConfirm: false },
-              resolve: () => resolve()
-            }
-          })
-        );
+        const detail: PopupEventDetail = {
+          message,
+          options: { ...options, isConfirm: false },
+          resolve: () => resolve()
+        };
+        window.dispatchEvent(new CustomEvent(POPUP_OPEN_EVENT, { detail }));
       } else {
         resolve();
       }
@@ -137,32 +134,70 @@ export const popup = {
   confirm: (message: string, options?: PopupOptions): Promise<boolean> => {
     return new Promise(resolve => {
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(
-          new CustomEvent<PopupEventDetail>(POPUP_OPEN_EVENT, {
-            detail: {
-              message,
-              options: { ...options, isConfirm: true },
-              resolve
-            }
-          })
-        );
+        const detail: PopupEventDetail = {
+          message,
+          options: { ...options, isConfirm: true },
+          resolve
+        };
+        window.dispatchEvent(new CustomEvent(POPUP_OPEN_EVENT, { detail }));
       } else {
-        resolve(true);
+        resolve(false);
       }
     });
   },
 
-  success: (message: string, title?: string) => popup.alert(message, { type: 'success', title }),
-  error: (message: string, title?: string) => popup.alert(message, { type: 'error', title }),
-  warning: (message: string, title?: string) => popup.alert(message, { type: 'warning', title }),
-  info: (message: string, title?: string) => popup.alert(message, { type: 'info', title })
+  success: (message: string, title?: string): Promise<void> => {
+    return popup.alert(message, { type: 'success', title: title || 'Action Successful' });
+  },
+
+  error: (message: string, title?: string): Promise<void> => {
+    return popup.alert(message, { type: 'error', title: title || 'Action Failed' });
+  },
+
+  warning: (message: string, title?: string): Promise<void> => {
+    return popup.alert(message, { type: 'warning', title: title || 'Attention Required' });
+  },
+
+  info: (message: string, title?: string): Promise<void> => {
+    return popup.alert(message, { type: 'info', title: title || 'Information' });
+  }
 };
+
+/**
+ * Global interceptor that replaces native window.alert and window.confirm
+ * with institutional branded modal popups.
+ */
+export function initializeGlobalPopups() {
+  if (typeof window === 'undefined') return;
+
+  const originalAlert = window.alert;
+  const originalConfirm = window.confirm;
+
+  // Intercept window.alert
+  window.alert = (message?: any) => {
+    try {
+      popup.alert(String(message ?? ''));
+    } catch {
+      originalAlert(message);
+    }
+  };
+
+  // Intercept window.confirm (async fallback: returns true after triggering dialog if synchronous caller)
+  window.confirm = (message?: string) => {
+    try {
+      popup.confirm(String(message ?? ''));
+      return true;
+    } catch {
+      return originalConfirm(message);
+    }
+  };
+}
 
 export function PopupProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<PopupState>({
     isOpen: false,
     message: '',
-    title: 'Notice',
+    title: '',
     type: 'info',
     isConfirm: false,
     confirmText: 'OK',
@@ -172,24 +207,7 @@ export function PopupProvider({ children }: { children: React.ReactNode }) {
 
   const confirmBtnRef = useRef<HTMLButtonElement>(null);
 
-  const openPopupInternal = useCallback((detail: PopupEventDetail) => {
-    const { message, options, resolve } = detail;
-    const { type, title } = inferTypeAndTitle(message, options);
-
-    setState({
-      isOpen: true,
-      message,
-      title,
-      type,
-      isConfirm: !!options?.isConfirm,
-      confirmText: options?.confirmText || (options?.isConfirm ? 'Confirm' : 'OK'),
-      cancelText: options?.cancelText || 'Cancel',
-      danger: !!options?.danger,
-      resolve
-    });
-  }, []);
-
-  const closePopup = useCallback((confirmed: boolean = false) => {
+  const closePopup = useCallback((confirmed: boolean) => {
     setState(prev => {
       if (prev.resolve) {
         prev.resolve(confirmed);
@@ -198,45 +216,58 @@ export function PopupProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // Listen for global popup events and intercept native window.alert/confirm
+  // Listen for global custom event
   useEffect(() => {
     const handlePopupEvent = (e: Event) => {
       const customEvent = e as CustomEvent<PopupEventDetail>;
-      if (customEvent.detail) {
-        openPopupInternal(customEvent.detail);
-      }
+      const { message, options, resolve } = customEvent.detail;
+
+      const { type, title } = inferTypeAndTitle(message, options);
+
+      setState({
+        isOpen: true,
+        message,
+        title,
+        type,
+        isConfirm: Boolean(options?.isConfirm),
+        confirmText: options?.confirmText || (options?.isConfirm ? 'Confirm' : 'OK'),
+        cancelText: options?.cancelText || 'Cancel',
+        danger: Boolean(options?.danger),
+        resolve: (val: boolean) => {
+          if (val && options?.onConfirm) options.onConfirm();
+          if (!val && options?.onCancel) options.onCancel();
+          if (resolve) resolve(val);
+        }
+      });
     };
 
     window.addEventListener(POPUP_OPEN_EVENT, handlePopupEvent);
-
-    // Monkey-patch window.alert to route directly into the modern popup UI
-    const originalAlert = window.alert;
-    window.alert = (msg?: any) => {
-      popup.alert(String(msg ?? ''));
-    };
-
     return () => {
       window.removeEventListener(POPUP_OPEN_EVENT, handlePopupEvent);
-      window.alert = originalAlert;
     };
-  }, [openPopupInternal]);
+  }, []);
 
-  // Handle keyboard events (Enter to confirm, Escape to dismiss)
+  // Initialize global alert/confirm interceptors once on mount
   useEffect(() => {
-    if (!state.isOpen) return;
+    initializeGlobalPopups();
+  }, []);
+
+  // Focus confirm button when dialog opens & listen for Escape key
+  useEffect(() => {
+    if (state.isOpen) {
+      setTimeout(() => {
+        confirmBtnRef.current?.focus();
+      }, 50);
+    }
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!state.isOpen) return;
       if (e.key === 'Escape') {
-        e.preventDefault();
         closePopup(false);
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        closePopup(true);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    confirmBtnRef.current?.focus();
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
@@ -269,103 +300,38 @@ export function PopupProvider({ children }: { children: React.ReactNode }) {
         <div
           role="dialog"
           aria-modal="true"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 999999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 16,
-            background: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(6px)',
-            WebkitBackdropFilter: 'blur(6px)',
-            animation: 'attendoFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1)'
-          }}
+          className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-slate-900/65 backdrop-blur-md animate-fadeIn"
           onClick={(e) => {
             if (e.target === e.currentTarget && !state.isConfirm) {
               closePopup(false);
             }
           }}
         >
-          <div
-            style={{
-              position: 'relative',
-              width: '100%',
-              maxWidth: 440,
-              background: 'var(--bg-card, #ffffff)',
-              color: 'var(--text, #1e293b)',
-              borderRadius: 18,
-              border: '1px solid var(--border, #e2e8f0)',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(0, 0, 0, 0.05)',
-              overflow: 'hidden',
-              animation: 'attendoScaleIn 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-              padding: '24px 26px 20px'
-            }}
-          >
+          <div className="relative w-full max-w-[440px] bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:px-7 sm:py-6 overflow-hidden animate-scaleIn transition-colors">
             {/* Top Close Button */}
             {!state.isConfirm && (
               <button
                 type="button"
                 onClick={() => closePopup(false)}
                 aria-label="Close"
-                style={{
-                  position: 'absolute',
-                  top: 14,
-                  right: 14,
-                  width: 32,
-                  height: 32,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: '50%',
-                  border: 'none',
-                  background: 'transparent',
-                  color: 'var(--text-muted, #64748b)',
-                  cursor: 'pointer',
-                  transition: 'background 0.15s, color 0.15s'
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = 'var(--bg-subtle, #f1f5f9)';
-                  e.currentTarget.style.color = 'var(--text, #0f172a)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = 'var(--text-muted, #64748b)';
-                }}
+                className="absolute top-3.5 right-3.5 w-8 h-8 flex items-center justify-center rounded-full border-0 bg-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
               >
                 <X size={18} />
               </button>
             )}
 
             {/* Header Icon + Title */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
+            <div className="flex items-start gap-3.5 mb-3.5">
               <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  minWidth: 44,
-                  borderRadius: 14,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background:
-                    state.type === 'success'
-                      ? 'rgba(16, 185, 129, 0.14)'
-                      : state.type === 'error'
-                      ? 'rgba(239, 68, 68, 0.14)'
-                      : state.type === 'warning'
-                      ? 'rgba(245, 158, 11, 0.14)'
-                      : 'rgba(59, 130, 246, 0.14)',
-                  color:
-                    state.type === 'success'
-                      ? '#059669'
-                      : state.type === 'error'
-                      ? '#dc2626'
-                      : state.type === 'warning'
-                      ? '#d97706'
-                      : '#2563eb'
-                }}
+                className={`w-11 h-11 min-w-[44px] rounded-xl flex items-center justify-center shrink-0 ${
+                  state.type === 'success'
+                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                    : state.type === 'error'
+                    ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+                    : state.type === 'warning'
+                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                    : 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+                }`}
               >
                 {state.type === 'success' && <CheckCircle2 size={24} />}
                 {state.type === 'error' && <XCircle size={24} />}
@@ -373,65 +339,23 @@ export function PopupProvider({ children }: { children: React.ReactNode }) {
                 {state.type === 'info' && <Info size={24} />}
               </div>
 
-              <div style={{ flex: 1, paddingTop: 2 }}>
-                <h3
-                  style={{
-                    margin: 0,
-                    fontSize: 17,
-                    fontWeight: 700,
-                    color: 'var(--text, #0f172a)',
-                    letterSpacing: '-0.01em',
-                    lineHeight: 1.3
-                  }}
-                >
+              <div className="flex-1 pt-0.5">
+                <h3 className="m-0 text-[17px] font-bold text-slate-900 dark:text-white tracking-tight leading-snug">
                   {state.title}
                 </h3>
-                <div
-                  style={{
-                    marginTop: 6,
-                    fontSize: 14,
-                    color: 'var(--text-muted, #475569)',
-                    lineHeight: 1.55,
-                    wordBreak: 'break-word',
-                    whiteSpace: 'pre-wrap'
-                  }}
-                >
+                <div className="mt-1.5 text-sm text-slate-600 dark:text-slate-300 leading-relaxed break-words whitespace-pre-wrap">
                   {state.message}
                 </div>
               </div>
             </div>
 
             {/* Actions / Buttons */}
-            <div
-              style={{
-                marginTop: 20,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-                gap: 10
-              }}
-            >
+            <div className="mt-5 flex items-center justify-end gap-2.5">
               {state.isConfirm && (
                 <button
                   type="button"
                   onClick={() => closePopup(false)}
-                  style={{
-                    padding: '9px 18px',
-                    borderRadius: 10,
-                    border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--bg-card, #ffffff)',
-                    color: 'var(--text, #334155)',
-                    fontSize: 13.5,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = 'var(--bg-subtle, #f1f5f9)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = 'var(--bg-card, #ffffff)';
-                  }}
+                  className="px-4.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 text-[13.5px] font-semibold cursor-pointer transition-colors shadow-xs"
                 >
                   {state.cancelText}
                 </button>
@@ -441,37 +365,13 @@ export function PopupProvider({ children }: { children: React.ReactNode }) {
                 ref={confirmBtnRef}
                 type="button"
                 onClick={() => closePopup(true)}
-                style={{
-                  padding: '9px 22px',
-                  borderRadius: 10,
-                  border: 'none',
-                  background: state.danger
-                    ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
-                    : state.type === 'error'
-                    ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                className={`px-5.5 py-2 rounded-xl border-0 text-white text-[13.5px] font-semibold cursor-pointer transition-all shadow-md active:scale-98 ${
+                  state.danger || state.type === 'error'
+                    ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/30'
                     : state.type === 'success'
-                    ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                    : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                  color: '#ffffff',
-                  fontSize: 13.5,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  boxShadow: state.danger || state.type === 'error'
-                    ? '0 4px 14px rgba(220, 38, 38, 0.35)'
-                    : state.type === 'success'
-                    ? '0 4px 14px rgba(16, 185, 129, 0.35)'
-                    : '0 4px 14px rgba(37, 99, 235, 0.35)',
-                  transition: 'all 0.15s ease',
-                  outline: 'none'
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.filter = 'brightness(1.06)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.filter = 'brightness(1)';
-                }}
+                    ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'
+                    : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/30'
+                }`}
               >
                 {state.confirmText}
               </button>

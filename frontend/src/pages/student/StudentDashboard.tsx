@@ -16,10 +16,27 @@ import {
   FlaskConical,
   BookMarked,
   Award,
-  CheckCircle2
+  CheckCircle2,
+  Building2
 } from 'lucide-react';
 import { studentApi, StudentDashboardData } from '../../services/studentApi';
 import { useAuth } from '../../hooks/useAuth';
+
+function isTeacherNotice(a: any): boolean {
+  if (a.author_role === 'TEACHER' || a.created_by_role === 'TEACHER') return true;
+  const author = (a.author_name || '').toLowerCase();
+  if (author.includes('school admin') || author.includes('dav admin') || author.includes('administration') || author.includes('principal') || author.includes('management')) {
+    return false;
+  }
+  const role = (a.author_role || a.created_by_role || '').toUpperCase();
+  if (['SCHOOL_ADMIN', 'ADMIN', 'SUPER_ADMIN'].includes(role)) {
+    return false;
+  }
+  if (a.author_name && !author.includes('admin') && !author.includes('administration')) {
+    return true;
+  }
+  return false;
+}
 
 export function StudentDashboard() {
   const { user: authUser } = useAuth();
@@ -87,8 +104,6 @@ export function StudentDashboard() {
     };
   }, [fetchDashboard]);
 
-
-
   if (loading) {
     return (
       <div className="student-loading-wrap">
@@ -105,10 +120,10 @@ export function StudentDashboard() {
 
   if (error && !data) {
     return (
-      <div className="student-error-box">
-        <h3>Unable to load dashboard</h3>
-        <p>{error}</p>
-        <button onClick={() => window.location.reload()} className="student-btn-primary">
+      <div className="student-error-box p-8 text-center rounded-xl border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20 max-w-md mx-auto my-12">
+        <h3 className="text-lg font-bold text-red-700 dark:text-red-400 m-0 mb-2">Unable to load dashboard</h3>
+        <p className="text-xs text-red-600 dark:text-red-300 m-0 mb-4">{error}</p>
+        <button onClick={() => window.location.reload()} className="student-btn-primary px-4 py-2 text-xs font-semibold rounded bg-blue-600 hover:bg-blue-700 text-white cursor-pointer transition-colors shadow-sm">
           Retry
         </button>
       </div>
@@ -235,22 +250,12 @@ export function StudentDashboard() {
               {greetingText}, <span className="student-greeting-name">{String(student?.name || authUser?.name || 'STUDENT').toUpperCase()}</span> {greetingEmoji}
             </h1>
           </div>
-          <div className="student-greeting-meta">
+          <div className="student-greeting-meta flex items-center flex-wrap gap-2 mt-2">
             <span className="student-meta-pill">{(student?.className || authUser?.className) ? `${student?.className || authUser?.className} · Section ${student?.sectionName || authUser?.sectionName || 'A'}` : 'Enrolled'}</span>
             <span className="student-meta-pill">Roll #{student?.rollNumber || authUser?.rollNumber || '—'}</span>
             {student?.admissionNumber && (
-              <span className="student-meta-pill" style={{ letterSpacing: '0.02em', fontWeight: 600 }}>Adm: {student.admissionNumber}</span>
+              <span className="student-meta-pill tracking-wide font-semibold">Adm: {student.admissionNumber}</span>
             )}
-            <span className="student-meta-pill student-meta-school" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              {(student?.school_photo_url || student?.schoolPhotoUrl) ? (
-                <img
-                  src={(student?.school_photo_url || student?.schoolPhotoUrl) as string}
-                  alt={student?.schoolName || 'School'}
-                  style={{ width: 16, height: 16, borderRadius: 3, objectFit: 'cover' }}
-                />
-              ) : null}
-              {student?.schoolName || 'AttendoSchool'}
-            </span>
           </div>
         </div>
 
@@ -303,7 +308,8 @@ export function StudentDashboard() {
           </div>
         </Link>
 
-        {/* Exams KPI */}
+        {/* Exams KPI — commented out from frontend; backend preserved for future */}
+        {/*
         <Link to="/student/exams" className="student-kpi-card exams-kpi">
           <div className="student-kpi-card-top">
             <div className="student-kpi-icon-wrap coral-icon">
@@ -317,6 +323,7 @@ export function StudentDashboard() {
             <div className="student-kpi-sub">{kpis?.upcomingExamTitle?.includes('-') ? kpis.upcomingExamTitle.split('-')[1].trim() : (kpis?.upcomingExamTitle || 'No upcoming exam scheduled')}</div>
           </div>
         </Link>
+        */}
 
         {/* Announcements KPI */}
         <Link to="/student/announcements" className="student-kpi-card announcements-kpi">
@@ -366,7 +373,7 @@ export function StudentDashboard() {
                 <tbody>
                   {timetable.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-secondary)' }}>
+                      <td colSpan={6} className="text-center py-6 px-3 text-slate-500 dark:text-slate-400">
                         No classes scheduled for today
                       </td>
                     </tr>
@@ -393,7 +400,7 @@ export function StudentDashboard() {
             {/* Mobile Schedule Timeline View */}
             <div className="student-mobile-timetable">
               {timetable.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--text-secondary)', fontSize: 13 }}>
+                <div className="text-center py-5 px-2.5 text-slate-500 text-xs">
                   No classes scheduled for today 🎉
                 </div>
               ) : (
@@ -435,10 +442,10 @@ export function StudentDashboard() {
 
               <div className="student-list">
                 {announcements.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '24px 16px', color: 'var(--text-secondary)' }}>
-                    <CheckCircle2 size={24} style={{ color: '#10b981', margin: '0 auto 6px', display: 'block' }} />
-                    <div style={{ fontWeight: 600, fontSize: 13.5 }}>All caught up!</div>
-                    <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>You have read all current school announcements.</p>
+                  <div className="text-center py-6 px-4 text-slate-500">
+                    <CheckCircle2 size={24} className="text-emerald-500 mx-auto mb-1.5 block" />
+                    <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">All caught up!</div>
+                    <p className="m-0 mt-1 text-[11px] text-slate-400">You have read all current school announcements.</p>
                   </div>
                 ) : (
                   announcements.map((a, i) => (
@@ -450,6 +457,39 @@ export function StudentDashboard() {
                         <div className="student-item-headline">
                           <span className="student-item-title">{a.title}</span>
                           <span className="student-item-date">{a.date}</span>
+                        </div>
+                        <div style={{ marginTop: 2, marginBottom: 2 }}>
+                          {isTeacherNotice(a) ? (
+                            <span style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: '1.5px 6px',
+                              borderRadius: 4,
+                              backgroundColor: '#ecfdf5',
+                              color: '#047857',
+                              border: '1px solid #a7f3d0',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 3.5
+                            }}>
+                              <GraduationCap size={10} /> Teacher: {a.author_name || 'Teacher'}
+                            </span>
+                          ) : (
+                            <span style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: '1.5px 6px',
+                              borderRadius: 4,
+                              backgroundColor: '#eff6ff',
+                              color: '#1d4ed8',
+                              border: '1px solid #bfdbfe',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 3.5
+                            }}>
+                              <Building2 size={10} /> By School Admin
+                            </span>
+                          )}
                         </div>
                         <p className="student-item-desc">{a.description}</p>
                       </div>
@@ -474,7 +514,7 @@ export function StudentDashboard() {
 
               <div className="student-list">
                 {assignments.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '16px 8px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                  <div className="text-center py-4 px-2 text-xs text-slate-500">
                     No pending assignments. All caught up! 🎉
                   </div>
                 ) : (
@@ -549,13 +589,12 @@ export function StudentDashboard() {
               {prevMonthDays.map((d) => (
                 <div
                   key={`prev-${d}`}
-                  className="cal-date muted"
+                  className="cal-date muted cursor-pointer"
                   onClick={() => {
                     const newD = new Date(calYear, calMonth - 1, d);
                     setCalendarViewDate(newD);
                     setSelectedDate(newD);
                   }}
-                  style={{ cursor: 'pointer' }}
                 >
                   {d}
                 </div>
@@ -588,6 +627,7 @@ export function StudentDashboard() {
 
                 const classes = [
                   'cal-date',
+                  'cursor-pointer',
                   isActive ? 'active-date' : '',
                   isToday && !isActive ? 'today-date' : '',
                   dotClass
@@ -598,7 +638,6 @@ export function StudentDashboard() {
                     key={dayNum}
                     className={classes}
                     onClick={() => setSelectedDate(new Date(calYear, calMonth, dayNum))}
-                    style={{ cursor: 'pointer' }}
                     title={isToday ? `Today (${dayNum} ${calMonthName})` : `${dayNum} ${calMonthName}`}
                   >
                     {dayNum}
@@ -610,13 +649,12 @@ export function StudentDashboard() {
               {nextMonthDays.map((d) => (
                 <div
                   key={`next-${d}`}
-                  className="cal-date muted"
+                  className="cal-date muted cursor-pointer"
                   onClick={() => {
                     const newD = new Date(calYear, calMonth + 1, d);
                     setCalendarViewDate(newD);
                     setSelectedDate(newD);
                   }}
-                  style={{ cursor: 'pointer' }}
                 >
                   {d}
                 </div>
@@ -638,7 +676,7 @@ export function StudentDashboard() {
 
             <div className="student-recent-attendance-list">
               {recentAttendance.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '16px 8px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                <div className="text-center py-4 px-2 text-xs text-slate-500">
                   No recent attendance records
                 </div>
               ) : (

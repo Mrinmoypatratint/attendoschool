@@ -599,62 +599,29 @@ export default function Designations() {
   };
 
   return (
-    <div style={{ width: '100%', paddingBottom: 48 }}>
+    <div className="w-full pb-16">
       {/* Page Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 16,
-          marginBottom: 24
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 12,
-              background: 'rgba(37, 99, 235, 0.12)',
-              border: '1px solid rgba(37, 99, 235, 0.25)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--sidebar-accent, #2563eb)'
-            }}
-          >
+      <div className="flex items-start justify-between flex-wrap gap-4 mb-6">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
             <Award size={26} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text)' }}>
+            <h1 className="m-0 text-xl font-bold text-slate-900 dark:text-white">
               Staff Designations
             </h1>
-            <p style={{ margin: '4px 0 0', fontSize: 13.5, color: 'var(--text-secondary)' }}>
+            <p className="m-0 mt-1 text-xs text-slate-500 dark:text-slate-400">
               Create and manage institutional designations. These will automatically appear in the Add Teacher designation dropdown.
             </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div className="flex items-center gap-2.5 flex-wrap">
           <button
             type="button"
             onClick={loadData}
             disabled={loading}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 15px',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              background: 'var(--bg-card)',
-              color: 'var(--text)',
-              fontSize: 13.5,
-              fontWeight: 600,
-              cursor: loading ? 'not-allowed' : 'pointer'
-            }}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors shadow-xs"
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             <span>Refresh</span>
@@ -665,21 +632,9 @@ export default function Designations() {
             onClick={() => handleExportPromotions(promotions, 'All_Promoted_Teachers')}
             disabled={promotions.length === 0}
             title={promotions.length === 0 ? 'No promotions recorded yet' : 'Export all promoted teachers to Excel'}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 15px',
-              borderRadius: 8,
-              border: '1px solid #0284c7',
-              background: '#0284c7',
-              color: '#ffffff',
-              fontSize: 13.5,
-              fontWeight: 600,
-              cursor: promotions.length === 0 ? 'not-allowed' : 'pointer',
-              opacity: promotions.length === 0 ? 0.6 : 1,
-              boxShadow: '0 2px 4px rgba(2, 132, 199, 0.2)'
-            }}
+            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-sky-600 bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold transition-colors shadow-xs ${
+              promotions.length === 0 ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+            }`}
           >
             <Download size={15} />
             <span>Export Excel{promotions.length > 0 ? ` (${promotions.length})` : ''}</span>
@@ -688,19 +643,7 @@ export default function Designations() {
           <button
             type="button"
             onClick={() => setIsPromotionsHistoryModalOpen(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 15px',
-              borderRadius: 8,
-              border: '1px solid #7c3aed',
-              background: 'rgba(124, 58, 237, 0.08)',
-              color: '#7c3aed',
-              fontSize: 13.5,
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-purple-300 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 text-xs font-semibold hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors cursor-pointer"
           >
             <History size={15} />
             <span>Promotions History ({promotions.length})</span>
@@ -709,20 +652,7 @@ export default function Designations() {
           <button
             type="button"
             onClick={() => handleOpenPromoteModal()}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 16px',
-              borderRadius: 8,
-              border: '1px solid #10b981',
-              background: '#10b981',
-              color: '#ffffff',
-              fontSize: 13.5,
-              fontWeight: 600,
-              cursor: 'pointer',
-              boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)'
-            }}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-emerald-600 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold cursor-pointer transition-colors shadow-xs"
           >
             <TrendingUp size={15} />
             <span>Promote Teacher</span>
@@ -731,20 +661,7 @@ export default function Designations() {
           <button
             type="button"
             onClick={handleOpenCreateModal}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 18px',
-              borderRadius: 8,
-              border: '1px solid var(--sidebar-accent, #2563eb)',
-              background: 'var(--sidebar-accent, #2563eb)',
-              color: '#ffffff',
-              fontSize: 13.5,
-              fontWeight: 600,
-              cursor: 'pointer',
-              boxShadow: '0 2px 4px rgba(37,99,235,0.2)'
-            }}
+            className="inline-flex items-center gap-2 px-4.5 py-2 rounded-lg border-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold cursor-pointer transition-colors shadow-xs"
           >
             <Plus size={16} />
             <span>Add Designation</span>
@@ -755,27 +672,20 @@ export default function Designations() {
       {/* Feedback Banner */}
       {feedback && (
         <div
-          style={{
-            padding: '12px 16px',
-            borderRadius: 8,
-            marginBottom: 20,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: feedback.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-            border: `1px solid ${feedback.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
-            color: feedback.type === 'success' ? '#10b981' : '#f87171',
-            fontSize: 13.5
-          }}
+          className={`p-3 px-4 rounded-xl mb-5 flex items-center justify-between text-xs border ${
+            feedback.type === 'success'
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+              : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300'
+          }`}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="flex items-center gap-2.5">
             {feedback.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
             <span>{feedback.message}</span>
           </div>
           <button
             type="button"
             onClick={() => setFeedback(null)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 4 }}
+            className="bg-transparent border-0 cursor-pointer text-inherit p-1 hover:opacity-75"
           >
             <X size={16} />
           </button>
@@ -783,44 +693,16 @@ export default function Designations() {
       )}
 
       {/* Stat Cards */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: 16,
-          marginBottom: 24
-        }}
-      >
-        <div
-          style={{
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            borderRadius: 10,
-            padding: '16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 16
-          }}
-        >
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: 'rgba(37, 99, 235, 0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#2563eb'
-            }}
-          >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center gap-4 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/60 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
             <Award size={22} />
           </div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Total Designations
             </div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', marginTop: 2 }}>
+            <div className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
               {stats.total}
             </div>
           </div>

@@ -661,29 +661,31 @@ export default function Timetable() {
 
   const formAltTeachers = formAvailableTeachers.filter(t => t.id !== entryForm.teacherId);
 
-  if (loading) return <div className="feature-page"><p className="muted" style={{ padding: 40, textAlign: 'center' }}>Loading timetable data...</p></div>;
+  if (loading) return <div className="feature-page" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}><p className="muted" style={{ padding: 40, textAlign: 'center' }}>Loading timetable data...</p></div>;
 
-  return <div className="feature-page">
+  return <div className="feature-page w-full max-w-none m-0 pb-12" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
     {/* ── Header ── */}
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
+    <div className="flex justify-between items-start flex-wrap gap-3.5 mb-4">
       <div>
-        <p className="eyebrow">{isSchoolAdmin ? 'TIMETABLE MANAGEMENT' : 'FACULTY TIMETABLE'}</p>
-        <h1 style={{ margin: 0, fontSize: 24 }}>{isSchoolAdmin ? 'Weekly Class Timetable' : 'My Teaching Timetable'}</h1>
-        <p className="muted" style={{ margin: '4px 0 0' }}>
+        <p className="eyebrow text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">{isSchoolAdmin ? 'TIMETABLE MANAGEMENT' : 'FACULTY TIMETABLE'}</p>
+        <h1 className="m-0 text-2xl font-bold text-slate-900 dark:text-white">{isSchoolAdmin ? 'Weekly Class Timetable' : 'My Teaching Timetable'}</h1>
+        <p className="muted text-xs text-slate-500 dark:text-slate-400 mt-1">
           {isSchoolAdmin
             ? 'Create and manage class-wise, period-wise timetable with faculty assignment and conflict detection.'
             : 'View your scheduled teaching periods across all classes as primary faculty or alternative faculty.'}
         </p>
       </div>
       {isSchoolAdmin && (
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => { setPeriodForm({ name: `Period ${periods.length + 1}`, periodNumber: periods.length + 1, startTime: '09:00', endTime: '09:45', isBreak: false }); setPeriodOpen(true); }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setPeriodForm({ name: `Period ${periods.length + 1}`, periodNumber: periods.length + 1, startTime: '09:00', endTime: '09:45', isBreak: false }); setPeriodOpen(true); }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors shadow-xs"
           >
             <Clock size={16} /> Manage Periods
           </button>
-          <button onClick={() => openAddEntry()}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#2563eb', color: '#fff' }}
+          <button
+            onClick={() => openAddEntry()}
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg border-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors"
           >
             <Plus size={16} /> Add Entry
           </button>
@@ -693,15 +695,13 @@ export default function Timetable() {
 
     {/* ── Toast ── */}
     {msg && (
-      <div style={{
-        padding: '10px 14px', marginBottom: 14, borderRadius: 8,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-        background: msg.type === 'error' ? '#fef2f2' : '#f0fdf4',
-        border: `1px solid ${msg.type === 'error' ? '#fecaca' : '#bbf7d0'}`,
-        color: msg.type === 'error' ? '#991b1b' : '#166534', fontSize: 13
-      }}>
+      <div className={`p-2.5 px-3.5 mb-3.5 rounded-xl flex items-center justify-between gap-2.5 text-xs border ${
+        msg.type === 'error'
+          ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300'
+          : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+      }`}>
         <span>{msg.text}</span>
-        <button onClick={() => setMsg(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'inherit' }}>×</button>
+        <button onClick={() => setMsg(null)} className="bg-transparent border-0 cursor-pointer text-base text-inherit p-0.5 leading-none">×</button>
       </div>
     )}
 

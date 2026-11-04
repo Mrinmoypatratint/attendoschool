@@ -211,123 +211,123 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
       </div>
 
       {/* ─── 6 Stat Cards Row (Real Data) ─── */}
-      <div className="sa-stats-grid">
+      <div className="sa-stats-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
         {/* Card 1: Total Schools */}
-        <div className="sa-stat-card">
+        <div className="sa-stat-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
           <div className="sa-stat-top">
             <div className="sa-stat-icon-wrap icon-blue">
               <School size={20} />
             </div>
             <span className="sa-stat-kpi-badge">Institutes</span>
           </div>
-          <span className="sa-stat-label">Total Schools</span>
-          <div className="sa-stat-value">
+          <span className="sa-stat-label text-xs font-medium uppercase tracking-wider text-slate-500">Total Schools</span>
+          <div className="sa-stat-value text-2xl font-bold tracking-tight text-slate-900 mt-1">
             {loading ? '…' : (metrics?.totalSchools ?? schools.length)}
           </div>
           <div className="sa-stat-micro-bar">
             <div className="sa-micro-fill bg-blue" style={{ width: '100%' }} />
           </div>
-          <div className="sa-stat-sub-text">
+          <div className="sa-stat-sub-text text-xs text-slate-400 mt-2">
             <span>Enrolled in directory</span>
           </div>
         </div>
 
         {/* Card 2: Active Schools */}
-        <div className="sa-stat-card">
+        <div className="sa-stat-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
           <div className="sa-stat-top">
             <div className="sa-stat-icon-wrap icon-green">
               <CheckCircle2 size={20} />
             </div>
             <span className="sa-stat-kpi-badge success">{activeRatio}% Active</span>
           </div>
-          <span className="sa-stat-label">Active Campuses</span>
-          <div className="sa-stat-value">
+          <span className="sa-stat-label text-xs font-medium uppercase tracking-wider text-slate-500">Active Campuses</span>
+          <div className="sa-stat-value text-2xl font-bold tracking-tight text-slate-900 mt-1">
             {loading ? '…' : (metrics?.activeSchools ?? 0)}
           </div>
           <div className="sa-stat-micro-bar">
             <div className="sa-micro-fill bg-green" style={{ width: `${Math.max(activeRatio, 5)}%` }} />
           </div>
-          <div className="sa-stat-sub-text">
+          <div className="sa-stat-sub-text text-xs text-slate-400 mt-2">
             <span>Valid active subscriptions</span>
           </div>
         </div>
 
         {/* Card 3: Expired / Attention */}
-        <div className="sa-stat-card">
+        <div className="sa-stat-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
           <div className="sa-stat-top">
             <div className="sa-stat-icon-wrap icon-amber">
               <Clock size={20} />
             </div>
             <span className="sa-stat-kpi-badge warning">{expiredRatio}% Expired</span>
           </div>
-          <span className="sa-stat-label">Expired / Attention</span>
-          <div className="sa-stat-value">
+          <span className="sa-stat-label text-xs font-medium uppercase tracking-wider text-slate-500">Expired / Attention</span>
+          <div className="sa-stat-value text-2xl font-bold tracking-tight text-slate-900 mt-1">
             {loading ? '…' : (metrics?.expiredSchools ?? 0)}
           </div>
           <div className="sa-stat-micro-bar">
             <div className="sa-micro-fill bg-amber" style={{ width: `${Math.max(expiredRatio, 5)}%` }} />
           </div>
-          <div className="sa-stat-sub-text">
+          <div className="sa-stat-sub-text text-xs text-slate-400 mt-2">
             <span>Requires license extension</span>
           </div>
         </div>
 
         {/* Card 4: Total Students */}
-        <div className="sa-stat-card">
+        <div className="sa-stat-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
           <div className="sa-stat-top">
             <div className="sa-stat-icon-wrap icon-purple">
               <GraduationCap size={20} />
             </div>
             <span className="sa-stat-kpi-badge">Enrolled</span>
           </div>
-          <span className="sa-stat-label">Total Students</span>
-          <div className="sa-stat-value">
+          <span className="sa-stat-label text-xs font-medium uppercase tracking-wider text-slate-500">Total Students</span>
+          <div className="sa-stat-value text-2xl font-bold tracking-tight text-slate-900 mt-1">
             {loading ? '…' : (metrics?.totalStudents ?? 0).toLocaleString('en-IN')}
           </div>
           <div className="sa-stat-micro-bar">
             <div className="sa-micro-fill bg-purple" style={{ width: '85%' }} />
           </div>
-          <div className="sa-stat-sub-text">
+          <div className="sa-stat-sub-text text-xs text-slate-400 mt-2">
             <span>Across all institutional rosters</span>
           </div>
         </div>
 
         {/* Card 5: Platform Revenue */}
-        <div className="sa-stat-card">
+        <div className="sa-stat-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
           <div className="sa-stat-top">
             <div className="sa-stat-icon-wrap icon-amber">
               <span style={{ fontWeight: 800, fontSize: 18 }}>₹</span>
             </div>
             <span className="sa-stat-kpi-badge success">Paid</span>
           </div>
-          <span className="sa-stat-label">Settled Revenue</span>
-          <div className="sa-stat-value">
+          <span className="sa-stat-label text-xs font-medium uppercase tracking-wider text-slate-500">Settled Revenue</span>
+          <div className="sa-stat-value text-2xl font-bold tracking-tight text-slate-900 mt-1">
             {loading ? '…' : `₹${Number(metrics?.totalRevenue ?? 0).toLocaleString('en-IN')}`}
           </div>
           <div className="sa-stat-micro-bar">
             <div className="sa-micro-fill bg-amber" style={{ width: '90%' }} />
           </div>
-          <div className="sa-stat-sub-text">
+          <div className="sa-stat-sub-text text-xs text-slate-400 mt-2">
             <span>Total subscription collections</span>
           </div>
         </div>
 
         {/* Card 6: Pending Collections */}
-        <div className="sa-stat-card">
+        <div className="sa-stat-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
           <div className="sa-stat-top">
             <div className="sa-stat-icon-wrap icon-slate">
               <CreditCard size={20} />
             </div>
             <span className="sa-stat-kpi-badge">Gateway</span>
           </div>
-          <span className="sa-stat-label">Pending Invoices</span>
-          <div className="sa-stat-value">
+          <span className="sa-stat-label text-xs font-medium uppercase tracking-wider text-slate-500">Pending Invoices</span>
+          <div className="sa-stat-value text-2xl font-bold tracking-tight text-slate-900 mt-1">
             {loading ? '…' : (metrics?.pendingPayments ?? 0)}
           </div>
           <div className="sa-stat-micro-bar">
             <div className="sa-micro-fill bg-slate" style={{ width: metrics?.pendingPayments ? '40%' : '8%' }} />
           </div>
-          <div className="sa-stat-sub-text">
+          <div className="sa-stat-sub-text text-xs text-slate-400 mt-2">
             <span>Invoices awaiting settlement</span>
           </div>
         </div>

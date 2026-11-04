@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx';
 import { pool, isPostgresConfigured } from '../db';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { queueAbsentSms, sendSms } from '../services/smsService';
-import { demoStudents, demoClasses, demoSections, demoSubjects, demoTeachers } from './schoolData';
+import { demoStudents, demoClasses, demoSections, demoSubjects, demoTeachers, isSameSession, toCanonicalSession } from './schoolData';
 import { syncAttendanceToFirestore, syncAttendanceAuditLogToFirestore } from '../services/firestoreSync';
 import { isSameSchool, isTestSchool } from './auth';
 import { collections, isFirebaseConfigured } from '../firebase';
@@ -23,6 +23,18 @@ export function getSchoolToday(timeZone = 'Asia/Kolkata'): string {
   } catch {
     return new Date().toISOString().slice(0, 10);
   }
+}
+
+export function formatSchoolDate(val: any, timeZone = 'Asia/Kolkata'): string {
+  if (!val) return '';
+  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+  try {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      return new Intl.DateTimeFormat('en-CA', { timeZone }).format(d);
+    }
+  } catch {}
+  return String(val).slice(0, 10);
 }
 
 export interface MemAttendanceSession {
@@ -244,8 +256,8 @@ r.get('/routine/today', ...teacher, async (req: AuthRequest, res) => {
   const isTeacher = req.user!.role === 'TEACHER';
   const now = new Date();
   const rawDay = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-  const dayParam = req.query.day ? Number(req.query.day) : null;
-  const targetDay = dayParam !== null ? dayParam : (rawDay === 0 ? 1 : rawDay);
+  const dayParam = req.query.day !== undefined && req.query.day !== null && req.query.day !== '' ? Number(req.query.day) : null;
+  const targetDay = dayParam !== null && !isNaN(dayParam) ? dayParam : rawDay;
 
   const cacheKey = `teacher:routine:today:${sid}:${req.user!.id}:${targetDay}`;
   const cached = fastCache.get<any>(cacheKey);
@@ -550,6 +562,7 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
 
   let targetYearId: string | null = null;
   let targetYearName: string | null = null;
+  let isActiveYear = false;
 
   if (isPostgresConfigured) {
     try {
@@ -557,25 +570,33 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawSession);
         if (isUuid) {
           targetYearId = rawSession;
-        } else {
-          const cleanSessionName = rawSession.replace(/\b(academic\s+)?sessions?\b/gi, '').trim();
-          const ayMatch = await pool.query(
-            `SELECT id, name FROM academic_years 
-             WHERE school_id = $1::uuid AND (
-               LOWER(name) = LOWER($2) 
-               OR name ILIKE '%' || $3 || '%'
-               OR LOWER(code) = LOWER($2)
-               OR code ILIKE '%' || $3 || '%'
-             )
-             LIMIT 1`,
-            [sid, rawSession, cleanSessionName]
+          const ayCheck = await pool.query(
+            `SELECT name, is_active FROM academic_years WHERE id = $1::uuid AND school_id = $2::uuid LIMIT 1`,
+            [rawSession, sid]
           );
-          if (ayMatch.rowCount && ayMatch.rowCount > 0) {
-            targetYearId = ayMatch.rows[0].id;
-            targetYearName = ayMatch.rows[0].name;
-          } else {
-            // Specified session does not exist in DB -> force zero results, never leak older session data
-            targetYearId = '00000000-0000-0000-0000-000000000000';
+          if (ayCheck.rowCount && ayCheck.rowCount > 0) {
+            targetYearName = ayCheck.rows[0].name;
+            isActiveYear = Boolean(ayCheck.rows[0].is_active);
+          }
+        } else {
+          const ayList = await pool.query(
+            `SELECT id, name, is_active FROM academic_years WHERE school_id = $1::uuid`,
+            [sid]
+          );
+          if (ayList.rowCount && ayList.rowCount > 0) {
+            const matched = ayList.rows.find((r: any) =>
+              r.id === rawSession ||
+              isSameSession(r.name, rawSession) ||
+              toCanonicalSession(r.name) === toCanonicalSession(rawSession)
+            );
+            if (matched) {
+              targetYearId = matched.id;
+              targetYearName = matched.name;
+              isActiveYear = Boolean(matched.is_active);
+            } else {
+              // Specified session does not exist in DB -> force zero results, never leak other session data
+              targetYearId = '00000000-0000-0000-0000-000000000000';
+            }
           }
         }
       }
@@ -583,12 +604,13 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
       // If no session specified at all, default to the school's active academic year
       if (!targetYearId && !rawSession) {
         const activeAy = await pool.query(
-          `SELECT id, name FROM academic_years WHERE school_id = $1::uuid AND is_active = true LIMIT 1`,
+          `SELECT id, name, is_active FROM academic_years WHERE school_id = $1::uuid AND is_active = true LIMIT 1`,
           [sid]
         );
         if (activeAy.rowCount && activeAy.rowCount > 0) {
           targetYearId = activeAy.rows[0].id;
           targetYearName = activeAy.rows[0].name;
+          isActiveYear = true;
         }
       }
     } catch (err: any) {
@@ -611,7 +633,7 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
   }
   cleanSec = cleanSec.replace(/section\s*/i, '').trim().toUpperCase() || 'A';
 
-  // SECURITY CHECK: If requesting user is a TEACHER, verify they are the assigned class mentor or active temporary substitute
+  // SECURITY CHECK: If requesting user is a TEACHER, verify they are authorized for this class and section
   if (req.user?.role === 'TEACHER' && isPostgresConfigured) {
     try {
       const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classParam);
@@ -621,7 +643,7 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
          JOIN classes c ON c.id = cm.class_id
          JOIN sections s ON s.id = cm.section_id
          WHERE cm.school_id = $1
-           AND (cm.teacher_id = $2 OR cm.teacher_id IN (SELECT id FROM teacher_profiles WHERE user_id = $2))
+           AND (cm.teacher_id = $2 OR cm.teacher_id IN (SELECT id FROM teacher_profiles WHERE user_id = $2) OR cm.teacher_id IN (SELECT user_id FROM teacher_profiles WHERE id = $2))
            AND (cm.class_id = $3::uuid OR ($4::smallint IS NOT NULL AND c.class_number = $4::smallint))
            AND (cm.section_id = $5::uuid OR UPPER(s.name) = UPPER($6))
          UNION ALL
@@ -629,10 +651,33 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
          JOIN classes c ON c.id = tca.class_id
          JOIN sections s ON s.id = tca.section_id
          WHERE tca.school_id = $1
-           AND (tca.teacher_id = $2 OR tca.teacher_id IN (SELECT id FROM teacher_profiles WHERE user_id = $2))
+           AND (tca.teacher_id = $2 OR tca.teacher_id IN (SELECT id FROM teacher_profiles WHERE user_id = $2) OR tca.teacher_id IN (SELECT user_id FROM teacher_profiles WHERE id = $2))
            AND (tca.class_id = $3::uuid OR ($4::smallint IS NOT NULL AND c.class_number = $4::smallint))
            AND (tca.section_id = $5::uuid OR UPPER(s.name) = UPPER($6))
-           AND tca.start_at <= NOW() AND tca.end_at > NOW()`,
+           AND tca.start_at <= NOW() AND tca.end_at > NOW()
+         UNION ALL
+         SELECT 1 FROM timetable_entries te
+         JOIN classes c ON c.id = te.class_id
+         JOIN sections s ON s.id = te.section_id
+         WHERE te.school_id = $1
+           AND (te.teacher_id = $2 OR te.substitute_teacher_id = $2 OR te.teacher_id IN (SELECT id FROM teacher_profiles WHERE user_id = $2) OR te.teacher_id IN (SELECT user_id FROM teacher_profiles WHERE id = $2))
+           AND (te.class_id = $3::uuid OR ($4::smallint IS NOT NULL AND c.class_number = $4::smallint))
+           AND (te.section_id = $5::uuid OR UPPER(s.name) = UPPER($6))
+         UNION ALL
+         SELECT 1 FROM teacher_profiles tp
+         LEFT JOIN classes c ON c.id = tp.assigned_class_id
+         LEFT JOIN sections s ON s.id = tp.assigned_section_id
+         WHERE tp.school_id = $1
+           AND (tp.user_id = $2 OR tp.id = $2)
+           AND (
+             tp.assigned_class_id = $3::uuid 
+             OR ($4::smallint IS NOT NULL AND (c.class_number = $4::smallint OR tp.assigned_class = 'Class ' || $4::smallint OR tp.assigned_class = $4::text))
+           )
+           AND (
+             tp.assigned_section_id = $5::uuid 
+             OR (UPPER(s.name) = UPPER($6) OR UPPER(tp.assigned_section) = UPPER($6))
+           )
+         LIMIT 1`,
         [
           sid,
           req.user.id,
@@ -650,7 +695,7 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
     }
   }
 
-  const cacheKey = `teacher:students:${sid}:${classParam}:${cleanSec}:${targetYearId || 'all'}`;
+  const cacheKey = `teacher:students:${sid}:${classParam}:${cleanSec}:${targetYearId || rawSession || 'all'}`;
   const cached = fastCache.get<any>(cacheKey);
   if (cached) return res.json(cached);
 
@@ -672,9 +717,14 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
            AND (
              $7::uuid IS NULL 
              OR academic_year_id = $7::uuid
+             OR ($8::boolean = TRUE AND academic_year_id IS NULL)
+             OR id IN (
+               SELECT student_id FROM student_enrollment_history_v28 
+               WHERE academic_year_id = $7::uuid AND school_id = $1::uuid
+             )
            )
          ORDER BY roll_number`,
-        [sid, classUuidVal, classNum, secUuidVal, cleanSec, cleanSec.toLowerCase(), targetYearId]
+        [sid, classUuidVal, classNum, secUuidVal, cleanSec, cleanSec.toLowerCase(), targetYearId, isActiveYear]
       );
       if (q.rows) {
         const uniqueStudents = new Map<string, any>();
@@ -710,13 +760,16 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
           const matchSchool = (s.school_id && isSameSchool(s.school_id, sid)) || (s.schoolId && isSameSchool(s.schoolId, sid));
           if (!matchSchool) return false;
 
-          if (targetYearId || targetYearName) {
+          if (targetYearId || targetYearName || rawSession) {
             const sAyId = s.academic_year_id || s.academicYearId;
             const sAyName = s.session || s.session_name || s.academic_year || s.academicYear;
+            const targetSession = targetYearName || rawSession;
             if (sAyId || sAyName) {
               const matchesId = targetYearId && (sAyId === targetYearId);
-              const matchesName = targetYearName && sAyName && (String(sAyName).toLowerCase().includes(targetYearName.toLowerCase()));
+              const matchesName = targetSession && (isSameSession(sAyName, targetSession) || toCanonicalSession(sAyName) === toCanonicalSession(targetSession));
               if (!matchesId && !matchesName) return false;
+            } else if (!isActiveYear && rawSession && !/^all/i.test(rawSession)) {
+              return false;
             }
           }
 
@@ -1258,7 +1311,7 @@ const authorizedSectionsHandler = async (req: AuthRequest, res: any) => {
              att.school_id = $1
              AND att.class_id = ua.class_id
              AND att.section_id = ua.section_id
-             AND (att.attendance_date = $3 OR att.submitted_at >= NOW() - INTERVAL '18 hours')
+             AND att.attendance_date = $3
            )
            LEFT JOIN users u ON u.id = att.teacher_id
            ORDER BY ua.class_id, ua.section_id, ua.is_temporary ASC, att.submitted_at DESC NULLS LAST`,
@@ -1569,6 +1622,17 @@ const updateStudentAttendanceHandler = async (req: AuthRequest, res: any) => {
 
   // 1. Locate session
   let session = memAttendanceSessions.find(s => s.id === sessionId && isSameSchool(s.schoolId, sid));
+  if (!session && isPostgresConfigured) {
+    try {
+      const sRes = await pool.query(
+        'SELECT a.*, a.attendance_date::text AS attendance_date, c.class_number, s.name as section_name, u.name as teacher_name FROM attendance_sessions a LEFT JOIN classes c ON c.id = a.class_id LEFT JOIN sections s ON s.id = a.section_id LEFT JOIN users u ON u.id = a.teacher_id WHERE a.id = $1 AND a.school_id = $2 LIMIT 1',
+        [sessionId, sid]
+      );
+      if (sRes.rowCount) {
+        session = sRes.rows[0];
+      }
+    } catch {}
+  }
   if (!session && isFirebaseConfigured()) {
     try {
       const doc = await collections.attendanceSessions().doc(sessionId).get();
@@ -1585,15 +1649,13 @@ const updateStudentAttendanceHandler = async (req: AuthRequest, res: any) => {
     return res.status(404).json({ message: 'Attendance session not found for this school' });
   }
 
-  const isSessionAlreadyReattended1 = Boolean(
-    session.is_reattendance ||
-    session.isReattendance ||
-    (Number(session.reattendance_count || session.reattendanceCount || 0) >= 1)
-  );
-  if (isSessionAlreadyReattended1) {
+  const sessionDate1 = formatSchoolDate(session.attendance_date || session.attendanceDate, 'Asia/Kolkata');
+  const todayDate1 = getSchoolToday('Asia/Kolkata');
+  const isPastMidnight1 = Boolean(sessionDate1 && sessionDate1 < todayDate1);
+  if (isPastMidnight1) {
     return res.status(403).json({
       success: false,
-      message: 'Attendance can only be edited once. This session has already been edited and finalized.'
+      message: 'Attendance for past dates is locked and cannot be edited after midnight (12:00 AM).'
     });
   }
 
@@ -1778,14 +1840,45 @@ const updateStudentAttendanceHandler = async (req: AuthRequest, res: any) => {
              record.arrivalPeriod || null, record.arrivalTime || null, req.user!.id, userName, sessionId, studentId, pgStudentId]
           );
 
-          await pool.query(
-            `UPDATE attendance_sessions
-             SET present_count=$1, absent_count=$2, left_early_count=$3, late_count=$4,
-                 is_reattendance=TRUE, reattendance_count=COALESCE(reattendance_count, 0) + 1,
-                 last_modified_by=$5, last_modified_name=$6, last_modified_at=NOW()
-             WHERE id=$7`,
-            [presCount, absCount, leftEarlyCount, lateCount, req.user!.id, userName, sessionId]
+          const updatedCounts1 = await pool.query(
+            `UPDATE attendance_sessions s
+             SET
+               present_count = sub.pres,
+               absent_count = sub.abs,
+               left_early_count = sub.le,
+               late_count = sub.late,
+               total_count = sub.tot,
+               is_reattendance = TRUE,
+               reattendance_count = COALESCE(s.reattendance_count, 0) + 1,
+               last_modified_by = $2,
+               last_modified_name = $3,
+               last_modified_at = NOW()
+             FROM (
+               SELECT
+                 COUNT(*) FILTER (WHERE status = 'PRESENT') AS pres,
+                 COUNT(*) FILTER (WHERE status = 'ABSENT') AS abs,
+                 COUNT(*) FILTER (WHERE status = 'LEFT_EARLY') AS le,
+                 COUNT(*) FILTER (WHERE status = 'LATE') AS late,
+                 COUNT(*) AS tot
+               FROM attendance_records
+               WHERE attendance_session_id = $1
+             ) sub
+             WHERE s.id = $1
+             RETURNING s.present_count, s.absent_count, s.left_early_count, s.late_count, s.total_count`,
+            [sessionId, req.user!.id, userName]
           );
+          if (updatedCounts1.rows[0]) {
+            session.present_count = updatedCounts1.rows[0].present_count;
+            session.presentCount = updatedCounts1.rows[0].present_count;
+            session.absent_count = updatedCounts1.rows[0].absent_count;
+            session.absentCount = updatedCounts1.rows[0].absent_count;
+            session.left_early_count = updatedCounts1.rows[0].left_early_count;
+            session.leftEarlyCount = updatedCounts1.rows[0].left_early_count;
+            session.late_count = updatedCounts1.rows[0].late_count;
+            session.lateCount = updatedCounts1.rows[0].late_count;
+            session.total_count = updatedCounts1.rows[0].total_count;
+            session.totalCount = updatedCounts1.rows[0].total_count;
+          }
 
           const isSidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sid);
           if (isSidUuid) {
@@ -1861,7 +1954,7 @@ const batchReattendanceHandler = async (req: AuthRequest, res: any) => {
   if (!session && isPostgresConfigured) {
     try {
       const sRes = await pool.query(
-        'SELECT a.*, c.class_number, s.name as section_name, u.name as teacher_name FROM attendance_sessions a LEFT JOIN classes c ON c.id = a.class_id LEFT JOIN sections s ON s.id = a.section_id LEFT JOIN users u ON u.id = a.teacher_id WHERE a.id = $1 AND a.school_id = $2 LIMIT 1',
+        'SELECT a.*, a.attendance_date::text AS attendance_date, c.class_number, s.name as section_name, u.name as teacher_name FROM attendance_sessions a LEFT JOIN classes c ON c.id = a.class_id LEFT JOIN sections s ON s.id = a.section_id LEFT JOIN users u ON u.id = a.teacher_id WHERE a.id = $1 AND a.school_id = $2 LIMIT 1',
         [sessionId, sid]
       );
       if (sRes.rowCount) {
@@ -1911,15 +2004,13 @@ const batchReattendanceHandler = async (req: AuthRequest, res: any) => {
     return res.status(404).json({ message: 'Attendance session not found' });
   }
 
-  const isSessionAlreadyReattended2 = Boolean(
-    session.is_reattendance ||
-    session.isReattendance ||
-    (Number(session.reattendance_count || session.reattendanceCount || 0) >= 1)
-  );
-  if (isSessionAlreadyReattended2) {
+  const sessionDate2 = formatSchoolDate(session.attendance_date || session.attendanceDate, 'Asia/Kolkata');
+  const todayDate2 = getSchoolToday('Asia/Kolkata');
+  const isPastMidnight2 = Boolean(sessionDate2 && sessionDate2 < todayDate2);
+  if (isPastMidnight2) {
     return res.status(403).json({
       success: false,
-      message: 'Attendance can only be edited once. This session has already been edited and finalized.'
+      message: 'Attendance for past dates is locked and cannot be edited after midnight (12:00 AM).'
     });
   }
 
@@ -2071,14 +2162,45 @@ const batchReattendanceHandler = async (req: AuthRequest, res: any) => {
            r.arrivalPeriod || null, r.arrivalTime || null, req.user!.id, userName, sessionId, studentId]
         );
       }
-      await pool.query(
-        `UPDATE attendance_sessions
-         SET present_count=$1, absent_count=$2, left_early_count=$3, late_count=$4,
-             is_reattendance=TRUE, reattendance_count=COALESCE(reattendance_count, 0) + 1,
-             last_modified_by=$5, last_modified_name=$6, last_modified_at=NOW()
-         WHERE id=$7`,
-        [presCount, absCount, leftEarlyCount, lateCount, req.user!.id, userName, sessionId]
+      const updatedCounts2 = await pool.query(
+        `UPDATE attendance_sessions s
+         SET
+           present_count = sub.pres,
+           absent_count = sub.abs,
+           left_early_count = sub.le,
+           late_count = sub.late,
+           total_count = sub.tot,
+           is_reattendance = TRUE,
+           reattendance_count = COALESCE(s.reattendance_count, 0) + 1,
+           last_modified_by = $2,
+           last_modified_name = $3,
+           last_modified_at = NOW()
+         FROM (
+           SELECT
+             COUNT(*) FILTER (WHERE status = 'PRESENT') AS pres,
+             COUNT(*) FILTER (WHERE status = 'ABSENT') AS abs,
+             COUNT(*) FILTER (WHERE status = 'LEFT_EARLY') AS le,
+             COUNT(*) FILTER (WHERE status = 'LATE') AS late,
+             COUNT(*) AS tot
+           FROM attendance_records
+           WHERE attendance_session_id = $1
+         ) sub
+         WHERE s.id = $1
+         RETURNING s.present_count, s.absent_count, s.left_early_count, s.late_count, s.total_count`,
+        [sessionId, req.user!.id, userName]
       );
+      if (updatedCounts2.rows[0]) {
+        session.present_count = updatedCounts2.rows[0].present_count;
+        session.presentCount = updatedCounts2.rows[0].present_count;
+        session.absent_count = updatedCounts2.rows[0].absent_count;
+        session.absentCount = updatedCounts2.rows[0].absent_count;
+        session.left_early_count = updatedCounts2.rows[0].left_early_count;
+        session.leftEarlyCount = updatedCounts2.rows[0].left_early_count;
+        session.late_count = updatedCounts2.rows[0].late_count;
+        session.lateCount = updatedCounts2.rows[0].late_count;
+        session.total_count = updatedCounts2.rows[0].total_count;
+        session.totalCount = updatedCounts2.rows[0].total_count;
+      }
       const isSidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sid);
       const isSessUuid2 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId);
       if (isSidUuid && isSessUuid2) {
@@ -2629,11 +2751,33 @@ const postAttendanceHandler = async (req: AuthRequest, res: any) => {
         )).rows[0];
         sessionId = session.id;
 
-        // Fetch students enrolled in this section in Postgres
-        let students = (await client.query(
-          `SELECT id, name, roll_number FROM students WHERE school_id=$1 AND class_id=$2 AND section_id=$3 AND is_active`,
-          [schoolId, classId, sectionId]
-        )).rows;
+        // Fetch students enrolled in this section in Postgres (restricted to submitted roster or active academic year)
+        const submittedStudentIds = Array.isArray(x.studentIds) && x.studentIds.length > 0
+          ? x.studentIds.filter((id: any) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id)))
+          : (Array.isArray(x.records)
+              ? x.records
+                  .map((r: any) => r.studentId || r.student_id || r.id)
+                  .filter((id: any) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id)))
+              : []);
+
+        let students: any[] = [];
+        if (submittedStudentIds.length > 0) {
+          students = (await client.query(
+            `SELECT id, name, roll_number FROM students 
+             WHERE school_id=$1 AND class_id=$2 AND section_id=$3 AND is_active AND id = ANY($4::uuid[])`,
+            [schoolId, classId, sectionId, submittedStudentIds]
+          )).rows;
+        } else {
+          students = (await client.query(
+            `SELECT id, name, roll_number FROM students 
+             WHERE school_id=$1 AND class_id=$2 AND section_id=$3 AND is_active
+               AND (
+                 academic_year_id = (SELECT id FROM academic_years WHERE school_id=$1 AND is_active LIMIT 1)
+                 OR academic_year_id IS NULL
+               )`,
+            [schoolId, classId, sectionId]
+          )).rows;
+        }
 
         // If no students enrolled in Postgres yet but records were passed in request body, resolve or create them
         if (students.length === 0 && Array.isArray(x.records) && x.records.length > 0) {
@@ -3439,6 +3583,14 @@ r.put('/profile', ...teacher, async (req: AuthRequest, res) => {
   const { email, phone, address, qualification, gender } = req.body || {};
 
   try {
+    if (phone && schoolId) {
+      const { checkTeacherPhoneConflict } = await import('../utils/teacherValidation');
+      const conflictRes = await checkTeacherPhoneConflict(schoolId, String(phone), userId);
+      if (conflictRes.conflict) {
+        return res.status(409).json({ message: conflictRes.message || 'This phone number is already registered.' });
+      }
+    }
+
     // 1. Update email in users table if provided
     if (email && typeof email === 'string') {
       const cleanEmail = email.trim().toLowerCase();

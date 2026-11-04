@@ -14,6 +14,7 @@ export const AutoExpandingTextarea: React.FC<AutoExpandingTextareaProps> = ({
   style,
   onChange,
   onInput,
+  className = '',
   ...props
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -52,6 +53,7 @@ export const AutoExpandingTextarea: React.FC<AutoExpandingTextareaProps> = ({
         onInput?.(e);
       }}
       rows={1}
+      className={`w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${className}`}
       style={{
         ...style,
         resize: 'none',

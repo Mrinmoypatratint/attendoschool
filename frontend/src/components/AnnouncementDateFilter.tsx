@@ -147,77 +147,35 @@ export function AnnouncementDateFilter({
   const hasActiveFilter = Boolean(fromDate || toDate);
 
   return (
-    <div
-      style={{
-        backgroundColor: 'var(--card, #ffffff)',
-        borderRadius: 12,
-        border: '1px solid var(--border, #e2e8f0)',
-        padding: '14px 16px',
-        marginBottom: 20,
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 12
-      }}
-    >
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-3.5 sm:p-4 mb-5 shadow-xs flex flex-col gap-3 transition-colors">
       {/* Top row: Header + Quick Filter Chips */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 10
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Calendar size={16} color="var(--primary, #2563eb)" />
-          <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+      <div className="flex justify-between items-center flex-wrap gap-2.5">
+        <div className="flex items-center gap-2">
+          <Calendar size={16} className="text-blue-600 dark:text-blue-400" />
+          <span className="text-[13.5px] font-bold text-slate-900 dark:text-slate-100">
             Filter by Date
           </span>
           {hasActiveFilter && (
-            <span
-              style={{
-                fontSize: 11,
-                padding: '2px 8px',
-                borderRadius: 999,
-                backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                color: 'var(--primary, #2563eb)',
-                fontWeight: 600,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4
-              }}
-            >
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-semibold inline-flex items-center gap-1">
               Filtered
             </span>
           )}
         </div>
 
         {/* Quick Filter Pill Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', marginRight: 2 }}>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs text-slate-500 dark:text-slate-400 mr-0.5">
             Quick:
           </span>
           <button
             type="button"
             disabled={loading}
             onClick={() => handleQuickSelect('today')}
-            style={{
-              padding: '4px 11px',
-              fontSize: 12,
-              fontWeight: isTodayActive ? 700 : 500,
-              borderRadius: 6,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              border: isTodayActive
-                ? '1px solid var(--primary, #2563eb)'
-                : '1px solid var(--border, #cbd5e1)',
-              backgroundColor: isTodayActive
-                ? 'rgba(37, 99, 235, 0.12)'
-                : 'var(--surface-subtle, #f8fafc)',
-              color: isTodayActive ? 'var(--primary, #2563eb)' : 'var(--text, #334155)',
-              transition: 'all 0.15s ease'
-            }}
+            className={`px-2.5 py-1 text-xs rounded-md cursor-pointer disabled:cursor-not-allowed transition-all border ${
+              isTodayActive
+                ? 'font-bold border-blue-600 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300'
+                : 'font-medium border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+            }`}
           >
             Today
           </button>
@@ -226,21 +184,11 @@ export function AnnouncementDateFilter({
             type="button"
             disabled={loading}
             onClick={() => handleQuickSelect('last7')}
-            style={{
-              padding: '4px 11px',
-              fontSize: 12,
-              fontWeight: isLast7Active ? 700 : 500,
-              borderRadius: 6,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              border: isLast7Active
-                ? '1px solid var(--primary, #2563eb)'
-                : '1px solid var(--border, #cbd5e1)',
-              backgroundColor: isLast7Active
-                ? 'rgba(37, 99, 235, 0.12)'
-                : 'var(--surface-subtle, #f8fafc)',
-              color: isLast7Active ? 'var(--primary, #2563eb)' : 'var(--text, #334155)',
-              transition: 'all 0.15s ease'
-            }}
+            className={`px-2.5 py-1 text-xs rounded-md cursor-pointer disabled:cursor-not-allowed transition-all border ${
+              isLast7Active
+                ? 'font-bold border-blue-600 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300'
+                : 'font-medium border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+            }`}
           >
             Last 7 Days
           </button>
@@ -249,21 +197,11 @@ export function AnnouncementDateFilter({
             type="button"
             disabled={loading}
             onClick={() => handleQuickSelect('this_month')}
-            style={{
-              padding: '4px 11px',
-              fontSize: 12,
-              fontWeight: isThisMonthActive ? 700 : 500,
-              borderRadius: 6,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              border: isThisMonthActive
-                ? '1px solid var(--primary, #2563eb)'
-                : '1px solid var(--border, #cbd5e1)',
-              backgroundColor: isThisMonthActive
-                ? 'rgba(37, 99, 235, 0.12)'
-                : 'var(--surface-subtle, #f8fafc)',
-              color: isThisMonthActive ? 'var(--primary, #2563eb)' : 'var(--text, #334155)',
-              transition: 'all 0.15s ease'
-            }}
+            className={`px-2.5 py-1 text-xs rounded-md cursor-pointer disabled:cursor-not-allowed transition-all border ${
+              isThisMonthActive
+                ? 'font-bold border-blue-600 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300'
+                : 'font-medium border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+            }`}
           >
             This Month
           </button>
@@ -271,17 +209,10 @@ export function AnnouncementDateFilter({
       </div>
 
       {/* Date Inputs + Action Buttons Form */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          flexWrap: 'wrap'
-        }}
-      >
+      <div className="flex items-center gap-2.5 flex-wrap">
         {/* From Date Input */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: '1 1 180px', minWidth: 160 }}>
-          <label style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-muted, #64748b)', whiteSpace: 'nowrap' }}>
+        <div className="flex items-center gap-1.5 flex-1 min-w-[160px]">
+          <label className="text-[12.5px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
             From:
           </label>
           <input
@@ -291,24 +222,17 @@ export function AnnouncementDateFilter({
             value={internalFrom}
             onChange={(e) => handleFromChange(e.target.value)}
             disabled={loading}
-            style={{
-              width: '100%',
-              padding: '6px 10px',
-              fontSize: 13,
-              borderRadius: 6,
-              border: errorMessage
-                ? '1px solid #ef4444'
-                : '1px solid var(--border, #cbd5e1)',
-              backgroundColor: 'var(--bg-card, #ffffff)',
-              color: 'var(--text, #0f172a)',
-              outline: 'none'
-            }}
+            className={`w-full px-2.5 py-1.5 text-[13px] rounded-md outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 transition-colors border ${
+              errorMessage
+                ? 'border-rose-500 focus:ring-1 focus:ring-rose-500'
+                : 'border-slate-300 dark:border-slate-700 focus:ring-1 focus:ring-blue-500'
+            }`}
           />
         </div>
 
         {/* To Date Input */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: '1 1 180px', minWidth: 160 }}>
-          <label style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-muted, #64748b)', whiteSpace: 'nowrap' }}>
+        <div className="flex items-center gap-1.5 flex-1 min-w-[160px]">
+          <label className="text-[12.5px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
             To:
           </label>
           <input
@@ -318,42 +242,21 @@ export function AnnouncementDateFilter({
             value={internalTo}
             onChange={(e) => handleToChange(e.target.value)}
             disabled={loading}
-            style={{
-              width: '100%',
-              padding: '6px 10px',
-              fontSize: 13,
-              borderRadius: 6,
-              border: errorMessage
-                ? '1px solid #ef4444'
-                : '1px solid var(--border, #cbd5e1)',
-              backgroundColor: 'var(--bg-card, #ffffff)',
-              color: 'var(--text, #0f172a)',
-              outline: 'none'
-            }}
+            className={`w-full px-2.5 py-1.5 text-[13px] rounded-md outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 transition-colors border ${
+              errorMessage
+                ? 'border-rose-500 focus:ring-1 focus:ring-rose-500'
+                : 'border-slate-300 dark:border-slate-700 focus:ring-1 focus:ring-blue-500'
+            }`}
           />
         </div>
 
         {/* Buttons: Apply & Reset */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
             disabled={loading}
             onClick={handleApply}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '7px 16px',
-              fontSize: 13,
-              fontWeight: 600,
-              borderRadius: 6,
-              border: 'none',
-              backgroundColor: 'var(--primary, #2563eb)',
-              color: '#ffffff',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              boxShadow: '0 1px 2px rgba(37, 99, 235, 0.2)',
-              transition: 'all 0.15s ease'
-            }}
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 text-[13px] font-semibold rounded-md border-0 bg-blue-600 hover:bg-blue-700 text-white cursor-pointer disabled:cursor-not-allowed shadow-xs transition-colors"
           >
             <Filter size={13} />
             Apply
@@ -364,20 +267,7 @@ export function AnnouncementDateFilter({
               type="button"
               disabled={loading}
               onClick={handleReset}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                padding: '7px 14px',
-                fontSize: 13,
-                fontWeight: 500,
-                borderRadius: 6,
-                border: '1px solid var(--border, #cbd5e1)',
-                backgroundColor: 'transparent',
-                color: 'var(--text-muted, #64748b)',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'all 0.15s ease'
-              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[13px] font-medium rounded-md border border-slate-300 dark:border-slate-700 bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer disabled:cursor-not-allowed transition-colors"
             >
               <RotateCcw size={13} />
               Reset
@@ -388,21 +278,8 @@ export function AnnouncementDateFilter({
 
       {/* Error Message banner if validation fails */}
       {errorMessage && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '8px 12px',
-            borderRadius: 6,
-            backgroundColor: 'rgba(239, 68, 68, 0.08)',
-            border: '1px solid rgba(239, 68, 68, 0.25)',
-            color: '#dc2626',
-            fontSize: 12.5,
-            fontWeight: 500
-          }}
-        >
-          <AlertCircle size={15} style={{ flexShrink: 0 }} />
+        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-rose-500/10 border border-rose-500/25 text-rose-600 dark:text-rose-400 text-[12.5px] font-medium">
+          <AlertCircle size={15} className="shrink-0" />
           <span>{errorMessage}</span>
         </div>
       )}

@@ -8,6 +8,7 @@ import { getAllDemoUsers } from '../store/demoUsers';
 import { memAttendanceSessions, memAttendanceRecords } from '../routes/teacher';
 import { calculateWorkingCalendar } from './calendarService';
 import { inMemoryLeaves } from '../store/leavesStore';
+import { memEntries } from '../routes/timetable';
 import { validatePasswordStrength } from '../utils/passwordPolicy';
 import { normalizeGender } from '../utils/gender';
 import { validateAttachment, uploadToStorage, deleteFromStorage, buildStudentSubmissionStorageKey, MAX_FILES_COUNT, MAX_TOTAL_SIZE } from '../utils/firebaseStorage';
@@ -366,11 +367,12 @@ export async function getStudentProfile(schoolId: string, userId: string, studen
 /**
  * Updates student profile details (gender, date of birth, address)
  */
-export async function updateStudentProfile(schoolId: string, userId: string, data: { gender?: string; dateOfBirth?: string; address?: string }) {
+export async function updateStudentProfile(schoolId: string, userId: string, data: { gender?: string; dateOfBirth?: string; address?: string; email?: string }) {
   const st = await resolveStudentRecord(schoolId, userId);
   if (!st) throw new Error('Student record not found');
 
   const cleanDob = data.dateOfBirth ? toDdMmYyyy(data.dateOfBirth) : null;
+  const cleanEmail = data.email !== undefined ? (data.email ? String(data.email).trim().toLowerCase() : null) : undefined;
   const updates: string[] = [];
   const params: any[] = [];
   let idx = 1;
@@ -387,6 +389,10 @@ export async function updateStudentProfile(schoolId: string, userId: string, dat
     updates.push(`address = $${idx++}`);
     params.push(data.address || null);
   }
+  if (cleanEmail !== undefined) {
+    updates.push(`email = $${idx++}`);
+    params.push(cleanEmail);
+  }
 
   if (updates.length > 0) {
     try {
@@ -396,6 +402,16 @@ export async function updateStudentProfile(schoolId: string, userId: string, dat
         params
       );
     } catch (_dbErr) {}
+
+    if (cleanEmail !== undefined) {
+      try {
+        const targetUserId = st.user_id || userId;
+        await pool.query(
+          `UPDATE users SET email = $1, updated_at = NOW() WHERE id = $2`,
+          [cleanEmail, targetUserId]
+        );
+      } catch (_uErr) {}
+    }
   }
 
   // Update in Firestore
@@ -409,6 +425,10 @@ export async function updateStudentProfile(schoolId: string, userId: string, dat
         fUpdates.dateOfBirth = cleanDob;
       }
       if (data.address !== undefined) fUpdates.address = data.address || null;
+      if (cleanEmail !== undefined) {
+        fUpdates.email = cleanEmail;
+        fUpdates.student_email = cleanEmail;
+      }
       await collections.students().doc(st.id).set(fUpdates, { merge: true });
     } catch (_fErr) {}
   }
@@ -420,6 +440,10 @@ export async function updateStudentProfile(schoolId: string, userId: string, dat
     if (data.dateOfBirth !== undefined) {
       ds.date_of_birth = cleanDob;
       ds.dob = cleanDob;
+    }
+    if (cleanEmail !== undefined) {
+      ds.email = cleanEmail;
+      ds.student_email = cleanEmail;
     }
   }
 
@@ -632,7 +656,7 @@ export async function getStudentDashboard(schoolId: string, userId: string, stud
   if (!st) throw new Error('Student record not found');
   const now = new Date();
   const todayDay = now.getDay(); // 0 = Sunday, 1 = Monday, ...
-  const targetDay = todayDay === 0 ? 1 : todayDay; // Default to Monday if Sunday
+  const targetDay = todayDay;
 
   // Run all PostgreSQL queries concurrently
   const [attQ, timeQ, recQ, annQ, assignQ, nextExamQ] = await Promise.all([
@@ -664,7 +688,7 @@ export async function getStudentDashboard(schoolId: string, userId: string, stud
          AND (e.class_id::text = $2 OR c.class_number = $3)
          AND (e.section_id::text = $4 OR LOWER(sec.name) = LOWER($5))
          AND e.day_of_week = $6
-         AND e.status = 'PUBLISHED'
+         AND (e.status = 'PUBLISHED' OR e.status = 'ASSIGNED')
        ORDER BY p.start_time ASC, p.period_number ASC`,
       [schoolId, String(st.class_id || ''), Number(st.class_number || 0), String(st.section_id || ''), String(st.section_name || ''), targetDay]
     ).catch(() => ({ rowCount: 0, rows: [] as any[] })),
@@ -684,8 +708,11 @@ export async function getStudentDashboard(schoolId: string, userId: string, stud
 
     // 4. Latest Announcements (Unread Only)
     pool.query(
-      `SELECT a.id, a.title, a.message, a.priority, a.published_at, a.created_at
+      `SELECT a.id, a.title, a.message, a.priority, a.published_at, a.created_at,
+              COALESCE(a.author_name, a.created_by_name, u.name, 'School Administration') AS author_name,
+              COALESCE(a.author_role, a.created_by_role, u.role::text, 'SCHOOL_ADMIN') AS author_role
        FROM announcements a
+       LEFT JOIN users u ON u.id = a.created_by
        LEFT JOIN classes c ON c.id = a.class_id
        LEFT JOIN sections sec ON sec.id = a.section_id
        LEFT JOIN announcement_recipients r ON r.announcement_id = a.id AND r.parent_user_id = $6
@@ -848,15 +875,25 @@ export async function getStudentDashboard(schoolId: string, userId: string, stud
         }
       } catch {}
     }
-    if (todayTimetable.length === 0) {
-      todayTimetable = [
-        { periodNumber: 1, time: '08:00 - 08:45', subject: 'Mathematics', teacher: 'Mr. S. Verma', room: 'A-101', status: 'Completed' },
-        { periodNumber: 2, time: '08:45 - 09:30', subject: 'Science', teacher: 'Mrs. P. Das', room: 'A-102', status: 'Completed' },
-        { periodNumber: 3, time: '09:45 - 10:30', subject: 'English', teacher: 'Ms. R. Khan', room: 'A-103', status: 'Ongoing' },
-        { periodNumber: 4, time: '10:30 - 11:15', subject: 'Social Science', teacher: 'Mr. A. Singh', room: 'A-104', status: 'Upcoming' },
-        { periodNumber: 5, time: '11:30 - 12:15', subject: 'Computer Science', teacher: 'Mrs. N. Roy', room: 'Lab-1', status: 'Upcoming' },
-        { periodNumber: 6, time: '12:15 - 01:00', subject: 'Physical Education', teacher: 'Mr. K. Yadav', room: 'Ground', status: 'Upcoming' }
-      ];
+    if (todayTimetable.length === 0 && Array.isArray(memEntries) && memEntries.length > 0) {
+      const memList = memEntries.filter((e: any) => {
+        const matchSid = (!e.school_id && isTestSchool(schoolId)) || (e.school_id && isSameSchool(e.school_id, schoolId));
+        if (!matchSid) return false;
+        if (Number(e.day_of_week ?? e.dayOfWeek) !== targetDay) return false;
+        if (e.status === 'CANCELLED') return false;
+        return matchesStudentClass(e, st) && matchesStudentSection(e, st);
+      });
+      if (memList.length > 0) {
+        todayTimetable = memList.map((e: any, idx: number) => ({
+          periodNumber: Number(e.period_number ?? e.periodNumber ?? (idx + 1)),
+          time: `${(e.start_time || e.startTime || '09:00').slice(0, 5)} - ${(e.end_time || e.endTime || '09:45').slice(0, 5)}`,
+          subject: e.subject_name || e.subjectName || 'Subject',
+          teacher: e.teacher_name || e.teacherName || 'Faculty',
+          room: e.room_name || e.roomName || e.room || `Room ${st.class_number || 10}`,
+          status: computePeriodStatus(e.start_time || '09:00', e.end_time || '09:45')
+        }));
+        todayTimetable.sort((a, b) => a.periodNumber - b.periodNumber || a.time.localeCompare(b.time));
+      }
     }
   }
 
@@ -943,7 +980,9 @@ export async function getStudentDashboard(schoolId: string, userId: string, stud
       title: a.title,
       date: new Date(a.published_at || a.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
       description: a.message?.slice(0, 80) + '...',
-      priority: a.priority || 'NORMAL'
+      priority: a.priority || 'NORMAL',
+      author_name: a.author_name,
+      author_role: a.author_role
     }));
   }
 
@@ -1200,7 +1239,7 @@ export async function getStudentTimetable(schoolId: string, userId: string) {
        WHERE e.school_id = $1
          AND (e.class_id::text = $2 OR c.class_number = $3)
          AND (e.section_id::text = $4 OR LOWER(sec.name) = LOWER($5))
-         AND e.status = 'PUBLISHED'
+         AND (e.status = 'PUBLISHED' OR e.status = 'ASSIGNED')
        ORDER BY e.day_of_week ASC, p.start_time ASC, p.period_number ASC`,
       [schoolId, String(st.class_id || ''), Number(st.class_number || 0), String(st.section_id || ''), String(st.section_name || '')]
     );
@@ -1274,13 +1313,24 @@ export async function getStudentAnnouncements(schoolId: string, userId: string, 
 
       const q = await pool.query(
         `SELECT a.id, a.title, a.message, a.priority, a.published_at, a.created_at,
-                a.audience_type,
+                a.audience_type, COALESCE(a.status, 'PUBLISHED') AS status,
                 a.attachment_url, a.attachment_name, a.attachment_type, a.attachment_size,
                 a.created_by,
-                COALESCE(u.name, 'School Administration') AS author_name,
-                COALESCE(u.role, 'SCHOOL_ADMIN') AS author_role,
+                COALESCE(a.author_name, a.created_by_name, u.name, 'School Administration') AS author_name,
+                COALESCE(a.author_role, a.created_by_role, u.role::text, 'SCHOOL_ADMIN') AS author_role,
+                COALESCE(a.created_by_role, a.author_role, u.role::text, 'SCHOOL_ADMIN') AS created_by_role,
                 c.class_number, sec.name AS section_name,
-                r.read_at, r.id AS recipient_id
+                r.read_at, r.id AS recipient_id,
+                COALESCE(
+                  NULLIF((SELECT COUNT(*) FROM announcement_recipients ar WHERE ar.announcement_id = a.id)::int, 0),
+                  CASE 
+                    WHEN a.audience_type = 'SECTION' THEN (SELECT COUNT(*) FROM students s WHERE s.school_id = a.school_id AND s.class_id = a.class_id AND s.section_id = a.section_id)::int
+                    WHEN a.audience_type = 'CLASS' THEN (SELECT COUNT(*) FROM students s WHERE s.school_id = a.school_id AND s.class_id = a.class_id)::int
+                    ELSE (SELECT COUNT(*) FROM students s WHERE s.school_id = a.school_id)::int
+                  END
+                ) AS recipient_count,
+                (SELECT COUNT(*) FROM announcement_recipients ar WHERE ar.announcement_id = a.id AND ar.read_at IS NOT NULL)::int AS read_count,
+                (SELECT COUNT(*) FROM notification_replies nr WHERE nr.announcement_id = a.id)::int AS reply_count
          FROM announcements a
          LEFT JOIN users u ON u.id = a.created_by
          LEFT JOIN classes c ON c.id = a.class_id
@@ -1363,6 +1413,7 @@ export async function getStudentAnnouncements(schoolId: string, userId: string, 
         ...a,
         author_name: a.author_name || a.created_by_name || (isTeacherRole ? 'Teacher' : 'School Administration'),
         author_role: isTeacherRole ? 'TEACHER' : (a.author_role || a.created_by_role || 'SCHOOL_ADMIN'),
+        created_by_role: isTeacherRole ? 'TEACHER' : (a.created_by_role || a.author_role || 'SCHOOL_ADMIN'),
         read_at: isReadByMe ? (a.read_at || new Date().toISOString()) : (Array.isArray(a.read_by) ? null : (a.read_at || null))
       };
     });
@@ -1440,7 +1491,7 @@ export async function getStudentAssignments(schoolId: string, userId: string) {
   try {
     const q = await pool.query(
       `SELECT a.id, a.title, a.description, a.due_date, ${dateCol} AS assigned_date, a.created_at, a.max_marks,
-              a.document_url, a.document_name, a.document_size, a.document_mime, a.document_data,
+              a.document_url, a.document_name, a.document_size, a.document_mime,
               COALESCE(a.attachments, '[]'::jsonb) AS teacher_attachments,
               sub.name AS subject_name, u.name AS teacher_name,
               COALESCE(s.status, 'PENDING') AS submission_status,
@@ -1451,7 +1502,7 @@ export async function getStudentAssignments(schoolId: string, userId: string) {
        LEFT JOIN users u ON u.id = a.teacher_id
        LEFT JOIN student_assignment_submissions s ON s.assignment_id = a.id AND s.student_id = $3
        WHERE a.school_id = $1 AND a.class_id = $2 AND (a.section_id IS NULL OR a.section_id = $4)
-       ORDER BY a.due_date ASC`,
+       ORDER BY ${dateCol} DESC, a.created_at DESC`,
       [schoolId, st.class_id, st.id, st.section_id]
     );
     if (q.rowCount && q.rowCount > 0) {
@@ -1498,9 +1549,25 @@ export async function getStudentAssignments(schoolId: string, userId: string) {
         if (tAtts.length === 0 && (r.document_name || r.document_url)) {
           tAtts = [{ id: 'doc-0', file_name: r.document_name, file_size: r.document_size, mime_type: r.document_mime }];
         }
+        // Lightweight metadata only for listing API (strip raw base64 data URLs)
+        const sanitizedTeacherAtts = tAtts.map((att: any) => ({
+          id: att.id,
+          file_name: att.file_name || att.name || 'document',
+          file_size: Number(att.file_size || att.size || 0),
+          mime_type: att.mime_type || att.type || 'application/octet-stream',
+          storage_key: att.storage_key,
+          uploaded_at: att.uploaded_at
+        }));
+
+        const safeDocUrl = r.document_url && String(r.document_url).startsWith('data:')
+          ? `/api/student/assignments/${r.id}/document/download`
+          : r.document_url;
+
         return {
           ...r,
-          teacher_attachments: tAtts,
+          document_data: undefined, // Strip raw base64 from listing API
+          document_url: safeDocUrl,
+          teacher_attachments: sanitizedTeacherAtts,
           attachments: r.submission_id ? (attachmentsMap.get(r.submission_id) || []) : []
         };
       });
@@ -1569,39 +1636,19 @@ export async function submitStudentAssignment(
     currentAtts = curAttQ.rows || [];
   }
 
-  // 4. Safely handle removal of attachments
+  // 4. Calculate remaining attachments and validate limits before mutation
   const toRemoveIds: string[] = Array.isArray(removedAttachmentIds) ? removedAttachmentIds.filter(Boolean) : [];
-  if (toRemoveIds.length > 0 && currentAtts.length > 0) {
-    const toDeleteList = currentAtts.filter((att) => toRemoveIds.includes(att.id));
-    for (const delAtt of toDeleteList) {
-      if (delAtt.storage_key) {
-        try {
-          await deleteFromStorage(delAtt.storage_key);
-        } catch (_delErr) {
-          console.warn('[Storage] Failed to delete storage key:', delAtt.storage_key);
-        }
-      }
-    }
-    const delIds = toDeleteList.map((a) => a.id);
-    if (delIds.length > 0) {
-      await pool.query(
-        `DELETE FROM student_assignment_attachments
-         WHERE id = ANY($1::uuid[]) AND student_id = $2 AND school_id = $3`,
-        [delIds, st.id, schoolId]
-      );
-      currentAtts = currentAtts.filter((att) => !toRemoveIds.includes(att.id));
-    }
-  }
+  const remainingAtts = currentAtts.filter((att) => !toRemoveIds.includes(att.id));
 
   // 5. Enforce cumulative attachment count limit (<= 5)
   const newFilesList = Array.isArray(attachments) ? attachments.filter((a) => a && a.fileData) : [];
-  const remainingCount = currentAtts.length;
+  const remainingCount = remainingAtts.length;
   if (remainingCount + newFilesList.length > MAX_FILES_COUNT) {
     throw new Error(`Maximum ${MAX_FILES_COUNT} files allowed per submission (currently ${remainingCount} attached, cannot add ${newFilesList.length})`);
   }
 
   // 6. Calculate cumulative size and validate new attachments
-  let cumulativeSize = currentAtts.reduce((sum, a) => sum + (Number(a.file_size) || 0), 0);
+  let cumulativeSize = remainingAtts.reduce((sum, a) => sum + (Number(a.file_size) || 0), 0);
   const validatedFiles: Array<{ id: string; fileName: string; mimeType: string; buffer: Buffer; storageKey: string }> = [];
 
   for (const item of newFilesList) {
@@ -1628,7 +1675,7 @@ export async function submitStudentAssignment(
 
   // 7. Verify non-empty submission
   const trimmedText = String(text || '').trim();
-  if (!trimmedText && currentAtts.length === 0 && validatedFiles.length === 0) {
+  if (!trimmedText && remainingAtts.length === 0 && validatedFiles.length === 0) {
     throw new Error('Submission content required: please provide submission text or attach at least one file');
   }
 
@@ -1656,54 +1703,98 @@ export async function submitStudentAssignment(
     }
   }
 
-  // 9. Upsert or update submission record without clearing original submitted_at or grades
-  let subRecord: any;
-  if (existingSub) {
-    const updateSql = hasUpd
-      ? `UPDATE student_assignment_submissions
-         SET submission_text = $1, status = $2, updated_at = NOW()
-         WHERE id = $3 AND school_id = $4 AND student_id = $5
-         RETURNING *`
-      : `UPDATE student_assignment_submissions
-         SET submission_text = $1, status = $2
-         WHERE id = $3 AND school_id = $4 AND student_id = $5
-         RETURNING *`;
-    const updQ = await pool.query(updateSql, [trimmedText, targetStatus, existingSub.id, schoolId, st.id]);
-    subRecord = updQ.rows[0];
-  } else {
-    const insertSql = hasUpd
-      ? `INSERT INTO student_assignment_submissions
-           (school_id, assignment_id, student_id, status, submitted_at, submission_text, updated_at)
-         VALUES ($1, $2, $3, $4, NOW(), $5, NOW())
-         RETURNING *`
-      : `INSERT INTO student_assignment_submissions
-           (school_id, assignment_id, student_id, status, submitted_at, submission_text)
-         VALUES ($1, $2, $3, $4, NOW(), $5)
-         RETURNING *`;
-    const insQ = await pool.query(insertSql, [schoolId, assignmentId, st.id, targetStatus, trimmedText]);
-    subRecord = insQ.rows[0];
+  // 9. Atomic Transaction: DB updates commit first before any storage keys are cleaned up
+  const client = await pool.connect();
+  const keysToDeleteFromStorage: string[] = [];
+
+  try {
+    await client.query('BEGIN');
+
+    // 9a. Delete removed attachment metadata records within transaction
+    if (toRemoveIds.length > 0 && currentAtts.length > 0) {
+      const toDeleteList = currentAtts.filter((att) => toRemoveIds.includes(att.id));
+      const delIds = toDeleteList.map((a) => a.id);
+      if (delIds.length > 0) {
+        await client.query(
+          `DELETE FROM student_assignment_attachments
+           WHERE id = ANY($1::uuid[]) AND student_id = $2 AND school_id = $3`,
+          [delIds, st.id, schoolId]
+        );
+        for (const delAtt of toDeleteList) {
+          if (delAtt.storage_key) {
+            keysToDeleteFromStorage.push(delAtt.storage_key);
+          }
+        }
+      }
+    }
+
+    // 9b. Upsert or update submission record
+    let subRecord: any;
+    if (existingSub) {
+      const updateSql = hasUpd
+        ? `UPDATE student_assignment_submissions
+           SET submission_text = $1, status = $2, updated_at = NOW()
+           WHERE id = $3 AND school_id = $4 AND student_id = $5
+           RETURNING *`
+        : `UPDATE student_assignment_submissions
+           SET submission_text = $1, status = $2
+           WHERE id = $3 AND school_id = $4 AND student_id = $5
+           RETURNING *`;
+      const updQ = await client.query(updateSql, [trimmedText, targetStatus, existingSub.id, schoolId, st.id]);
+      subRecord = updQ.rows[0];
+    } else {
+      const insertSql = hasUpd
+        ? `INSERT INTO student_assignment_submissions
+             (school_id, assignment_id, student_id, status, submitted_at, submission_text, updated_at)
+           VALUES ($1, $2, $3, $4, NOW(), $5, NOW())
+           RETURNING *`
+        : `INSERT INTO student_assignment_submissions
+             (school_id, assignment_id, student_id, status, submitted_at, submission_text)
+           VALUES ($1, $2, $3, $4, NOW(), $5)
+           RETURNING *`;
+      const insQ = await client.query(insertSql, [schoolId, assignmentId, st.id, targetStatus, trimmedText]);
+      subRecord = insQ.rows[0];
+    }
+
+    // 9c. Upload new attachments to storage and record metadata within transaction
+    const savedNewAttachments: any[] = [];
+    for (const file of validatedFiles) {
+      await uploadToStorage(file.storageKey, file.buffer, file.mimeType);
+
+      const attInsert = await client.query(
+        `INSERT INTO student_assignment_attachments
+           (id, school_id, assignment_id, submission_id, student_id, file_name, file_size, mime_type, storage_provider, storage_key, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'FIREBASE', $9, NOW())
+         RETURNING id, file_name, file_size, mime_type, created_at`,
+        [file.id, schoolId, assignmentId, subRecord.id, st.id, file.fileName, file.buffer.length, file.mimeType, file.storageKey]
+      );
+      savedNewAttachments.push(attInsert.rows[0]);
+    }
+
+    // 9d. Commit transaction
+    await client.query('COMMIT');
+
+    // 10. Post-commit storage cleanup: Only delete from storage after commit succeeds
+    for (const key of keysToDeleteFromStorage) {
+      try {
+        await deleteFromStorage(key);
+      } catch (cleanErr: any) {
+        console.warn(`[Storage] Post-commit cleanup failed for removed key '${key}':`, cleanErr.message);
+      }
+    }
+
+    clearStudentDashboardCache(userId);
+    return {
+      ...subRecord,
+      attachments: [...remainingAtts, ...savedNewAttachments]
+    };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    // On rollback: keysToDeleteFromStorage are NOT deleted from storage!
+    throw err;
+  } finally {
+    client.release();
   }
-
-  // 10. Upload new attachments to storage and record in DB
-  const savedNewAttachments: any[] = [];
-  for (const file of validatedFiles) {
-    await uploadToStorage(file.storageKey, file.buffer, file.mimeType);
-
-    const attInsert = await pool.query(
-      `INSERT INTO student_assignment_attachments
-         (id, school_id, assignment_id, submission_id, student_id, file_name, file_size, mime_type, storage_provider, storage_key, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'FIREBASE', $9, NOW())
-       RETURNING id, file_name, file_size, mime_type, created_at`,
-      [file.id, schoolId, assignmentId, subRecord.id, st.id, file.fileName, file.buffer.length, file.mimeType, file.storageKey]
-    );
-    savedNewAttachments.push(attInsert.rows[0]);
-  }
-
-  clearStudentDashboardCache(userId);
-  return {
-    ...subRecord,
-    attachments: [...currentAtts, ...savedNewAttachments]
-  };
 }
 
 /**
@@ -1733,22 +1824,19 @@ export async function deleteStudentSubmissionAttachment(
   }
 
   const att = attQ.rows[0];
-  if (att.storage_key) {
-    try {
-      await deleteFromStorage(att.storage_key);
-    } catch (delErr: any) {
-      console.warn('[Storage] Could not prune file from storage:', att.storage_key);
-      const err: any = new Error(`Failed to remove attachment file from storage: ${delErr.message || 'Storage error'}. Database record preserved.`);
-      err.status = 502;
-      throw err;
-    }
-  }
 
   await pool.query(
     `DELETE FROM student_assignment_attachments WHERE id = $1 AND student_id = $2 AND school_id = $3`,
     [attachmentId, st.id, schoolId]
   );
 
+  if (att.storage_key) {
+    try {
+      await deleteFromStorage(att.storage_key);
+    } catch (delErr: any) {
+      console.warn('[Storage] Could not prune file from storage:', att.storage_key);
+    }
+  }
   const hasUpd = await checkHasUpdatedAtStudentSub();
   if (hasUpd) {
     try {

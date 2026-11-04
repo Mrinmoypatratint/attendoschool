@@ -1,7 +1,7 @@
 import { pool, isPostgresConfigured } from '../db';
 import { sendMailWithDualPortFallback } from './notificationService';
 import { env } from '../config/env';
-import { isSameSchool } from '../utils/tenant';
+import { isSameSchool, canonicalSchoolId } from '../utils/tenant';
 
 // In-memory fallback stores for test schools / pure Firestore mode resilience
 export const memAnnouncements: any[] = [
@@ -93,6 +93,10 @@ export async function ensureTables() {
       ALTER TABLE announcements ADD COLUMN IF NOT EXISTS attachment_name TEXT;
       ALTER TABLE announcements ADD COLUMN IF NOT EXISTS attachment_type TEXT;
       ALTER TABLE announcements ADD COLUMN IF NOT EXISTS attachment_size INTEGER;
+      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS author_name TEXT;
+      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS author_role TEXT;
+      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS created_by_name TEXT;
+      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS created_by_role TEXT;
     `);
     tablesInitialized = true;
   } catch (err) {
@@ -123,7 +127,7 @@ async function resolveClassAndSectionUuids(schoolId: string, classId?: string | 
                      Number(raw.replace(/[^0-9-]/g, ''));
     if (!isNaN(cleanNum)) {
       try {
-        const q = await pool.query('SELECT id FROM classes WHERE (school_id = $1 OR school_id = $2) AND class_number = $3 LIMIT 1', [schoolId, '00000000-0000-0000-0000-000000000001', cleanNum]);
+        const q = await pool.query('SELECT id FROM classes WHERE school_id = $1 AND class_number = $2 LIMIT 1', [schoolId, cleanNum]);
         if (q.rowCount && q.rows[0]) cUuid = q.rows[0].id;
       } catch {}
     }
@@ -165,7 +169,7 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
   const targetSectionId = audience === 'SECTION' ? resolvedSectionId : null;
 
   const isUuid = (val?: string | null) => Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(val)));
-  const safeSchoolId = isUuid(schoolId) ? schoolId : '00000000-0000-0000-0000-000000000001';
+  const safeSchoolId = isUuid(schoolId) ? schoolId : (canonicalSchoolId(schoolId) || schoolId);
   const safeUserId = isUuid(userId) ? userId : null;
 
   const isDirectPublish = d.publish === true || d.status === 'PUBLISHED';
@@ -177,11 +181,16 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
   const attachmentType = d.attachment_type || d.attachmentType || null;
   const attachmentSize = d.attachment_size || d.attachmentSize || null;
 
+  const authorName = d.author_name || d.created_by_name || (d.author_role === 'TEACHER' ? 'Teacher' : 'School Administration');
+  const authorRole = d.author_role || d.created_by_role || 'SCHOOL_ADMIN';
+  const createdByName = d.created_by_name || authorName;
+  const createdByRole = d.created_by_role || authorRole;
+
   try {
     const { rows } = await pool.query(
       `INSERT INTO announcements
-       (school_id, created_by, title, message, audience_type, class_id, section_id, priority, scheduled_at, expires_at, status, published_at, attachment_url, attachment_name, attachment_type, attachment_size)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::timestamptz, $10::timestamptz, $11, $12::timestamptz, $13, $14, $15, $16)
+       (school_id, created_by, title, message, audience_type, class_id, section_id, priority, scheduled_at, expires_at, status, published_at, attachment_url, attachment_name, attachment_type, attachment_size, author_name, author_role, created_by_name, created_by_role)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::timestamptz, $10::timestamptz, $11, $12::timestamptz, $13, $14, $15, $16, $17, $18, $19, $20)
        RETURNING *`,
       [
         safeSchoolId,
@@ -199,7 +208,11 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
         attachmentUrl,
         attachmentName,
         attachmentType,
-        attachmentSize
+        attachmentSize,
+        authorName,
+        authorRole,
+        createdByName,
+        createdByRole
       ]
     );
     if (rows && rows.length > 0) {
@@ -285,7 +298,7 @@ export async function updateAnnouncement(schoolId: string, id: string, d: any) {
       `UPDATE announcements
        SET title = $1, message = $2, audience_type = $3, class_id = $4, section_id = $5, priority = $6,
            attachment_url = $7, attachment_name = $8, attachment_type = $9, attachment_size = $10, updated_at = NOW()
-       WHERE id = $11 AND (school_id = $12 OR school_id = '00000000-0000-0000-0000-000000000001')
+       WHERE id = $11 AND school_id = $12
        RETURNING *`,
       [
         d.title,
@@ -399,12 +412,36 @@ export async function deleteAnnouncement(schoolId: string, id: string) {
     try {
       await pool.query(`DELETE FROM announcement_recipients WHERE announcement_id = $1`, [id]).catch(() => {});
       await pool.query(`DELETE FROM notification_replies WHERE announcement_id = $1`, [id]).catch(() => {});
-      await pool.query(`DELETE FROM announcements WHERE id = $1 AND (school_id = $2 OR $2 = '00000000-0000-0000-0000-000000000001')`, [id, schoolId]);
+      await pool.query(`DELETE FROM announcements WHERE id = $1 AND school_id = $2`, [id, schoolId]);
     } catch (_e) {}
   }
   const idx = memAnnouncements.findIndex(a => a.id === id);
   if (idx >= 0) memAnnouncements.splice(idx, 1);
   return { success: true };
+}
+
+export async function getAnnouncementById(schoolId: string, id: string, allowCrossSchool = false) {
+  await ensureTables();
+  if (isPostgresConfigured && pool) {
+    try {
+      const res = await pool.query(
+        `SELECT a.*,
+                COALESCE(a.author_name, a.created_by_name, u.name, 'School Administration') AS author_name,
+                COALESCE(a.author_role, a.created_by_role, u.role::text, 'SCHOOL_ADMIN') AS author_role
+         FROM announcements a
+         LEFT JOIN users u ON u.id = a.created_by
+         WHERE a.id = $1 AND (a.school_id = $2 OR $3 = true)
+         LIMIT 1`,
+        [id, schoolId, allowCrossSchool]
+      );
+      if (res.rows && res.rows.length > 0) {
+        return res.rows[0];
+      }
+    } catch (_e) {}
+  }
+
+  const mem = memAnnouncements.find(x => x.id === id && (allowCrossSchool || isSameSchool(x.school_id, schoolId)));
+  return mem || null;
 }
 
 /**
@@ -684,7 +721,12 @@ export async function listSchoolAnnouncements(
   const trimmedEmail = userEmail ? userEmail.trim().toLowerCase() : null;
 
   try {
-    let sql = `SELECT a.*, u.name AS created_by_name, u.email AS created_by_email,
+    let sql = `SELECT a.*,
+        COALESCE(a.author_name, a.created_by_name, u.name, 'School Administration') AS author_name,
+        COALESCE(a.author_role, a.created_by_role, u.role::text, 'SCHOOL_ADMIN') AS author_role,
+        COALESCE(a.created_by_name, a.author_name, u.name, 'School Administration') AS created_by_name,
+        COALESCE(a.created_by_role, a.author_role, u.role::text, 'SCHOOL_ADMIN') AS created_by_role,
+        u.email AS created_by_email,
         c.class_number, sec.name AS section_name,
         COALESCE(
           NULLIF((SELECT COUNT(*) FROM announcement_recipients r WHERE r.announcement_id = a.id)::int, 0),
@@ -779,7 +821,10 @@ export async function teacherInbox(teacherUserId: string, schoolId: string, from
       const { rows } = await pool.query(
         `SELECT a.id, a.title, a.message, a.priority, a.audience_type, a.published_at, a.created_at,
                 a.attachment_url, a.attachment_name, a.attachment_type, a.attachment_size,
-                u.name AS author_name,
+                a.created_by,
+                COALESCE(a.author_name, a.created_by_name, u.name, 'School Administration') AS author_name,
+                COALESCE(a.author_role, a.created_by_role, u.role::text, 'SCHOOL_ADMIN') AS author_role,
+                COALESCE(a.created_by_role, a.author_role, u.role::text, 'SCHOOL_ADMIN') AS created_by_role,
                 r.read_at, r.id AS recipient_id
          FROM announcements a
          LEFT JOIN users u ON u.id = a.created_by
@@ -802,13 +847,8 @@ export async function teacherInbox(teacherUserId: string, schoolId: string, from
   let facultyNotices = memAnnouncements.filter(a => {
     if (a.status !== 'PUBLISHED') return false;
 
-    // School match check with full multi-tenant compatibility
-    const matchesSchool = !a.school_id || !schoolId ||
-      isSameSchool(a.school_id, schoolId) ||
-      a.school_id === schoolId ||
-      String(a.school_id).toLowerCase() === String(schoolId).toLowerCase() ||
-      a.school_id === '00000000-0000-0000-0000-000000000001' ||
-      schoolId === '00000000-0000-0000-0000-000000000001';
+    // Strict multi-tenant match
+    const matchesSchool = isSameSchool(a.school_id, schoolId);
 
     if (!matchesSchool) return false;
 
@@ -928,7 +968,7 @@ export async function parentInbox(parentUserId: string, schoolId: string) {
   } catch (_e) {}
 
   const parentNotices = memAnnouncements.filter(
-    a => a.status === 'PUBLISHED' && ['PARENTS', 'SCHOOL', 'CLASS', 'SECTION'].includes(a.audience_type)
+    a => isSameSchool(a.school_id, schoolId) && a.status === 'PUBLISHED' && ['PARENTS', 'SCHOOL', 'CLASS', 'SECTION'].includes(a.audience_type)
   );
   return parentNotices.map(n => ({
     ...n,

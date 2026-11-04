@@ -51,14 +51,16 @@ function paginateResults(req: Request, res: Response, allRows: any[], maxLimit =
   return res.json(pagedRows);
 }
 
-router.get('/students', async (req: Request,res: Response)=>{
+router.get('/students', async (req: Request, res: Response) => {
   try {
-    if(!sid(req) && role(req) !== 'SUPER_ADMIN') return res.status(403).json({message:'School access required'});
-    const session = String(req.query.session || req.query.academicSession || '').trim();
-    const academicYearId = String(req.query.academicYearId || req.query.academic_year_id || '').trim();
-    const students = await listStudents(effectiveSid(req), String(req.query.search||''), req.query.includeInactive !== 'true', session, academicYearId);
+    if (!sid(req) && role(req) !== 'SUPER_ADMIN') return res.status(403).json({ message: 'School access required' });
+    const session = String(req.query.session || req.query.academicSession || (req.headers['x-academic-session'] ? decodeURIComponent(String(req.headers['x-academic-session'])) : '') || '').trim();
+    const academicYearId = String(req.query.academicYearId || req.query.academic_year_id || req.headers['x-academic-year-id'] || '').trim();
+    const classId = String(req.query.classId || req.query.class_id || '').trim();
+    const sectionId = String(req.query.sectionId || req.query.section_id || '').trim();
+    const students = await listStudents(effectiveSid(req), String(req.query.search || ''), req.query.includeInactive !== 'true', session, academicYearId, classId, sectionId);
     return paginateResults(req, res, students || [], 5000);
-  } catch(_e:any){
+  } catch (_e: any) {
     return paginateResults(req, res, []);
   }
 });
@@ -114,7 +116,13 @@ router.put('/teachers/:id', adminOnly, async (req: Request,res: Response)=>{
   try {
     if(!sid(req) && role(req) !== 'SUPER_ADMIN') return res.status(403).json({message:'School access required'});
     res.json(await updateTeacher(effectiveSid(req), String(req.params.id), req.body||{}));
-  } catch(e:any){ res.status(400).json({message:e.message||'Unable to update teacher'}); }
+  } catch(e:any){
+    const status = typeof e.status === 'number' ? e.status : 400;
+    res.status(status).json({
+      message: e.message || 'Unable to update teacher',
+      ...(e.errors ? { errors: e.errors } : {})
+    });
+  }
 });
 
 router.patch('/teachers/:id/status', adminOnly, async (req: Request,res: Response)=>{

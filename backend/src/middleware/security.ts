@@ -26,9 +26,11 @@ const loginIpBuckets = new Map<string, { count: number; start: number }>();
 const WINDOW = 60_000; // 1 minute window
 
 // General API limit
-const LIMIT = process.env.RATE_LIMIT
-  ? Number(process.env.RATE_LIMIT)
-  : (process.env.NODE_ENV === 'production' ? 600 : 1000);
+export function getApiRateLimit(): number {
+  return process.env.RATE_LIMIT
+    ? Number(process.env.RATE_LIMIT)
+    : (process.env.NODE_ENV === 'production' ? 600 : 1000);
+}
 
 // Login account-level limit (per IP + targeted account)
 const ACCOUNT_LOGIN_LIMIT = Number(process.env.LOGIN_RATE_LIMIT || 30);
@@ -160,7 +162,7 @@ export function apiRateLimit(req: Request, res: Response, next: NextFunction) {
     return next();
   }
   b.count++;
-  if (b.count > LIMIT) {
+  if (b.count > getApiRateLimit()) {
     return res.status(429).json({
       message: 'Too many requests. Please try again later.',
       retryAfter: Math.ceil((WINDOW - (now - b.start)) / 1000)
@@ -184,7 +186,7 @@ export function securityHeaders(_req: Request, res: Response, next: NextFunction
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: https: blob:",
     "connect-src 'self' https://attendoschool.online https://www.attendoschool.online https://api.razorpay.com https://*.firebaseio.com https://*.googleapis.com",
-    "frame-src 'self' https://api.razorpay.com",
+    "frame-src 'self' blob: https://api.razorpay.com",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

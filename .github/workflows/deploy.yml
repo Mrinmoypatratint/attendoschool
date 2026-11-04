@@ -92,6 +92,9 @@ jobs:
       - name: Run Backend Test Suite
         if: inputs.skip_tests != true
         working-directory: ./backend
+        env:
+          NODE_ENV: test
+          JWT_SECRET: test-jwt-secret-at-least-32-characters-long-for-testing
         run: npm run test
 
       - name: Install & Build Frontend
@@ -139,6 +142,8 @@ jobs:
               exit 1
             fi
             git checkout --detach "${{ env.DEPLOY_VERSION }}"
+            echo "📦 Installing Dependencies on VPS..."
+            npm --prefix frontend install --include=dev --no-audit
             echo "🔨 Compiling Backend TypeScript..."
             npm --prefix backend run build
             echo "🔨 Building Frontend React SPA with Vite..."

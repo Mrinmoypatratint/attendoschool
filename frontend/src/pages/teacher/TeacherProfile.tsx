@@ -266,8 +266,8 @@ export function TeacherProfile() {
 
   if (loading) {
     return (
-      <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
-        <Loader2 size={28} className="spin-animate" style={{ margin: '0 auto 12px', display: 'block', color: '#2563eb' }} />
+      <div className="p-16 text-center text-slate-500">
+        <Loader2 size={28} className="animate-spin mx-auto mb-3 block text-blue-600" />
         Loading teacher profile...
       </div>
     );
@@ -276,13 +276,13 @@ export function TeacherProfile() {
   return (
     <div className="student-subpage teacher-profile-page">
       {/* ── Header ── */}
-      <div className="student-subpage-header" style={{ marginBottom: 24 }}>
+      <div className="student-subpage-header mb-6">
         <div className="student-subpage-title-row">
-          <Link to="/dashboard" className="student-back-link">
+          <Link to="/dashboard" className="student-back-link inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 font-semibold transition-colors">
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
-          <h1 className="student-subpage-title">Faculty Profile & Credentials</h1>
-          <p className="student-subpage-desc">
+          <h1 className="student-subpage-title text-2xl font-bold text-slate-900 dark:text-slate-100 mt-2 mb-1">Faculty Profile &amp; Credentials</h1>
+          <p className="student-subpage-desc text-xs text-slate-500 dark:text-slate-400 m-0">
             Personal identity, institutional details, and account security.
           </p>
         </div>
@@ -290,18 +290,11 @@ export function TeacherProfile() {
 
       {detailsMsg && (
         <div
-          style={{
-            marginBottom: 20,
-            padding: '10px 16px',
-            borderRadius: 8,
-            backgroundColor: detailsMsg.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-            border: detailsMsg.type === 'success' ? '1px solid var(--emerald-border, rgba(16, 185, 129, 0.3))' : '1px solid var(--rose-border, rgba(239, 68, 68, 0.3))',
-            color: detailsMsg.type === 'success' ? 'var(--emerald-600, #059669)' : 'var(--rose-600, #dc2626)',
-            fontSize: 13,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8
-          }}
+          className={`mb-5 p-3 px-4 rounded-lg text-xs flex items-center gap-2 ${
+            detailsMsg.type === 'success'
+              ? 'bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400'
+              : 'bg-red-500/10 border border-red-500/25 text-red-500'
+          }`}
         >
           {detailsMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
           <span>{detailsMsg.text}</span>
@@ -309,38 +302,38 @@ export function TeacherProfile() {
       )}
 
       {/* ── Main 3-Column Profile Layout (matching student structure) ── */}
-      <div className="student-profile-layout">
+      <div className="student-profile-layout grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 1. Hero Summary Card */}
-        <div className="student-card student-profile-hero-card">
-          <div className="student-profile-avatar-large">
+        <div className="student-card student-profile-hero-card rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm flex flex-col items-center text-center">
+          <div className="student-profile-avatar-large relative w-24 h-24 rounded-full overflow-hidden bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 flex items-center justify-center text-3xl font-bold border-2 border-slate-200 dark:border-slate-700">
             {profile?.photoUrl ? (
               <img
                 src={profile.photoUrl}
                 alt={profile.name}
-                className="student-profile-avatar-img"
+                className="student-profile-avatar-img w-full h-full object-cover"
               />
             ) : (
               <span>{profile?.name?.charAt(0) || 'T'}</span>
             )}
             {uploadingPhoto && (
-              <div className="student-avatar-loading-overlay">
-                <Loader2 size={24} className="spin-animate" />
+              <div className="student-avatar-loading-overlay absolute inset-0 bg-black/50 flex items-center justify-center text-white">
+                <Loader2 size={24} className="animate-spin" />
               </div>
             )}
           </div>
 
           {/* Upload / Change Picture action buttons */}
-          <div className="student-avatar-actions">
+          <div className="student-avatar-actions flex items-center gap-2 mt-4">
             <input
               type="file"
               ref={fileInputRef}
               accept="image/png,image/jpeg,image/jpg,image/webp"
-              style={{ display: 'none' }}
+              className="hidden"
               onChange={handlePhotoSelect}
             />
             <button
               type="button"
-              className="student-avatar-btn-upload"
+              className="student-avatar-btn-upload inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 cursor-pointer transition-colors"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingPhoto}
               title={profile?.photoUrl ? 'Click to change profile picture' : 'Click to upload picture'}
@@ -351,7 +344,7 @@ export function TeacherProfile() {
             {profile?.photoUrl && (
               <button
                 type="button"
-                className="student-avatar-btn-remove"
+                className="student-avatar-btn-remove p-1.5 text-xs rounded-md bg-red-50 hover:bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 cursor-pointer transition-colors"
                 onClick={handleRemovePhoto}
                 disabled={uploadingPhoto}
                 title="Remove picture"
@@ -362,16 +355,20 @@ export function TeacherProfile() {
           </div>
 
           {photoMsg && (
-            <div className={`student-photo-notice ${photoMsg.type}`}>
+            <div className={`student-photo-notice ${photoMsg.type} mt-3 px-3 py-2 rounded-md text-xs flex items-center gap-1.5 ${
+              photoMsg.type === 'success'
+                ? 'bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400'
+                : 'bg-red-500/10 border border-red-500/25 text-red-500'
+            }`}>
               {photoMsg.type === 'success' ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
               <span>{photoMsg.text}</span>
             </div>
           )}
 
-          <h2 className="profile-hero-name">{profile?.name || 'Faculty Teacher'}</h2>
-          <p className="profile-hero-role">{profile?.designation} · {profile?.department}</p>
+          <h2 className="profile-hero-name text-lg font-bold text-slate-900 dark:text-slate-100 mt-4 mb-0.5">{profile?.name || 'Faculty Teacher'}</h2>
+          <p className="profile-hero-role text-xs text-slate-500 dark:text-slate-400 m-0 mb-3">{profile?.designation} · {profile?.department}</p>
           <div 
-            className="profile-hero-badge"
+            className="profile-hero-badge inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 text-xs font-semibold"
             onClick={() => {
               const site = profile?.schoolWebsite || (profile as any)?.school_website;
               if (site) {
@@ -386,55 +383,32 @@ export function TeacherProfile() {
             <School size={14} />
             <span>{profile?.schoolName}</span>
             {(profile?.schoolWebsite || (profile as any)?.school_website) && (
-              <ExternalLink size={12} style={{ marginLeft: 4, opacity: 0.8 }} />
+              <ExternalLink size={12} className="ml-1 opacity-80" />
             )}
           </div>
 
-          <div
-            style={{
-              marginTop: 16,
-              padding: '10px 14px',
-              backgroundColor: 'var(--surface-subtle, #f8fafc)',
-              borderRadius: 8,
-              border: '1px solid var(--border, #e2e8f0)',
-              width: '100%',
-              boxSizing: 'border-box',
-              textAlign: 'left'
-            }}
-          >
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', marginBottom: 4 }}>
+          <div className="mt-4 p-2.5 px-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700 w-full box-border text-left">
+            <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
               Faculty ID
             </div>
-            <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+            <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
               <code>{(profile?.employeeId && profile.employeeId !== 'TINT-TCH-001') ? profile.employeeId : ((user as any)?.employeeId || (user as any)?.employee_id || (profile?.email === 'teacher1@dav.com' || user?.email === 'teacher1@dav.com' ? '50359' : profile?.employeeId || '50359'))}</code>
             </div>
           </div>
         </div>
 
         {/* 2. Academic & Faculty Details Card */}
-        <div className="student-card student-profile-details-card">
-          <div className="student-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div className="student-card-title-wrap">
-              <User size={18} />
-              <h3 className="student-card-title">Faculty & Institutional Details</h3>
+        <div className="student-card student-profile-details-card rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+          <div className="student-card-header flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-700/60">
+            <div className="student-card-title-wrap flex items-center gap-2 text-slate-900 dark:text-slate-100">
+              <User size={18} className="text-blue-600" />
+              <h3 className="student-card-title text-base font-bold m-0">Faculty &amp; Institutional Details</h3>
             </div>
             {!editing && (
               <button
                 type="button"
                 onClick={() => setEditing(true)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  padding: '5px 12px',
-                  borderRadius: 6,
-                  border: '1px solid var(--border, #cbd5e1)',
-                  backgroundColor: 'var(--card, #ffffff)',
-                  color: 'var(--text, #1e293b)',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-semibold cursor-pointer transition-colors"
               >
                 <Edit3 size={13} /> Edit Contact
               </button>
@@ -442,10 +416,10 @@ export function TeacherProfile() {
           </div>
 
           {editing ? (
-            <form onSubmit={handleSaveDetails} style={{ display: 'grid', gap: 14, marginTop: 12 }}>
-              <div className="teacher-edit-grid">
-                <label style={{ display: 'grid', gap: 4 }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
+            <form onSubmit={handleSaveDetails} className="grid gap-3.5 mt-3">
+              <div className="teacher-edit-grid grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="grid gap-1">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Official Email:
                   </span>
                   <input
@@ -454,20 +428,12 @@ export function TeacherProfile() {
                     value={editEmail}
                     onChange={(e) => setEditEmail(e.target.value)}
                     placeholder="teacher@school.com"
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border, #cbd5e1)',
-                      backgroundColor: 'var(--bg-card, #ffffff)',
-                      color: 'var(--text, #0f172a)',
-                      fontSize: 13,
-                      outline: 'none'
-                    }}
+                    className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </label>
 
-                <label style={{ display: 'grid', gap: 4 }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
+                <label className="grid gap-1">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Contact Mobile Number:
                   </span>
                   <input
@@ -475,34 +441,18 @@ export function TeacherProfile() {
                     value={editPhone}
                     onChange={(e) => setEditPhone(e.target.value)}
                     placeholder="+91 98300 12345"
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border, #cbd5e1)',
-                      backgroundColor: 'var(--bg-card, #ffffff)',
-                      color: 'var(--text, #0f172a)',
-                      fontSize: 13,
-                      outline: 'none'
-                    }}
+                    className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </label>
 
-                <label style={{ display: 'grid', gap: 4 }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
+                <label className="grid gap-1">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Gender:
                   </span>
                   <select
                     value={editGender}
                     onChange={(e) => setEditGender(e.target.value)}
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border, #cbd5e1)',
-                      fontSize: 13,
-                      outline: 'none',
-                      backgroundColor: 'var(--bg-card, #ffffff)',
-                      color: 'var(--text, #0f172a)'
-                    }}
+                    className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500"
                   >
                     <option value="">Select Gender</option>
                     <option value="Male">Male</option>
@@ -512,8 +462,8 @@ export function TeacherProfile() {
                 </label>
               </div>
 
-              <label style={{ display: 'grid', gap: 4 }}>
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
+              <label className="grid gap-1">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Campus / Residential Address:
                 </span>
                 <textarea
@@ -521,20 +471,11 @@ export function TeacherProfile() {
                   value={editAddress}
                   onChange={(e) => setEditAddress(e.target.value)}
                   placeholder="Street, City, State, PIN"
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border, #cbd5e1)',
-                    backgroundColor: 'var(--bg-card, #ffffff)',
-                    color: 'var(--text, #0f172a)',
-                    fontSize: 13,
-                    outline: 'none',
-                    fontFamily: 'inherit'
-                  }}
+                  className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500 font-sans"
                 />
               </label>
 
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+              <div className="flex gap-2 justify-end mt-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -544,102 +485,74 @@ export function TeacherProfile() {
                     setEditGender(formatGender(profile?.gender) || '');
                     setEditAddress(profile?.address || '');
                   }}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '6px 14px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border, #cbd5e1)',
-                    backgroundColor: 'var(--card-subtle, #f8fafc)',
-                    color: 'var(--text, #334155)',
-                    fontSize: 12.5,
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
+                  className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-transparent text-slate-600 dark:text-slate-300 text-xs cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                 >
                   <X size={13} /> Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={savingDetails}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '6px 16px',
-                    borderRadius: 6,
-                    border: 'none',
-                    backgroundColor: '#2563eb',
-                    color: '#ffffff',
-                    fontSize: 12.5,
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-md text-white bg-blue-600 hover:bg-blue-700 text-xs font-semibold cursor-pointer disabled:opacity-60 transition-colors shadow-sm"
                 >
                   <Save size={13} /> {savingDetails ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>
           ) : (
-            <div className="student-details-grid">
+            <div className="student-details-grid grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-3">
               <div className="detail-item">
-                <span className="detail-label">Employee ID</span>
-                <span className="detail-val">{(profile?.employeeId && profile.employeeId !== 'TINT-TCH-001') ? profile.employeeId : ((user as any)?.employeeId || (user as any)?.employee_id || (profile?.email === 'teacher1@dav.com' || user?.email === 'teacher1@dav.com' ? '50359' : profile?.employeeId || '50359'))}</span>
+                <span className="detail-label block text-[11px] font-medium text-slate-400">Employee ID</span>
+                <span className="detail-val font-semibold text-xs text-slate-900 dark:text-slate-100">{(profile?.employeeId && profile.employeeId !== 'TINT-TCH-001') ? profile.employeeId : ((user as any)?.employeeId || (user as any)?.employee_id || (profile?.email === 'teacher1@dav.com' || user?.email === 'teacher1@dav.com' ? '50359' : profile?.employeeId || '50359'))}</span>
               </div>
               <div className="detail-item">
-                <span className="detail-label">Official Email</span>
-                <span className="detail-val">{profile?.email}</span>
+                <span className="detail-label block text-[11px] font-medium text-slate-400">Official Email</span>
+                <span className="detail-val font-semibold text-xs text-slate-900 dark:text-slate-100">{profile?.email}</span>
               </div>
               <div className="detail-item">
-                <span className="detail-label">Mobile Number</span>
-                <span className="detail-val">{profile?.phone || '—'}</span>
+                <span className="detail-label block text-[11px] font-medium text-slate-400">Mobile Number</span>
+                <span className="detail-val font-semibold text-xs text-slate-900 dark:text-slate-100">{profile?.phone || '—'}</span>
               </div>
               <div className="detail-item">
-                <span className="detail-label">Academic Session</span>
-                <span className="detail-val">{profile?.academicSession}</span>
+                <span className="detail-label block text-[11px] font-medium text-slate-400">Academic Session</span>
+                <span className="detail-val font-semibold text-xs text-slate-900 dark:text-slate-100">{profile?.academicSession}</span>
               </div>
               <div className="detail-item">
-                <span className="detail-label">Joining Date</span>
-                <span className="detail-val">{profile?.joiningDate || '—'}</span>
+                <span className="detail-label block text-[11px] font-medium text-slate-400">Joining Date</span>
+                <span className="detail-val font-semibold text-xs text-slate-900 dark:text-slate-100">{profile?.joiningDate || '—'}</span>
               </div>
+              {profile?.qualification && (
+                <div className="detail-item">
+                  <span className="detail-label block text-[11px] font-medium text-slate-400">Qualification</span>
+                  <span className="detail-val font-semibold text-xs text-slate-900 dark:text-slate-100">{profile?.qualification}</span>
+                </div>
+              )}
               <div className="detail-item">
-                <span className="detail-label">Gender</span>
-                <span className="detail-val">{formatGender(profile?.gender) || 'Not Specified'}</span>
+                <span className="detail-label block text-[11px] font-medium text-slate-400">Gender</span>
+                <span className="detail-val font-semibold text-xs text-slate-900 dark:text-slate-100">{formatGender(profile?.gender) || 'Not Specified'}</span>
               </div>
-              <div className="detail-item" style={{ gridColumn: 'span 2' }}>
-                <span className="detail-label">Official School Website</span>
-                <span className="detail-val" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>
+              <div className="detail-item sm:col-span-2">
+                <span className="detail-label block text-[11px] font-medium text-slate-400">Official School Website</span>
+                <span className="detail-val font-semibold text-xs text-slate-900 dark:text-slate-100 break-all">
                   {(profile?.schoolWebsite || (profile as any)?.school_website) ? (
                     <a
                       href={profile?.schoolWebsite || (profile as any)?.school_website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        color: '#2563eb',
-                        fontWeight: 600,
-                        textDecoration: 'none',
-                        wordBreak: 'break-all',
-                        overflowWrap: 'anywhere',
-                        maxWidth: '100%'
-                      }}
+                      className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline max-w-full"
                       title="Open official school website in new tab"
                     >
-                      <Globe size={13} style={{ flexShrink: 0 }} />
-                      <span style={{ textDecoration: 'underline', wordBreak: 'break-all', overflowWrap: 'anywhere' }}>{profile?.schoolWebsite || (profile as any)?.school_website}</span>
-                      <ExternalLink size={12} style={{ flexShrink: 0 }} />
+                      <Globe size={13} className="shrink-0" />
+                      <span className="underline break-all">{profile?.schoolWebsite || (profile as any)?.school_website}</span>
+                      <ExternalLink size={12} className="shrink-0" />
                     </a>
                   ) : (
-                    <span style={{ color: '#94a3b8' }}>Not Configured</span>
+                    <span className="text-slate-400">Not Configured</span>
                   )}
                 </span>
               </div>
-              <div className="detail-item" style={{ gridColumn: 'span 2' }}>
-                <span className="detail-label">Address</span>
-                <span className="detail-val">{profile?.address || '—'}</span>
+              <div className="detail-item sm:col-span-2">
+                <span className="detail-label block text-[11px] font-medium text-slate-400">Address</span>
+                <span className="detail-val font-semibold text-xs text-slate-900 dark:text-slate-100">{profile?.address || '—'}</span>
               </div>
               <div className="detail-item" style={{ gridColumn: 'span 2' }}>
                 <span className="detail-label">Assigned Classes & Mentorship</span>
@@ -703,41 +616,45 @@ export function TeacherProfile() {
         </div>
 
         {/* 3. Change Password / Account Security Card */}
-        <div className="student-card student-profile-security-card">
-          <div className="student-card-header">
-            <div className="student-card-title-wrap">
-              <Lock size={18} />
-              <h3 className="student-card-title">Account Security</h3>
+        <div className="student-card student-profile-security-card rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+          <div className="student-card-header flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-700/60 mb-4">
+            <div className="student-card-title-wrap flex items-center gap-2 text-slate-900 dark:text-slate-100">
+              <Lock size={18} className="text-blue-600" />
+              <h3 className="student-card-title text-base font-bold m-0">Account Security</h3>
             </div>
-            <span className="security-tag">
+            <span className="security-tag inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
               <ShieldCheck size={14} /> BCrypt Protected
             </span>
           </div>
 
           {pwMsg && (
-            <div className={`student-alert-${pwMsg.type}`} style={{ marginBottom: 16 }}>
+            <div className={`student-alert-${pwMsg.type} mb-4 p-3 rounded-md text-xs flex items-center gap-2 ${
+              pwMsg.type === 'success'
+                ? 'bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400'
+                : 'bg-red-500/10 border border-red-500/25 text-red-500'
+            }`}>
               {pwMsg.type === 'success' && <CheckCircle2 size={16} />}
               <span>{pwMsg.text}</span>
             </div>
           )}
 
-          <form onSubmit={handlePasswordChange} className="student-form-vertical">
-            <label>
-              <span>Current Password:</span>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <form onSubmit={handlePasswordChange} className="student-form-vertical space-y-3.5">
+            <label className="block">
+              <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Current Password:</span>
+              <div className="relative flex items-center">
                 <input
                   type={showCurrentPassword ? 'text' : 'password'}
                   required
                   placeholder="••••••••••••"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  style={{ width: '100%', paddingRight: 40 }}
+                  className="w-full px-3 py-2 pr-10 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <button
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowCurrentPassword(s => !s)}
-                  className="password-toggle-btn"
+                  className="password-toggle-btn absolute right-2 bg-transparent border-none text-slate-400 hover:text-slate-600 cursor-pointer p-1"
                   title={showCurrentPassword ? "Hide password" : "Show password"}
                 >
                   {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -745,48 +662,48 @@ export function TeacherProfile() {
               </div>
             </label>
 
-            <label>
-              <span>New Password:</span>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <label className="block">
+              <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">New Password:</span>
+              <div className="relative flex items-center">
                 <input
                   type={showNewPassword ? 'text' : 'password'}
                   required
                   placeholder="Enter new strong password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  style={{ width: '100%', paddingRight: 40 }}
+                  className="w-full px-3 py-2 pr-10 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <button
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowNewPassword(s => !s)}
-                  className="password-toggle-btn"
+                  className="password-toggle-btn absolute right-2 bg-transparent border-none text-slate-400 hover:text-slate-600 cursor-pointer p-1"
                   title={showNewPassword ? "Hide password" : "Show password"}
                 >
                   {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              <span style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 4, display: 'block' }}>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block">
                 Must be at least 8 characters, with 1 Capital letter, 1 small letter, 1 number, and 1 special character.
               </span>
             </label>
 
-            <label>
-              <span>Confirm New Password:</span>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <label className="block">
+              <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Confirm New Password:</span>
+              <div className="relative flex items-center">
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
                   required
                   placeholder="Confirm new password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  style={{ width: '100%', paddingRight: 40 }}
+                  className="w-full px-3 py-2 pr-10 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <button
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowConfirmPassword(s => !s)}
-                  className="password-toggle-btn"
+                  className="password-toggle-btn absolute right-2 bg-transparent border-none text-slate-400 hover:text-slate-600 cursor-pointer p-1"
                   title={showConfirmPassword ? "Hide password" : "Show password"}
                 >
                   {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -797,8 +714,7 @@ export function TeacherProfile() {
             <button
               type="submit"
               disabled={submittingPw}
-              className="student-btn-primary"
-              style={{ marginTop: 8 }}
+              className="student-btn-primary w-full py-2 text-xs font-semibold rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 cursor-pointer transition-colors shadow-sm mt-2"
             >
               {submittingPw ? 'Updating...' : 'Update Password'}
             </button>

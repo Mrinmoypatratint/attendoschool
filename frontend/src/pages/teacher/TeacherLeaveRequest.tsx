@@ -376,52 +376,29 @@ export default function TeacherLeaveRequest() {
   };
 
   return (
-    <div className="student-subpage" style={{ width: '100%', paddingBottom: 60 }}>
+    <div className="student-subpage w-full pb-16">
       {/* ── Header ── */}
-      <div className="student-subpage-header" style={{ marginBottom: 20 }}>
+      <div className="student-subpage-header mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="student-subpage-title-row">
           <Link
             to="/dashboard"
-            className="student-back-link"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              color: '#2563EB',
-              fontWeight: 600,
-              fontSize: 13,
-              textDecoration: 'none',
-              marginBottom: 6
-            }}
+            className="student-back-link inline-flex items-center gap-1.5 text-blue-600 font-semibold text-xs no-underline mb-1.5 hover:text-blue-700 transition-colors"
           >
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
-          <h1 className="student-subpage-title" style={{ fontSize: 24, fontWeight: 800, color: 'var(--text, #0F172A)', margin: '2px 0 4px' }}>
+          <h1 className="student-subpage-title text-2xl font-extrabold text-slate-900 dark:text-white my-1">
             Faculty Leave Applications
           </h1>
-          <p className="student-subpage-desc" style={{ fontSize: 14, color: 'var(--text-secondary, #64748B)', margin: 0 }}>
+          <p className="student-subpage-desc text-sm text-slate-500 dark:text-slate-400 m-0">
             Submit absence requests for School Administration review and track approval status in real-time.
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={loadMyLeaves}
-            className="student-btn-secondary"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '9px 15px',
-              borderRadius: 8,
-              border: '1px solid var(--border, #E2E8F0)',
-              background: 'var(--surface, #FFF)',
-              cursor: 'pointer',
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--text, #0F172A)'
-            }}
+            className="student-btn-secondary inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-semibold text-xs cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors"
           >
             <RefreshCw size={14} className={loading ? 'spin' : ''} />
             <span>Refresh</span>
@@ -432,21 +409,7 @@ export default function TeacherLeaveRequest() {
               setFeedback(null);
               setOpenModal(true);
             }}
-            className="student-btn-primary"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 7,
-              padding: '9px 18px',
-              borderRadius: 8,
-              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-              color: '#fff',
-              border: 'none',
-              fontWeight: 600,
-              fontSize: 13.5,
-              cursor: 'pointer',
-              boxShadow: '0 2px 4px rgba(37,99,235,0.2)'
-            }}
+            className="student-btn-primary inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold text-sm cursor-pointer shadow-sm hover:shadow transition-all"
           >
             <Plus size={16} />
             <span>Apply for Leave</span>
@@ -457,28 +420,19 @@ export default function TeacherLeaveRequest() {
       {/* ── Feedback Message Banner ── */}
       {feedback && (
         <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '12px 18px',
-            borderRadius: 10,
-            marginBottom: 20,
-            background: feedback.type === 'success' ? '#F0FDF4' : '#FEF2F2',
-            border: `1px solid ${feedback.type === 'success' ? '#BBF7D0' : '#FECACA'}`,
-            color: feedback.type === 'success' ? '#166534' : '#991B1B',
-            fontSize: 13.5,
-            fontWeight: 500,
-            animation: 'fadeIn 0.2s ease-in'
-          }}
+          className={`flex items-center justify-between p-3.5 px-4 rounded-xl mb-5 text-sm font-medium border ${
+            feedback.type === 'success'
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+              : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300'
+          }`}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="flex items-center gap-2.5">
             {feedback.type === 'success' ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
             <span>{feedback.message}</span>
           </div>
           <button
             onClick={() => setFeedback(null)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 2 }}
+            className="bg-transparent border-0 cursor-pointer text-inherit p-0.5 hover:opacity-75 transition-opacity"
           >
             <X size={16} />
           </button>
@@ -486,222 +440,91 @@ export default function TeacherLeaveRequest() {
       )}
 
       {/* ── KPI Stat Cards ── */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-          gap: 16,
-          marginBottom: 24
-        }}
-      >
-        <div
-          style={{
-            background: 'var(--surface, #FFF)',
-            border: '1px solid var(--border, #E2E8F0)',
-            borderRadius: 12,
-            padding: '18px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-          }}
-        >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center justify-between shadow-xs">
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Total Requests
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text, #0F172A)', marginTop: 4 }}>
+            <div className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">
               {counts.all}
             </div>
           </div>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: 'rgba(37, 99, 235, 0.12)',
-              color: '#3b82f6',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
+          <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
             <FileText size={22} />
           </div>
         </div>
 
-        <div
-          style={{
-            background: 'var(--surface, #FFF)',
-            border: '1px solid var(--border, #E2E8F0)',
-            borderRadius: 12,
-            padding: '18px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-          }}
-        >
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center justify-between shadow-xs">
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div className="text-xs font-semibold text-amber-500 uppercase tracking-wider">
               Pending Review
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#d97706', marginTop: 4 }}>
+            <div className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 mt-1">
               {counts.pending}
             </div>
           </div>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: 'rgba(245, 158, 11, 0.15)',
-              color: '#f59e0b',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
+          <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center shrink-0">
             <Clock size={22} />
           </div>
         </div>
 
-        <div
-          style={{
-            background: 'var(--surface, #FFF)',
-            border: '1px solid var(--border, #E2E8F0)',
-            borderRadius: 12,
-            padding: '18px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-          }}
-        >
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center justify-between shadow-xs">
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div className="text-xs font-semibold text-emerald-500 uppercase tracking-wider">
               Approved
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#059669', marginTop: 4 }}>
+            <div className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">
               {counts.approved}
             </div>
           </div>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: 'rgba(16, 185, 129, 0.15)',
-              color: '#10b981',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
+          <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-500 flex items-center justify-center shrink-0">
             <CheckCircle2 size={22} />
           </div>
         </div>
 
-        <div
-          style={{
-            background: 'var(--surface, #FFF)',
-            border: '1px solid var(--border, #E2E8F0)',
-            borderRadius: 12,
-            padding: '18px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-          }}
-        >
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center justify-between shadow-xs">
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div className="text-xs font-semibold text-rose-500 uppercase tracking-wider">
               Rejected
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#dc2626', marginTop: 4 }}>
+            <div className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 mt-1">
               {counts.rejected}
             </div>
           </div>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: 'rgba(239, 68, 68, 0.15)',
-              color: '#ef4444',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
+          <div className="w-11 h-11 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-500 flex items-center justify-center shrink-0">
             <XCircle size={22} />
           </div>
         </div>
 
         {/* ── Pending Leave Card (Dynamic Admin Policies & Approved Counts) ── */}
-        <div
-          style={{
-            background: 'var(--surface, #FFF)',
-            border: '1px solid var(--border, #E2E8F0)',
-            borderRadius: 12,
-            padding: '16px 20px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col justify-between shadow-xs">
+          <div className="flex items-center justify-between mb-2">
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#7C3AED', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">
                 Pending Leave
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary, #64748B)', marginTop: 2 }}>
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Entitlement & Usage
               </div>
             </div>
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                background: 'rgba(124, 58, 237, 0.12)',
-                color: '#7C3AED',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}
-            >
+            <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
               <Calendar size={20} />
             </div>
           </div>
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: leaveBalances.length > 4 ? '1fr 1fr' : '1fr',
-              gap: '4px 16px'
-            }}
-          >
+          <div className={`grid ${leaveBalances.length > 4 ? 'grid-cols-2' : 'grid-cols-1'} gap-x-4 gap-y-1`}>
             {leaveBalances.map((item) => (
               <div
                 key={item.key}
-                style={{
-                  fontSize: 13,
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
-                }}
+                className="text-xs font-bold flex items-center justify-between font-mono"
                 title={`${item.name}: ${item.approvedDays} approved out of ${item.allowedDays} allowed days`}
               >
-                <span style={{ textTransform: 'lowercase', color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>
+                <span className="lowercase text-slate-600 dark:text-slate-400 font-semibold">
                   {item.code.toLowerCase()}
                 </span>
-                <span style={{ color: 'var(--text-secondary, #94A3B8)', margin: '0 6px' }}>-</span>
-                <span style={{ color: item.approvedDays > 0 ? '#15803D' : 'var(--text, #0F172A)', fontWeight: 800 }}>
+                <span className="text-slate-400 mx-1.5">-</span>
+                <span className={item.approvedDays > 0 ? 'text-emerald-700 dark:text-emerald-400 font-extrabold' : 'text-slate-900 dark:text-white font-extrabold'}>
                   {item.approvedDays}/{item.allowedDays}
                 </span>
               </div>
@@ -711,126 +534,69 @@ export default function TeacherLeaveRequest() {
       </div>
 
       {/* ── Status Tab Navigation ── */}
-      <div
-        className="student-tab-bar"
-        style={{
-          display: 'flex',
-          gap: 6,
-          borderBottom: '1px solid var(--border, #E2E8F0)',
-          marginBottom: 20
-        }}
-      >
+      <div className="student-tab-bar flex gap-1.5 border-b border-slate-200 dark:border-slate-700 mb-5 overflow-x-auto pb-px">
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'ALL' ? 'active' : ''}`}
+          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'ALL'
+              ? 'border-blue-600 text-blue-600 dark:text-blue-400 active'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
           onClick={() => setActiveTab('ALL')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            padding: '9px 18px',
-            fontSize: 13.5,
-            fontWeight: 600,
-            cursor: 'pointer',
-            borderBottom: activeTab === 'ALL' ? '2px solid #2563EB' : '2px solid transparent',
-            color: activeTab === 'ALL' ? '#2563EB' : 'var(--text-secondary, #64748B)',
-            transition: 'all 0.15s'
-          }}
         >
           All Applications ({counts.all})
         </button>
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'PENDING' ? 'active' : ''}`}
+          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'PENDING'
+              ? 'border-amber-500 text-amber-600 dark:text-amber-400 active'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
           onClick={() => setActiveTab('PENDING')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            padding: '9px 18px',
-            fontSize: 13.5,
-            fontWeight: 600,
-            cursor: 'pointer',
-            borderBottom: activeTab === 'PENDING' ? '2px solid #D97706' : '2px solid transparent',
-            color: activeTab === 'PENDING' ? '#D97706' : 'var(--text-secondary, #64748B)',
-            transition: 'all 0.15s'
-          }}
         >
           Pending Review ({counts.pending})
         </button>
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'APPROVED' ? 'active' : ''}`}
+          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'APPROVED'
+              ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400 active'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
           onClick={() => setActiveTab('APPROVED')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            padding: '9px 18px',
-            fontSize: 13.5,
-            fontWeight: 600,
-            cursor: 'pointer',
-            borderBottom: activeTab === 'APPROVED' ? '2px solid #16A34A' : '2px solid transparent',
-            color: activeTab === 'APPROVED' ? '#16A34A' : 'var(--text-secondary, #64748B)',
-            transition: 'all 0.15s'
-          }}
         >
           Approved ({counts.approved})
         </button>
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'REJECTED' ? 'active' : ''}`}
+          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'REJECTED'
+              ? 'border-rose-600 text-rose-600 dark:text-rose-400 active'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
           onClick={() => setActiveTab('REJECTED')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            padding: '9px 18px',
-            fontSize: 13.5,
-            fontWeight: 600,
-            cursor: 'pointer',
-            borderBottom: activeTab === 'REJECTED' ? '2px solid #DC2626' : '2px solid transparent',
-            color: activeTab === 'REJECTED' ? '#DC2626' : 'var(--text-secondary, #64748B)',
-            transition: 'all 0.15s'
-          }}
         >
           Rejected ({counts.rejected})
         </button>
       </div>
 
       {/* ── Table Card ── */}
-      <div
-        className="student-card"
-        style={{
-          background: 'var(--surface, #FFF)',
-          border: '1px solid var(--border, #E2E8F0)',
-          borderRadius: 12,
-          overflow: 'hidden',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-        }}
-      >
+      <div className="student-card bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-xs">
         {loading ? (
-          <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-secondary, #64748B)' }}>
-            <RefreshCw size={24} className="spin" style={{ margin: '0 auto 12px', display: 'block' }} />
-            <p style={{ margin: 0, fontSize: 14 }}>Loading leave applications...</p>
+          <div className="py-16 px-5 text-center text-slate-500 dark:text-slate-400">
+            <RefreshCw size={24} className="spin mx-auto mb-3 block" />
+            <p className="m-0 text-sm">Loading leave applications...</p>
           </div>
         ) : filteredRequests.length === 0 ? (
-          <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-secondary, #64748B)' }}>
-            <div
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: '50%',
-                background: '#EFF6FF',
-                color: '#2563EB',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 14px'
-              }}
-            >
+          <div className="py-16 px-5 text-center text-slate-500 dark:text-slate-400">
+            <div className="w-13 h-13 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto mb-3.5">
               <FileText size={26} />
             </div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text, #0F172A)', margin: '0 0 6px' }}>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white m-0 mb-1.5">
               No Leave Requests Found
             </h3>
-            <p style={{ fontSize: 13.5, margin: '0 0 16px', maxWidth: 420, marginInline: 'auto' }}>
+            <p className="text-sm m-0 mb-4 max-w-md mx-auto">
               {activeTab === 'ALL'
                 ? "You haven't submitted any leave requests yet. Click 'Apply for Leave' above to apply."
                 : `No leave applications currently match the '${activeTab.toLowerCase()}' status filter.`}
@@ -839,71 +605,50 @@ export default function TeacherLeaveRequest() {
               <button
                 type="button"
                 onClick={() => setOpenModal(true)}
-                className="student-btn-primary"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '8px 16px',
-                  borderRadius: 8,
-                  background: '#2563eb',
-                  color: '#fff',
-                  border: 'none',
-                  fontWeight: 600,
-                  fontSize: 13,
-                  cursor: 'pointer'
-                }}
+                className="student-btn-primary inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs cursor-pointer shadow-sm transition-colors"
               >
                 <Plus size={15} /> Apply Now
               </button>
             )}
           </div>
         ) : (
-          <div className="student-table-wrap" style={{ overflowX: 'auto' }}>
-            <table className="student-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <div className="student-table-wrap overflow-x-auto">
+            <table className="student-table w-full border-collapse text-left">
               <thead>
-                <tr style={{ background: 'var(--table-header, #F8FAFC)', borderBottom: '1px solid var(--border, #E2E8F0)' }}>
-                  <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase' }}>
+                <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
+                  <th className="py-3 px-4.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     LEAVE TYPE
                   </th>
-                  <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase' }}>
+                  <th className="py-3 px-4.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     DURATION & DATES
                   </th>
-                  <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase' }}>
+                  <th className="py-3 px-4.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     REASON / DETAILS
                   </th>
-                  <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase' }}>
+                  <th className="py-3 px-4.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     APPLIED ON
                   </th>
-                  <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase' }}>
+                  <th className="py-3 px-4.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     STATUS
                   </th>
-                  <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase' }}>
+                  <th className="py-3 px-4.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     ADMIN REMARKS
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-700/60">
                 {filteredRequests.map((r) => {
                   const typeObj = getLeaveTypeObj(r.leave_type);
                   const days = calculateDays(r.start_date, r.end_date);
                   return (
                     <tr
                       key={r.id}
-                      style={{
-                        borderBottom: '1px solid var(--border, #E2E8F0)',
-                        transition: 'background 0.15s'
-                      }}
+                      className="hover:bg-slate-50/60 dark:hover:bg-slate-750/50 transition-colors"
                     >
-                      <td style={{ padding: '14px 18px', verticalAlign: 'top' }}>
+                      <td className="py-3.5 px-4.5 align-top">
                         <span
+                          className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold"
                           style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '4px 10px',
-                            borderRadius: 6,
-                            fontSize: 12,
-                            fontWeight: 700,
                             background: typeObj.bg,
                             color: typeObj.color,
                             border: `1px solid ${typeObj.border}`
@@ -913,43 +658,30 @@ export default function TeacherLeaveRequest() {
                         </span>
                       </td>
 
-                      <td style={{ padding: '14px 18px', verticalAlign: 'top' }}>
-                        <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text, #0F172A)' }}>
+                      <td className="py-3.5 px-4.5 align-top">
+                        <div className="font-semibold text-sm text-slate-900 dark:text-white">
                           {formatDate(r.start_date)} → {formatDate(r.end_date)}
                         </div>
-                        <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
                           <Calendar size={12} />
                           <span>{days} {days === 1 ? 'Day' : 'Days'}</span>
                         </div>
                       </td>
 
-                      <td style={{ padding: '14px 18px', verticalAlign: 'top', maxWidth: 300 }}>
-                        <p style={{ margin: 0, fontSize: 13.5, color: 'var(--text, #0F172A)', lineHeight: 1.45 }}>
+                      <td className="py-3.5 px-4.5 align-top max-w-xs">
+                        <p className="m-0 text-sm text-slate-900 dark:text-slate-100 leading-relaxed">
                           {r.reason}
                         </p>
                         {r.document_url && (
-                          <div style={{ marginTop: 8 }}>
+                          <div className="mt-2">
                             <button
                               type="button"
                               onClick={() => setPreviewingDoc({ url: r.document_url!, name: r.document_name || 'Attached Document' })}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 5,
-                                padding: '4px 9px',
-                                borderRadius: 6,
-                                border: '1px solid #BFDBFE',
-                                background: '#EFF6FF',
-                                color: '#1D4ED8',
-                                fontSize: 12,
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                transition: 'background 0.15s'
-                              }}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 text-xs font-semibold cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
                               title="View Attached Document"
                             >
                               <Paperclip size={12} />
-                              <span style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span className="max-w-[180px] overflow-hidden text-ellipsis whitespace-nowrap">
                                 {r.document_name || 'View Document'}
                               </span>
                               <Eye size={12} />
@@ -958,82 +690,43 @@ export default function TeacherLeaveRequest() {
                         )}
                       </td>
 
-                      <td style={{ padding: '14px 18px', verticalAlign: 'top', fontSize: 13, color: 'var(--text-secondary, #64748B)' }}>
+                      <td className="py-3.5 px-4.5 align-top text-xs text-slate-500 dark:text-slate-400">
                         {formatDate(r.created_at)}
                       </td>
 
-                      <td style={{ padding: '14px 18px', verticalAlign: 'top' }}>
+                      <td className="py-3.5 px-4.5 align-top">
                         {r.status === 'PENDING' && (
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 5,
-                              padding: '4px 9px',
-                              borderRadius: 6,
-                              fontSize: 12,
-                              fontWeight: 700,
-                              background: 'rgba(245, 158, 11, 0.12)',
-                              color: '#f59e0b',
-                              border: '1px solid rgba(245, 158, 11, 0.3)'
-                            }}
-                          >
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                             <Clock size={12} />
                             Pending Review
                           </span>
                         )}
                         {r.status === 'APPROVED' && (
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 5,
-                              padding: '4px 9px',
-                              borderRadius: 6,
-                              fontSize: 12,
-                              fontWeight: 700,
-                              background: 'rgba(16, 185, 129, 0.12)',
-                              color: '#10b981',
-                              border: '1px solid rgba(16, 185, 129, 0.3)'
-                            }}
-                          >
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                             <CheckCircle2 size={12} />
                             Approved
                           </span>
                         )}
                         {r.status === 'REJECTED' && (
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 5,
-                              padding: '4px 9px',
-                              borderRadius: 6,
-                              fontSize: 12,
-                              fontWeight: 700,
-                              background: 'rgba(239, 68, 68, 0.12)',
-                              color: '#ef4444',
-                              border: '1px solid rgba(239, 68, 68, 0.3)'
-                            }}
-                          >
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30">
                             <XCircle size={12} />
                             Rejected
                           </span>
                         )}
                       </td>
 
-                      <td style={{ padding: '14px 18px', verticalAlign: 'top', fontSize: 13 }}>
+                      <td className="py-3.5 px-4.5 align-top text-xs">
                         {r.review_notes ? (
                           <div>
-                            <div style={{ color: 'var(--text, #0F172A)', fontWeight: 500, fontSize: 13 }}>
+                            <div className="text-slate-900 dark:text-white font-medium text-xs">
                               {r.review_notes}
                             </div>
-                            <div style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 2 }}>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                               By {r.reviewer_name || 'Admin'} {r.reviewed_at ? `· ${formatDate(r.reviewed_at)}` : ''}
                             </div>
                           </div>
                         ) : (
-                          <span style={{ color: 'var(--text-muted, #94A3B8)', fontSize: 12, fontStyle: 'italic' }}>
+                          <span className="text-slate-400 dark:text-slate-500 italic">
                             Awaiting school admin action
                           </span>
                         )}
@@ -1050,52 +743,19 @@ export default function TeacherLeaveRequest() {
       {/* ── Apply Leave Modal ── */}
       {openModal && (
         <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(3px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: 16
-          }}
+          className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center z-50 p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget && !submitting) setOpenModal(false);
           }}
         >
-          <div
-            style={{
-              background: 'var(--surface, #FFF)',
-              border: '1px solid var(--border, #E2E8F0)',
-              borderRadius: 14,
-              width: '100%',
-              maxWidth: 540,
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
-              overflow: 'hidden',
-              animation: 'scaleUp 0.18s ease-out'
-            }}
-          >
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-scale-up">
             {/* Modal Header */}
-            <div
-              style={{
-                padding: '18px 24px',
-                borderBottom: '1px solid var(--border, #E2E8F0)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                background: 'var(--modal-header, #F8FAFC)'
-              }}
-            >
+            <div className="p-4.5 px-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-900/70">
               <div>
-                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text, #0F172A)' }}>
+                <h3 className="m-0 text-base font-bold text-slate-900 dark:text-white">
                   Apply for Faculty Leave
                 </h3>
-                <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--text-secondary, #64748B)' }}>
+                <p className="m-0 mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                   This request will be sent to the School Admin for review & approval.
                 </p>
               </div>
@@ -1103,62 +763,34 @@ export default function TeacherLeaveRequest() {
                 type="button"
                 onClick={() => setOpenModal(false)}
                 disabled={submitting}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--text-secondary, #64748B)',
-                  padding: 4,
-                  borderRadius: 6
-                }}
+                className="bg-transparent border-0 cursor-pointer text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg transition-colors"
               >
                 <X size={18} />
               </button>
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSubmit} style={{ padding: '20px 24px' }}>
+            <form onSubmit={handleSubmit} className="p-5 px-6">
               {!policiesLoading && dynamicLeaveTypes.length === 0 && (
-                <div
-                  style={{
-                    padding: '10px 14px',
-                    borderRadius: 8,
-                    marginBottom: 16,
-                    background: 'rgba(239, 68, 68, 0.12)',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                    color: '#ef4444',
-                    fontSize: 12.5,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8
-                  }}
-                >
-                  <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+                <div className="p-2.5 px-3.5 rounded-lg mb-4 bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
+                  <AlertTriangle size={16} className="shrink-0" />
                   <span>No leave policies have been configured by the School Admin yet. Please contact your school administrator to configure leave policies.</span>
                 </div>
               )}
 
               {/* Leave Type */}
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #0F172A)', marginBottom: 6 }}>
-                  Leave Type <span style={{ color: '#DC2626' }}>*</span>
+              <div className="mb-4">
+                <label className="block text-xs font-semibold text-slate-900 dark:text-white mb-1.5">
+                  Leave Type <span className="text-rose-600">*</span>
                 </label>
                 <select
                   value={leaveType}
                   onChange={(e) => setLeaveType(e.target.value)}
                   required
                   disabled={dynamicLeaveTypes.length === 0}
-                  style={{
-                    width: '100%',
-                    padding: '9px 12px',
-                    borderRadius: 8,
-                    border: '1px solid var(--border, #CBD5E1)',
-                    background: 'var(--surface, #FFF)',
-                    color: 'var(--text, #0F172A)',
-                    fontSize: 13.5,
-                    outline: 'none',
-                    cursor: dynamicLeaveTypes.length === 0 ? 'not-allowed' : 'pointer'
-                  }}
+                  className={`w-full py-2 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors ${
+                    dynamicLeaveTypes.length === 0 ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                  }`}
                 >
                   {policiesLoading ? (
                     <option value="" disabled>Loading leave policies...</option>
@@ -1175,80 +807,67 @@ export default function TeacherLeaveRequest() {
               </div>
 
               {/* Date Pickers */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
+              <div className="grid grid-cols-2 gap-3.5 mb-4">
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #0F172A)', marginBottom: 6 }}>
-                    From Date <span style={{ color: '#DC2626' }}>*</span>
+                  <label className="block text-xs font-semibold text-slate-900 dark:text-white mb-1.5">
+                    From Date <span className="text-rose-600">*</span>
                   </label>
                   <input
                     type="date"
                     required
+                    min="1900-01-01"
+                    max="9999-12-31"
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '9px 12px',
-                      borderRadius: 8,
-                      border: '1px solid var(--border, #CBD5E1)',
-                      background: 'var(--surface, #FFF)',
-                      color: 'var(--text, #0F172A)',
-                      fontSize: 13.5,
-                      outline: 'none',
-                      boxSizing: 'border-box'
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const parts = val.split('-');
+                      if (parts[0] && parts[0].length > 4) {
+                        parts[0] = parts[0].slice(0, 4);
+                        setStartDate(parts.join('-'));
+                      } else {
+                        setStartDate(val);
+                      }
                     }}
+                    className="w-full py-2 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #0F172A)', marginBottom: 6 }}>
-                    To Date <span style={{ color: '#DC2626' }}>*</span>
+                  <label className="block text-xs font-semibold text-slate-900 dark:text-white mb-1.5">
+                    To Date <span className="text-rose-600">*</span>
                   </label>
                   <input
                     type="date"
                     required
-                    min={startDate || undefined}
+                    min={startDate || '1900-01-01'}
+                    max="9999-12-31"
                     value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '9px 12px',
-                      borderRadius: 8,
-                      border: '1px solid var(--border, #CBD5E1)',
-                      background: 'var(--surface, #FFF)',
-                      color: 'var(--text, #0F172A)',
-                      fontSize: 13.5,
-                      outline: 'none',
-                      boxSizing: 'border-box'
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const parts = val.split('-');
+                      if (parts[0] && parts[0].length > 4) {
+                        parts[0] = parts[0].slice(0, 4);
+                        setEndDate(parts.join('-'));
+                      } else {
+                        setEndDate(val);
+                      }
                     }}
+                    className="w-full py-2 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
               </div>
 
               {/* Duration Info Banner */}
               {currentDurationDays > 0 && (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    background: '#EFF6FF',
-                    border: '1px solid #BFDBFE',
-                    color: '#1D4ED8',
-                    fontSize: 12.5,
-                    fontWeight: 600,
-                    marginBottom: 16
-                  }}
-                >
+                <div className="flex items-center gap-2 p-2 px-3 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-semibold mb-4">
                   <Info size={15} />
                   <span>Calculated Duration: <b>{currentDurationDays} {currentDurationDays === 1 ? 'Day' : 'Days'}</b></span>
                 </div>
               )}
 
               {/* Reason */}
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #0F172A)', marginBottom: 6 }}>
-                  Reason for Absence <span style={{ color: '#DC2626' }}>*</span>
+              <div className="mb-5">
+                <label className="block text-xs font-semibold text-slate-900 dark:text-white mb-1.5">
+                  Reason for Absence <span className="text-rose-600">*</span>
                 </label>
                 <AutoExpandingTextarea
                   required
@@ -1257,32 +876,21 @@ export default function TeacherLeaveRequest() {
                   placeholder="Detail the purpose of leave (e.g. personal emergency, health rest, academic conference, etc.)..."
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: 8,
-                    border: '1px solid var(--border, #CBD5E1)',
-                    background: 'var(--surface, #FFF)',
-                    color: 'var(--text, #0F172A)',
-                    fontSize: 13.5,
-                    lineHeight: 1.45,
-                    outline: 'none',
-                    boxSizing: 'border-box'
-                  }}
+                  className="w-full py-2.5 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm leading-relaxed outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
               </div>
 
               {/* Add Document (Optional) */}
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #0F172A)' }}>
-                    Add Document / Attachment <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-secondary, #64748B)' }}>(Optional)</span>
+              <div className="mb-5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-slate-900 dark:text-white">
+                    Add Document / Attachment <span className="text-xs font-normal text-slate-500 dark:text-slate-400">(Optional)</span>
                   </label>
                   {documentUrl && (
                     <button
                       type="button"
                       onClick={handleRemoveDocument}
-                      style={{ background: 'none', border: 'none', color: '#DC2626', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                      className="bg-transparent border-0 text-rose-600 text-xs font-semibold cursor-pointer p-0 hover:text-rose-700 transition-colors"
                     >
                       Remove
                     </button>
@@ -1290,79 +898,43 @@ export default function TeacherLeaveRequest() {
                 </div>
 
                 {!documentUrl ? (
-                  <label
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6,
-                      padding: '16px 14px',
-                      borderRadius: 8,
-                      border: '1.5px dashed var(--border, #CBD5E1)',
-                      background: 'var(--card-subtle, #F8FAFC)',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
+                  <label className="flex flex-col items-center justify-center gap-1.5 p-4 rounded-xl border-1.5 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 cursor-pointer hover:bg-slate-100/60 dark:hover:bg-slate-800/60 transition-colors">
                     <input
                       type="file"
                       accept="image/*,.pdf,.doc,.docx"
                       onChange={handleFileChange}
-                      style={{ display: 'none' }}
+                      className="hidden"
                     />
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(37, 99, 235, 0.12)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="w-9 h-9 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
                       <Paperclip size={18} />
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #0F172A)' }}>
+                    <div className="text-xs font-semibold text-slate-900 dark:text-white">
                       Click to upload or attach document
                     </div>
-                    <div style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)' }}>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 text-center">
                       Medical certificate, application slip, or proof (PDF, PNG, JPG up to 10MB)
                     </div>
                   </label>
                 ) : (
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '12px 14px',
-                      borderRadius: 8,
-                      border: '1px solid var(--border, #BFDBFE)',
-                      background: 'var(--card-subtle, #EFF6FF)'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                      <div style={{ width: 34, height: 34, borderRadius: 6, background: '#2563EB', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8.5 h-8.5 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
                         {documentUrl.startsWith('data:image/') ? <ImageIcon size={17} /> : <FileText size={17} />}
                       </div>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #1E3A8A)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold text-blue-900 dark:text-blue-200 truncate">
                           {documentName || 'Attached Document'}
                         </div>
-                        <div style={{ fontSize: 11.5, color: 'var(--text-secondary, #3B82F6)', marginTop: 1 }}>
+                        <div className="text-[11px] text-blue-600 dark:text-blue-400 mt-0.5">
                           {documentSize} · Ready to submit
                         </div>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         type="button"
                         onClick={() => setPreviewingDoc({ url: documentUrl, name: documentName || 'Document Preview' })}
-                        style={{
-                          padding: '5px 9px',
-                          borderRadius: 6,
-                          border: '1px solid var(--border, #93C5FD)',
-                          background: 'var(--surface, #FFF)',
-                          color: 'var(--text, #1D4ED8)',
-                          fontSize: 12,
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4
-                        }}
+                        className="px-2.5 py-1.5 rounded-md border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-xs font-semibold cursor-pointer inline-flex items-center gap-1 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors"
                       >
                         <Eye size={12} />
                         <span>Preview</span>
@@ -1370,14 +942,7 @@ export default function TeacherLeaveRequest() {
                       <button
                         type="button"
                         onClick={handleRemoveDocument}
-                        style={{
-                          padding: '5px 7px',
-                          borderRadius: 6,
-                          border: '1px solid rgba(239, 68, 68, 0.3)',
-                          background: 'rgba(239, 68, 68, 0.12)',
-                          color: '#ef4444',
-                          cursor: 'pointer'
-                        }}
+                        className="p-1.5 rounded-md border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 cursor-pointer hover:bg-rose-500/20 transition-colors"
                         title="Remove Document"
                       >
                         <X size={13} />
@@ -1387,7 +952,7 @@ export default function TeacherLeaveRequest() {
                 )}
 
                 {fileError && (
-                  <div style={{ fontSize: 12, color: '#DC2626', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div className="text-xs text-rose-600 mt-1.5 flex items-center gap-1">
                     <AlertTriangle size={13} />
                     <span>{fileError}</span>
                   </div>
@@ -1395,41 +960,23 @@ export default function TeacherLeaveRequest() {
               </div>
 
               {/* Action Buttons */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, paddingTop: 10, borderTop: '1px solid var(--border, #E2E8F0)' }}>
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-700">
                 <button
                   type="button"
                   onClick={() => setOpenModal(false)}
                   disabled={submitting}
-                  style={{
-                    padding: '9px 16px',
-                    borderRadius: 8,
-                    border: '1px solid var(--border, #CBD5E1)',
-                    background: 'var(--surface, #FFF)',
-                    color: 'var(--text, #0F172A)',
-                    fontWeight: 600,
-                    fontSize: 13,
-                    cursor: 'pointer'
-                  }}
+                  className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting || dynamicLeaveTypes.length === 0 || !leaveType}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '9px 18px',
-                    borderRadius: 8,
-                    background: (submitting || dynamicLeaveTypes.length === 0 || !leaveType) ? '#94A3B8' : '#2563EB',
-                    color: '#FFF',
-                    border: 'none',
-                    fontWeight: 600,
-                    fontSize: 13,
-                    cursor: (submitting || dynamicLeaveTypes.length === 0 || !leaveType) ? 'not-allowed' : 'pointer',
-                    opacity: (submitting || dynamicLeaveTypes.length === 0 || !leaveType) ? 0.65 : 1
-                  }}
+                  className={`inline-flex items-center gap-1.5 px-4.5 py-2 rounded-lg font-semibold text-xs transition-colors ${
+                    submitting || dynamicLeaveTypes.length === 0 || !leaveType
+                      ? 'bg-slate-400 dark:bg-slate-700 text-white cursor-not-allowed opacity-60'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer shadow-sm'
+                  }`}
                 >
                   <Send size={14} />
                   <span>{submitting ? 'Submitting Application...' : 'Submit to School Admin'}</span>
@@ -1443,72 +990,25 @@ export default function TeacherLeaveRequest() {
       {/* ── Document Preview Modal ── */}
       {previewingDoc && (
         <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(15, 23, 42, 0.75)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100,
-            padding: 16
-          }}
+          className="fixed inset-0 bg-slate-900/75 backdrop-blur-xs flex items-center justify-center z-50 p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) setPreviewingDoc(null);
           }}
         >
-          <div
-            style={{
-              background: 'var(--surface, #FFF)',
-              border: '1px solid var(--border, #E2E8F0)',
-              borderRadius: 14,
-              width: '100%',
-              maxWidth: 720,
-              maxHeight: '90vh',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-              overflow: 'hidden'
-            }}
-          >
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-scale-up">
             {/* Modal Header */}
-            <div
-              style={{
-                padding: '16px 20px',
-                borderBottom: '1px solid var(--border, #E2E8F0)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                background: 'var(--modal-header, #F8FAFC)'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                <Paperclip size={18} color="#2563EB" />
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0F172A)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <div className="p-4 px-5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-900/70">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Paperclip size={18} className="text-blue-600" />
+                <h3 className="m-0 text-sm font-bold text-slate-900 dark:text-white truncate">
                   {previewingDoc.name}
                 </h3>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => openDocumentInNewTab(previewingDoc.url)}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border, #CBD5E1)',
-                    background: 'var(--surface, #FFF)',
-                    color: 'var(--text, #0F172A)',
-                    fontSize: 12.5,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5
-                  }}
+                  className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
                   title="Open in new window"
                 >
                   <ExternalLink size={13} />
@@ -1517,19 +1017,7 @@ export default function TeacherLeaveRequest() {
                 <button
                   type="button"
                   onClick={() => downloadDocument(previewingDoc.url, previewingDoc.name)}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: 6,
-                    border: 'none',
-                    background: '#2563EB',
-                    color: '#FFF',
-                    fontSize: 12.5,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5
-                  }}
+                  className="px-3 py-1.5 rounded-lg border-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5 transition-colors shadow-xs"
                   title="Download File"
                 >
                   <Download size={13} />
@@ -1538,14 +1026,7 @@ export default function TeacherLeaveRequest() {
                 <button
                   type="button"
                   onClick={() => setPreviewingDoc(null)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: 'var(--text-secondary, #64748B)',
-                    padding: 4,
-                    marginLeft: 4
-                  }}
+                  className="bg-transparent border-0 cursor-pointer text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 ml-1"
                 >
                   <X size={18} />
                 </button>
@@ -1553,44 +1034,32 @@ export default function TeacherLeaveRequest() {
             </div>
 
             {/* Modal Body */}
-            <div style={{ padding: 20, overflowY: 'auto', flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'var(--card-subtle, #F1F5F9)' }}>
+            <div className="p-5 overflow-y-auto flex-1 flex justify-center items-center bg-slate-100 dark:bg-slate-900/60">
               {previewingDoc.url.startsWith('data:image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(previewingDoc.url) ? (
                 <img
                   src={previewingDoc.url}
                   alt={previewingDoc.name}
-                  style={{ maxWidth: '100%', maxHeight: '65vh', objectFit: 'contain', borderRadius: 8, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                  className="max-w-full max-h-[65vh] object-contain rounded-lg shadow-md"
                 />
               ) : previewingDoc.url.startsWith('data:application/pdf') || /\.pdf$/i.test(previewingDoc.url) ? (
                 <iframe
                   src={previewingDoc.url}
                   title={previewingDoc.name}
-                  style={{ width: '100%', height: '65vh', border: 'none', borderRadius: 8 }}
+                  className="w-full h-[65vh] border-0 rounded-lg"
                 />
               ) : (
-                <div style={{ textAlign: 'center', padding: '40px 20px', background: 'var(--surface, #FFF)', border: '1px solid var(--border, #E2E8F0)', borderRadius: 10, width: '100%', maxWidth: 420 }}>
-                  <FileText size={48} color="#2563EB" style={{ margin: '0 auto 12px', display: 'block' }} />
-                  <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text, #0F172A)', marginBottom: 4 }}>
+                <div className="text-center p-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl w-full max-w-sm">
+                  <FileText size={48} className="text-blue-600 mx-auto mb-3 block" />
+                  <div className="font-bold text-base text-slate-900 dark:text-white mb-1">
                     {previewingDoc.name}
                   </div>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary, #64748B)', marginBottom: 16 }}>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
                     Direct inline preview is not supported for this file type. Please open or download it to view.
                   </p>
                   <button
                     type="button"
                     onClick={() => downloadDocument(previewingDoc.url, previewingDoc.name)}
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: 6,
-                      border: 'none',
-                      background: '#2563EB',
-                      color: '#FFF',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6
-                    }}
+                    className="px-4 py-2 rounded-lg border-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5 transition-colors"
                   >
                     <Download size={14} />
                     <span>Download File</span>

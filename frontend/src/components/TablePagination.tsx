@@ -41,79 +41,40 @@ export function TableSubToolbar({
   }, []);
 
   return (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: '10px 16px',
-      borderBottom: '1px solid var(--border, #e2e8f0)',
-      background: 'var(--card-subtle, #f8fafc)',
-      flexWrap: 'wrap',
-      gap: 10
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 13, color: 'var(--text-secondary, #475569)' }}>
+    <div className="flex justify-between items-center px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 flex-wrap gap-2.5">
+      <div className="flex items-center gap-2.5 flex-wrap text-[13px] text-slate-600 dark:text-slate-400">
         {onRefresh && (
-          <button 
+          <button
             type="button"
             onClick={onRefresh}
             disabled={loading}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              background: 'transparent',
-              border: 'none',
-              padding: '2px 6px',
-              borderRadius: 4,
-              color: '#2563eb',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontWeight: 600,
-              fontSize: 12.5
-            }}
+            className="inline-flex items-center gap-1.5 bg-transparent border-0 px-1.5 py-0.5 rounded text-blue-600 dark:text-blue-400 cursor-pointer disabled:cursor-not-allowed font-semibold text-[12.5px] hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors"
             title={`Refresh ${itemLabel}`}
           >
-            <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none' }} />
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             <span>Refresh</span>
           </button>
         )}
         {onRefresh && <span>•</span>}
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          Last fetched: <b>{formatLastFetched(lastFetchedAt)}</b>
+        <span className="inline-flex items-center gap-1">
+          Last fetched: <b className="text-slate-900 dark:text-slate-100">{formatLastFetched(lastFetchedAt)}</b>
         </span>
         {loading && (
-          <span style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            marginLeft: 3,
-            padding: '1px 5px',
-            borderRadius: 4,
-            background: 'rgba(37, 99, 235, 0.16)',
-            color: '#3b82f6',
-            fontWeight: 600,
-            fontSize: 11
-          }}>
-            <Loader2 size={10} style={{ animation: 'spinAnim 0.8s linear infinite' }} />
+          <span className="inline-flex items-center gap-1 ml-0.5 px-1.5 py-0.5 rounded bg-blue-600/15 text-blue-600 dark:text-blue-400 font-semibold text-[11px]">
+            <Loader2 size={10} className="animate-spin" />
             {loadProgress !== undefined ? `${loadProgress}%` : 'Loading...'}
           </span>
         )}
         {children}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #475569)' }}>
+      <div className="flex items-center gap-3.5 flex-wrap">
+        <div className="flex items-center gap-1.5 text-[13px] text-slate-600 dark:text-slate-400">
           <span>Rows per page:</span>
           <select
             value={pageSize}
             onChange={e => onPageSizeChange(Number(e.target.value))}
-            className="directory-select"
-            style={{
-              padding: '4px 8px',
-              fontSize: 12.5,
-              borderRadius: 6,
-              border: '1px solid var(--border, #cbd5e1)',
-              cursor: 'pointer'
-            }}
+            className="directory-select px-2 py-1 text-[12.5px] rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             {pageSizeOptions.map(opt => (
               <option key={opt} value={opt}>
@@ -123,14 +84,16 @@ export function TableSubToolbar({
             <option value={100000}>All ({filteredCount})</option>
           </select>
         </div>
-        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+        <div className="text-[13px] text-slate-500 dark:text-slate-400">
           {filteredCount === 0 ? (
             `Showing 0 ${itemLabel}`
           ) : (
             <>
-              Showing <b>{startIdx + 1}</b> to <b>{endIdx}</b> of <b>{filteredCount}</b> {itemLabel}
+              Showing <b className="text-slate-900 dark:text-slate-100">{startIdx + 1}</b> to{' '}
+              <b className="text-slate-900 dark:text-slate-100">{endIdx}</b> of{' '}
+              <b className="text-slate-900 dark:text-slate-100">{filteredCount}</b> {itemLabel}
               {filteredCount !== totalCount && (
-                <span style={{ opacity: 0.75, marginLeft: 4 }}>(filtered from {totalCount} total)</span>
+                <span className="opacity-75 ml-1">(filtered from {totalCount} total)</span>
               )}
             </>
           )}
@@ -172,34 +135,26 @@ export function TablePaginationFooter({
   };
 
   return (
-    <div className="directory-box-footer" style={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: '11px 18px',
-      borderTop: '1px solid var(--border, #e2e8f0)',
-      background: 'var(--card-subtle, #f8fafc)',
-      flexWrap: 'wrap',
-      gap: 12
-    }}>
-      <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
+    <div className="directory-box-footer flex justify-between items-center px-4.5 py-2.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 flex-wrap gap-3">
+      <div className="text-slate-600 dark:text-slate-400 text-[12.5px]">
         {filteredCount === 0 ? (
           `Showing 0 ${itemLabel}`
         ) : (
           <>
-            Showing <b>{startIdx + 1}</b> to <b>{endIdx}</b> of <b>{filteredCount}</b> {itemLabel}
+            Showing <b className="text-slate-900 dark:text-slate-100">{startIdx + 1}</b> to{' '}
+            <b className="text-slate-900 dark:text-slate-100">{endIdx}</b> of{' '}
+            <b className="text-slate-900 dark:text-slate-100">{filteredCount}</b> {itemLabel}
             {filteredCount !== totalCount && (
-              <span style={{ opacity: 0.75, marginLeft: 4 }}>(filtered from {totalCount} total)</span>
+              <span className="opacity-75 ml-1">(filtered from {totalCount} total)</span>
             )}
           </>
         )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+      <div className="flex items-center gap-1.5 flex-wrap">
         <button
           type="button"
-          className="btn-secondary"
-          style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+          className="btn-secondary px-2.5 py-1 text-xs inline-flex items-center gap-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
           disabled={safeCurrentPage <= 1}
           onClick={() => goTo(1)}
           title="First Page"
@@ -208,8 +163,7 @@ export function TablePaginationFooter({
         </button>
         <button
           type="button"
-          className="btn-secondary"
-          style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+          className="btn-secondary px-2.5 py-1 text-xs inline-flex items-center gap-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
           disabled={safeCurrentPage <= 1}
           onClick={() => goTo(safeCurrentPage - 1)}
           title="Previous Page"
@@ -217,19 +171,12 @@ export function TablePaginationFooter({
           <ChevronLeft size={14} /> Previous
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, margin: '0 4px', fontSize: 12.5 }}>
+        <div className="flex items-center gap-1 mx-1 text-[12.5px] text-slate-600 dark:text-slate-400">
           <span>Page</span>
           <select
             value={safeCurrentPage}
             onChange={(e) => goTo(Number(e.target.value))}
-            className="directory-select"
-            style={{
-              padding: '3px 6px',
-              fontSize: 12,
-              borderRadius: 4,
-              border: '1px solid var(--border, #cbd5e1)',
-              cursor: 'pointer'
-            }}
+            className="directory-select px-1.5 py-0.5 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             {Array.from({ length: safeTotalPages }, (_, idx) => (
               <option key={idx + 1} value={idx + 1}>
@@ -237,13 +184,14 @@ export function TablePaginationFooter({
               </option>
             ))}
           </select>
-          <span>of <b>{safeTotalPages}</b></span>
+          <span>
+            of <b className="text-slate-900 dark:text-slate-100">{safeTotalPages}</b>
+          </span>
         </div>
 
         <button
           type="button"
-          className="btn-secondary"
-          style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+          className="btn-secondary px-2.5 py-1 text-xs inline-flex items-center gap-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
           disabled={safeCurrentPage >= safeTotalPages}
           onClick={() => goTo(safeCurrentPage + 1)}
           title="Next Page"
@@ -252,8 +200,7 @@ export function TablePaginationFooter({
         </button>
         <button
           type="button"
-          className="btn-secondary"
-          style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+          className="btn-secondary px-2.5 py-1 text-xs inline-flex items-center gap-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
           disabled={safeCurrentPage >= safeTotalPages}
           onClick={() => goTo(safeTotalPages)}
           title="Last Page"

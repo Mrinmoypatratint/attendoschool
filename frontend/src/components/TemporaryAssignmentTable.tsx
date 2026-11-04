@@ -115,22 +115,21 @@ export default function TemporaryAssignmentTable({ onAssignmentsChange }: Props 
   };
 
   return (
-    <div className="panel" style={{ padding: 24, borderRadius: 12, border: '1px solid var(--border)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+    <div className="panel p-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
+      <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
         <div>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
+          <h3 className="m-0 text-base font-bold text-slate-900 dark:text-slate-100">
             Teacher Substitution Roster
           </h3>
-          <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--text-secondary)' }}>
+          <p className="mt-1 m-0 text-xs text-slate-500 dark:text-slate-400">
             Active and upcoming substitute teacher allocations with date boundaries.
           </p>
         </div>
         <button
           type="button"
-          className="btn-secondary"
+          className="btn-secondary inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-semibold cursor-pointer transition-colors"
           onClick={load}
           disabled={loading}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}
         >
           <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
           <span>Refresh</span>
@@ -139,27 +138,19 @@ export default function TemporaryAssignmentTable({ onAssignmentsChange }: Props 
 
       {/* In-app Toast / Feedback Notice */}
       {toastNotice && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 8,
-          padding: '12px 16px',
-          borderRadius: 8,
-          background: toastNotice.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-          color: toastNotice.type === 'success' ? '#10b981' : '#ef4444',
-          border: `1px solid ${toastNotice.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.25)'}`,
-          marginBottom: 16,
-          fontSize: 13
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className={`flex items-center justify-between gap-2 p-3 rounded-lg text-xs mb-4 border ${
+          toastNotice.type === 'success'
+            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25'
+            : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/25'
+        }`}>
+          <div className="flex items-center gap-2">
             {toastNotice.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
             <span>{toastNotice.message}</span>
           </div>
           <button
             type="button"
             onClick={() => setToastNotice(null)}
-            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 2 }}
+            className="bg-transparent border-0 text-current cursor-pointer p-0.5"
             aria-label="Dismiss notice"
           >
             <X size={15} />
@@ -168,140 +159,90 @@ export default function TemporaryAssignmentTable({ onAssignmentsChange }: Props 
       )}
 
       {error && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 8,
-          padding: '12px 16px',
-          borderRadius: 8,
-          background: 'rgba(239, 68, 68, 0.1)',
-          color: '#ef4444',
-          border: '1px solid rgba(239, 68, 68, 0.25)',
-          marginBottom: 16,
-          fontSize: 13
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/25 text-xs mb-4">
+          <div className="flex items-center gap-2">
             <AlertCircle size={16} />
             <span>{error}</span>
           </div>
-          <button type="button" className="btn-secondary" onClick={load} style={{ fontSize: 12, padding: '4px 10px' }}>
+          <button
+            type="button"
+            className="btn-secondary text-xs px-2.5 py-1 rounded border border-slate-300 dark:border-slate-600"
+            onClick={load}
+          >
             Retry
           </button>
         </div>
       )}
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)' }}>
-          <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px' }} />
-          <p style={{ fontSize: 13 }}>Loading teacher substitutions...</p>
+        <div className="text-center py-10 px-5 text-slate-500 dark:text-slate-400">
+          <Loader2 size={24} className="animate-spin mx-auto mb-2" />
+          <p className="text-xs">Loading teacher substitutions...</p>
         </div>
       ) : assignments.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)' }}>
-          <History size={28} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
-          <p style={{ fontSize: 13.5, fontWeight: 500 }}>No teacher substitutions found.</p>
-          <p style={{ fontSize: 12, margin: '4px 0 0' }}>Create a substitute assignment above when a substitute teacher is needed.</p>
+        <div className="text-center py-10 px-5 text-slate-500 dark:text-slate-400">
+          <History size={28} className="mx-auto mb-2 opacity-50" />
+          <p className="text-sm font-semibold">No teacher substitutions found.</p>
+          <p className="text-xs mt-1">Create a substitute assignment above when a substitute teacher is needed.</p>
         </div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+        <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+          <table className="w-full border-collapse text-left text-xs md:text-sm">
             <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-strong)', background: 'rgba(0,0,0,0.02)' }}>
-                <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-secondary)' }}>Substitute Teacher</th>
-                <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-secondary)' }}>Class & Section</th>
-                <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-secondary)' }}>Start Time</th>
-                <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-secondary)' }}>End Time</th>
-                <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-secondary)' }}>Status</th>
-                <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-secondary)', textAlign: 'right' }}>Actions</th>
+              <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                <th className="px-3.5 py-2.5 font-semibold text-slate-600 dark:text-slate-400">Substitute Teacher</th>
+                <th className="px-3.5 py-2.5 font-semibold text-slate-600 dark:text-slate-400">Class &amp; Section</th>
+                <th className="px-3.5 py-2.5 font-semibold text-slate-600 dark:text-slate-400">Start Time</th>
+                <th className="px-3.5 py-2.5 font-semibold text-slate-600 dark:text-slate-400">End Time</th>
+                <th className="px-3.5 py-2.5 font-semibold text-slate-600 dark:text-slate-400">Status</th>
+                <th className="px-3.5 py-2.5 font-semibold text-slate-600 dark:text-slate-400 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {assignments.map((a) => {
                 return (
-                  <tr key={a.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '12px 14px' }}>
-                      <div style={{ fontWeight: 600, color: 'var(--text)' }}>
+                  <tr key={a.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors">
+                    <td className="px-3.5 py-3">
+                      <div className="font-semibold text-slate-900 dark:text-slate-100">
                         {a.teacher_name || a.teacher_id}
                       </div>
                       {a.teacher_email && (
-                        <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400">
                           {a.teacher_email}
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '12px 14px', fontWeight: 500, color: 'var(--text)' }}>
+                    <td className="px-3.5 py-3 font-medium text-slate-800 dark:text-slate-200">
                       {a.class_number ? `Class ${a.class_number}` : `Class ID: ${a.class_id}`}
                       {a.section_name ? ` — Section ${a.section_name}` : a.section_id ? ` — Section ID: ${a.section_id}` : ''}
                     </td>
-                    <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>
+                    <td className="px-3.5 py-3 text-slate-600 dark:text-slate-400">
                       {new Date(a.start_at).toLocaleString()}
                     </td>
-                    <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>
+                    <td className="px-3.5 py-3 text-slate-600 dark:text-slate-400">
                       {new Date(a.end_at).toLocaleString()}
                     </td>
-                    <td style={{ padding: '12px 14px' }}>
+                    <td className="px-3.5 py-3">
                       {a.status === 'active' ? (
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          padding: '3px 9px',
-                          borderRadius: 9999,
-                          fontSize: 11.5,
-                          fontWeight: 600,
-                          background: 'rgba(16, 185, 129, 0.12)',
-                          color: '#10b981',
-                          border: '1px solid rgba(16, 185, 129, 0.3)'
-                        }}>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
                           <CheckCircle2 size={12} /> Active
                         </span>
                       ) : a.status === 'future' ? (
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          padding: '3px 9px',
-                          borderRadius: 9999,
-                          fontSize: 11.5,
-                          fontWeight: 600,
-                          background: 'rgba(59, 130, 246, 0.12)',
-                          color: '#3b82f6',
-                          border: '1px solid rgba(59, 130, 246, 0.3)'
-                        }}>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/25">
                           <Clock size={12} /> Scheduled
                         </span>
                       ) : (
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          padding: '3px 9px',
-                          borderRadius: 9999,
-                          fontSize: 11.5,
-                          fontWeight: 600,
-                          background: 'rgba(148, 163, 184, 0.12)',
-                          color: 'var(--text-secondary)',
-                          border: '1px solid rgba(148, 163, 184, 0.3)'
-                        }}>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-500/10 text-slate-500 dark:text-slate-400 border border-slate-500/25">
                           Ended
                         </span>
                       )}
                     </td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                    <td className="px-3.5 py-3 text-right">
                       {a.status === 'active' && (
                         <button
                           type="button"
                           onClick={() => openEndModal(a)}
-                          style={{
-                            padding: '4px 12px',
-                            fontSize: 12,
-                            fontWeight: 600,
-                            borderRadius: 6,
-                            border: '1px solid rgba(239, 68, 68, 0.3)',
-                            background: 'rgba(239, 68, 68, 0.1)',
-                            color: '#ef4444',
-                            cursor: 'pointer'
-                          }}
+                          className="inline-flex items-center px-3 py-1 text-xs font-semibold rounded-md border border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 cursor-pointer transition-colors"
                         >
                           End Now
                         </button>
@@ -318,17 +259,7 @@ export default function TemporaryAssignmentTable({ onAssignmentsChange }: Props 
       {/* Custom Confirmation Modal for Ending Assignment */}
       {confirmModal && (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            background: 'rgba(0, 0, 0, 0.65)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 16
-          }}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget && !endingLoading) {
               setConfirmModal(null);
@@ -337,39 +268,20 @@ export default function TemporaryAssignmentTable({ onAssignmentsChange }: Props 
           }}
         >
           <div
-            style={{
-              width: '100%',
-              maxWidth: 480,
-              background: 'var(--bg-card, #ffffff)',
-              border: '1px solid var(--border-strong, #e2e8f0)',
-              borderRadius: 12,
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
-              padding: 24,
-              position: 'relative'
-            }}
+            className="w-full max-w-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-6 relative"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: '50%',
-                  background: 'rgba(239, 68, 68, 0.12)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#ef4444',
-                  flexShrink: 0
-                }}>
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
                   <AlertTriangle size={22} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                  <h3 className="m-0 text-base font-bold text-slate-900 dark:text-slate-100">
                     End Temporary Assignment?
                   </h3>
-                  <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--text-secondary, #64748b)' }}>
+                  <p className="mt-0.5 m-0 text-xs text-slate-500 dark:text-slate-400">
                     Early termination of substitute teaching privileges
                   </p>
                 </div>
@@ -383,15 +295,7 @@ export default function TemporaryAssignmentTable({ onAssignmentsChange }: Props 
                   }
                 }}
                 disabled={endingLoading}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-secondary, #64748b)',
-                  cursor: endingLoading ? 'not-allowed' : 'pointer',
-                  padding: 4,
-                  display: 'flex',
-                  borderRadius: 4
-                }}
+                className="bg-transparent border-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1 rounded disabled:cursor-not-allowed"
                 aria-label="Close modal"
               >
                 <X size={18} />
@@ -399,48 +303,30 @@ export default function TemporaryAssignmentTable({ onAssignmentsChange }: Props 
             </div>
 
             {/* Body Details */}
-            <p style={{ fontSize: 13.5, color: 'var(--text, #1e293b)', lineHeight: 1.5, margin: '0 0 14px' }}>
+            <p className="text-xs md:text-sm text-slate-700 dark:text-slate-300 leading-relaxed mb-3.5">
               Are you sure you want to end the temporary assignment for:
             </p>
 
-            <div style={{
-              background: 'rgba(0, 0, 0, 0.03)',
-              border: '1px solid var(--border, #e2e8f0)',
-              borderRadius: 8,
-              padding: '12px 16px',
-              marginBottom: 16,
-              fontSize: 13
-            }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: 'var(--text-secondary, #64748b)', fontWeight: 500 }}>Substitute Teacher:</span>
-                  <span style={{ fontWeight: 600, color: 'var(--text, #0f172a)' }}>{confirmModal.teacherName}</span>
+            <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg p-3.5 mb-4 text-xs md:text-sm">
+              <div className="flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Substitute Teacher:</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">{confirmModal.teacherName}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: 'var(--text-secondary, #64748b)', fontWeight: 500 }}>Class:</span>
-                  <span style={{ fontWeight: 600, color: 'var(--text, #0f172a)' }}>{confirmModal.className}</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Class:</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">{confirmModal.className}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: 'var(--text-secondary, #64748b)', fontWeight: 500 }}>Section:</span>
-                  <span style={{ fontWeight: 600, color: 'var(--text, #0f172a)' }}>{confirmModal.sectionName}</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Section:</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">{confirmModal.sectionName}</span>
                 </div>
               </div>
             </div>
 
             {/* Warning Callout */}
-            <div style={{
-              display: 'flex',
-              gap: 10,
-              padding: '10px 14px',
-              borderRadius: 8,
-              background: 'rgba(239, 68, 68, 0.08)',
-              border: '1px solid rgba(239, 68, 68, 0.2)',
-              color: '#dc2626',
-              fontSize: 12.5,
-              lineHeight: 1.45,
-              marginBottom: endError ? 12 : 20
-            }}>
-              <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+            <div className={`flex gap-2.5 p-3 rounded-lg bg-red-500/10 border border-red-500/25 text-red-600 dark:text-red-400 text-xs leading-normal ${endError ? 'mb-3' : 'mb-5'}`}>
+              <AlertTriangle size={16} className="shrink-0 mt-0.5" />
               <span>
                 Ending this assignment will <strong>immediately revoke</strong> the teacher&apos;s temporary attendance access for this class and section.
               </span>
@@ -448,34 +334,22 @@ export default function TemporaryAssignmentTable({ onAssignmentsChange }: Props 
 
             {/* Error message inside modal if API fails */}
             {endError && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '10px 12px',
-                borderRadius: 6,
-                background: 'rgba(239, 68, 68, 0.12)',
-                color: '#ef4444',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                marginBottom: 16,
-                fontSize: 12.5
-              }}>
-                <AlertCircle size={15} style={{ flexShrink: 0 }} />
+              <div className="flex items-center gap-2 p-2.5 rounded-md bg-red-500/10 border border-red-500/25 text-red-600 dark:text-red-400 text-xs mb-4">
+                <AlertCircle size={15} className="shrink-0" />
                 <span>{endError}</span>
               </div>
             )}
 
             {/* Footer Buttons */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <div className="flex justify-end gap-2.5">
               <button
                 type="button"
-                className="btn-secondary"
+                className="btn-secondary px-4 py-2 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
                 onClick={() => {
                   setConfirmModal(null);
                   setEndError(null);
                 }}
                 disabled={endingLoading}
-                style={{ padding: '8px 16px', fontSize: 13, fontWeight: 600 }}
               >
                 Cancel
               </button>
@@ -483,20 +357,7 @@ export default function TemporaryAssignmentTable({ onAssignmentsChange }: Props 
                 type="button"
                 onClick={handleConfirmEnd}
                 disabled={endingLoading}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '8px 18px',
-                  background: '#ef4444',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: 6,
-                  fontWeight: 600,
-                  fontSize: 13,
-                  cursor: endingLoading ? 'not-allowed' : 'pointer',
-                  opacity: endingLoading ? 0.75 : 1
-                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold cursor-pointer disabled:opacity-60 transition-colors shadow-sm"
               >
                 {endingLoading ? (
                   <>

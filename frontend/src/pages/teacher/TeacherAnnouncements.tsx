@@ -25,7 +25,9 @@ import {
   FileText,
   Maximize2,
   Minimize2,
-  Trash2
+  Trash2,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { api } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
@@ -89,8 +91,8 @@ export interface ReplyItem {
 }
 
 export const STANDARD_CLASS_LIST = [
-  { classNumber: -1, label: 'L-KG' },
-  { classNumber: 0, label: 'U-KG' },
+  { classNumber: -1, label: 'Class L KG' },
+  { classNumber: 0, label: 'Class U KG' },
   { classNumber: 1, label: 'Class 1' },
   { classNumber: 2, label: 'Class 2' },
   { classNumber: 3, label: 'Class 3' },
@@ -106,8 +108,8 @@ export const STANDARD_CLASS_LIST = [
 ];
 
 export function formatClassGrade(num?: number | null): string {
-  if (num === -1) return 'L-KG';
-  if (num === 0) return 'U-KG';
+  if (num === -1) return 'Class L KG';
+  if (num === 0) return 'Class U KG';
   if (num !== null && num !== undefined && !isNaN(Number(num))) return `Class ${num}`;
   return '';
 }
@@ -175,6 +177,150 @@ export function TeacherAnnouncements() {
   // Detail Modal & Drawer States
   const [viewingNotice, setViewingNotice] = useState<AnnouncementItem | null>(null);
   const [isNoticeMaximized, setIsNoticeMaximized] = useState(false);
+  // Attachment Preview Modal State
+  const [attachmentPreview, setAttachmentPreview] = useState<{
+    open: boolean;
+    fileName: string;
+    mimeType: string;
+    blobUrl: string | null;
+    loading: boolean;
+    error: string | null;
+    noticeId?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (attachmentPreview?.blobUrl) {
+        URL.revokeObjectURL(attachmentPreview.blobUrl);
+      }
+    };
+  }, [attachmentPreview?.blobUrl]);
+
+  const closeAttachmentPreview = () => {
+    if (attachmentPreview?.blobUrl) {
+      URL.revokeObjectURL(attachmentPreview.blobUrl);
+    }
+    setAttachmentPreview(null);
+  };
+
+  const isPreviewableFile = (fileName?: string, mimeType?: string) => {
+    const lower = (fileName || '').toLowerCase();
+    const m = (mimeType || '').toLowerCase();
+    return (
+      m === 'application/pdf' ||
+      m.startsWith('image/') ||
+      lower.endsWith('.pdf') ||
+      lower.endsWith('.png') ||
+      lower.endsWith('.jpg') ||
+      lower.endsWith('.jpeg') ||
+      lower.endsWith('.webp')
+    );
+  };
+
+  const resolvePreviewMime = (responseType?: string, declaredType?: string, fileName?: string): string => {
+    const lowerName = (fileName || '').toLowerCase();
+    const respMime = (responseType || '').toLowerCase();
+    const declMime = (declaredType || '').toLowerCase();
+
+    if (['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(respMime)) {
+      return respMime;
+    }
+    if (['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(declMime)) {
+      return declMime;
+    }
+
+    if (lowerName.endsWith('.pdf')) return 'application/pdf';
+    if (lowerName.endsWith('.png')) return 'image/png';
+    if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) return 'image/jpeg';
+    if (lowerName.endsWith('.webp')) return 'image/webp';
+
+    return respMime || declMime || 'application/octet-stream';
+  };
+
+  const openAttachmentPreview = async (notice: { id: string; attachment_name?: string; attachment_type?: string; attachment_url?: string }) => {
+    if (!notice) return;
+    const currentNoticeId = notice.id;
+    const fileName = notice.attachment_name || 'announcement-attachment';
+    const declaredMime = notice.attachment_type || '';
+
+    if (attachmentPreview?.blobUrl) {
+      URL.revokeObjectURL(attachmentPreview.blobUrl);
+    }
+
+    setAttachmentPreview({
+      open: true,
+      fileName,
+      mimeType: resolvePreviewMime('', declaredMime, fileName),
+      blobUrl: null,
+      loading: true,
+      error: null,
+      noticeId: currentNoticeId
+    });
+
+    try {
+      // Always use the authenticated Axios client - completely avoids browser CSP connect-src violations on data: URLs
+      const resp = await api.get(`/communication/announcements/${currentNoticeId}/attachment/preview`, {
+        responseType: 'blob'
+      });
+
+      const blob: Blob = resp.data;
+      const effectiveMime = resolvePreviewMime(blob.type, declaredMime, fileName);
+      const blobUrl = URL.createObjectURL(blob);
+
+      setAttachmentPreview((prev) => {
+        if (!prev || !prev.open || prev.noticeId !== currentNoticeId) {
+          URL.revokeObjectURL(blobUrl);
+          return prev;
+        }
+        return {
+          ...prev,
+          blobUrl,
+          loading: false,
+          mimeType: effectiveMime,
+          error: null
+        };
+      });
+    } catch (err: any) {
+      let errorMessage = 'Failed to load preview.';
+      if (err?.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const parsed = JSON.parse(text);
+          if (parsed?.message) {
+            errorMessage = parsed.message;
+          }
+        } catch {}
+      } else if (err?.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+
+      setAttachmentPreview((prev) => {
+        if (!prev || !prev.open || prev.noticeId !== currentNoticeId) return prev;
+        return {
+          ...prev,
+          loading: false,
+          error: errorMessage
+        };
+      });
+    }
+  };
+
+  const handlePreviewDownload = () => {
+    if (!attachmentPreview) return;
+    if (attachmentPreview.blobUrl) {
+      const a = document.createElement('a');
+      a.href = attachmentPreview.blobUrl;
+      a.download = attachmentPreview.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else if (attachmentPreview.noticeId) {
+      window.open(`/api/communication/announcements/${attachmentPreview.noticeId}/attachment/download`, '_blank');
+    }
+  };
+
   const [selectedNoticeForReplies, setSelectedNoticeForReplies] = useState<AnnouncementItem | null>(null);
   const [noticeReplies, setNoticeReplies] = useState<ReplyItem[]>([]);
   const [loadingNoticeReplies, setLoadingNoticeReplies] = useState(false);
@@ -198,10 +344,15 @@ export function TeacherAnnouncements() {
     api.get('/sections').then(r => setSections(r.data || [])).catch(() => {});
   }, []);
 
-  // Map standard grade list L-KG to Class 12 to live DB class records
+  // Map standard grade list Class L KG to Class 12 to live DB class records
   const resolvedClasses = useMemo(() => {
-    return STANDARD_CLASS_LIST.map(opt => {
-      const found = classes.find(c => Number(c.class_number) === opt.classNumber || c.label === opt.label);
+    const stdMapped = STANDARD_CLASS_LIST.map(opt => {
+      const found = classes.find(c => {
+        if (Number(c.class_number) === opt.classNumber) return true;
+        if (opt.classNumber === -1 && /l.?kg/i.test(String(c.label || c.name || c.id))) return true;
+        if (opt.classNumber === 0 && /u.?kg/i.test(String(c.label || c.name || c.id))) return true;
+        return c.label === opt.label || c.name === opt.label;
+      });
       return {
         id: found ? found.id : `cls-${opt.classNumber}`,
         classNumber: opt.classNumber,
@@ -209,36 +360,89 @@ export function TeacherAnnouncements() {
         realId: found?.id
       };
     });
+
+    const extras: typeof stdMapped = [];
+    classes.forEach(c => {
+      const already = stdMapped.some(m => (m.realId && m.realId === c.id) || (c.class_number !== undefined && Number(c.class_number) === m.classNumber));
+      if (!already) {
+        const cNum = c.class_number !== undefined && c.class_number !== null ? Number(c.class_number) : NaN;
+        const lbl = c.label || c.name || (!isNaN(cNum) ? (cNum === -1 ? 'Class L KG' : cNum === 0 ? 'Class U KG' : `Class ${cNum}`) : 'Custom Class');
+        extras.push({
+          id: c.id,
+          classNumber: !isNaN(cNum) ? cNum : 999,
+          label: lbl,
+          realId: c.id
+        });
+      }
+    });
+
+    return [...stdMapped, ...extras];
   }, [classes]);
 
   const selectedClass = useMemo(() => {
     if (!form.classId) return null;
-    return resolvedClasses.find(c => c.id === form.classId || String(c.classNumber) === String(form.classId)) || null;
+    return resolvedClasses.find(c => c.id === form.classId || (c.realId && c.realId === form.classId) || String(c.classNumber) === String(form.classId)) || null;
   }, [form.classId, resolvedClasses]);
 
   // Find all sections belonging to the selected class
   const classSections = useMemo(() => {
     if (!selectedClass) return [];
     return sections.filter(s => {
-      if (s.class_id && s.class_id === selectedClass.id) return true;
-      if (s.classId && s.classId === selectedClass.id) return true;
-      if (s.class_number !== undefined && Number(s.class_number) === selectedClass.classNumber) return true;
+      if (selectedClass.realId && (s.class_id === selectedClass.realId || s.classId === selectedClass.realId)) return true;
+      if (selectedClass.id && (s.class_id === selectedClass.id || s.classId === selectedClass.id)) return true;
+      if (s.class_number !== undefined && s.class_number !== null && Number(s.class_number) === selectedClass.classNumber) return true;
       return false;
     });
   }, [selectedClass, sections]);
 
-  // Available section letters
+  // Available section letters - dynamic based on chosen class
   const availableSections = useMemo(() => {
-    const letters = ['A', 'B', 'C', 'D'];
-    return letters.map(letter => {
-      const live = classSections.find(s => (s.name || s.section_name) === letter || s.letter === letter);
-      return {
-        letter,
-        name: `Section ${letter}`,
-        id: live?.id || `sec-${letter.toLowerCase()}`
-      };
+    if (!selectedClass) {
+      const seen = new Set<string>();
+      const result: { letter: string; name: string; id: string }[] = [];
+      sections.forEach(s => {
+        const raw = String(s.name || s.section_name || s.letter || '').trim();
+        const letter = raw.replace(/^section\s+/i, '').trim().toUpperCase();
+        if (letter && !seen.has(letter)) {
+          seen.add(letter);
+          result.push({
+            letter,
+            name: `Section ${letter}`,
+            id: s.id || `sec-${letter.toLowerCase()}`
+          });
+        }
+      });
+      if (result.length === 0) {
+        ['A', 'B', 'C', 'D'].forEach(letter => {
+          result.push({ letter, name: `Section ${letter}`, id: `sec-${letter.toLowerCase()}` });
+        });
+      }
+      return result.sort((a, b) => a.letter.localeCompare(b.letter, undefined, { numeric: true }));
+    }
+
+    const seen = new Set<string>();
+    const result: { letter: string; name: string; id: string }[] = [];
+    classSections.forEach(s => {
+      const raw = String(s.name || s.section_name || s.letter || '').trim();
+      const letter = raw.replace(/^section\s+/i, '').trim().toUpperCase();
+      if (letter && !seen.has(letter)) {
+        seen.add(letter);
+        result.push({
+          letter,
+          name: `Section ${letter}`,
+          id: s.id || `sec-${letter.toLowerCase()}`
+        });
+      }
     });
-  }, [classSections]);
+
+    if (result.length === 0) {
+      ['A', 'B'].forEach(letter => {
+        result.push({ letter, name: `Section ${letter}`, id: `sec-${letter.toLowerCase()}` });
+      });
+    }
+
+    return result.sort((a, b) => a.letter.localeCompare(b.letter, undefined, { numeric: true }));
+  }, [selectedClass, classSections, sections]);
 
   function handleClassChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const val = e.target.value;
@@ -348,30 +552,66 @@ export function TeacherAnnouncements() {
 
   const editSelectedClass = useMemo(() => {
     if (!editForm.classId) return null;
-    return resolvedClasses.find(c => c.id === editForm.classId || String(c.classNumber) === String(editForm.classId)) || null;
+    return resolvedClasses.find(c => c.id === editForm.classId || (c.realId && c.realId === editForm.classId) || String(c.classNumber) === String(editForm.classId)) || null;
   }, [editForm.classId, resolvedClasses]);
 
   const editClassSections = useMemo(() => {
     if (!editSelectedClass) return [];
     return sections.filter(s => {
-      if (s.class_id && s.class_id === editSelectedClass.id) return true;
-      if (s.classId && s.classId === editSelectedClass.id) return true;
-      if (s.class_number !== undefined && Number(s.class_number) === editSelectedClass.classNumber) return true;
+      if (editSelectedClass.realId && (s.class_id === editSelectedClass.realId || s.classId === editSelectedClass.realId)) return true;
+      if (editSelectedClass.id && (s.class_id === editSelectedClass.id || s.classId === editSelectedClass.id)) return true;
+      if (s.class_number !== undefined && s.class_number !== null && Number(s.class_number) === editSelectedClass.classNumber) return true;
       return false;
     });
   }, [editSelectedClass, sections]);
 
   const editAvailableSections = useMemo(() => {
-    const letters = ['A', 'B', 'C', 'D'];
-    return letters.map(letter => {
-      const live = editClassSections.find(s => (s.name || s.section_name) === letter || s.letter === letter);
-      return {
-        letter,
-        name: `Section ${letter}`,
-        id: live?.id || `sec-${letter.toLowerCase()}`
-      };
+    if (!editSelectedClass) {
+      const seen = new Set<string>();
+      const result: { letter: string; name: string; id: string }[] = [];
+      sections.forEach(s => {
+        const raw = String(s.name || s.section_name || s.letter || '').trim();
+        const letter = raw.replace(/^section\s+/i, '').trim().toUpperCase();
+        if (letter && !seen.has(letter)) {
+          seen.add(letter);
+          result.push({
+            letter,
+            name: `Section ${letter}`,
+            id: s.id || `sec-${letter.toLowerCase()}`
+          });
+        }
+      });
+      if (result.length === 0) {
+        ['A', 'B', 'C', 'D'].forEach(letter => {
+          result.push({ letter, name: `Section ${letter}`, id: `sec-${letter.toLowerCase()}` });
+        });
+      }
+      return result.sort((a, b) => a.letter.localeCompare(b.letter, undefined, { numeric: true }));
+    }
+
+    const seen = new Set<string>();
+    const result: { letter: string; name: string; id: string }[] = [];
+    editClassSections.forEach(s => {
+      const raw = String(s.name || s.section_name || s.letter || '').trim();
+      const letter = raw.replace(/^section\s+/i, '').trim().toUpperCase();
+      if (letter && !seen.has(letter)) {
+        seen.add(letter);
+        result.push({
+          letter,
+          name: `Section ${letter}`,
+          id: s.id || `sec-${letter.toLowerCase()}`
+        });
+      }
     });
-  }, [editClassSections]);
+
+    if (result.length === 0) {
+      ['A', 'B'].forEach(letter => {
+        result.push({ letter, name: `Section ${letter}`, id: `sec-${letter.toLowerCase()}` });
+      });
+    }
+
+    return result.sort((a, b) => a.letter.localeCompare(b.letter, undefined, { numeric: true }));
+  }, [editSelectedClass, editClassSections, sections]);
 
   function handleEditClassChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const val = e.target.value;
@@ -1319,7 +1559,7 @@ export function TeacherAnnouncements() {
                 <Filter size={13} /> Filter:
               </span>
               {(['ALL', 'SENT', 'RECEIVE'] as const).map(f => {
-                const label = f === 'ALL' ? 'All' : f === 'SENT' ? 'Sent' : 'Recieve';
+                const label = f === 'ALL' ? 'All' : f === 'SENT' ? 'Sent' : 'Receive';
                 const count = f === 'ALL' ? totalNoticesCount : f === 'SENT' ? sentNotices.length : receivedNotices.length;
                 return (
                   <button
@@ -1798,8 +2038,8 @@ export function TeacherAnnouncements() {
 
                         let secName = x.section_name || '';
                         if (!secName && x.section_id) {
-                          const s = availableSections.find(rs => rs.id === x.section_id);
-                          if (s) secName = s.letter;
+                          const s = sections.find(rs => rs.id === x.section_id);
+                          if (s) secName = s.name || s.section_name || s.letter || '';
                         }
 
                         let audienceBadgeText = 'Students';
@@ -2520,27 +2760,52 @@ export function TeacherAnnouncements() {
                       </div>
                     </div>
 
-                    <a
-                      href={viewingNotice.attachment_url}
-                      download={viewingNotice.attachment_name || 'announcement-attachment'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        padding: '7px 14px',
-                        borderRadius: 6,
-                        backgroundColor: '#2563eb',
-                        color: '#ffffff',
-                        fontSize: 12.5,
-                        fontWeight: 600,
-                        textDecoration: 'none',
-                        boxShadow: '0 1px 2px rgba(37,99,235,0.2)'
-                      }}
-                    >
-                      <Download size={14} /> Download File
-                    </a>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      {isPreviewableFile(viewingNotice.attachment_name, viewingNotice.attachment_type) && (
+                        <button
+                          type="button"
+                          onClick={() => openAttachmentPreview(viewingNotice)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '7px 14px',
+                            borderRadius: 6,
+                            backgroundColor: '#eff6ff',
+                            color: '#2563eb',
+                            border: '1px solid #bfdbfe',
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 2px rgba(37,99,235,0.08)',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <Eye size={14} /> Preview
+                        </button>
+                      )}
+                      <a
+                        href={viewingNotice.attachment_url}
+                        download={viewingNotice.attachment_name || 'announcement-attachment'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '7px 14px',
+                          borderRadius: 6,
+                          backgroundColor: '#2563eb',
+                          color: '#ffffff',
+                          fontSize: 12.5,
+                          fontWeight: 600,
+                          textDecoration: 'none',
+                          boxShadow: '0 1px 2px rgba(37,99,235,0.2)'
+                        }}
+                      >
+                        <Download size={14} /> Download File
+                      </a>
+                    </div>
                   </div>
                 </div>
               )}
@@ -3129,6 +3394,129 @@ export function TeacherAnnouncements() {
                 <Send size={14} />
                 <span>{editSaving ? 'Publishing...' : 'Confirm & Publish Now'}</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------- IN-BROWSER ANNOUNCEMENT ATTACHMENT PREVIEW MODAL ------------------- */}
+      {attachmentPreview && attachmentPreview.open && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10060,
+            padding: 16
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 900,
+              height: '85vh',
+              background: 'var(--panel, #ffffff)',
+              borderRadius: 14,
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              border: '1px solid var(--border, #cbd5e1)'
+            }}
+          >
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card-subtle, #f8fafc)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                <Eye size={18} style={{ color: '#2563eb' }} />
+                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {attachmentPreview.fileName}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={handlePreviewDownload}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    background: '#ffffff',
+                    color: 'var(--text, #1e293b)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                >
+                  <Download size={13} /> Download File
+                </button>
+                <button
+                  type="button"
+                  onClick={closeAttachmentPreview}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)', padding: 4 }}
+                  aria-label="Close preview"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, overflow: 'hidden', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {attachmentPreview.loading ? (
+                <div style={{ textAlign: 'center', color: '#cbd5e1' }}>
+                  <Loader2 size={32} className="animate-spin" style={{ margin: '0 auto 12px' }} />
+                  <p style={{ margin: 0, fontSize: 14 }}>Loading preview securely...</p>
+                </div>
+              ) : attachmentPreview.error ? (
+                <div style={{ textAlign: 'center', color: '#f87171', padding: 24 }}>
+                  <AlertCircle size={32} style={{ margin: '0 auto 12px' }} />
+                  <p style={{ margin: 0, fontSize: 14 }}>{attachmentPreview.error}</p>
+                </div>
+              ) : attachmentPreview.blobUrl && attachmentPreview.mimeType.startsWith('image/') ? (
+                <img
+                  src={attachmentPreview.blobUrl}
+                  alt={attachmentPreview.fileName}
+                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                />
+              ) : attachmentPreview.blobUrl && (attachmentPreview.mimeType === 'application/pdf' || attachmentPreview.fileName.toLowerCase().endsWith('.pdf')) ? (
+                <iframe
+                  src={attachmentPreview.blobUrl}
+                  title={attachmentPreview.fileName}
+                  style={{ width: '100%', height: '100%', border: 'none' }}
+                />
+              ) : (
+                <div style={{ textAlign: 'center', color: '#e2e8f0', padding: 32 }}>
+                  <FileText size={48} style={{ color: '#94a3b8', margin: '0 auto 16px' }} />
+                  <h4 style={{ margin: '0 0 8px', fontSize: 16 }}>Inline preview not supported for this format</h4>
+                  <p style={{ margin: '0 0 16px', fontSize: 13, color: '#94a3b8' }}>
+                    Document files (.doc, .docx, .xlsx) can be downloaded directly to view on your device.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handlePreviewDownload}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: 6,
+                      border: 'none',
+                      background: '#2563eb',
+                      color: '#ffffff',
+                      fontWeight: 600,
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}
+                  >
+                    <Download size={14} /> Download File
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

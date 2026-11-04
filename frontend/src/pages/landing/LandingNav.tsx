@@ -126,13 +126,13 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
         </div>
 
         {/* Right Actions Area */}
-        <div className="c360-nav-actions" ref={dotMenuRef}>
+        <div className="c360-nav-actions flex items-center gap-2.5" ref={dotMenuRef}>
           {/* HRMS PORTAL BUTTON (Redirects to https://hrms.attendoschool.online/) */}
           <a
             href="https://hrms.attendoschool.online/"
             target="_blank"
             rel="noopener noreferrer"
-            className="c360-btn-hrms"
+            className="c360-btn-hrms inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
             id="nav-hrms-btn"
             title="Launch AttendoSchool HRMS & Staff Portal"
           >
@@ -144,7 +144,7 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
           {/* GREEN LOGIN BUTTON */}
           <button
             type="button"
-            className="c360-btn-login-green"
+            className="c360-btn-login-green inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition"
             onClick={handleLoginClick}
             id="nav-login-btn"
           >
@@ -155,7 +155,7 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
           {/* Request a Demo Button */}
           <button
             type="button"
-            className="c360-btn-primary"
+            className="c360-btn-primary inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition"
             onClick={() => handleNavClick('demo')}
             id="nav-demo-btn"
           >
@@ -166,7 +166,7 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
           {/* 3-DOT CORNER MENU BUTTON (In top right side corner) */}
           <button
             type="button"
-            className={`c360-dot-btn ${dotMenuOpen ? 'active' : ''}`}
+            className={`c360-dot-btn p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition ${dotMenuOpen ? 'active' : ''}`}
             onClick={() => setDotMenuOpen(!dotMenuOpen)}
             aria-label="Navigation & Sections Menu"
             aria-expanded={dotMenuOpen}

@@ -92,17 +92,28 @@ interface StudentProfileHoverCardProps {
   student: StudentHoverData;
   activeSession?: string;
   children: React.ReactNode;
+  /** 'student' (default on student directory): immediately displays roll no, admission no, gender, date of birth, parent details, with no toggle button or attendance metrics.
+   *  'report': initial condensed view with 'View Details' button to expand attendance percentage and assignment counts.
+   */
+  mode?: 'student' | 'report';
 }
 
 export function StudentProfileHoverCard({
   student,
   activeSession,
-  children
+  children,
+  mode
 }: StudentProfileHoverCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [studentData, setStudentData] = useState<StudentHoverData>(student);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState<boolean>(false);
+
+  // Determine mode: explicitly passed or detected by route (default to 'report' on /reports, 'student' elsewhere)
+  const isHashReport = typeof window !== 'undefined' && window.location.hash.toLowerCase().includes('/reports');
+  const effectiveMode: 'student' | 'report' = mode || (isHashReport ? 'report' : 'student');
+  const isReportMode = effectiveMode === 'report';
+  const isExpanded = !isReportMode || showDetails;
 
   useEffect(() => {
     if (!isOpen) setShowDetails(false);
@@ -610,90 +621,92 @@ export function StudentProfileHoverCard({
                   </div>
                 </div>
 
-                {/* Expanded Details Revealed When "View Details" Clicked */}
-                {showDetails && (
+                {/* Expanded Details Revealed (Immediately in 'student' mode, or when 'View Details' clicked in 'report' mode) */}
+                {isExpanded && (
                   <div style={{ animation: 'fadeIn 0.2s ease-in-out' }}>
-                    {/* Attendance Rate & Assignment Submissions Cards */}
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1fr',
-                        gap: 8,
-                        marginBottom: 10
-                      }}
-                    >
-                      {/* Attendance Percentage Card */}
+                    {/* Attendance Rate & Assignment Submissions Cards (Only shown in report mode) */}
+                    {isReportMode && (
                       <div
                         style={{
-                          backgroundColor: 'var(--card-subtle, #f8fafc)',
-                          padding: '8px 12px',
-                          borderRadius: 10,
-                          border: '1px solid var(--border, #e2e8f0)'
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1fr',
+                          gap: 8,
+                          marginBottom: 10
                         }}
                       >
+                        {/* Attendance Percentage Card */}
                         <div
                           style={{
-                            fontSize: 10,
-                            fontWeight: 700,
-                            color: 'var(--text-muted, #64748b)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.04em',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 4
+                            backgroundColor: 'var(--card-subtle, #f8fafc)',
+                            padding: '8px 12px',
+                            borderRadius: 10,
+                            border: '1px solid var(--border, #e2e8f0)'
                           }}
                         >
-                          <Activity size={11} color="#3b82f6" />
-                          <span>Attendance Rate</span>
+                          <div
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              color: 'var(--text-muted, #64748b)',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.04em',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4
+                            }}
+                          >
+                            <Activity size={11} color="#3b82f6" />
+                            <span>Attendance Rate</span>
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 15,
+                              fontWeight: 800,
+                              color: attRateNum >= 75 ? '#16a34a' : attRateNum > 0 ? '#ea580c' : 'var(--text, #0f172a)',
+                              marginTop: 2
+                            }}
+                          >
+                            {displayAttRate}%
+                          </div>
                         </div>
-                        <div
-                          style={{
-                            fontSize: 15,
-                            fontWeight: 800,
-                            color: attRateNum >= 75 ? '#16a34a' : attRateNum > 0 ? '#ea580c' : 'var(--text, #0f172a)',
-                            marginTop: 2
-                          }}
-                        >
-                          {displayAttRate}%
-                        </div>
-                      </div>
 
-                      {/* Assignment Submission Count Card */}
-                      <div
-                        style={{
-                          backgroundColor: 'var(--card-subtle, #f8fafc)',
-                          padding: '8px 12px',
-                          borderRadius: 10,
-                          border: '1px solid var(--border, #e2e8f0)'
-                        }}
-                      >
+                        {/* Assignment Submission Count Card */}
                         <div
                           style={{
-                            fontSize: 10,
-                            fontWeight: 700,
-                            color: 'var(--text-muted, #64748b)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.04em',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 4
+                            backgroundColor: 'var(--card-subtle, #f8fafc)',
+                            padding: '8px 12px',
+                            borderRadius: 10,
+                            border: '1px solid var(--border, #e2e8f0)'
                           }}
                         >
-                          <FileCheck2 size={11} color="#8b5cf6" />
-                          <span>Assignments</span>
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 15,
-                            fontWeight: 800,
-                            color: '#4f46e5',
-                            marginTop: 2
-                          }}
-                        >
-                          {displaySubmissionCount} Submitted
+                          <div
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              color: 'var(--text-muted, #64748b)',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.04em',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4
+                            }}
+                          >
+                            <FileCheck2 size={11} color="#8b5cf6" />
+                            <span>Assignments</span>
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 15,
+                              fontWeight: 800,
+                              color: '#4f46e5',
+                              marginTop: 2
+                            }}
+                          >
+                            {displaySubmissionCount} Submitted
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Quick Attributes 2-Column Cards (Gender & Date of Birth) */}
                     <div
@@ -1028,7 +1041,7 @@ export function StudentProfileHoverCard({
                 )}
               </div>
 
-              {/* Bottom Premium Status Stripe with View Details Button on Right */}
+              {/* Bottom Premium Status Stripe (Single unified footer bar) */}
               <div
                 style={{
                   backgroundColor: 'var(--card-subtle, #f8fafc)',
@@ -1055,60 +1068,36 @@ export function StudentProfileHoverCard({
                   <span>Enrolled Student</span>
                 </div>
 
-                {/* View Details Button in Right Side Bottom */}
-                <button
-                  type="button"
-                  onClick={() => setShowDetails(prev => !prev)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    padding: '5px 12px',
-                    fontSize: 12,
-                    fontWeight: 700,
-                    borderRadius: 8,
-                    border: '1px solid #2563eb',
-                    backgroundColor: showDetails ? 'rgba(37, 99, 235, 0.1)' : '#2563eb',
-                    color: showDetails ? '#1d4ed8' : '#ffffff',
-                    cursor: 'pointer',
-                    boxShadow: '0 1px 3px rgba(37, 99, 235, 0.2)',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <span>{showDetails ? 'Hide Details' : 'View Details'}</span>
-                  {showDetails ? <ChevronUp size={13} /> : <ChevronRight size={13} />}
-                </button>
-              </div>
-              <div
-                style={{
-                  backgroundColor: 'var(--card-subtle, #f8fafc)',
-                  borderTop: '1px solid var(--border, #e2e8f0)',
-                  padding: '9px 18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  fontSize: 11,
-                  color: 'var(--text-muted, #64748b)'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10b981', fontWeight: 700 }}>
-                  <span
+                {isReportMode ? (
+                  /* View Details Button in Right Side Bottom (Report Mode Only) */
+                  <button
+                    type="button"
+                    onClick={() => setShowDetails(prev => !prev)}
                     style={{
-                      width: 7,
-                      height: 7,
-                      borderRadius: '50%',
-                      backgroundColor: '#10b981',
-                      boxShadow: '0 0 0 2.5px rgba(16, 185, 129, 0.2)',
-                      display: 'inline-block'
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      padding: '5px 12px',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      borderRadius: 8,
+                      border: '1px solid #2563eb',
+                      backgroundColor: showDetails ? 'rgba(37, 99, 235, 0.1)' : '#2563eb',
+                      color: showDetails ? '#1d4ed8' : '#ffffff',
+                      cursor: 'pointer',
+                      boxShadow: '0 1px 3px rgba(37, 99, 235, 0.2)',
+                      transition: 'all 0.15s ease'
                     }}
-                  />
-                  <span>Enrolled Student</span>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4.5, color: 'var(--text-muted, #475569)', fontWeight: 600 }}>
-                  <ShieldCheck size={13} color="#3b82f6" />
-                  <span>Verified Record</span>
-                </div>
+                  >
+                    <span>{showDetails ? 'Hide Details' : 'View Details'}</span>
+                    {showDetails ? <ChevronUp size={13} /> : <ChevronRight size={13} />}
+                  </button>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4.5, color: 'var(--text-muted, #475569)', fontWeight: 600 }}>
+                    <ShieldCheck size={13} color="#3b82f6" />
+                    <span>Verified Record</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>,

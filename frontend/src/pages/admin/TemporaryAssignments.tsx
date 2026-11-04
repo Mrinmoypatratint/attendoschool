@@ -18,29 +18,19 @@ export default function TemporaryAssignments({ embedded = false, onAssignmentsCh
 
   return (
     <div
-      className={embedded ? "as-temporary-assignments-view" : "admin-page-container"}
-      style={embedded ? { display: 'flex', flexDirection: 'column', gap: 20 } : { padding: '24px 32px' }}
+      className={`${embedded ? "as-temporary-assignments-view flex flex-col gap-5" : "admin-page-container p-6 md:p-8"}`}
     >
       {!embedded && (
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              background: 'var(--primary-subtle, rgba(37, 99, 235, 0.1))',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--primary, #2563eb)'
-            }}>
+        <div className="mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
               <ClipboardCheck size={22} />
             </div>
             <div>
-              <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: 'var(--text-primary, #0f172a)' }}>
+              <h1 className="text-xl md:text-2xl font-bold m-0 text-slate-900 dark:text-slate-100">
                 Teacher Substitution
               </h1>
-              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary, #64748b)' }}>
+              <p className="mt-1 mb-0 text-xs md:text-sm text-slate-500 dark:text-slate-400">
                 Assign substitute teachers and manage temporary class allocations for specific dates without overwriting permanent class teacher assignments.
               </p>
             </div>
@@ -48,7 +38,7 @@ export default function TemporaryAssignments({ embedded = false, onAssignmentsCh
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="flex flex-col gap-5">
         <TemporaryAssignmentForm onSuccess={handleFormSuccess} />
         <TemporaryAssignmentTable key={refreshKey} onAssignmentsChange={onAssignmentsChange} />
       </div>

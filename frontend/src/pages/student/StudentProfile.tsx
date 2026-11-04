@@ -146,6 +146,7 @@ export function StudentProfile() {
   const [editingDetails, setEditingDetails] = useState(false);
   const [editGender, setEditGender] = useState('');
   const [editDob, setEditDob] = useState('');
+  const [editEmail, setEditEmail] = useState('');
   const [savingDetails, setSavingDetails] = useState(false);
   const [detailsMsg, setDetailsMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -156,6 +157,7 @@ export function StudentProfile() {
         setProfile(res);
         setEditGender(formatGender(res?.gender) || '');
         setEditDob(toDdMmYyyy(res?.dateOfBirth));
+        setEditEmail(res?.email || user?.email || '');
         if (res?.photoUrl) {
           updateUser({ photoUrl: res.photoUrl, avatarUrl: res.photoUrl, photo_url: res.photoUrl });
           window.dispatchEvent(new CustomEvent('student-photo-updated', { detail: { photoUrl: res.photoUrl } }));
@@ -187,11 +189,21 @@ export function StudentProfile() {
       return;
     }
 
+        const cleanEmail = editEmail.trim();
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setDetailsMsg({
+        type: 'error',
+        text: 'Please enter a valid student email address.'
+      });
+      return;
+    }
+
     const normalizedDob = toDdMmYyyy(cleanDob);
     setSavingDetails(true);
     try {
-      await studentApi.updateProfile({ gender: editGender, dateOfBirth: normalizedDob });
-      setProfile((prev) => prev ? { ...prev, gender: editGender, dateOfBirth: normalizedDob } : null);
+      await studentApi.updateProfile({ gender: editGender, dateOfBirth: normalizedDob, email: cleanEmail });
+      setProfile((prev) => prev ? { ...prev, gender: editGender, dateOfBirth: normalizedDob, email: cleanEmail } : null);
+      if (cleanEmail) updateUser({ email: cleanEmail });
       setEditDob(normalizedDob);
       setDetailsMsg({ type: 'success', text: 'Personal details updated successfully!' });
       setEditingDetails(false);
@@ -324,7 +336,7 @@ export function StudentProfile() {
   };
 
   if (loading) {
-    return <div className="student-loading-spinner">Loading student profile...</div>;
+    return <div className="student-loading-spinner py-12 text-center text-slate-500 text-sm">Loading student profile...</div>;
   }
 
   // Safeguard: Ensure email never shows @greenwood.local for TINT or non-Greenwood schools
@@ -345,48 +357,48 @@ export function StudentProfile() {
     <div className="student-subpage">
       <div className="student-subpage-header">
         <div className="student-subpage-title-row">
-          <Link to="/student/dashboard" className="student-back-link">
+          <Link to="/student/dashboard" className="student-back-link inline-flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
-          <h1 className="student-subpage-title">Student Profile & Credentials</h1>
-          <p className="student-subpage-desc">
+          <h1 className="student-subpage-title text-2xl font-bold text-slate-900 dark:text-slate-100 mt-2 mb-1">Student Profile &amp; Credentials</h1>
+          <p className="student-subpage-desc text-xs text-slate-500 dark:text-slate-400 m-0">
             Personal identity, enrollment records, and account security.
           </p>
         </div>
       </div>
 
-      <div className="student-profile-layout">
+      <div className="student-profile-layout grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Profile Card Summary */}
-        <div className="student-card student-profile-hero-card">
-          <div className="student-profile-avatar-large">
+        <div className="student-card student-profile-hero-card rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm flex flex-col items-center text-center">
+          <div className="student-profile-avatar-large relative w-24 h-24 rounded-full overflow-hidden bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 flex items-center justify-center text-3xl font-bold border-2 border-slate-200 dark:border-slate-700">
             {profile?.photoUrl ? (
               <img
                 src={profile.photoUrl}
                 alt={profile.name}
-                className="student-profile-avatar-img"
+                className="student-profile-avatar-img w-full h-full object-cover"
               />
             ) : (
               <span>{profile?.name?.charAt(0) || 'S'}</span>
             )}
             {uploadingPhoto && (
-              <div className="student-avatar-loading-overlay">
-                <Loader2 size={24} className="spin-animate" />
+              <div className="student-avatar-loading-overlay absolute inset-0 bg-black/50 flex items-center justify-center text-white">
+                <Loader2 size={24} className="animate-spin" />
               </div>
             )}
           </div>
 
           {/* Upload / Change Picture action buttons */}
-          <div className="student-avatar-actions">
+          <div className="student-avatar-actions flex items-center gap-2 mt-4">
             <input
               type="file"
               ref={fileInputRef}
               accept="image/png,image/jpeg,image/jpg,image/webp"
-              style={{ display: 'none' }}
+              className="hidden"
               onChange={handlePhotoSelect}
             />
             <button
               type="button"
-              className="student-avatar-btn-upload"
+              className="student-avatar-btn-upload inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 cursor-pointer transition-colors"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingPhoto}
               title={profile?.photoUrl ? 'Click to change profile picture' : 'Click to upload picture'}
@@ -397,7 +409,7 @@ export function StudentProfile() {
             {profile?.photoUrl && (
               <button
                 type="button"
-                className="student-avatar-btn-remove"
+                className="student-avatar-btn-remove p-1.5 text-xs rounded-md bg-red-50 hover:bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 cursor-pointer transition-colors"
                 onClick={handleRemovePhoto}
                 disabled={uploadingPhoto}
                 title="Remove picture"
@@ -408,26 +420,30 @@ export function StudentProfile() {
           </div>
 
           {photoMsg && (
-            <div className={`student-photo-notice ${photoMsg.type}`}>
+            <div className={`student-photo-notice ${photoMsg.type} mt-3 px-3 py-2 rounded-md text-xs flex items-center gap-1.5 ${
+              photoMsg.type === 'success'
+                ? 'bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400'
+                : 'bg-red-500/10 border border-red-500/25 text-red-500'
+            }`}>
               {photoMsg.type === 'success' ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
               <span>{photoMsg.text}</span>
             </div>
           )}
 
           {profile?.hasPendingPhotoApproval && (
-            <div className="student-profile-pending-banner">
+            <div className="student-profile-pending-banner mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 flex items-center gap-3 text-left">
               {profile?.pendingPhotoUrl && (
                 <img
                   src={profile.pendingPhotoUrl}
                   alt="Pending submission"
-                  style={{ width: 38, height: 38, borderRadius: 6, objectFit: 'cover', border: '2px solid #F59E0B', flexShrink: 0 }}
+                  className="w-9 h-9 rounded-md object-cover border-2 border-amber-500 shrink-0"
                 />
               )}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-xs flex items-center gap-1">
                   <Clock size={13} /> Photo Pending Approval
                 </div>
-                <div style={{ fontSize: 11.5, opacity: 0.95, marginTop: 1 }}>
+                <div className="text-[11.5px] opacity-90 mt-0.5">
                   Your uploaded photo is waiting for teacher approval. Once approved, it will automatically become active on your profile.
                 </div>
               </div>
@@ -435,23 +451,23 @@ export function StudentProfile() {
           )}
 
           {profile?.photoApprovalStatus === 'REJECTED' && (
-            <div className="student-profile-rejected-banner">
-              <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+            <div className="student-profile-rejected-banner mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-400 text-left">
+              <div className="font-bold text-xs flex items-center gap-1 mb-0.5">
                 <AlertCircle size={13} /> Photo Declined by Administrator
               </div>
-              <div style={{ fontSize: 11.5 }}>
+              <div className="text-[11.5px]">
                 Reason: "{profile.photoRejectionReason || 'Photo does not meet administrative standards.'}"
               </div>
-              <div style={{ fontSize: 11, marginTop: 3 }}>
+              <div className="text-[11px] mt-1 text-slate-500">
                 Please upload a clear, front-facing passport-style photo.
               </div>
             </div>
           )}
 
-          <h2 className="profile-hero-name">{String(profile?.name || 'STUDENT').toUpperCase()}</h2>
-          <p className="profile-hero-role">{profile?.className} - Section {profile?.sectionName}</p>
+          <h2 className="profile-hero-name text-lg font-bold text-slate-900 dark:text-slate-100 mt-4 mb-0.5">{String(profile?.name || 'STUDENT').toUpperCase()}</h2>
+          <p className="profile-hero-role text-xs text-slate-500 dark:text-slate-400 m-0 mb-3">{profile?.className} - Section {profile?.sectionName}</p>
           <div 
-            className="profile-hero-badge"
+            className="profile-hero-badge inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 text-xs font-semibold"
             onClick={() => {
               const site = profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website;
               if (site) {
@@ -466,35 +482,23 @@ export function StudentProfile() {
             <School size={14} />
             <span>{profile?.schoolName}</span>
             {(profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website) && (
-              <ExternalLink size={12} style={{ marginLeft: 4, opacity: 0.8 }} />
+              <ExternalLink size={12} className="ml-1 opacity-80" />
             )}
           </div>
         </div>
 
         {/* Academic & Personal Details */}
-        <div className="student-card student-profile-details-card">
-          <div className="student-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div className="student-card-title-wrap">
-              <User size={18} />
-              <h3 className="student-card-title">Academic & Institutional Details</h3>
+        <div className="student-card student-profile-details-card rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+          <div className="student-card-header flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-700/60">
+            <div className="student-card-title-wrap flex items-center gap-2 text-slate-900 dark:text-slate-100">
+              <User size={18} className="text-blue-600" />
+              <h3 className="student-card-title text-base font-bold m-0">Academic &amp; Institutional Details</h3>
             </div>
             {!editingDetails && (
               <button
                 type="button"
                 onClick={() => setEditingDetails(true)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  padding: '5px 12px',
-                  borderRadius: 6,
-                  border: '1px solid var(--border, #cbd5e1)',
-                  backgroundColor: 'var(--card, #ffffff)',
-                  color: 'var(--text, #1e293b)',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-semibold cursor-pointer transition-colors"
               >
                 <Edit3 size={13} /> Edit Personal Details
               </button>
@@ -503,18 +507,11 @@ export function StudentProfile() {
 
           {detailsMsg && (
             <div
-              style={{
-                marginBottom: 16,
-                padding: '8px 14px',
-                borderRadius: 6,
-                backgroundColor: detailsMsg.type === 'success' ? '#ecfdf5' : '#fef2f2',
-                border: detailsMsg.type === 'success' ? '1px solid #a7f3d0' : '1px solid #fecaca',
-                color: detailsMsg.type === 'success' ? '#065f46' : '#991b1b',
-                fontSize: 12.5,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8
-              }}
+              className={`my-3 p-3 rounded-md text-xs flex items-center gap-2 ${
+                detailsMsg.type === 'success'
+                  ? 'bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-red-500/10 border border-red-500/25 text-red-500'
+              }`}
             >
               {detailsMsg.type === 'success' ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
               <span>{detailsMsg.text}</span>
@@ -522,24 +519,16 @@ export function StudentProfile() {
           )}
 
           {editingDetails ? (
-            <form onSubmit={handleSaveDetails} style={{ display: 'grid', gap: 14, marginTop: 12 }}>
-              <div className="student-edit-grid">
-                <label style={{ display: 'grid', gap: 4 }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
+            <form onSubmit={handleSaveDetails} className="grid gap-3.5 mt-3">
+              <div className="student-edit-grid grid grid-cols-1 gap-3">
+                <label className="grid gap-1">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Gender:
                   </span>
                   <select
                     value={editGender}
                     onChange={(e) => setEditGender(e.target.value)}
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border-strong, #cbd5e1)',
-                      fontSize: 13,
-                      outline: 'none',
-                      backgroundColor: 'var(--card-bg, #ffffff)',
-                      color: 'var(--text, #0f172a)'
-                    }}
+                    className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500"
                   >
                     <option value="">Select Gender</option>
                     <option value="Male">Male</option>
@@ -548,11 +537,11 @@ export function StudentProfile() {
                   </select>
                 </label>
 
-                <label style={{ display: 'grid', gap: 4 }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
+                <label className="grid gap-1">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Date of Birth:
                   </span>
-                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <div className="relative flex items-center">
                     <input
                       type="text"
                       placeholder="DD-MM-YYYY (e.g. 15-06-2008)"
@@ -562,31 +551,17 @@ export function StudentProfile() {
                         const formatted = formatDobInput(e.target.value, editDob);
                         setEditDob(formatted);
                       }}
-                      style={{
-                        width: '100%',
-                        padding: '8px 34px 8px 12px',
-                        borderRadius: 6,
-                        border: `1px solid ${editDob && !isValidDdMmYyyy(editDob) ? '#ef4444' : 'var(--border-strong, #cbd5e1)'}`,
-                        fontSize: 13,
-                        outline: 'none',
-                        backgroundColor: 'var(--card-bg, #ffffff)',
-                        color: 'var(--text, #0f172a)',
-                        boxSizing: 'border-box'
-                      }}
+                      className={`w-full px-3 py-2 pr-9 rounded-md text-xs outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 ${
+                        editDob && !isValidDdMmYyyy(editDob)
+                          ? 'border border-red-500'
+                          : 'border border-slate-300 dark:border-slate-600 focus:ring-1 focus:ring-blue-500'
+                      }`}
                     />
                     <input
                       type="date"
                       max={new Date().toISOString().slice(0, 10)}
                       title="Choose from calendar picker"
-                      style={{
-                        position: 'absolute',
-                        right: 8,
-                        width: 24,
-                        height: 24,
-                        opacity: 0,
-                        cursor: 'pointer',
-                        zIndex: 2
-                      }}
+                      className="absolute right-2 w-6 h-6 opacity-0 cursor-pointer z-10"
                       onChange={(e) => {
                         if (e.target.value) {
                           const [y, m, d] = e.target.value.split('-');
@@ -596,195 +571,175 @@ export function StudentProfile() {
                     />
                     <Calendar
                       size={16}
-                      style={{
-                        position: 'absolute',
-                        right: 10,
-                        color: '#64748b',
-                        pointerEvents: 'none'
-                      }}
+                      className="absolute right-2.5 text-slate-400 pointer-events-none"
                     />
                   </div>
                   {editDob && !isValidDdMmYyyy(editDob) && (
-                    <span style={{ color: '#ef4444', fontSize: 11, fontWeight: 500, marginTop: 2 }}>
+                    <span className="text-red-500 text-[11px] font-medium mt-0.5">
                       Strict format required: DD-MM-YYYY (e.g. 15-06-2008)
                     </span>
                   )}
                 </label>
+
+                <label style={{ display: 'grid', gap: 4, gridColumn: 'span 2' }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
+                    Student Email:
+                  </span>
+                  <input
+                    type="email"
+                    placeholder="student@school.edu"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border-strong, #cbd5e1)',
+                      fontSize: 13,
+                      outline: 'none',
+                      backgroundColor: 'var(--card-bg, #ffffff)',
+                      color: 'var(--text, #0f172a)',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </label>
               </div>
 
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+              <div className="flex gap-2 justify-end mt-1">
                 <button
                   type="button"
                   onClick={() => {
                     setEditingDetails(false);
                     setEditGender(formatGender(profile?.gender) || '');
                     setEditDob(profile?.dateOfBirth ? toDdMmYyyy(profile.dateOfBirth) : '');
+                    setEditEmail(profile?.email || user?.email || '');
                   }}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    padding: '6px 14px',
-                    borderRadius: 6,
-                    border: '1px solid #cbd5e1',
-                    backgroundColor: 'transparent',
-                    color: 'var(--text, #475569)',
-                    fontSize: 12.5,
-                    cursor: 'pointer'
-                  }}
+                  className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-transparent text-slate-600 dark:text-slate-300 text-xs cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                 >
                   <X size={13} /> Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={savingDetails}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '6px 16px',
-                    borderRadius: 6,
-                    border: 'none',
-                    backgroundColor: '#2563eb',
-                    color: '#ffffff',
-                    fontSize: 12.5,
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-md text-white bg-blue-600 hover:bg-blue-700 text-xs font-semibold cursor-pointer disabled:opacity-60 transition-colors shadow-sm"
                 >
                   <Save size={13} /> {savingDetails ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>
           ) : (
-            <div className="student-details-grid">
+            <div className="student-details-grid grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-3">
               <div className="detail-item">
-                <span className="detail-label">Roll Number</span>
-                <span className="detail-val">{profile?.rollNumber}</span>
+                <span className="detail-label block text-[11px] font-medium text-slate-400">Roll Number</span>
+                <span className="detail-val font-semibold text-xs text-slate-900 dark:text-slate-100">{profile?.rollNumber}</span>
               </div>
               <div className="detail-item">
-                <span className="detail-label">Admission Number</span>
-                <span className="detail-val">{profile?.admissionNumber}</span>
+                <span className="detail-label block text-[11px] font-medium text-slate-400">Admission Number</span>
+                <span className="detail-val font-semibold text-xs text-slate-900 dark:text-slate-100">{profile?.admissionNumber}</span>
               </div>
               <div className="detail-item">
-                <span className="detail-label">Class & Section</span>
-                <span className="detail-val">{profile?.className} - Section {profile?.sectionName}</span>
+                <span className="detail-label block text-[11px] font-medium text-slate-400">Class &amp; Section</span>
+                <span className="detail-val font-semibold text-xs text-slate-900 dark:text-slate-100">{profile?.className} - Section {profile?.sectionName}</span>
               </div>
               <div className="detail-item">
-                <span className="detail-label">Academic Session</span>
-                <span className="detail-val">{profile?.academicSession}</span>
+                <span className="detail-label block text-[11px] font-medium text-slate-400">Academic Session</span>
+                <span className="detail-val font-semibold text-xs text-slate-900 dark:text-slate-100">{profile?.academicSession}</span>
               </div>
               <div className="detail-item">
-                <span className="detail-label">Student Email</span>
-                <span className="detail-val">{displayEmail}</span>
+                <span className="detail-label block text-[11px] font-medium text-slate-400">Student Email</span>
+                <span className="detail-val font-semibold text-xs text-slate-900 dark:text-slate-100">{displayEmail}</span>
               </div>
               <div className="detail-item">
-                <span className="detail-label">Date of Birth</span>
-                <span className="detail-val">{profile?.dateOfBirth ? toDdMmYyyy(profile.dateOfBirth) : '—'}</span>
+                <span className="detail-label block text-[11px] font-medium text-slate-400">Date of Birth</span>
+                <span className="detail-val font-semibold text-xs text-slate-900 dark:text-slate-100">{profile?.dateOfBirth ? toDdMmYyyy(profile.dateOfBirth) : '—'}</span>
               </div>
               <div className="detail-item">
-                <span className="detail-label">Gender</span>
-                <span className="detail-val">{formatGender(profile?.gender) || 'Not Specified'}</span>
+                <span className="detail-label block text-[11px] font-medium text-slate-400">Gender</span>
+                <span className="detail-val font-semibold text-xs text-slate-900 dark:text-slate-100">{formatGender(profile?.gender) || 'Not Specified'}</span>
               </div>
               <div className="detail-item">
-                <span className="detail-label">Official School Website</span>
-                <span className="detail-val">
+                <span className="detail-label block text-[11px] font-medium text-slate-400">Official School Website</span>
+                <span className="detail-val font-semibold text-xs text-slate-900 dark:text-slate-100">
                   {(profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website) ? (
                     <a
                       href={profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        color: '#2563eb',
-                        fontWeight: 600,
-                        textDecoration: 'none'
-                      }}
+                      className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline"
                       title="Open official school website in new tab"
                     >
                       <Globe size={13} />
-                      <span style={{ textDecoration: 'underline' }}>{profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website}</span>
+                      <span className="underline">{profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website}</span>
                       <ExternalLink size={12} />
                     </a>
                   ) : (
-                    <span style={{ color: '#94a3b8' }}>Not Configured</span>
+                    <span className="text-slate-400">Not Configured</span>
                   )}
                 </span>
               </div>
             </div>
           )}
 
-          <div className="student-card-header" style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--edu-border, #E2E8F0)' }}>
-            <div className="student-card-title-wrap">
-              <Users size={18} />
-              <h3 className="student-card-title">Parent Contact</h3>
+          <div className="student-card-header mt-6 pt-4 border-t border-slate-100 dark:border-slate-700/60">
+            <div className="student-card-title-wrap flex items-center gap-2 text-slate-900 dark:text-slate-100">
+              <Users size={18} className="text-blue-600" />
+              <h3 className="student-card-title text-base font-bold m-0">Parent Contact</h3>
             </div>
           </div>
 
-          <div className="student-details-grid">
+          <div className="student-details-grid grid grid-cols-1 sm:grid-cols-3 gap-3.5 mt-3">
             <div className="detail-item">
-              <span className="detail-label">Parent Name</span>
-              <span className="detail-val">{profile?.parentName}</span>
+              <span className="detail-label block text-[11px] font-medium text-slate-400">Parent Name</span>
+              <span className="detail-val font-semibold text-xs text-slate-900 dark:text-slate-100">{profile?.parentName}</span>
             </div>
             <div className="detail-item">
-              <span className="detail-label">Emergency SMS Mobile</span>
-              <span className="detail-val">{profile?.parentPhone}</span>
+              <span className="detail-label block text-[11px] font-medium text-slate-400">Emergency SMS Mobile</span>
+              <span className="detail-val font-semibold text-xs text-slate-900 dark:text-slate-100">{profile?.parentPhone}</span>
             </div>
             <div className="detail-item">
-              <span className="detail-label">Registered Parent Email</span>
-              <span className="detail-val">{profile?.parentEmail}</span>
+              <span className="detail-label block text-[11px] font-medium text-slate-400">Registered Parent Email</span>
+              <span className="detail-val font-semibold text-xs text-slate-900 dark:text-slate-100">{profile?.parentEmail}</span>
             </div>
           </div>
         </div>
 
         {/* Change Password Card */}
-        <div className="student-card student-profile-security-card">
-          <div className="student-card-header">
-            <div className="student-card-title-wrap">
-              <Lock size={18} />
-              <h3 className="student-card-title">Account Security</h3>
+        <div className="student-card student-profile-security-card rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+          <div className="student-card-header flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-700/60 mb-4">
+            <div className="student-card-title-wrap flex items-center gap-2 text-slate-900 dark:text-slate-100">
+              <Lock size={18} className="text-blue-600" />
+              <h3 className="student-card-title text-base font-bold m-0">Account Security</h3>
             </div>
-            <span className="security-tag"><ShieldCheck size={14} /> BCrypt Protected</span>
+            <span className="security-tag inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800"><ShieldCheck size={14} /> BCrypt Protected</span>
           </div>
 
           {pwMsg && (
-            <div className={`student-alert-${pwMsg.type}`} style={{ marginBottom: 16 }}>
+            <div className={`student-alert-${pwMsg.type} mb-4 p-3 rounded-md text-xs flex items-center gap-2 ${
+              pwMsg.type === 'success'
+                ? 'bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400'
+                : 'bg-red-500/10 border border-red-500/25 text-red-500'
+            }`}>
               {pwMsg.type === 'success' && <CheckCircle2 size={16} />}
               <span>{pwMsg.text}</span>
             </div>
           )}
 
-          <form onSubmit={handlePasswordChange} className="student-form-vertical">
-            <label>
-              <span>Current Password:</span>
-              <div style={{ position: 'relative', width: '100%' }}>
+          <form onSubmit={handlePasswordChange} className="student-form-vertical space-y-3.5">
+            <label className="block">
+              <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Current Password:</span>
+              <div className="relative w-full">
                 <input
                   type={showCurrentPw ? 'text' : 'password'}
                   required
                   placeholder="••••••••••••"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  style={{ width: '100%', paddingRight: 38, boxSizing: 'border-box' }}
+                  className="w-full px-3 py-2 pr-9 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <button
                   type="button"
                   onClick={() => setShowCurrentPw(!showCurrentPw)}
-                  style={{
-                    position: 'absolute',
-                    right: 10,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    color: '#94a3b8',
-                    cursor: 'pointer',
-                    padding: 4,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-transparent border-none text-slate-400 hover:text-slate-600 cursor-pointer p-1 flex items-center justify-center"
                   title={showCurrentPw ? 'Hide password' : 'Show password'}
                   aria-label={showCurrentPw ? 'Hide password' : 'Show password'}
                 >
@@ -793,73 +748,47 @@ export function StudentProfile() {
               </div>
             </label>
 
-            <label>
-              <span>New Password:</span>
-              <div style={{ position: 'relative', width: '100%' }}>
+            <label className="block">
+              <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">New Password:</span>
+              <div className="relative w-full">
                 <input
                   type={showNewPw ? 'text' : 'password'}
                   required
                   placeholder="Enter new strong password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  style={{ width: '100%', paddingRight: 38, boxSizing: 'border-box' }}
+                  className="w-full px-3 py-2 pr-9 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <button
                   type="button"
                   onClick={() => setShowNewPw(!showNewPw)}
-                  style={{
-                    position: 'absolute',
-                    right: 10,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    color: '#94a3b8',
-                    cursor: 'pointer',
-                    padding: 4,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-transparent border-none text-slate-400 hover:text-slate-600 cursor-pointer p-1 flex items-center justify-center"
                   title={showNewPw ? 'Hide password' : 'Show password'}
                   aria-label={showNewPw ? 'Hide password' : 'Show password'}
                 >
                   {showNewPw ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              <span style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 4, display: 'block' }}>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block">
                 Must be at least 8 characters, with 1 Capital letter, 1 small letter, 1 number, and 1 special character.
               </span>
             </label>
 
-            <label>
-              <span>Confirm New Password:</span>
-              <div style={{ position: 'relative', width: '100%' }}>
+            <label className="block">
+              <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Confirm New Password:</span>
+              <div className="relative w-full">
                 <input
                   type={showConfirmPw ? 'text' : 'password'}
                   required
                   placeholder="Confirm new password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  style={{ width: '100%', paddingRight: 38, boxSizing: 'border-box' }}
+                  className="w-full px-3 py-2 pr-9 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPw(!showConfirmPw)}
-                  style={{
-                    position: 'absolute',
-                    right: 10,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    color: '#94a3b8',
-                    cursor: 'pointer',
-                    padding: 4,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-transparent border-none text-slate-400 hover:text-slate-600 cursor-pointer p-1 flex items-center justify-center"
                   title={showConfirmPw ? 'Hide password' : 'Show password'}
                   aria-label={showConfirmPw ? 'Hide password' : 'Show password'}
                 >
@@ -868,7 +797,7 @@ export function StudentProfile() {
               </div>
             </label>
 
-            <button type="submit" disabled={submittingPw} className="student-btn-primary" style={{ marginTop: 8 }}>
+            <button type="submit" disabled={submittingPw} className="student-btn-primary w-full py-2 text-xs font-semibold rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 cursor-pointer transition-colors shadow-sm mt-2">
               {submittingPw ? 'Updating...' : 'Update Password'}
             </button>
           </form>

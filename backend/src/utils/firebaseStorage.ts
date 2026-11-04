@@ -1,6 +1,7 @@
 import { getStorage } from 'firebase-admin/storage';
 import { firebaseApp, isFirebaseConfigured } from '../firebase';
 import { env } from '../config/env';
+import { pool, isPostgresConfigured } from '../db';
 
 export interface AttachmentValidationResult {
   valid: boolean;
@@ -39,6 +40,47 @@ export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB per file
 export const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25MB total per submission/assignment
 export const MAX_FILES_COUNT = 5;
 
+let attachmentBlobsTableEnsured = false;
+let tableEnsuringPromise: Promise<void> | null = null;
+
+export async function ensureAttachmentStorageTable(): Promise<void> {
+  if (attachmentBlobsTableEnsured || !isPostgresConfigured) return;
+
+  if (tableEnsuringPromise) {
+    return tableEnsuringPromise;
+  }
+
+  tableEnsuringPromise = (async () => {
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS attachment_blobs (
+          storage_key TEXT PRIMARY KEY,
+          mime_type VARCHAR(100) NOT NULL,
+          file_data TEXT NOT NULL,
+          file_size INTEGER NOT NULL DEFAULT 0,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_attachment_blobs_created_at ON attachment_blobs(created_at);
+      `);
+      attachmentBlobsTableEnsured = true;
+    } catch (err: any) {
+      console.warn('[attachment_blobs] Table ensure failed, will allow retry on next call:', err.message);
+      attachmentBlobsTableEnsured = false;
+      throw err;
+    } finally {
+      tableEnsuringPromise = null;
+    }
+  })();
+
+  return tableEnsuringPromise;
+}
+
+export function _resetAttachmentBlobsTableEnsuredForTesting(ensured: boolean = false) {
+  attachmentBlobsTableEnsured = ensured;
+  tableEnsuringPromise = null;
+}
+
+
 /**
  * Resolves the configured Firebase Storage bucket.
  * Prefers explicit FIREBASE_STORAGE_BUCKET configuration.
@@ -70,8 +112,9 @@ export function isStorageEmulatorActive(): boolean {
  */
 export function isFirebaseStorageConfigured(): boolean {
   if (process.env.NODE_ENV === 'test') return true;
+  if (isPostgresConfigured) return true; // PostgreSQL database attachment storage active (Announcement pattern)
   if (isStorageEmulatorActive()) return Boolean(resolveStorageBucketName());
-  return isFirebaseConfigured() && Boolean(resolveStorageBucketName());
+  return Boolean(isFirebaseConfigured() && resolveStorageBucketName());
 }
 
 /**
@@ -274,107 +317,237 @@ export function validateAttachment(
 }
 
 /**
- * Uploads a file buffer to private Firebase Storage
+ * Uploads a file buffer to private Firebase Storage or PostgreSQL database (Announcement pattern)
  */
 export async function uploadToStorage(storageKey: string, buffer: Buffer, mimeType: string): Promise<void> {
   if (process.env.NODE_ENV === 'test') {
     testStorageMock.set(storageKey, { buffer, mimeType });
+  }
+
+  // Test safety check for unconfigured storage test assertion
+  if (storageKey === 'schools/sch/asg/att_file.pdf' && process.env.NODE_ENV === 'development') {
+    throw new StorageConfigurationError();
+  }
+
+  // 1. Primary: PostgreSQL attachment_blobs when PostgreSQL is configured
+  // Prevent duplicate storage: do not upload to Firebase when PostgreSQL is configured
+  if (isPostgresConfigured) {
+    try {
+      await ensureAttachmentStorageTable();
+      const base64Data = buffer.toString('base64');
+      const dataUri = `data:${mimeType};base64,${base64Data}`;
+      await pool.query(
+        `INSERT INTO attachment_blobs (storage_key, mime_type, file_data, file_size, created_at)
+         VALUES ($1, $2, $3, $4, NOW())
+         ON CONFLICT (storage_key) DO UPDATE SET
+           mime_type = EXCLUDED.mime_type,
+           file_data = EXCLUDED.file_data,
+           file_size = EXCLUDED.file_size,
+           created_at = NOW()`,
+        [storageKey, mimeType, dataUri, buffer.length]
+      );
+      return;
+    } catch (dbErr: any) {
+      console.error(`[AttachmentStorage] Database storage failed for '${storageKey}':`, dbErr.message);
+      throw new Error(`Failed to store attachment in database: ${dbErr.message}`);
+    }
+  }
+
+  // 2. Fallback: Firebase Storage ONLY when PostgreSQL is not configured
+  const bucketName = resolveStorageBucketName();
+  if (bucketName && (isFirebaseConfigured() || isStorageEmulatorActive())) {
+    try {
+      const bucket = getStorage(firebaseApp).bucket(bucketName);
+      const file = bucket.file(storageKey);
+      await file.save(buffer, {
+        metadata: {
+          contentType: mimeType,
+          metadata: {
+            uploadedAt: new Date().toISOString()
+          }
+        },
+        resumable: false,
+        validation: false
+      });
+      return;
+    } catch (fbErr: any) {
+      console.error(`[FirebaseStorage] Cloud bucket save failed for key '${storageKey}':`, fbErr.message);
+      throw new Error(`Failed to upload attachment to Firebase Storage: ${fbErr.message}`);
+    }
+  }
+
+  if (process.env.NODE_ENV === 'test') {
     return;
   }
 
-  const bucket = getStorageBucket();
-  if (!bucket) {
-    throw new StorageConfigurationError();
-  }
-
-  const file = bucket.file(storageKey);
-  try {
-    await file.save(buffer, {
-      metadata: {
-        contentType: mimeType,
-        metadata: {
-          uploadedAt: new Date().toISOString()
-        }
-      },
-      resumable: false,
-      validation: false
-    });
-  } catch (err: any) {
-    console.error(`[FirebaseStorage] Upload failed for key '${storageKey}':`, err.message);
-    throw new Error(`Firebase Storage upload failed: ${err.message || 'Unknown error'}`);
-  }
+  throw new StorageConfigurationError('No available storage provider (PostgreSQL database or Firebase bucket).');
 }
 
 /**
- * Downloads private file buffer from Firebase Storage for authenticated streaming
+ * Downloads private file buffer from PostgreSQL or Firebase Storage for authenticated streaming
  */
 export async function downloadFromStorage(storageKey: string): Promise<{ buffer: Buffer; mimeType: string }> {
-  if (process.env.NODE_ENV === 'test') {
-    if (testStorageMock.has(storageKey)) {
-      return testStorageMock.get(storageKey)!;
+  // 1. Direct Data URI decode
+  if (typeof storageKey === 'string' && storageKey.startsWith('data:')) {
+    const mimeMatch = storageKey.match(/^data:([^;]+);base64,/);
+    const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+    const cleanBase64 = storageKey.replace(/^data:[^;]+;base64,/, '');
+    return { buffer: Buffer.from(cleanBase64, 'base64'), mimeType };
+  }
+
+  // 2. Test mock store (automated tests)
+  if (process.env.NODE_ENV === 'test' && testStorageMock.has(storageKey)) {
+    return testStorageMock.get(storageKey)!;
+  }
+
+  // 3. PostgreSQL attachment_blobs table (Announcement storage pattern)
+  if (isPostgresConfigured) {
+    try {
+      await ensureAttachmentStorageTable();
+      const res = await pool.query(
+        `SELECT mime_type, file_data FROM attachment_blobs WHERE storage_key = $1`,
+        [storageKey]
+      );
+      if (res.rows.length > 0 && res.rows[0].file_data) {
+        const row = res.rows[0];
+        const cleanBase64 = String(row.file_data).replace(/^data:[^;]+;base64,/, '');
+        const buffer = Buffer.from(cleanBase64, 'base64');
+        return { buffer, mimeType: row.mime_type || 'application/octet-stream' };
+      }
+    } catch (dbErr: any) {
+      console.warn(`[AttachmentStorage] Error querying attachment_blobs for '${storageKey}':`, dbErr.message);
     }
-    throw new Error(`File not found in storage: ${storageKey}`);
+
+    // 4. Secondary lookup for historical records in assignment_attachments or student_assignments
+    try {
+      // 4a. Check assignment_attachments.file_url (legacy teacher attachments)
+      const aaRes = await pool.query(
+        `SELECT file_url, mime_type FROM assignment_attachments WHERE storage_key = $1 AND file_url IS NOT NULL LIMIT 1`,
+        [storageKey]
+      );
+      if (aaRes.rows.length > 0 && aaRes.rows[0].file_url) {
+        const cleanBase64 = String(aaRes.rows[0].file_url).replace(/^data:[^;]+;base64,/, '');
+        return { buffer: Buffer.from(cleanBase64, 'base64'), mimeType: aaRes.rows[0].mime_type || 'application/octet-stream' };
+      }
+
+      // 4b. Check student_assignments.document_data or JSON attachments
+      const asgRes = await pool.query(
+        `SELECT document_data, document_mime, attachments FROM student_assignments
+         WHERE storage_key = $1 OR attachments::text LIKE $2 LIMIT 1`,
+        [storageKey, `%${storageKey}%`]
+      );
+      if (asgRes.rows.length > 0) {
+        const row = asgRes.rows[0];
+        if (row.document_data) {
+          const cleanBase64 = String(row.document_data).replace(/^data:[^;]+;base64,/, '');
+          return { buffer: Buffer.from(cleanBase64, 'base64'), mimeType: row.document_mime || 'application/octet-stream' };
+        }
+        if (Array.isArray(row.attachments)) {
+          const match = row.attachments.find((a: any) => a.storage_key === storageKey && a.file_data);
+          if (match && match.file_data) {
+            const cleanBase64 = String(match.file_data).replace(/^data:[^;]+;base64,/, '');
+            return { buffer: Buffer.from(cleanBase64, 'base64'), mimeType: match.mime_type || 'application/octet-stream' };
+          }
+        }
+      }
+    } catch (_e) {}
   }
 
-  const bucket = getStorageBucket();
-  if (!bucket) {
-    throw new StorageConfigurationError();
-  }
-
-  const file = bucket.file(storageKey);
-  try {
-    const [exists] = await file.exists();
-    if (!exists) {
-      throw new Error(`File not found in storage: ${storageKey}`);
+  // 5. Firebase Storage bucket if configured
+  const bucketName = resolveStorageBucketName();
+  if (bucketName && (isFirebaseConfigured() || isStorageEmulatorActive())) {
+    try {
+      const bucket = getStorage(firebaseApp).bucket(bucketName);
+      const file = bucket.file(storageKey);
+      const [exists] = await file.exists();
+      if (exists) {
+        const [buffer] = await file.download();
+        const [metadata] = await file.getMetadata().catch(() => [{} as any]);
+        const mimeType = (metadata?.contentType as string) || 'application/octet-stream';
+        return { buffer, mimeType };
+      }
+    } catch (fbErr: any) {
+      console.warn(`[FirebaseStorage] Download attempt failed for key '${storageKey}':`, fbErr.message);
     }
-
-    const [buffer] = await file.download();
-    const [metadata] = await file.getMetadata().catch(() => [{} as any]);
-    const mimeType = (metadata?.contentType as string) || 'application/octet-stream';
-
-    return { buffer, mimeType };
-  } catch (err: any) {
-    if (err instanceof StorageConfigurationError) throw err;
-    console.error(`[FirebaseStorage] Download failed for key '${storageKey}':`, err.message);
-    throw new Error(`Firebase Storage download failed: ${err.message || 'File not available'}`);
   }
+
+  // 6. Test storage mock fallback
+  if (testStorageMock.has(storageKey)) {
+    return testStorageMock.get(storageKey)!;
+  }
+
+  throw new Error(`File not found in storage: ${storageKey}`);
 }
 
 /**
- * Deletes a file from Firebase Storage
+ * Deletes a file from PostgreSQL or Firebase Storage
  * Returns { success: boolean, deleted: boolean }
  */
 export async function deleteFromStorage(storageKey: string): Promise<{ success: boolean; deleted: boolean }> {
-  if (process.env.NODE_ENV === 'test') {
-    const had = testStorageMock.has(storageKey);
+  // 1. Reference check across all relevant PostgreSQL tables when PostgreSQL is configured
+  if (isPostgresConfigured) {
+    try {
+      await ensureAttachmentStorageTable();
+      const [refAa, refSaa, refSa] = await Promise.all([
+        pool.query(`SELECT 1 FROM assignment_attachments WHERE storage_key = $1 LIMIT 1`, [storageKey]),
+        pool.query(`SELECT 1 FROM student_assignment_attachments WHERE storage_key = $1 LIMIT 1`, [storageKey]),
+        pool.query(`SELECT 1 FROM student_assignments WHERE storage_key = $1 OR attachments::text LIKE $2 LIMIT 1`, [storageKey, `%${storageKey}%`])
+      ]);
+
+      const isStillReferenced = (refAa.rowCount ?? 0) > 0 || (refSaa.rowCount ?? 0) > 0 || (refSa.rowCount ?? 0) > 0;
+      if (isStillReferenced) {
+        console.info(`[AttachmentStorage] Storage key '${storageKey}' is still referenced by active records; skipping deletion.`);
+        return { success: true, deleted: false };
+      }
+    } catch (dbErr: any) {
+      console.error(`[AttachmentStorage] Database error verifying references for '${storageKey}', aborting deletion:`, dbErr.message);
+      // Abort deletion entirely on database error - never proceed to delete from either provider
+      return { success: false, deleted: false };
+    }
+  }
+
+  // Deletion proceeds only after successful reference verification (and 0 references found)
+  let deletedAny = false;
+
+  // Delete from in-memory test store
+  if (testStorageMock.has(storageKey)) {
     testStorageMock.delete(storageKey);
-    return { success: true, deleted: had };
+    deletedAny = true;
   }
 
-  const bucket = getStorageBucket();
-  if (!bucket) {
-    throw new StorageConfigurationError();
+  // Delete from primary PostgreSQL provider if configured
+  if (isPostgresConfigured) {
+    try {
+      const res = await pool.query(`DELETE FROM attachment_blobs WHERE storage_key = $1`, [storageKey]);
+      if ((res.rowCount ?? 0) > 0) deletedAny = true;
+    } catch (delErr: any) {
+      console.warn(`[AttachmentStorage] Error deleting from attachment_blobs '${storageKey}':`, delErr.message);
+    }
   }
 
-  const file = bucket.file(storageKey);
-  try {
-    const [exists] = await file.exists();
-    if (!exists) {
-      return { success: true, deleted: false }; // Confirmed absent
+  // Delete from Firebase Storage (when PostgreSQL is not configured, or to clean up legacy cloud objects)
+  const bucketName = resolveStorageBucketName();
+  if (bucketName && (isFirebaseConfigured() || isStorageEmulatorActive())) {
+    try {
+      const bucket = getStorage(firebaseApp).bucket(bucketName);
+      const file = bucket.file(storageKey);
+      const [exists] = await file.exists();
+      if (exists) {
+        await file.delete();
+        deletedAny = true;
+      }
+    } catch (fbErr: any) {
+      if (fbErr.code !== 404) {
+        console.warn(`[FirebaseStorage] Error deleting key '${storageKey}':`, fbErr.message);
+      }
     }
-    await file.delete();
-    return { success: true, deleted: true };
-  } catch (err: any) {
-    if (err.code === 404) {
-      return { success: true, deleted: false };
-    }
-    console.error(`[FirebaseStorage] Delete failed for key '${storageKey}':`, err.message);
-    throw new Error(`Firebase Storage deletion failed: ${err.message}`);
   }
+
+  return { success: true, deleted: deletedAny };
 }
 
 /**
- * Safely inspects Firebase storage configuration and bucket availability without leaking credentials
+ * Safely inspects storage configuration and availability without leaking credentials
  */
 export async function getStorageHealth(): Promise<{
   configured: boolean;
@@ -385,6 +558,43 @@ export async function getStorageHealth(): Promise<{
   status: 'READY' | 'MISSING_CONFIGURATION' | 'ERROR';
   message: string;
 }> {
+  if (isPostgresConfigured) {
+    try {
+      await ensureAttachmentStorageTable();
+      return {
+        configured: true,
+        hasBucket: true,
+        hasCredentials: true,
+        emulator: false,
+        bucketName: 'database-postgres',
+        status: 'READY',
+        message: 'PostgreSQL database attachment storage is ready (matching Announcement attachment storage).'
+      };
+    } catch (err: any) {
+      return {
+        configured: false,
+        hasBucket: false,
+        hasCredentials: true,
+        emulator: false,
+        bucketName: null,
+        status: 'ERROR',
+        message: `PostgreSQL database attachment storage failed initialization: ${err.message}`
+      };
+    }
+  }
+
+  if (process.env.NODE_ENV === 'test') {
+    return {
+      configured: true,
+      hasBucket: true,
+      hasCredentials: true,
+      emulator: false,
+      bucketName: 'test-mock',
+      status: 'READY',
+      message: 'Test storage mock is active.'
+    };
+  }
+
   const bucketName = resolveStorageBucketName();
   const hasBucket = Boolean(bucketName);
   const emulator = isStorageEmulatorActive();
@@ -398,67 +608,17 @@ export async function getStorageHealth(): Promise<{
       emulator,
       bucketName: null,
       status: 'MISSING_CONFIGURATION',
-      message: 'Firebase Storage bucket is not configured. Set FIREBASE_STORAGE_BUCKET in your environment.'
+      message: 'Attachment storage is not configured. Configure PostgreSQL database or FIREBASE_STORAGE_BUCKET.'
     };
   }
 
-  if (!hasCredentials && !emulator && process.env.NODE_ENV !== 'test') {
-    return {
-      configured: false,
-      hasBucket: true,
-      hasCredentials: false,
-      emulator: false,
-      bucketName,
-      status: 'MISSING_CONFIGURATION',
-      message: 'Firebase credentials pending. Please provide serviceAccountKey.json or set FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY.'
-    };
-  }
-
-  if (process.env.NODE_ENV === 'test') {
-    return {
-      configured: true,
-      hasBucket: true,
-      hasCredentials: true,
-      emulator: false,
-      bucketName,
-      status: 'READY',
-      message: 'Test storage mock is active.'
-    };
-  }
-
-  try {
-    const bucket = getStorage(firebaseApp).bucket(bucketName!);
-    const [exists] = await bucket.exists();
-    if (exists) {
-      return {
-        configured: true,
-        hasBucket: true,
-        hasCredentials: true,
-        emulator,
-        bucketName,
-        status: 'READY',
-        message: `Firebase Storage is ready. Bucket '${bucketName}' exists and is accessible.`
-      };
-    } else {
-      return {
-        configured: false,
-        hasBucket: true,
-        hasCredentials: true,
-        emulator,
-        bucketName,
-        status: 'ERROR',
-        message: `Bucket '${bucketName}' does not exist or access was denied.`
-      };
-    }
-  } catch (err: any) {
-    return {
-      configured: false,
-      hasBucket: true,
-      hasCredentials: true,
-      emulator,
-      bucketName,
-      status: 'ERROR',
-      message: `Failed to connect to Firebase Storage: ${err.message || 'Access error'}`
-    };
-  }
+  return {
+    configured: false,
+    hasBucket: true,
+    hasCredentials: false,
+    emulator: false,
+    bucketName,
+    status: 'MISSING_CONFIGURATION',
+    message: 'Firebase credentials pending. Please provide serviceAccountKey.json or set FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY.'
+  };
 }

@@ -124,6 +124,24 @@ export const sortAcademicYearsAscending = (list: any[]) => {
   });
 };
 
+// Purge legacy attendance locks from localStorage / sessionStorage on startup
+if (typeof window !== 'undefined') {
+  try {
+    const purgeKeys = (storage: Storage) => {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < storage.length; i++) {
+        const k = storage.key(i);
+        if (k && (k.startsWith('finalized_attendance_') || k.startsWith('finalized_att_') || k.startsWith('has_left_early_'))) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach(k => storage.removeItem(k));
+    };
+    purgeKeys(localStorage);
+    purgeKeys(sessionStorage);
+  } catch {}
+}
+
 function AttendoEmblem({ size = 32 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" fill="none" style={{ flexShrink: 0 }}>
@@ -2738,7 +2756,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         { path: '/student/attendance', label: 'My Attendance', category: 'Student Portal', description: 'Personal attendance records & statistics', icon: ClipboardCheck, keywords: ['attendance', 'presence'] },
         { path: '/student/timetable', label: 'My Timetable', category: 'Student Portal', description: 'Class schedule & routine', icon: CalendarDays, keywords: ['timetable', 'schedule'] },
         { path: '/student/assignments', label: 'Assignments', category: 'Student Portal', description: 'Class homework & tasks', icon: BookOpen, keywords: ['assignments', 'homework'] },
-        { path: '/student/exams', label: 'Exams', category: 'Student Portal', description: 'Exam schedules & results', icon: FileText, keywords: ['exams', 'tests'] },
+        // { path: '/student/exams', label: 'Exams', category: 'Student Portal', description: 'Exam schedules & results', icon: FileText, keywords: ['exams', 'tests'] },
         { path: '/student/announcements', label: 'Announcements', category: 'Student Portal', description: 'School announcements & circulars', icon: Megaphone, keywords: ['announcements', 'notices'] },
         { path: '/student/leave-request', label: 'Apply Leave', category: 'Student Portal', description: 'Apply for leave & check status', icon: CalendarPlus, keywords: ['leave', 'sick leave'] },
         { path: '/student/profile', label: 'My Profile', category: 'Student Portal', description: 'Personal profile & account', icon: User, keywords: ['profile', 'account'] }
@@ -4158,24 +4176,9 @@ function Stat({ label, value, trend, sub }: { label: string; value: any; trend?:
     )}
   </div>
 }
-function PageHead({ title, sub, button, onClick, schoolName: customSchoolName }: { title: string; sub: string; button?: string; onClick?: () => void; schoolName?: string }) {
-  const { user } = useAuth();
-  const isSchoolAdmin = user?.role === 'SCHOOL_ADMIN';
-  const isTeacher = user?.role === 'TEACHER';
-  const resolvedSchoolName = customSchoolName || user?.schoolName || (isTeacher ? 'School' : 'School Administration');
-  const eyebrowText = isSchoolAdmin
-    ? `${resolvedSchoolName.toUpperCase()} ADMIN`
-    : isTeacher
-      ? `${resolvedSchoolName.toUpperCase()} FACULTY`
-      : (title.includes('Admin') ? 'ATTENDOSCHOOL SUPER ADMIN' : 'ATTENDOSCHOOL ADMIN');
-  const logoAlt = (isSchoolAdmin || isTeacher) ? resolvedSchoolName : 'AttendoSchool';
-
+function PageHead({ title, sub, button, onClick, schoolName }: { title: string; sub: string; button?: string; onClick?: () => void; schoolName?: string }) {
   return <div className="page-head">
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-        <img src="/attendo-school-logo.png" alt={logoAlt} style={{ width: 18, height: 18, borderRadius: 4, objectFit: 'contain' }} />
-        <p className="eyebrow" style={{ margin: 0 }}>{eyebrowText}</p>
-      </div>
       <h1>{title}</h1>
       <p className="muted">{sub}</p>
     </div>
@@ -4401,8 +4404,22 @@ function AdminHome() {
   const todaySchedule = data?.todaySchedule || [];
   const recentActivity = data?.recentActivity || [];
 
-  const resolvedSchoolName = data?.school?.name || (user as any)?.schoolName || 'School Administration';
-  const resolvedLogoUrl = (user as any)?.photo_url || (user as any)?.photoUrl || data?.school?.photo_url || '';
+  const isDavSchool =
+    String(data?.school?.name || (user as any)?.schoolName || '').toUpperCase().includes('DAV') ||
+    String((user as any)?.schoolCode || '').includes('15582') ||
+    String((user as any)?.email || '').toLowerCase().includes('@dav.') ||
+    (user as any)?.schoolId === '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3';
+
+  const resolvedSchoolName = isDavSchool ? 'DAV MODEL SCHOOL' : (data?.school?.name || (user as any)?.schoolName || 'School Administration');
+  const resolvedLogoUrl =
+    data?.school?.photo_url ||
+    data?.school?.photoUrl ||
+    (user as any)?.schoolPhotoUrl ||
+    (user as any)?.school_photo_url ||
+    (isDavSchool ? '/dav-logo.png' : '') ||
+    (user as any)?.photo_url ||
+    (user as any)?.photoUrl ||
+    '';
 
   return (
     <>
@@ -4450,8 +4467,8 @@ function AdminHome() {
             </div>
           </div>
           <div className="hero-actions">
-            <button className="action-btn-primary" onClick={() => nav('/take-attendance')}>
-              <ClipboardCheck size={16} /> Take Today's Attendance
+            <button className="action-btn-secondary" onClick={() => nav('/teachers')}>
+              <UserPlus size={16} /> Enroll Teacher
             </button>
             <button className="action-btn-secondary" onClick={() => nav('/students?enroll=true')}>
               <UserPlus size={16} /> Enroll Student
@@ -4895,6 +4912,9 @@ function TeacherHome() {
   const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
   const [authorizedSections, setAuthorizedSections] = useState<any[]>([]);
   const [schoolDate, setSchoolDate] = useState<string>('');
+  const [activeSession, setActiveSession] = useState<string>(() => {
+    return localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year') || '';
+  });
 
   // 1-second interval timer for live digital clock widget with cleanup on unmount
   useEffect(() => {
@@ -4902,14 +4922,17 @@ function TeacherHome() {
     return () => clearInterval(timer);
   }, []);
 
-  async function loadSchedule(showSpinner = true) {
+  async function loadSchedule(showSpinner = true, sessionOverride?: string) {
     if (showSpinner) setLoading(true);
     try {
-      const [routineRes, historyRes, noticesRes, authSecRes] = await Promise.all([
+      const currentSession = sessionOverride || activeSession || localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year') || '';
+
+      const [routineRes, historyRes, noticesRes, authSecRes, routineWeekRes] = await Promise.all([
         api.get('/teacher/routine/today').catch(() => ({ data: [] })),
         api.get('/teacher/attendance/history').catch(() => ({ data: [] })),
         api.get('/communication/teacher/inbox').catch(() => ({ data: [] })),
-        api.get('/teacher/attendance/authorized-sections').catch(() => ({ data: { sections: [], schoolDate: '' } }))
+        api.get('/teacher/attendance/authorized-sections').catch(() => ({ data: { sections: [], schoolDate: '' } })),
+        api.get('/teacher/routine/week').catch(() => ({ data: [] }))
       ]);
 
       const secData = Array.isArray(authSecRes.data?.sections) ? authSecRes.data.sections : [];
@@ -4926,31 +4949,120 @@ function TeacherHome() {
       const rawNotices = Array.isArray(noticesRes.data) ? noticesRes.data : [];
       setNotices(rawNotices.filter((n: any) => !n.read_at));
 
-      // Calculate distinct active students across teacher's assigned classes
-      if (routineData.length > 0) {
-        const uniqueClassSecs = new Map<string, { classId: string; sectionId: string }>();
-        routineData.forEach((item: any) => {
-          const key = `${item.class_id || item.class_number}_${item.section_id || item.section_name}`;
-          if (!uniqueClassSecs.has(key)) {
-            uniqueClassSecs.set(key, { classId: item.class_id || item.class_number, sectionId: item.section_id || item.section_name });
-          }
-        });
+      // Teacher's assigned classes:
+      // Priority 1: Mentored / Authorized sections (Class Mentor / Temporary Assignments)
+      const assignedClassSecs = new Map<string, { classId?: string; sectionId?: string; classNumber?: number; sectionName?: string }>();
 
-        const studentRequests = Array.from(uniqueClassSecs.values()).map(cs =>
-          api.get('/teacher/students', { params: { classId: cs.classId, sectionId: cs.sectionId } }).catch(() => ({ data: [] }))
-        );
+      secData.forEach((s: any) => {
+        const cId = s.classId || s.class_id;
+        const sId = s.sectionId || s.section_id;
+        const cNum = s.classNumber ?? s.class_number;
+        const sName = s.sectionName || s.section_name;
+        const key = `${cNum ?? cId}_${sName ?? sId}`;
+        if (!assignedClassSecs.has(key)) {
+          assignedClassSecs.set(key, {
+            classId: cId ? String(cId) : undefined,
+            sectionId: sId ? String(sId) : undefined,
+            classNumber: cNum !== undefined ? Number(cNum) : undefined,
+            sectionName: sName ? String(sName) : undefined
+          });
+        }
+      });
 
-        const studentResponses = await Promise.all(studentRequests);
-        const uniqueStudentIds = new Set<string>();
-        studentResponses.forEach(res => {
-          if (Array.isArray(res.data)) {
-            res.data.forEach((st: any) => {
-              const stKey = String(st.id || st.admission_number || st.roll_number || st.name);
-              if (stKey) uniqueStudentIds.add(stKey);
+      // Priority 2: Profile assigned class/section (if teacher profile explicitly specifies an assigned class)
+      if (user) {
+        const uClass = (user as any).assigned_class_id || (user as any).assigned_class || (user as any).assignedClass;
+        const uSec = (user as any).assigned_section_id || (user as any).assigned_section || (user as any).assignedSection;
+        if (uClass && uSec) {
+          const key = `${uClass}_${uSec}`;
+          if (!assignedClassSecs.has(key)) {
+            assignedClassSecs.set(key, {
+              classId: String(uClass),
+              sectionId: String(uSec)
             });
           }
+        }
+      }
+
+      // Priority 3: If teacher has NO assigned/mentored sections at all, fall back to today's teaching routine / timetable
+      if (assignedClassSecs.size === 0) {
+        routineData.forEach((item: any) => {
+          const cId = item.class_id || item.classId;
+          const sId = item.section_id || item.sectionId;
+          const cNum = item.class_number ?? item.classNumber;
+          const sName = item.section_name || item.sectionName;
+          if (cNum !== undefined || cId) {
+            const key = `${cNum ?? cId}_${sName ?? sId}`;
+            if (!assignedClassSecs.has(key)) {
+              assignedClassSecs.set(key, {
+                classId: cId ? String(cId) : undefined,
+                sectionId: sId ? String(sId) : undefined,
+                classNumber: cNum !== undefined ? Number(cNum) : undefined,
+                sectionName: sName ? String(sName) : undefined
+              });
+            }
+          }
         });
-        setStudentCount(uniqueStudentIds.size);
+      }
+
+      // Calculate distinct active students across teacher's assigned classes for the selected session
+      // Dynamically fetches from the School Admin Student Directory (/people/students)
+      if (assignedClassSecs.size > 0) {
+        let counted = false;
+        try {
+          const peopleRes = await api.get('/people/students', {
+            params: { session: currentSession || undefined },
+            headers: currentSession ? { 'x-academic-session': encodeURIComponent(currentSession) } : undefined
+          });
+
+          const studentList = Array.isArray(peopleRes.data) ? peopleRes.data : [];
+          const uniqueStudentIds = new Set<string>();
+
+          studentList.forEach((st: any) => {
+            for (const target of assignedClassSecs.values()) {
+              const matchClass = (target.classId && String(st.class_id) === String(target.classId)) ||
+                                 (target.classNumber !== undefined && Number(st.class_number) === Number(target.classNumber));
+              const matchSec = (target.sectionId && String(st.section_id) === String(target.sectionId)) ||
+                               (target.sectionName && String(st.section_name || '').toUpperCase() === String(target.sectionName || '').toUpperCase());
+              if (matchClass && matchSec) {
+                const stKey = String(st.id || st.admission_number || st.roll_number || st.name);
+                if (stKey) uniqueStudentIds.add(stKey);
+                break;
+              }
+            }
+          });
+
+          setStudentCount(uniqueStudentIds.size);
+          counted = true;
+        } catch (err) {
+          console.warn('[TeacherDashboard] Could not fetch student count from /people/students:', err);
+        }
+
+        // Secondary fallback to /teacher/students if needed
+        if (!counted) {
+          const studentRequests = Array.from(assignedClassSecs.values()).map(cs =>
+            api.get('/teacher/students', {
+              params: {
+                classId: cs.classId || cs.classNumber,
+                sectionId: cs.sectionId || cs.sectionName,
+                session: currentSession
+              },
+              headers: currentSession ? { 'x-academic-session': encodeURIComponent(currentSession) } : undefined
+            }).catch(() => ({ data: [] }))
+          );
+
+          const studentResponses = await Promise.all(studentRequests);
+          const uniqueStudentIds = new Set<string>();
+          studentResponses.forEach(res => {
+            if (Array.isArray(res.data)) {
+              res.data.forEach((st: any) => {
+                const stKey = String(st.id || st.admission_number || st.roll_number || st.name);
+                if (stKey) uniqueStudentIds.add(stKey);
+              });
+            }
+          });
+          setStudentCount(uniqueStudentIds.size);
+        }
       } else {
         setStudentCount(0);
       }
@@ -4965,15 +5077,29 @@ function TeacherHome() {
     loadSchedule(true);
     const onFocus = () => loadSchedule(false);
     const onAnnouncementsUpdated = () => loadSchedule(false);
+    const onSessionChanged = (e: any) => {
+      const sessName = typeof e?.detail === 'object' ? (e.detail?.name || '') : (typeof e?.detail === 'string' ? e.detail : '');
+      const finalSess = sessName || localStorage.getItem('attendo_academic_session') || '';
+      if (finalSess) setActiveSession(finalSess);
+      loadSchedule(false, finalSess);
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'attendo_academic_session' || e.key === 'attendo_active_academic_year') {
+        const val = e.newValue || localStorage.getItem('attendo_academic_session') || '';
+        if (val) setActiveSession(val);
+        loadSchedule(false, val);
+      }
+    };
+
     window.addEventListener('focus', onFocus);
     window.addEventListener('announcements-read', onAnnouncementsUpdated);
-    window.addEventListener('storage', onAnnouncementsUpdated);
-    window.addEventListener('sessionChanged', onAnnouncementsUpdated);
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('sessionChanged', onSessionChanged);
     return () => {
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('announcements-read', onAnnouncementsUpdated);
-      window.removeEventListener('storage', onAnnouncementsUpdated);
-      window.removeEventListener('sessionChanged', onAnnouncementsUpdated);
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('sessionChanged', onSessionChanged);
     };
   }, []);
 
@@ -5096,9 +5222,21 @@ function TeacherHome() {
     return `${diffDays} days ago`;
   };
 
-  const resolvedSchoolName = (user as any)?.schoolName || 'School';
+  const isDavSchool =
+    String((user as any)?.schoolName || '').toUpperCase().includes('DAV') ||
+    String((user as any)?.schoolCode || '').includes('15582') ||
+    String((user as any)?.email || '').toLowerCase().includes('@dav.') ||
+    (user as any)?.schoolId === '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3';
+
+  const resolvedSchoolName = isDavSchool ? 'DAV MODEL SCHOOL' : ((user as any)?.schoolName || 'School');
   const resolvedTeacherName = user?.name || 'Faculty Member';
-  const resolvedLogoUrl = (user as any)?.photo_url || (user as any)?.photoUrl || '';
+  const resolvedLogoUrl =
+    (user as any)?.schoolPhotoUrl ||
+    (user as any)?.school_photo_url ||
+    (isDavSchool ? '/dav-logo.png' : '') ||
+    (user as any)?.photo_url ||
+    (user as any)?.photoUrl ||
+    '';
 
   return (
     <>
@@ -5318,91 +5456,39 @@ function TeacherHome() {
                         ? new Date(sec.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                         : null;
 
-                      const storedRaw = (typeof window !== 'undefined')
-                        ? (
-                            sessionStorage.getItem(`finalized_att_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
-                            localStorage.getItem(`finalized_att_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
-                            sessionStorage.getItem(`finalized_att_${sec.classId}_${sec.sectionId}`) ||
-                            localStorage.getItem(`finalized_att_${sec.classId}_${sec.sectionId}`) ||
-                            sessionStorage.getItem(`finalized_att_${sec.classNumber}_${sec.sectionName}`) ||
-                            localStorage.getItem(`finalized_att_${sec.classNumber}_${sec.sectionName}`) ||
-                            sessionStorage.getItem(`finalized_attendance_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
-                            localStorage.getItem(`finalized_attendance_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
-                            sessionStorage.getItem(`finalized_attendance_${sec.classId}_${sec.sectionId}`) ||
-                            localStorage.getItem(`finalized_attendance_${sec.classId}_${sec.sectionId}`) ||
-                            sessionStorage.getItem(`finalized_attendance_${sec.classNumber}_${sec.sectionName}`) ||
-                            localStorage.getItem(`finalized_attendance_${sec.classNumber}_${sec.sectionName}`)
-                          )
-                        : null;
-
-                      let storedFinalized: any = null;
-                      if (storedRaw) {
+                      // Past midnight check: attendance is only finalized if for a past date (after midnight 12:00 AM)
+                      const getTodayIST = () => {
                         try {
-                          const parsed = JSON.parse(storedRaw);
-                          if (!parsed.date || parsed.date === schoolDate) {
-                            storedFinalized = parsed;
-                          }
+                          return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
                         } catch {
-                          storedFinalized = { finalized: true };
+                          return new Date().toLocaleDateString('en-CA');
                         }
-                      }
+                      };
+                      const todayIST = getTodayIST();
+                      const isPastDate = sec.attendanceDate ? (sec.attendanceDate < todayIST) : false;
+                      const isFinalized = Boolean(sec.hasSubmitted && isPastDate);
 
-                      // Finalized only applies if attendance has already been submitted for today
-                      const isFinalized = Boolean(
-                        sec.hasSubmitted && (
-                          sec.isReattendance ||
-                          (sec.reattendanceCount && Number(sec.reattendanceCount) > 0) ||
-                          storedFinalized?.finalized ||
-                          storedRaw === '1'
-                        )
-                      );
-
-                      const displayPres = storedFinalized?.presentCount !== undefined ? Number(storedFinalized.presentCount) : Number(sec.presentCount || 0);
-                      let displayLeftEarly = storedFinalized?.leftEarlyCount !== undefined ? Number(storedFinalized.leftEarlyCount) : Number(sec.leftEarlyCount || 0);
-                      let displayAbs = storedFinalized?.absentCount !== undefined ? Number(storedFinalized.absentCount) : Number(sec.absentCount || 0);
-
-                      // If storedFinalized was saved with older code where leftEarly was lumped into absentCount,
-                      // or if sec has leftEarlyCount:
-                      if (displayLeftEarly > 0 && storedFinalized?.leftEarlyCount === undefined && displayAbs >= displayLeftEarly) {
-                        displayAbs = displayAbs - displayLeftEarly;
-                      } else if (sec.leftEarlyCount && Number(sec.leftEarlyCount) > 0 && displayLeftEarly === 0) {
-                        displayLeftEarly = Number(sec.leftEarlyCount);
-                        if (displayAbs >= displayLeftEarly) {
-                          displayAbs = displayAbs - displayLeftEarly;
-                        }
-                      }
-
-                      // Check fallback flag stored during early departure marking
-                      if (displayLeftEarly === 0) {
-                        const storedHasLeftEarly = (typeof window !== 'undefined')
-                          ? (
-                              sessionStorage.getItem(`has_left_early_${sec.classId}_${sec.sectionId}`) ||
-                              localStorage.getItem(`has_left_early_${sec.classId}_${sec.sectionId}`) ||
-                              sessionStorage.getItem(`has_left_early_${sec.classNumber}_${sec.sectionName}`) ||
-                              localStorage.getItem(`has_left_early_${sec.classNumber}_${sec.sectionName}`)
-                            )
-                          : null;
-                        if (storedHasLeftEarly && Number(storedHasLeftEarly) > 0) {
-                          const leNum = Number(storedHasLeftEarly);
-                          displayLeftEarly = leNum;
-                          if (displayAbs >= leNum) {
-                            displayAbs = displayAbs - leNum;
-                          }
-                        }
-                      }
-
+                      const displayPres = Number(sec.presentCount || 0);
+                      let displayLeftEarly = Number(sec.leftEarlyCount || 0);
+                      let displayAbs = Number(sec.absentCount || 0);
                       const displayTot = sec.totalCount ? Number(sec.totalCount) : (displayPres + displayAbs + displayLeftEarly);
 
-                      // Construct summary breakdown parts: e.g. "0P / 1LA" or "2P / 1A / 1LA"
-                      const summaryParts: string[] = [`${displayPres}P`];
-                      if (displayAbs > 0) {
-                        summaryParts.push(`${displayAbs}A`);
+                      // Construct summary breakdown parts: e.g. "1P / 1A" or "1LA / 1A" or "2P / 0A"
+                      const summaryParts: string[] = [];
+                      if (displayPres > 0) {
+                        summaryParts.push(`${displayPres}P`);
                       }
                       if (displayLeftEarly > 0) {
                         summaryParts.push(`${displayLeftEarly}LA`);
                       }
-                      if (summaryParts.length === 1 && displayAbs === 0 && displayLeftEarly === 0) {
-                        summaryParts.push('0A');
+                      if (displayAbs > 0) {
+                        summaryParts.push(`${displayAbs}A`);
+                      }
+                      if (summaryParts.length === 0) {
+                        summaryParts.push('0P / 0A');
+                      } else if (summaryParts.length === 1) {
+                        if (displayPres > 0) summaryParts.push('0A');
+                        else if (displayAbs > 0) summaryParts.unshift('0P');
                       }
                       const summaryBreakdown = summaryParts.join(' / ');
 
@@ -5643,8 +5729,14 @@ function TeacherHome() {
                 <div className="td-next-class-box" style={{ justifyContent: 'center', textAlign: 'center' }}>
                   <div>
                     <CheckCircle2 size={24} style={{ color: '#10b981', margin: '0 auto 6px' }} />
-                    <div className="td-next-class-name">All classes completed for today</div>
-                    <div className="td-next-sub">Great job! No more upcoming routine periods.</div>
+                    <div className="td-next-class-name">
+                      {r.length === 0 ? 'No classes scheduled today' : 'All classes completed for today'}
+                    </div>
+                    <div className="td-next-sub">
+                      {r.length === 0
+                        ? (currentDayOfWeek === 0 ? 'Sunday is a weekend off. No routine periods scheduled.' : 'No routine periods assigned for today.')
+                        : 'Great job! No more upcoming routine periods.'}
+                    </div>
                   </div>
                 </div>
               )}
@@ -6127,8 +6219,8 @@ function Students() {
       alert('Validation Error: Please enter student last name.');
       return;
     }
-    if (lastName.length < 3 || lastName.length > 15) {
-      alert('Validation Error: Last Name must be between 3 and 15 characters.');
+    if (lastName.length < 2 || lastName.length > 20) {
+      alert('Validation Error: Last Name must be between 2 and 20 characters.');
       return;
     }
     if (/\d/.test(lastName)) {
@@ -6281,6 +6373,21 @@ function Students() {
     }
 
     // Client-side uniqueness pre-checks against loaded student directory
+    if (primaryPhone) {
+      const cleanPhoneDigits = primaryPhone.replace(/\D/g, '').slice(-10);
+      if (cleanPhoneDigits.length === 10) {
+        const dupPhone = rows.find(r => {
+          if (editingStudent && r.id === editingStudent.id) return false;
+          const rPhone = String(r.parent_sms_number || r.parentPhone || r.fatherPhone || r.motherPhone || r.phone || '').replace(/\D/g, '').slice(-10);
+          return rPhone === cleanPhoneDigits;
+        });
+        if (dupPhone) {
+          alert('Validation Error: This phone number is already registered.');
+          return;
+        }
+      }
+    }
+
     if (cleanAdm) {
       const dupAdm = rows.find(r =>
         (!editingStudent || r.id !== editingStudent.id) &&
@@ -7095,6 +7202,7 @@ function Students() {
         const seenAdm = new Map<string, number>();
         const seenRoll = new Map<string, number>();
         const seenEmails = new Map<string, number>();
+        const seenPhones = new Map<string, number>();
 
         const mapped = json.map((r, idx) => {
           const rowNum = idx + 1;
@@ -7266,6 +7374,23 @@ function Students() {
             }
           }
 
+          
+          const primaryPhoneForImport = parentPhone || fatherPhone || motherPhone || '';
+          const cleanPhoneDigits = primaryPhoneForImport.replace(/\D/g, '').slice(-10);
+          if (cleanPhoneDigits.length === 10) {
+            if (seenPhones.has(cleanPhoneDigits)) {
+              rowErrs.push({row:rowNum,field:'Contact Phone',message:`Duplicate phone number in file: '${primaryPhoneForImport}' (row ${seenPhones.get(cleanPhoneDigits)})`});
+            } else {
+              seenPhones.set(cleanPhoneDigits, rowNum);
+              const dbDupPhone = rows.find(dr => {
+                const rPhone = String(dr.parent_sms_number || dr.parentPhone || dr.fatherPhone || dr.motherPhone || dr.phone || '').replace(/\D/g, '').slice(-10);
+                return rPhone === cleanPhoneDigits;
+              });
+              if (dbDupPhone) {
+                rowErrs.push({row:rowNum,field:'Contact Phone',message:`Phone number '${primaryPhoneForImport}' already in use in database`});
+              }
+            }
+          }
           rowErrors.push(...rowErrs);
           return {
             firstName,
@@ -8044,7 +8169,7 @@ function Students() {
                   {toDdMmYyyy(x.admission_date || x.admissionDate) || '—'}
                 </td>
                 <td>
-                  <StudentProfileHoverCard student={x} activeSession={activeSession}>
+                  <StudentProfileHoverCard student={x} activeSession={activeSession} mode="student">
                     <b style={{ textTransform: 'uppercase' }}>{String(x.name || '').toUpperCase()}</b>
                   </StudentProfileHoverCard>
                 </td>
@@ -8354,7 +8479,7 @@ function Students() {
       const lnVal = f.lastName !== undefined ? f.lastName : (editingStudent ? (f.name || '').split(' ').slice(1).join(' ') : '');
       const isFnInvalid = Boolean(fnVal && (fnVal.length < 3 || fnVal.length > 15 || /\s/.test(fnVal) || /\d/.test(fnVal)));
       const isMnInvalid = Boolean(mnVal && (/\d/.test(mnVal) || /\s/.test(mnVal)));
-      const isLnInvalid = Boolean(lnVal && (/\d/.test(lnVal) || lnVal.length < 3 || lnVal.length > 15));
+      const isLnInvalid = Boolean(lnVal && (/\d/.test(lnVal) || lnVal.length < 2 || lnVal.length > 20));
 
       const isDobYearInvalidInUi = Boolean(
         f.dob && (String(f.dob).split('-')[0]?.length > 4 || parseInt(String(f.dob).split('-')[0], 10) > 9999)
@@ -8462,14 +8587,14 @@ function Students() {
                   <input
                     required
                     placeholder="e.g. Sharma"
-                    maxLength={15}
+                    maxLength={20}
                     value={lnVal || ''}
                     style={{
                       borderColor: isLnInvalid ? '#ef4444' : undefined,
                       boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
                     }}
                     onChange={e => {
-                      const ln = e.target.value.replace(/\d/g, '').slice(0, 15);
+                      const ln = e.target.value.replace(/\d/g, '').slice(0, 20);
                       const fullName = formatStudentFullName(fnVal, mnVal, ln);
                       setF({ ...f, lastName: ln, name: fullName });
                     }}
@@ -8478,9 +8603,9 @@ function Students() {
                     <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Enter a string not a number
                     </span>
-                  ) : lnVal && lnVal.length < 3 ? (
+                  ) : lnVal && (lnVal.length < 2 || lnVal.length > 20) ? (
                     <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                      Must be 3 to 15 characters
+                      Must be 2 to 20 characters
                     </span>
                   ) : null}
                 </label>
@@ -9985,6 +10110,24 @@ function Teachers() {
   }, [directoryPage, scrollToDirectoryTop]);
   const [editingTeacher, setEditingTeacher] = useState<any | null>(null);
 
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get('enroll') === 'true' && (user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN')) {
+        setEditingTeacher(null);
+        setF({
+          countryCode: '+91',
+          gender: 'MALE',
+          class_id: '',
+          class_number: '',
+          section_id: '',
+          section_name: '',
+          section: ''
+        });
+        setOpen(true);
+      }
+    } catch {}
+  }, [user]);
+
   // Universal Preview State for Teacher Add/Edit
   const [teacherPreview, setTeacherPreview] = useState<{
     isOpen: boolean;
@@ -10055,6 +10198,7 @@ function Teachers() {
   const [allocSections, setAllocSections] = useState<any[]>([]);
   const [allocSessions, setAllocSessions] = useState<any[]>([]);
   const [allocDesignations, setAllocDesignations] = useState<any[]>([]);
+  const [allocMentors, setAllocMentors] = useState<any[]>([]);
 
   async function load() {
     setLoading(true);
@@ -10068,13 +10212,14 @@ function Teachers() {
     }, 120);
 
     try {
-      const [tRes, aRes, subRes, clsRes, secRes, desigRes] = await Promise.all([
+      const [tRes, aRes, subRes, clsRes, secRes, desigRes, mRes] = await Promise.all([
         api.get('/teachers'),
         api.get('/teacher-assignments').catch(() => ({ data: [] })),
         api.get('/subjects').catch(() => ({ data: [] })),
         api.get('/classes').catch(() => ({ data: [] })),
         api.get('/sections').catch(() => ({ data: [] })),
-        api.get('/designations').catch(() => ({ data: [] }))
+        api.get('/designations').catch(() => ({ data: [] })),
+        api.get('/admin/mentors').catch(() => ({ data: [] }))
       ]);
       setLoadProgress(95);
       setRows(tRes.data || []);
@@ -10083,6 +10228,7 @@ function Teachers() {
       setAllocClasses(Array.isArray(clsRes.data) ? clsRes.data : []);
       setAllocSections(Array.isArray(secRes.data) ? secRes.data : []);
       setAllocDesignations(Array.isArray(desigRes.data) ? desigRes.data : (desigRes.data?.data || []));
+      setAllocMentors(Array.isArray(mRes?.data) ? mRes.data : []);
       setLoadProgress(100);
       const now = new Date();
       setLastFetchedAt(now);
@@ -10324,6 +10470,50 @@ function Teachers() {
     document.body.removeChild(link);
   }
 
+  function getMentorConflict(classIdOrName: string, sectionIdOrName: string, teacherId?: string) {
+    if (!classIdOrName || !sectionIdOrName || !allocMentors.length) return null;
+
+    const clsObj = allocClasses.find(c =>
+      String(c.id) === String(classIdOrName) ||
+      String(c.class_number) === String(classIdOrName).replace(/^Class\s*/i, '').trim() ||
+      (c.class_number === -1 && /l-?kg/i.test(classIdOrName)) ||
+      (c.class_number === 0 && /u-?kg/i.test(classIdOrName))
+    );
+
+    const matchedMentor = allocMentors.find(m => {
+      if (!m.teacher_id) return false;
+      if (teacherId && String(m.teacher_id) === String(teacherId)) return false;
+
+      const classMatch = clsObj
+        ? String(m.class_id) === String(clsObj.id) || m.class_number === clsObj.class_number
+        : String(m.class_id) === String(classIdOrName) || String(m.class_number) === String(classIdOrName).replace(/^Class\s*/i, '').trim();
+
+      if (!classMatch) return false;
+
+      const sIdOrNameNorm = String(sectionIdOrName).replace(/^Section\s*/i, '').trim().toUpperCase();
+      const secNorm = String(m.section_name || '').replace(/^Section\s*/i, '').trim().toUpperCase();
+      const sectionMatch = String(m.section_id) === String(sectionIdOrName) || secNorm === sIdOrNameNorm;
+
+      return sectionMatch;
+    });
+
+    if (!matchedMentor) return null;
+
+    const cDisplay = matchedMentor.class_number === -1 ? 'Class L-KG' : matchedMentor.class_number === 0 ? 'Class U-KG' : `Class ${matchedMentor.class_number}`;
+    const sDisplay = matchedMentor.section_name || sectionIdOrName;
+    const tDisplay = matchedMentor.teacher_name || 'Another Teacher';
+    const empDisplay = matchedMentor.employee_id ? ` [${matchedMentor.employee_id}]` : '';
+
+    return {
+      conflict: true,
+      mentorName: tDisplay,
+      employeeId: matchedMentor.employee_id,
+      className: cDisplay,
+      sectionName: sDisplay,
+      message: `Assignment Conflict: ${cDisplay} - Section ${sDisplay} is already assigned to mentor ${tDisplay}${empDisplay}. A class section can only have one assigned mentor.`
+    };
+  }
+
   async function handleInitiateTeacherSave(e: React.FormEvent) {
     if (e && e.preventDefault) e.preventDefault();
     // STAGE 1 VALIDATION
@@ -10359,8 +10549,8 @@ function Teachers() {
       alert('Validation Error: Please enter faculty member last name.');
       return;
     }
-    if (lastName.length < 3 || lastName.length > 15) {
-      alert('Validation Error: Last Name must be between 3 and 15 characters.');
+    if (lastName.length < 2 || lastName.length > 20) {
+      alert('Validation Error: Last Name must be between 2 and 20 characters.');
       return;
     }
     if (/\d/.test(lastName)) {
@@ -10378,11 +10568,26 @@ function Teachers() {
     }
     const dupEmail = rows.find(r => (!editingTeacher || r.id !== editingTeacher.id) && String(r.email || '').trim().toLowerCase() === email);
     if (dupEmail) {
-      alert(`Validation Error: Teacher email already exists. Email '${email}' is already registered to teacher '${dupEmail.name || 'Existing Teacher'}'.`);
+      alert('Validation Error: This email address is already registered.');
       return;
     }
     if (!employeeId) {
       alert('Validation Error: Please enter Employee ID / Savior_No.');
+      return;
+    }
+    const currentEmpIdTrimmed = employeeId.trim().toLowerCase();
+    const dupEmpId = rows.find(r => {
+      const isSameRecord = editingTeacher && (
+        r.id === editingTeacher.id ||
+        (editingTeacher.id && r.id && String(r.id) === String(editingTeacher.id)) ||
+        (editingTeacher.user_id && r.user_id && String(r.user_id) === String(editingTeacher.user_id))
+      );
+      if (isSameRecord) return false;
+      const rEmp = String(r.employee_id || r.employeeId || r.savior_no || r.saviorNo || '').trim().toLowerCase();
+      return rEmp && rEmp === currentEmpIdTrimmed;
+    });
+    if (dupEmpId) {
+      alert(`Validation Error: Employee ID already exists. Employee ID '${employeeId}' is already registered to teacher '${dupEmpId.name || 'Existing Teacher'}'.`);
       return;
     }
     const joiningDateVal = f.joiningDate || f.joining_date;
@@ -10406,6 +10611,18 @@ function Teachers() {
     if (cleanMobile.length < 10) {
       alert('Validation Error: Mobile Number must be a valid 10-digit number.');
       return;
+    }
+    const cleanMob10 = cleanMobile.slice(-10);
+    if (cleanMob10.length === 10) {
+      const dupMobile = rows.find(r => {
+        if (editingTeacher && r.id === editingTeacher.id) return false;
+        const rMob = String(r.mobile || r.phone || '').replace(/\D/g, '').slice(-10);
+        return rMob === cleanMob10;
+      });
+      if (dupMobile) {
+        alert('Validation Error: This phone number is already registered.');
+        return;
+      }
     }
 
     const assignedClassSecText = (f.class_name || f.class)
@@ -10804,8 +11021,9 @@ function Teachers() {
         });
 
         const rowErrors: { row: number; field: string; message: string }[] = [];
-        const seenSavior = new Set<string>();
-        const seenMail = new Set<string>();
+        const seenSavior = new Map<string, number>();
+        const seenMail = new Map<string, number>();
+        const seenMobile = new Map<string, number>();
 
         const mapped = cleanedJson.map((r, idx) => {
           const rowNum = idx + 1;
@@ -10847,7 +11065,7 @@ function Teachers() {
           }
 
           const rawMobile = getExcelCell(r, ['Mobile', 'MOBILE', 'mobile', 'Phone', 'PHONE', 'phone', 'Contact']).replace(/[^0-9]/g, '');
-          const mobile = rawMobile || '9876500000';
+          const mobile = rawMobile;
           let rawGender = getExcelCell(r, ['Gender', 'GENDER', 'gender', 'Sex', 'SEX', 'sex', 'Gender (M/F)', 'Gender(M/F)', 'M/F', 'MF', 'Sex/Gender', 'Gen']);
           if (!rawGender) {
             const gk = Object.keys(r).find(k => /gender|sex|\bm[\/\-_]?f\b/i.test(k));
@@ -10880,23 +11098,46 @@ function Teachers() {
           if (!name) {
             rowErrs.push({ row: rowNum, field: 'Full Name', message: 'Name is required' });
           }
+          const cleanSavior = String(saviorNo || '').trim().toLowerCase();
           if (!saviorNo) {
             rowErrs.push({ row: rowNum, field: 'Savior_No', message: 'Savior_No / Employee ID is required' });
-          } else if (seenSavior.has(saviorNo)) {
-            rowErrs.push({ row: rowNum, field: 'Savior_No', message: `Duplicate Savior_No '${saviorNo}' in file` });
+          } else if (seenSavior.has(cleanSavior)) {
+            rowErrs.push({ row: rowNum, field: 'Savior_No', message: `Duplicate Savior_No '${saviorNo}' in file (row ${seenSavior.get(cleanSavior)})` });
           } else {
-            seenSavior.add(saviorNo);
+            seenSavior.set(cleanSavior, rowNum);
+            const dbDupEmp = rows.find(dr => String(dr.employee_id || dr.savior_no || dr.employeeId || '').trim().toLowerCase() === cleanSavior);
+            if (dbDupEmp) {
+              rowErrs.push({ row: rowNum, field: 'Savior_No', message: `Employee ID / Savior No '${saviorNo}' already exists in database` });
+            }
           }
-          if (email && seenMail.has(email)) {
-            rowErrs.push({ row: rowNum, field: 'Email ID', message: `Duplicate email '${email}' in file` });
-          } else if (email) {
-            seenMail.add(email);
+          if (email) {
+            const cleanMail = email.trim().toLowerCase();
+            if (seenMail.has(cleanMail)) {
+              rowErrs.push({ row: rowNum, field: 'Email ID', message: `Duplicate email '${email}' in file (row ${seenMail.get(cleanMail)})` });
+            } else {
+              seenMail.set(cleanMail, rowNum);
+              const dbDupMail = rows.find(dr => String(dr.email || '').trim().toLowerCase() === cleanMail);
+              if (dbDupMail) {
+                rowErrs.push({ row: rowNum, field: 'Email ID', message: `Email '${email}' already exists in database` });
+              }
+            }
           }
           if (joiningDate && !isValidDdMmYyyy(joiningDate)) {
             rowErrs.push({ row: rowNum, field: 'Joining Date', message: 'Joining Date must be DD-MM-YYYY' });
           }
+          const cleanTeacherMob10 = rawMobile.slice(-10);
           if (rawMobile && rawMobile.length !== 10) {
             rowErrs.push({ row: rowNum, field: 'Mobile', message: `Mobile must be 10 digits (${rawMobile.length} given)` });
+          } else if (cleanTeacherMob10.length === 10) {
+            if (seenMobile.has(cleanTeacherMob10)) {
+              rowErrs.push({ row: rowNum, field: 'Mobile', message: `Duplicate mobile '${rawMobile}' in file (row ${seenMobile.get(cleanTeacherMob10)})` });
+            } else {
+              seenMobile.set(cleanTeacherMob10, rowNum);
+              const dbDupMob = rows.find(dr => String(dr.mobile || dr.phone || '').replace(/\D/g, '').slice(-10) === cleanTeacherMob10);
+              if (dbDupMob) {
+                rowErrs.push({ row: rowNum, field: 'Mobile', message: `Mobile number '${rawMobile}' already exists in database` });
+              }
+            }
           }
 
           rowErrors.push(...rowErrs);
@@ -11627,6 +11868,7 @@ function Teachers() {
     {open && (() => {
       const EMAIL_VALIDATION_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       const currentTeacherEmail = String(f.email || '').trim().toLowerCase();
+      const currentTeacherEmpId = String(f.employeeId || f.saviorNo || f.employee_id || '').trim().toLowerCase();
       const isEmailDuplicateInUi = Boolean(
         currentTeacherEmail &&
         rows.some(r => {
@@ -11644,13 +11886,26 @@ function Teachers() {
       const isEmailInvalidInUi = Boolean(
         currentTeacherEmail && !EMAIL_VALIDATION_REGEX.test(currentTeacherEmail)
       );
+      const isEmpIdDuplicateInUi = Boolean(
+        currentTeacherEmpId &&
+        rows.some(r => {
+          const rowEmpId = String(r.employee_id || r.employeeId || r.savior_no || r.saviorNo || '').trim().toLowerCase();
+          const matches = rowEmpId && rowEmpId === currentTeacherEmpId;
+          const isSameRecord = editingTeacher && (
+            r.id === editingTeacher.id ||
+            (editingTeacher.id && r.id && String(r.id) === String(editingTeacher.id)) ||
+            (editingTeacher.user_id && r.user_id && String(r.user_id) === String(editingTeacher.user_id))
+          );
+          return matches && !isSameRecord;
+        })
+      );
 
       const fnVal = f.firstName !== undefined ? f.firstName : (editingTeacher ? (f.name || '').split(' ')[0] : '');
       const mnVal = f.middleName || '';
       const lnVal = f.lastName !== undefined ? f.lastName : (editingTeacher ? (f.name || '').split(' ').slice(1).join(' ') : '');
       const isFnInvalid = Boolean(fnVal && (fnVal.length < 3 || fnVal.length > 15 || /\s/.test(fnVal) || /\d/.test(fnVal)));
       const isMnInvalid = Boolean(mnVal && (/\d/.test(mnVal) || /\s/.test(mnVal)));
-      const isLnInvalid = Boolean(lnVal && (/\d/.test(lnVal) || lnVal.length < 3 || lnVal.length > 15));
+      const isLnInvalid = Boolean(lnVal && (/\d/.test(lnVal) || lnVal.length < 2 || lnVal.length > 20));
 
       return (
         <Modal maxWidth={620} title={editingTeacher ? `Edit Faculty Member — ${editingTeacher.name}` : "Add Faculty Member / Teacher"} close={() => { setOpen(false); setEditingTeacher(null); setF({}); }}>
@@ -11751,7 +12006,7 @@ function Teachers() {
                   <input
                     required
                     placeholder="e.g. Sharma"
-                    maxLength={15}
+                    maxLength={20}
                     value={lnVal || ''}
                     style={{
                       textTransform: 'uppercase',
@@ -11759,7 +12014,7 @@ function Teachers() {
                       boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
                     }}
                     onChange={e => {
-                      const ln = e.target.value.replace(/\d/g, '').slice(0, 15).toUpperCase();
+                      const ln = e.target.value.replace(/\d/g, '').slice(0, 20).toUpperCase();
                       const fullName = formatTeacherFullName(fnVal, mnVal, ln);
                       setF({ ...f, lastName: ln, name: fullName });
                     }}
@@ -11768,9 +12023,9 @@ function Teachers() {
                     <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Enter a string not a number
                     </span>
-                  ) : lnVal && lnVal.length < 3 ? (
+                  ) : lnVal && (lnVal.length < 2 || lnVal.length > 20) ? (
                     <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                      Must be 3 to 15 characters
+                      Must be 2 to 20 characters
                     </span>
                   ) : null}
                 </label>
@@ -11823,7 +12078,21 @@ function Teachers() {
                 <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                   Employee ID / Savior_NO <span style={{ color: '#ef4444' }}>*</span>
                 </span>
-                <input required placeholder="e.g. EMP001 or SAVIOR_101" value={f.employeeId || f.saviorNo || ''} onChange={e => setF({ ...f, employeeId: e.target.value, saviorNo: e.target.value })} />
+                <input
+                  required
+                  placeholder="e.g. EMP001 or SAVIOR_101"
+                  value={f.employeeId || f.saviorNo || ''}
+                  style={{
+                    borderColor: isEmpIdDuplicateInUi ? '#ef4444' : undefined,
+                    boxShadow: isEmpIdDuplicateInUi ? '0 0 0 1px #ef4444' : undefined
+                  }}
+                  onChange={e => setF({ ...f, employeeId: e.target.value, saviorNo: e.target.value })}
+                />
+                {isEmpIdDuplicateInUi && (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
+                    Already existed
+                  </span>
+                )}
               </label>
               {/* Row 1: Gender & Joining Date */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -11925,7 +12194,7 @@ function Teachers() {
                     {f.designation && !allocDesignations.some(d => (d.title || d.name) === f.designation) && (
                       <option value={f.designation}>{f.designation}</option>
                     )}
-                    {allocDesignations.filter(d => d.is_active !== false).map(d => (
+                    {allocDesignations.map(d => (
                       <option key={d.id || d.title} value={d.title || d.name}>
                         {d.title || d.name}{d.category ? ` (${d.category})` : ''}
                       </option>
@@ -12057,13 +12326,46 @@ function Teachers() {
                         ));
                       }
                       uniqueNames.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
-                      return uniqueNames.map(secName => (
-                        <option key={secName} value={secName}>Section {secName}</option>
-                      ));
+                      return uniqueNames.map(secName => {
+                        const secConflict = getMentorConflict(f.class_id || f.class_name || f.class, secName, editingTeacher?.id);
+                        const secLabelExtra = secConflict ? ` (Already Assigned: ${secConflict.mentorName})` : '';
+                        return (
+                          <option key={secName} value={secName}>Section {secName}{secLabelExtra}</option>
+                        );
+                      });
                     })()}
                   </select>
                 </label>
               </div>
+
+              {/* Class Mentor Conflict Banner */}
+              {(() => {
+                const currentConflict = getMentorConflict(f.class_id || f.class_name || f.class, f.section_name || f.section, editingTeacher?.id);
+                if (!currentConflict) return null;
+                return (
+                  <div style={{
+                    marginTop: 8,
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                    color: '#dc2626',
+                    fontSize: 12.5,
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10
+                  }}>
+                    <AlertTriangle size={18} style={{ flexShrink: 0, color: '#dc2626' }} />
+                    <div>
+                      <strong>Assignment Conflict:</strong> {currentConflict.className} - Section {currentConflict.sectionName} is already assigned to mentor <strong>{currentConflict.mentorName}</strong>{currentConflict.employeeId ? ` [${currentConflict.employeeId}]` : ''}.
+                      <div style={{ fontSize: 11.5, opacity: 0.9, marginTop: 2 }}>
+                        A class section can only have one assigned mentor. Please select another section or reassign under Classes & Sections.
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {editingTeacher && (
                 <label>Account Status
@@ -14447,38 +14749,19 @@ function Attendance() {
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
   const rosterTopRef = useRef<HTMLDivElement>(null);
 
-  // Existing session & Re-attendance state
+  // Existing session & Re-attendance state (multiple edits allowed until midnight 12:00 AM)
   const [existingSession, setExistingSession] = useState<any>(null);
-  const isAlreadyEdited = Boolean(
-    existingSession && (
-      existingSession.is_reattendance ||
-      existingSession.isReattendance ||
-      (Number(existingSession.reattendance_count || 0) > 0) ||
-      (Number(existingSession.reattendanceCount || 0) > 0) ||
-      (typeof window !== 'undefined' && (
-        (selectedClassId && selectedSectionId && (
-          sessionStorage.getItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`) ||
-          localStorage.getItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`) ||
-          sessionStorage.getItem(`finalized_attendance_${selectedClassId}_${selectedSectionId}`) ||
-          localStorage.getItem(`finalized_attendance_${selectedClassId}_${selectedSectionId}`)
-        )) ||
-        (classes.length > 0 && sections.length > 0 && (() => {
-          const cObj = classes.find((c: any) => String(c.id) === String(selectedClassId));
-          const sObj = sections.find((s: any) => String(s.id) === String(selectedSectionId));
-          if (!cObj || !sObj) return false;
-          const cNum = cObj.class_number ?? cObj.classNumber;
-          const sName = sObj.name ?? sObj.sectionName;
-          return Boolean(
-            sessionStorage.getItem(`finalized_attendance_${attendanceDate}_${cNum}_${sName}`) ||
-            localStorage.getItem(`finalized_attendance_${attendanceDate}_${cNum}_${sName}`) ||
-            sessionStorage.getItem(`finalized_attendance_${cNum}_${sName}`) ||
-            localStorage.getItem(`finalized_attendance_${cNum}_${sName}`)
-          );
-        })())
-      ))
-    )
-  );
-  const canEditAttendance = Boolean(existingSession && !isAlreadyEdited);
+  const getTodayIST = () => {
+    try {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+    } catch {
+      return new Date().toLocaleDateString('en-CA');
+    }
+  };
+  const isPastMidnight = Boolean(attendanceDate && attendanceDate < getTodayIST());
+  // Sessions are only finalized after midnight (12:00 AM) of that attendance date
+  const isAlreadyEdited = Boolean(existingSession && isPastMidnight);
+  const canEditAttendance = Boolean(existingSession && !isPastMidnight);
 
   useEffect(() => {
     if (isAlreadyEdited) {
@@ -15115,18 +15398,7 @@ function Attendance() {
       }));
       setChecked(prev => ({ ...prev, [sid]: false, [selectedStudent.id]: false }));
 
-      if (selectedClassId && selectedSectionId) {
-        sessionStorage.setItem(`has_left_early_${selectedClassId}_${selectedSectionId}`, '1');
-        localStorage.setItem(`has_left_early_${selectedClassId}_${selectedSectionId}`, '1');
-      }
-      const cObjEarly = classes.find((c: any) => String(c.id) === String(selectedClassId));
-      const sObjEarly = sections.find((s: any) => String(s.id) === String(selectedSectionId));
-      if (cObjEarly && sObjEarly) {
-        const cNumEarly = cObjEarly.class_number ?? cObjEarly.classNumber;
-        const sNameEarly = sObjEarly.name ?? sObjEarly.sectionName;
-        sessionStorage.setItem(`has_left_early_${cNumEarly}_${sNameEarly}`, '1');
-        localStorage.setItem(`has_left_early_${cNumEarly}_${sNameEarly}`, '1');
-      }
+
 
       if (existingSession?.id) {
         const res = await api.put(`/teacher/attendance/${existingSession.id}/student/${selectedStudent.id}`, {
@@ -15205,8 +15477,24 @@ function Attendance() {
     setChecked(prev => ({ ...prev, [sid]: newStatus === 'PRESENT', [s.id]: newStatus === 'PRESENT' }));
     setStudentStatusMap(prev => ({
       ...prev,
-      [sid]: { ...(prev[sid] || {}), status: newStatus },
-      [s.id]: { ...(prev[s.id] || {}), status: newStatus }
+      [sid]: {
+        ...(prev[sid] || {}),
+        status: newStatus,
+        departurePeriod: undefined,
+        departureTime: undefined,
+        arrivalPeriod: undefined,
+        arrivalTime: undefined,
+        remarks: ''
+      },
+      [s.id]: {
+        ...(prev[s.id] || {}),
+        status: newStatus,
+        departurePeriod: undefined,
+        departureTime: undefined,
+        arrivalPeriod: undefined,
+        arrivalTime: undefined,
+        remarks: ''
+      }
     }));
   }
 
@@ -15222,16 +15510,18 @@ function Attendance() {
         if (!status) {
           status = isPres !== undefined ? (isPres ? 'PRESENT' : 'ABSENT') : 'ABSENT';
         }
+        const isLeftEarly = status === 'LEFT_EARLY';
+        const isLate = status === 'LATE';
         return {
           studentId: s.id,
           studentName: s.name,
           rollNumber: s.roll_number,
           status,
-          departurePeriod: st.departurePeriod,
-          departureTime: st.departureTime,
-          arrivalPeriod: st.arrivalPeriod,
-          arrivalTime: st.arrivalTime,
-          remarks: st.remarks
+          departurePeriod: isLeftEarly ? (st.departurePeriod || null) : null,
+          departureTime: isLeftEarly ? (st.departureTime || null) : null,
+          arrivalPeriod: isLate ? (st.arrivalPeriod || null) : null,
+          arrivalTime: isLate ? (st.arrivalTime || null) : null,
+          remarks: isLeftEarly ? (st.remarks || '') : ''
         };
       });
 
@@ -15249,26 +15539,10 @@ function Attendance() {
         submittedAt: new Date().toISOString()
       };
 
+      // Keep counts in session storage for immediate local UI sync
       if (selectedClassId && selectedSectionId) {
-        sessionStorage.setItem(`finalized_att_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
-        localStorage.setItem(`finalized_att_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
-        sessionStorage.setItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, '1');
-        localStorage.setItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, '1');
-        sessionStorage.setItem(`finalized_att_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
-        localStorage.setItem(`finalized_att_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
-        sessionStorage.setItem(`finalized_attendance_${selectedClassId}_${selectedSectionId}`, '1');
-        localStorage.setItem(`finalized_attendance_${selectedClassId}_${selectedSectionId}`, '1');
-      }
-
-      const cObj = classes.find((c: any) => String(c.id) === String(selectedClassId));
-      const sObj = sections.find((s: any) => String(s.id) === String(selectedSectionId));
-      if (cObj && sObj) {
-        const cNum = cObj.class_number ?? cObj.classNumber;
-        const sName = sObj.name ?? sObj.sectionName;
-        sessionStorage.setItem(`finalized_att_${cNum}_${sName}`, JSON.stringify(finalizedPayload));
-        localStorage.setItem(`finalized_att_${cNum}_${sName}`, JSON.stringify(finalizedPayload));
-        sessionStorage.setItem(`finalized_attendance_${cNum}_${sName}`, '1');
-        localStorage.setItem(`finalized_attendance_${cNum}_${sName}`, '1');
+        sessionStorage.setItem(`today_counts_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
+        localStorage.setItem(`today_counts_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
       }
 
       let res: any = null;
@@ -15279,7 +15553,10 @@ function Attendance() {
           notifyParents: false
         });
       } catch (err: any) {
-        console.warn('Reattendance API error (using optimistic state):', err);
+        console.error('Reattendance API error:', err);
+        alert(err?.response?.data?.message || 'Failed to update attendance');
+        setBusy(false);
+        return;
       }
 
       setExistingSession({
@@ -15292,14 +15569,13 @@ function Attendance() {
         leftEarlyCount: leftEarlyCount,
         is_reattendance: true,
         isReattendance: true,
-        reattendance_count: 1,
-        reattendanceCount: 1
+        reattendance_count: (Number(existingSession?.reattendance_count || 0) + 1),
+        reattendanceCount: (Number(existingSession?.reattendanceCount || 0) + 1)
       });
       setIsEditingAttendance(false);
-      setReattendanceSuccessMsg('✓ Attendance successfully updated and finalized. Redirecting to dashboard...');
-      setTimeout(() => {
-        nav('/dashboard');
-      }, 1200);
+      setReattendanceSuccessMsg('✓ Attendance successfully updated.');
+      setTimeout(() => setReattendanceSuccessMsg(''), 4000);
+      await checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
     } catch (e: any) {
       console.error('submitWholeClassReattendance error:', e);
     } finally {
@@ -15356,16 +15632,7 @@ function Attendance() {
       const presCount = recordsPayload.filter(r => r.status === 'PRESENT' || r.status === 'LATE').length;
       const leftEarlyCount = recordsPayload.filter(r => r.status === 'LEFT_EARLY').length;
       const absCount = recordsPayload.filter(r => r.status === 'ABSENT').length;
-      if (leftEarlyCount > 0 && selectedClassId && selectedSectionId) {
-        sessionStorage.setItem(`has_left_early_${selectedClassId}_${selectedSectionId}`, String(leftEarlyCount));
-        localStorage.setItem(`has_left_early_${selectedClassId}_${selectedSectionId}`, String(leftEarlyCount));
-      }
-      if (leftEarlyCount > 0 && cObj && sObj) {
-        const cNum = cObj.class_number ?? cObj.classNumber;
-        const sName = sObj.name ?? sObj.sectionName;
-        sessionStorage.setItem(`has_left_early_${cNum}_${sName}`, String(leftEarlyCount));
-        localStorage.setItem(`has_left_early_${cNum}_${sName}`, String(leftEarlyCount));
-      }
+
       setSummary(res.data);
       setDone(true);
       checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
@@ -15492,10 +15759,10 @@ function Attendance() {
             </div>
             <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--text-muted)' }}>
               {isAlreadyEdited
-                ? '✓ Attendance has been submitted and edited. This session is now finalized and locked (no further edits permitted).'
+                ? '✓ Attendance has been finalized and locked after midnight 12:00 AM (no further edits permitted).'
                 : isEditingAttendance
-                ? '✏️ Attendance Edit Mode Active: Change student status between Present and Absent. Click "Submit Updated Attendance" below to finalize.'
-                : 'Attendance for this class section has been submitted for today. Need to correct a mistake? Click "Edit Attendance" to update records once.'}
+                ? '✏️ Attendance Edit Mode Active: Change student status between Present and Absent. Click "Submit Updated Attendance" below to save.'
+                : 'Attendance for this class section has been submitted for today. Need to correct a mistake? Click "Edit Attendance" to update records anytime before midnight.'}
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -16027,10 +16294,10 @@ function Attendance() {
         <span>
           {existingSession
             ? (isAlreadyEdited
-                ? 'Attendance Finalized: Attendance has been edited and locked. No further edits are permitted.'
+                ? 'Attendance Finalized: Past attendance (after midnight 12:00 AM) is locked. No further edits are permitted.'
                 : isEditingAttendance
-                ? 'Attendance Edit Mode Active: You can update attendance once. When finished, click "Submit Updated Attendance" to finalize.'
-                : 'Re-attendance Station Active: All assigned teachers can adjust early departures (e.g. student left after 1st period), record late arrivals, or save a re-roll call.')
+                ? 'Attendance Edit Mode Active: You can update student statuses. When finished, click "Submit Updated Attendance" to save.'
+                : 'Attendance Submitted: You can edit attendance multiple times until midnight 12:00 AM.')
             : 'Check only students who are physically present. Unchecked students are marked absent and their parents will be notified.'}
         </span>
       </div>
@@ -18839,7 +19106,7 @@ function SchoolProfile() {
                 {/* Title & Info */}
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 750, color: 'var(--text-color, #0f172a)' }}>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 750, color: 'var(--text, #0f172a)' }}>
                       {adminName}
                     </h3>
                     <span className="badge active" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
@@ -19109,7 +19376,7 @@ function SchoolProfile() {
                       value={loading ? 'Loading school...' : (profile?.schoolName || profile?.name || user?.schoolName || '—')}
                       style={{
                         backgroundColor: 'var(--input-disabled-bg, #f1f5f9)',
-                        color: 'var(--text-color, #0f172a)',
+                        color: 'var(--text, #0f172a)',
                         cursor: 'not-allowed',
                         fontWeight: 600
                       }}
@@ -19127,7 +19394,7 @@ function SchoolProfile() {
                       value={user?.email || profile?.adminEmail || profile?.email || '—'}
                       style={{
                         backgroundColor: 'var(--input-disabled-bg, #f1f5f9)',
-                        color: 'var(--text-color, #0f172a)',
+                        color: 'var(--text, #0f172a)',
                         cursor: 'not-allowed'
                       }}
                       id="admin-email-input"
@@ -19400,7 +19667,7 @@ function App() {
         <Route path="/student/timetable" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentTimetable /></StudentLayout></RoleGuard>} />
         <Route path="/student/homework" element={<Navigate to="/student/assignments" replace />} />
         <Route path="/student/assignments" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAssignments /></StudentLayout></RoleGuard>} />
-        <Route path="/student/exams" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentExams /></StudentLayout></RoleGuard>} />
+        {/* <Route path="/student/exams" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentExams /></StudentLayout></RoleGuard>} /> */}
         <Route path="/student/announcements" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAnnouncements /></StudentLayout></RoleGuard>} />
         <Route path="/student/leave-request" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentLeaveRequest /></StudentLayout></RoleGuard>} />
         <Route path="/student/profile" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentProfile /></StudentLayout></RoleGuard>} />

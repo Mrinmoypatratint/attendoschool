@@ -7,24 +7,25 @@ function cleanDateStr(d: any) {
 import bcrypt from 'bcryptjs';
 import { pool } from '../db';
 import { validateStudentUniqueness } from '../utils/studentValidation';
+import { validateTeacherUniqueness } from '../utils/teacherValidation';
 import { normalizeGender } from '../utils/gender';
 
-export async function listStudents(schoolId: string, search = '', activeOnly = true, session = '', academicYearId = '') {
+export async function listStudents(schoolId: string, search = '', activeOnly = true, session = '', academicYearId = '', classId = '', sectionId = '') {
   const params: any[] = [schoolId];
   let where = 'WHERE st.school_id=$1';
   if (activeOnly) where += ' AND st.is_active=TRUE';
   if (search.trim()) {
     params.push(`%${search.trim()}%`);
-    where += ` AND (st.name ILIKE ${params.length} OR CAST(st.roll_number AS TEXT) ILIKE ${params.length} OR COALESCE(st.admission_number,'') ILIKE ${params.length} OR COALESCE(st.gender,'') ILIKE ${params.length})`;
+    where += ` AND (st.name ILIKE $${params.length} OR CAST(st.roll_number AS TEXT) ILIKE $${params.length} OR COALESCE(st.admission_number,'') ILIKE $${params.length} OR COALESCE(st.gender,'') ILIKE $${params.length})`;
   }
   if (academicYearId) {
     params.push(academicYearId);
-    where += ` AND st.academic_year_id = ${params.length}::uuid`;
+    where += ` AND st.academic_year_id = $${params.length}::uuid`;
   } else if (session && !/^all(\s+sessions?)?$/i.test(session)) {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(session);
     if (isUuid) {
       params.push(session);
-      where += ` AND st.academic_year_id = ${params.length}::uuid`;
+      where += ` AND st.academic_year_id = $${params.length}::uuid`;
     } else {
       const cleanSessionName = session.replace(/\b(academic\s+)?sessions?\b/gi, '').trim();
       params.push(session);
@@ -34,11 +35,32 @@ export async function listStudents(schoolId: string, search = '', activeOnly = t
       where += ` AND (
         st.academic_year_id IN (
           SELECT id FROM academic_years 
-          WHERE school_id = $1::uuid AND (LOWER(name) = LOWER(${sIdx}) OR name ILIKE ${cIdx} OR LOWER(code) = LOWER(${sIdx}) OR code ILIKE ${cIdx})
+          WHERE school_id = $1::uuid AND (LOWER(name) = LOWER($${sIdx}) OR name ILIKE $${cIdx})
         )
-        OR ay.name ILIKE ${cIdx}
-        OR ay.code ILIKE ${cIdx}
+        OR ay.name ILIKE $${cIdx}
       )`;
+    }
+  }
+  if (classId && classId.trim()) {
+    const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classId.trim());
+    const cNum = parseInt(classId.replace(/\D/g, ''), 10);
+    if (isClassUuid) {
+      params.push(classId.trim());
+      where += ` AND st.class_id = $${params.length}::uuid`;
+    } else if (!isNaN(cNum)) {
+      params.push(cNum);
+      where += ` AND c.class_number = $${params.length}`;
+    }
+  }
+  if (sectionId && sectionId.trim()) {
+    const isSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sectionId.trim());
+    if (isSecUuid) {
+      params.push(sectionId.trim());
+      where += ` AND st.section_id = $${params.length}::uuid`;
+    } else {
+      const cleanSec = sectionId.replace(/section\s*/i, '').trim().toUpperCase();
+      params.push(cleanSec);
+      where += ` AND UPPER(sec.name) = $${params.length}`;
     }
   }
   const { rows } = await pool.query(
@@ -146,6 +168,7 @@ export async function updateStudent(schoolId: string, id: string, body: any) {
   const targetClassId = body.class_id !== undefined ? body.class_id : stu.class_id;
   const targetSectionId = body.section_id !== undefined ? body.section_id : stu.section_id;
   const targetEmail = body.email !== undefined ? body.email : (body.student_email !== undefined ? body.student_email : stu.email);
+  const targetPhone = body.parent_sms_number !== undefined ? body.parent_sms_number : (body.parent_phone !== undefined ? body.parent_phone : (body.phone !== undefined ? body.phone : stu.parent_sms_number));
 
   const validation = await validateStudentUniqueness({
     schoolId,
@@ -155,6 +178,13 @@ export async function updateStudent(schoolId: string, id: string, body: any) {
     admissionNumber: targetAdmission,
     rollNumber: targetRoll,
     studentEmail: targetEmail,
+    studentPhone: targetPhone,
+    familyInfo: {
+      fatherName: body.father_name !== undefined ? body.father_name : stu.father_name,
+      motherName: body.mother_name !== undefined ? body.mother_name : stu.mother_name,
+      parentName: body.parent_name !== undefined ? body.parent_name : stu.parent_name,
+      guardianName: body.guardian_name !== undefined ? body.guardian_name : stu.guardian_name,
+    },
     excludeStudentId: id
   });
 
@@ -208,7 +238,7 @@ export async function updateStudent(schoolId: string, id: string, body: any) {
     try {
       const { rows } = await pool.query(
         `UPDATE students SET ${fields.join(', ')}, updated_at=NOW()
-         WHERE id=$${values.length-1} AND school_id=$${values.length}
+         WHERE id=$${values.length - 1} AND school_id=$${values.length}
          RETURNING *`,
         values
       );
@@ -227,7 +257,9 @@ export async function updateStudent(schoolId: string, id: string, body: any) {
         } else if (constraint.includes('roll') || dbErr.detail?.includes('roll_number')) {
           msg = `Roll number '${targetRoll}' is already assigned in this section for the selected academic session.`;
         } else if (constraint.includes('email') || dbErr.detail?.includes('email')) {
-          msg = `Student email '${targetEmail}' is already registered in this school.`;
+          msg = "This email address is already registered.";
+        } else if (constraint.includes('phone') || constraint.includes('sms') || dbErr.detail?.includes('parent_sms_number')) {
+          msg = "This phone number is already registered.";
         }
         const err: any = new Error(msg);
         err.status = 409;
@@ -357,30 +389,65 @@ export async function updateTeacher(schoolId: string, id: string, body: any) {
   try {
     await client.query('BEGIN');
     const teacher = await client.query(
-      `SELECT u.id FROM users u WHERE u.id=$1 AND u.school_id=$2 AND u.role='TEACHER'`,
+      `SELECT u.id, u.email, tp.employee_id, tp.phone, tp.mobile 
+       FROM users u 
+       LEFT JOIN teacher_profiles tp ON tp.user_id = u.id 
+       WHERE u.id=$1 AND u.school_id=$2 AND u.role='TEACHER'`,
       [id, schoolId]
     );
     if (!teacher.rowCount) throw new Error('Teacher not found');
 
+    const cur = teacher.rows[0];
+    const targetEmployeeId = body.employee_id !== undefined ? body.employee_id : (body.employeeId !== undefined ? body.employeeId : (body.savior_no !== undefined ? body.savior_no : cur.employee_id));
+    const targetEmail = body.email !== undefined ? body.email : cur.email;
+    const targetPhone = body.phone !== undefined ? body.phone : (body.mobile !== undefined ? body.mobile : (cur.phone || cur.mobile));
+
+    const validation = await validateTeacherUniqueness({
+      schoolId,
+      employeeId: targetEmployeeId,
+      email: targetEmail,
+      phone: targetPhone,
+      mobile: targetPhone,
+      excludeUserId: id,
+      client
+    });
+
+    if (!validation.valid) {
+      const err: any = new Error(validation.errors[0]?.message || 'Teacher uniqueness validation conflict.');
+      err.status = 409;
+      err.errors = validation.errors;
+      throw err;
+    }
+
     const userFields: string[] = [];
     const userValues: any[] = [];
-    if (body.name !== undefined) { userValues.push(String(body.name).toUpperCase()); userFields.push(`name=${userValues.length}`); }
-    if (body.email !== undefined) { userValues.push(body.email); userFields.push(`email=$${userValues.length}`); }
+    if (body.name !== undefined) { userValues.push(String(body.name).toUpperCase()); userFields.push(`name=$${userValues.length}`); }
+    if (body.email !== undefined) { userValues.push(String(body.email).trim().toLowerCase()); userFields.push(`email=$${userValues.length}`); }
     if (userFields.length) {
       userValues.push(id, schoolId);
       await client.query(
         `UPDATE users SET ${userFields.join(', ')}, updated_at=NOW()
-         WHERE id=$${userValues.length-1} AND school_id=$${userValues.length}`,
+         WHERE id=$${userValues.length - 1} AND school_id=$${userValues.length}`,
         userValues
       );
     }
 
-    const allowed = ['employee_id','phone','gender','address','joining_date','qualification','designation','photo_url','class_name','section_name'];
+    const allowed = ['employee_id', 'phone', 'gender', 'address', 'joining_date', 'qualification', 'designation', 'photo_url', 'class_name', 'section_name'];
+    const newEmp = body.employee_id || body.employeeId || body.saviorNo || body.savior_no;
+    if (newEmp && String(newEmp).trim()) {
+      const existing = await client.query(
+        `SELECT tp.id FROM teacher_profiles tp JOIN users u ON u.id = tp.user_id WHERE u.school_id = $1 AND LOWER(TRIM(tp.employee_id)) = LOWER(TRIM($2)) AND u.id != $3 LIMIT 1`,
+        [schoolId, String(newEmp).trim(), id]
+      );
+      if (existing.rowCount && existing.rowCount > 0) {
+        throw new Error(`Employee ID '${newEmp}' is already registered to another teacher.`);
+      }
+    }
     const fields: string[] = [];
     const values: any[] = [];
     for (const key of allowed) {
       const aliasKey = key === 'joining_date' ? (body.joining_date !== undefined ? 'joining_date' : 'joiningDate')
-                     : key;
+        : key;
       if (Object.prototype.hasOwnProperty.call(body, aliasKey)) {
         let val = body[aliasKey] === '' ? null : body[aliasKey];
         if (key === 'gender') val = normalizeGender(val);
@@ -390,17 +457,33 @@ export async function updateTeacher(schoolId: string, id: string, body: any) {
     }
     if (fields.length) {
       values.push(id);
+      const cols = allowed.filter(k => Object.prototype.hasOwnProperty.call(body, k) || (k === 'joining_date' && body.joiningDate !== undefined));
+      const valPlaceholders = values.slice(0, -1).map((_, i) => `$${i + 1}`).join(', ');
       await client.query(
-        `INSERT INTO teacher_profiles (user_id, ${allowed.filter(k => Object.prototype.hasOwnProperty.call(body, k) || (k === 'joining_date' && body.joiningDate !== undefined)).join(', ')})
-         VALUES ($${values.length}, ${values.slice(0,-1).map((_,i)=>'$'+(i+1)).join(', ')})
+        `INSERT INTO teacher_profiles (user_id, ${cols.join(', ')})
+         VALUES ($${values.length}, ${valPlaceholders})
          ON CONFLICT (user_id) DO UPDATE SET ${fields.join(', ')}`,
         values
       );
     }
     await client.query('COMMIT');
     return (await listTeachers(schoolId, '', false)).find(t => t.id === id);
-  } catch (e) {
+  } catch (e: any) {
     await client.query('ROLLBACK');
+    if (e.code === '23505') {
+      const constraint = e.constraint || '';
+      let msg = 'A unique constraint violation occurred.';
+      if (constraint.includes('employee') || e.detail?.includes('employee_id')) {
+        msg = 'This Employee/Saviour ID is already registered.';
+      } else if (constraint.includes('email') || e.detail?.includes('email')) {
+        msg = 'This email address is already registered.';
+      } else if (constraint.includes('phone') || constraint.includes('mobile') || e.detail?.includes('mobile') || e.detail?.includes('phone')) {
+        msg = 'This phone number is already registered.';
+      }
+      const err: any = new Error(msg);
+      err.status = 409;
+      throw err;
+    }
     throw e;
   } finally { client.release(); }
 }

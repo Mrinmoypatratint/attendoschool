@@ -41,6 +41,20 @@ export const BrandedWelcomeLoader: React.FC<BrandedWelcomeLoaderProps> = ({
   const prefix = `Hello ${cleanUserName || 'Admin'}, Welcome to `;
   const fullGreeting = `${prefix}${cleanSchoolName}`;
 
+  // Institutional branding detection
+  const isDav = useMemo(() => {
+    const sName = (cleanSchoolName || '').toUpperCase();
+    if (sName.includes('DAV')) return true;
+    try {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem('attendance_user') : null;
+      if (stored && (stored.includes('15582') || stored.toUpperCase().includes('DAV'))) return true;
+    } catch {}
+    return false;
+  }, [cleanSchoolName]);
+
+  const schoolFallbackLogo = isDav ? '/dav-logo.png' : '/attendo-school-logo.png';
+  const effectiveLogoUrl = (!imgError && logoUrl && logoUrl.trim()) ? logoUrl.trim() : schoolFallbackLogo;
+
   // Break text into words, then characters, keeping school name highlighted independently
   const words = useMemo(() => {
     const prefixWords = prefix.trim().split(/\s+/).map((word) => ({ word, isSchoolPart: false }));
@@ -110,19 +124,18 @@ export const BrandedWelcomeLoader: React.FC<BrandedWelcomeLoaderProps> = ({
 
           {/* Central Logo Badge */}
           <div className="as-welcome-logo-badge" aria-hidden="true">
-            {!imgError && logoUrl ? (
+            {!fallbackImgError ? (
               <img
-                src={logoUrl}
+                src={effectiveLogoUrl}
                 alt={cleanSchoolName}
                 className="as-welcome-logo-img"
-                onError={() => setImgError(true)}
-              />
-            ) : !fallbackImgError ? (
-              <img
-                src="/attendo-school-logo.png"
-                alt="Institutional Crest"
-                className="as-welcome-logo-img"
-                onError={() => setFallbackImgError(true)}
+                onError={() => {
+                  if (!imgError && logoUrl && logoUrl !== schoolFallbackLogo) {
+                    setImgError(true);
+                  } else {
+                    setFallbackImgError(true);
+                  }
+                }}
               />
             ) : (
               <svg
