@@ -3712,7 +3712,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                                     </span>
                                   </div>
                                   <p className="super-notif-msg">{n.message}</p>
-                                  <span className="super-notif-action-tag" style={{ color: '#2563eb' }}>
+                                  <span className="super-notif-action-tag">
                                     From: {n.authorName || 'School Administration'} · View Notice →
                                   </span>
                                 </div>
