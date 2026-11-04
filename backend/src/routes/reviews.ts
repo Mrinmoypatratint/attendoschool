@@ -1822,18 +1822,18 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
           announcementsRes = await pool.query(`
             SELECT a.id, a.title, a.message, a.priority, a.audience_type, a.created_at, a.published_at,
                    a.attachment_url, a.attachment_name,
-                   COALESCE(u.name, 'School Administration') as author_name
+                   COALESCE(a.author_name, a.created_by_name, u.name, 'School Administration') as author_name
             FROM announcements a
             LEFT JOIN users u ON u.id = a.created_by
             LEFT JOIN announcement_recipients r ON r.announcement_id = a.id AND r.parent_user_id = $3
             WHERE (a.school_id = $1 OR a.school_id::text = $2)
               AND a.status = 'PUBLISHED'
-              AND (
-                a.audience_type IN ('TEACHER', 'SCHOOL')
-                OR u.role IN ('SCHOOL_ADMIN', 'SUPER_ADMIN')
-                OR a.created_by != $3
-                OR a.created_by IS NULL
-              )
+              AND a.audience_type IN ('TEACHER', 'SCHOOL')
+              AND (u.role IS NULL OR u.role IN ('SCHOOL_ADMIN', 'SUPER_ADMIN'))
+              AND COALESCE(u.role::text, '') != 'TEACHER'
+              AND COALESCE(a.author_role, '') != 'TEACHER'
+              AND COALESCE(a.created_by_role, '') != 'TEACHER'
+              AND (a.created_by IS NULL OR a.created_by != $3)
               AND (r.read_at IS NULL)
               AND (a.expires_at IS NULL OR a.expires_at > NOW())
             ORDER BY a.priority = 'EMERGENCY' DESC, COALESCE(a.published_at, a.created_at) DESC
@@ -1871,14 +1871,16 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
             (
               SELECT COUNT(*)
               FROM announcements a
+              LEFT JOIN users u ON u.id = a.created_by
               LEFT JOIN announcement_recipients r ON r.announcement_id = a.id AND r.parent_user_id = $3
               WHERE (a.school_id = $1 OR a.school_id::text = $2)
                 AND a.status = 'PUBLISHED'
-                AND (
-                  a.audience_type IN ('TEACHER', 'SCHOOL')
-                  OR a.created_by != $3
-                  OR a.created_by IS NULL
-                )
+                AND a.audience_type IN ('TEACHER', 'SCHOOL')
+                AND (u.role IS NULL OR u.role IN ('SCHOOL_ADMIN', 'SUPER_ADMIN'))
+                AND COALESCE(u.role::text, '') != 'TEACHER'
+                AND COALESCE(a.author_role, '') != 'TEACHER'
+                AND COALESCE(a.created_by_role, '') != 'TEACHER'
+                AND (a.created_by IS NULL OR a.created_by != $3)
                 AND (r.read_at IS NULL)
                 AND (a.expires_at IS NULL OR a.expires_at > NOW())
             ) as pending_announcements
@@ -2042,22 +2044,25 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
 
           if (!matchesSchool) return false;
 
-          // Do not notify a teacher about announcements they themselves created
-          if (a.created_by && (a.created_by === teacherId || a.created_by === String(teacherId)) && a.author_role === 'TEACHER') {
-            return false;
-          }
+          // Announcements created by any teacher must NEVER appear in any teacher's bell notifications
+          const isByTeacher = a.author_role === 'TEACHER' ||
+                              a.created_by_role === 'TEACHER' ||
+                              Boolean(teacherId && (a.created_by === teacherId || a.author_id === teacherId));
+          if (isByTeacher) return false;
 
-          // Audience & origin checks:
-          // Include any announcement from School Admin, Super Admin, Principal, or sent to Faculty/School/Students
+          // Teacher bell notifications are ONLY for notices targeted to faculty/teachers or school-wide from administration
           const aud = String(a.audience_type || '').toUpperCase();
-          const isTargetAudience = ['TEACHER', 'SCHOOL', 'STUDENT', 'CLASS', 'SECTION', 'PARENTS', 'ALL'].includes(aud);
+          const isTargetAudience = ['TEACHER', 'SCHOOL', 'FACULTY', 'STAFF'].includes(aud);
+          if (!isTargetAudience) return false;
+
+          // Must be sent by administration
           const isFromAdmin = a.author_role === 'SCHOOL_ADMIN' ||
                               a.created_by_role === 'SCHOOL_ADMIN' ||
                               a.author_role === 'SUPER_ADMIN' ||
-                              !a.created_by ||
-                              (a.created_by !== teacherId && a.created_by !== String(teacherId));
+                              a.created_by_role === 'SUPER_ADMIN' ||
+                              !a.created_by;
 
-          return isTargetAudience && isFromAdmin;
+          return isFromAdmin;
         });
       } catch (annMemErr) {
         console.warn('[notifications] Error filtering memAnnouncements:', annMemErr);
