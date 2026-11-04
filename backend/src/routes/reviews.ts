@@ -126,7 +126,7 @@ router.get('/photos', async (req: AuthRequest, res: Response) => {
 
       if (isTeacher) {
         query = `
-          SELECT p.*
+          SELECT p.*, s.roll_number, s.admission_number
           FROM photo_approval_requests p
           JOIN students s ON s.id = p.applicant_id AND p.applicant_type = 'STUDENT'
           JOIN class_mentors cm 
@@ -140,8 +140,9 @@ router.get('/photos', async (req: AuthRequest, res: Response) => {
         paramIdx = 4;
       } else {
         query = `
-          SELECT p.*
+          SELECT p.*, s.roll_number, s.admission_number
           FROM photo_approval_requests p
+          LEFT JOIN students s ON s.id = p.applicant_id AND p.applicant_type = 'STUDENT'
           WHERE (p.school_id = $1 OR p.school_id::text = $2)
         `;
       }

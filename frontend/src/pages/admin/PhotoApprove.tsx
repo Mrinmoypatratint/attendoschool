@@ -28,6 +28,8 @@ interface PhotoRequest {
   applicant_name: string;
   identifier?: string;
   detail?: string;
+  roll_number?: string;
+  admission_number?: string;
   current_photo_url?: string | null;
   photo_url: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -49,6 +51,16 @@ export default function PhotoApprove() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | 'STUDENT' | 'TEACHER'>(isTeacher ? 'STUDENT' : 'ALL');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const parseIdentifier = (identifier?: string) => {
+    if (!identifier) return { roll: '', adm: '' };
+    const rollMatch = identifier.match(/Roll:\s*([^·•\n\r|]+)/i);
+    const admMatch = identifier.match(/Adm:\s*([^·•\n\r|]+)/i);
+    return {
+      roll: rollMatch ? rollMatch[1].trim() : '',
+      adm: admMatch ? admMatch[1].trim() : ''
+    };
+  };
 
   const cleanIdentifier = (identifier?: string) => {
     if (!identifier) return '';
@@ -226,79 +238,162 @@ export default function PhotoApprove() {
         </div>
       )}
 
-      {/* ── 3 Tabs (Exactly matching user screenshot) ── */}
-      <div className="student-tab-bar" style={{ display: 'flex', gap: 6, borderBottom: '1px solid var(--border, #E2E8F0)', marginBottom: 20 }}>
+      {/* ── Status Tab Navigation ── */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          borderBottom: '2px solid var(--border, #e2e8f0)',
+          marginBottom: 16
+        }}
+        className="overflow-x-auto pb-px"
+      >
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'ALL' ? 'active' : ''}`}
           onClick={() => setActiveTab('ALL')}
           style={{
-            background: 'transparent',
+            padding: '12px 20px',
+            background: 'none',
             border: 'none',
-            padding: '8px 16px',
-            fontSize: 13.5,
-            fontWeight: 600,
+            borderBottom: activeTab === 'ALL' ? '3px solid #4f46e5' : '3px solid transparent',
+            color: activeTab === 'ALL' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            fontWeight: activeTab === 'ALL' ? 700 : 500,
+            fontSize: 15,
             cursor: 'pointer',
-            borderBottom: activeTab === 'ALL' ? '2px solid #2563EB' : '2px solid transparent',
-            color: activeTab === 'ALL' ? '#2563EB' : 'var(--text-secondary, #64748B)',
-            transition: 'all 0.15s'
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
           }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          All ({displayCounts.all})
+          <Camera size={18} />
+          <span>All</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 12,
+              background: activeTab === 'ALL' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
+              color: activeTab === 'ALL' ? '#4338ca' : '#64748b',
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {displayCounts.all}
+          </span>
         </button>
+
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'PENDING' ? 'active' : ''}`}
           onClick={() => setActiveTab('PENDING')}
           style={{
-            background: 'transparent',
+            padding: '12px 20px',
+            background: 'none',
             border: 'none',
-            padding: '8px 16px',
-            fontSize: 13.5,
-            fontWeight: 600,
+            borderBottom: activeTab === 'PENDING' ? '3px solid #4f46e5' : '3px solid transparent',
+            color: activeTab === 'PENDING' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            fontWeight: activeTab === 'PENDING' ? 700 : 500,
+            fontSize: 15,
             cursor: 'pointer',
-            borderBottom: activeTab === 'PENDING' ? '2px solid #2563EB' : '2px solid transparent',
-            color: activeTab === 'PENDING' ? '#2563EB' : 'var(--text-secondary, #64748B)',
-            transition: 'all 0.15s'
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
           }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          Pending ({displayCounts.pending})
+          <Clock size={18} />
+          <span>Pending</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 12,
+              background: activeTab === 'PENDING' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
+              color: activeTab === 'PENDING' ? '#4338ca' : '#64748b',
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {displayCounts.pending}
+          </span>
         </button>
+
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'APPROVED' ? 'active' : ''}`}
           onClick={() => setActiveTab('APPROVED')}
           style={{
-            background: 'transparent',
+            padding: '12px 20px',
+            background: 'none',
             border: 'none',
-            padding: '8px 16px',
-            fontSize: 13.5,
-            fontWeight: 600,
+            borderBottom: activeTab === 'APPROVED' ? '3px solid #4f46e5' : '3px solid transparent',
+            color: activeTab === 'APPROVED' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            fontWeight: activeTab === 'APPROVED' ? 700 : 500,
+            fontSize: 15,
             cursor: 'pointer',
-            borderBottom: activeTab === 'APPROVED' ? '2px solid #2563EB' : '2px solid transparent',
-            color: activeTab === 'APPROVED' ? '#2563EB' : 'var(--text-secondary, #64748B)',
-            transition: 'all 0.15s'
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
           }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          Approved ({displayCounts.approved})
+          <CheckCircle2 size={18} />
+          <span>Approved</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 12,
+              background: activeTab === 'APPROVED' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
+              color: activeTab === 'APPROVED' ? '#4338ca' : '#64748b',
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {displayCounts.approved}
+          </span>
         </button>
+
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'REJECTED' ? 'active' : ''}`}
           onClick={() => setActiveTab('REJECTED')}
           style={{
-            background: 'transparent',
+            padding: '12px 20px',
+            background: 'none',
             border: 'none',
-            padding: '8px 16px',
-            fontSize: 13.5,
-            fontWeight: 600,
+            borderBottom: activeTab === 'REJECTED' ? '3px solid #4f46e5' : '3px solid transparent',
+            color: activeTab === 'REJECTED' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            fontWeight: activeTab === 'REJECTED' ? 700 : 500,
+            fontSize: 15,
             cursor: 'pointer',
-            borderBottom: activeTab === 'REJECTED' ? '2px solid #DC2626' : '2px solid transparent',
-            color: activeTab === 'REJECTED' ? '#DC2626' : 'var(--text-secondary, #64748B)',
-            transition: 'all 0.15s'
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
           }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          Rejected ({displayCounts.rejected})
+          <XCircle size={18} />
+          <span>Rejected</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 12,
+              background: activeTab === 'REJECTED' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
+              color: activeTab === 'REJECTED' ? '#4338ca' : '#64748b',
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {displayCounts.rejected}
+          </span>
         </button>
       </div>
 
@@ -511,19 +606,34 @@ export default function PhotoApprove() {
                     <PersonProfileLink kind={photo.applicant_type === 'TEACHER' ? 'teacher' : 'student'} id={photo.applicant_id} name={photo.applicant_name} person={photo as any} />
                   </h3>
 
-                  {isTeacher ? (
-                    cleanIdentifier(photo.identifier) ? (
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)' }}>
-                        Adm: <strong style={{ color: 'var(--text, #334155)' }}>{cleanIdentifier(photo.identifier).replace(/^Adm:\s*/i, '')}</strong>
-                      </div>
-                    ) : null
-                  ) : (
-                    photo.identifier && (
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)' }}>
-                        ID / Adm: <strong style={{ color: 'var(--text, #334155)' }}>{photo.identifier}</strong>
-                      </div>
-                    )
-                  )}
+                  {(() => {
+                    const parsed = parseIdentifier(photo.identifier);
+                    const rollVal = photo.roll_number || parsed.roll;
+                    const admVal = photo.admission_number || parsed.adm || (isTeacher ? cleanIdentifier(photo.identifier).replace(/^Adm:\s*/i, '') : '');
+
+                    if (rollVal || admVal) {
+                      return (
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)', display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                          {rollVal && (
+                            <span>Roll: <strong style={{ color: 'var(--text, #334155)' }}>{rollVal}</strong></span>
+                          )}
+                          {rollVal && admVal && <span style={{ color: '#CBD5E1' }}>•</span>}
+                          {admVal && (
+                            <span>Adm: <strong style={{ color: 'var(--text, #334155)' }}>{admVal}</strong></span>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    if (photo.identifier) {
+                      return (
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)' }}>
+                          {photo.identifier}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
 
                   {photo.detail && (
                     <div style={{ fontSize: 12, color: '#64748B' }}>
