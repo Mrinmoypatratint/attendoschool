@@ -371,22 +371,6 @@ export function TeacherProfile() {
                 <span className="badge active" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
                   <ShieldCheck size={12} /> {profile?.designation || 'Teacher'} · {profile?.department || 'Academic Faculty'}
                 </span>
-                {profile?.schoolName && (
-                  <span
-                    className="profile-hero-badge inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 text-xs font-semibold cursor-pointer"
-                    onClick={() => {
-                      const site = profile?.schoolWebsite || (profile as any)?.school_website;
-                      if (site) window.open(site, '_blank', 'noopener,noreferrer');
-                    }}
-                    title={(profile?.schoolWebsite || (profile as any)?.school_website) ? `Visit Official Website: ${profile?.schoolWebsite || (profile as any)?.school_website}` : profile?.schoolName}
-                  >
-                    <School size={13} />
-                    <span>{profile.schoolName}</span>
-                    {(profile?.schoolWebsite || (profile as any)?.school_website) && (
-                      <ExternalLink size={11} className="ml-0.5 opacity-80" />
-                    )}
-                  </span>
-                )}
               </div>
               <p className="muted" style={{ margin: '0 0 10px', fontSize: 13 }}>
                 Official faculty display picture and institutional profile badge. Faculty ID: <code>{employeeIdValue}</code>
