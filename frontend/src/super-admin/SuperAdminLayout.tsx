@@ -367,7 +367,6 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
             <div className="sa-search-trigger" onClick={() => setSearchOpen(true)}>
               <Search size={16} className="sa-search-trigger-icon" />
               <span className="sa-search-trigger-text">Search schools, users, payments, invoices...</span>
-              <kbd className="sa-search-kbd">Ctrl K</kbd>
             </div>
           </div>
 

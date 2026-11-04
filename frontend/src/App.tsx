@@ -1468,9 +1468,7 @@ function SuperAdminHeader({
                 >
                   <X size={13} />
                 </button>
-              ) : (
-                <span className="super-search-kbd">Ctrl + K</span>
-              )}
+              ) : null}
             </div>
 
             {searchOpen && searchQuery.trim() && (
@@ -3155,7 +3153,6 @@ function Layout({ children }: { children: React.ReactNode }) {
             <div className="header-search" style={{ width: 380, maxWidth: 440 }} onClick={() => setSearchOpen(true)}>
               <Search size={15} />
               <input placeholder="Search menu, pages..." readOnly style={{ cursor: 'pointer' }} />
-              <span className="header-kbd">CTRL+K</span>
             </div>
           </div>
           <div className="header-right">
@@ -3284,7 +3281,6 @@ function Layout({ children }: { children: React.ReactNode }) {
             <div className="header-search" style={{ marginLeft: 16, width: 380, maxWidth: 440, cursor: 'pointer' }} onClick={() => setSearchOpen(true)}>
               <Search size={15} />
               <input placeholder="Search menu, pages..." readOnly style={{ cursor: 'pointer' }} />
-              <span className="header-kbd">CTRL+K</span>
             </div>
           </div>
           <div className="header-right">
@@ -3527,7 +3523,6 @@ function Layout({ children }: { children: React.ReactNode }) {
           <div className="header-search" onClick={() => setSearchOpen(true)} style={{ width: 380, maxWidth: 440, cursor: 'pointer' }}>
             <Search size={15} />
             <input placeholder="Search menu, pages..." readOnly style={{ cursor: 'pointer' }} />
-            <span className="header-kbd">CTRL+K</span>
           </div>
           <div className="header-right">
             {/* Connected Academic Session Selector Dropdown */}
