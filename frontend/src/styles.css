@@ -1621,10 +1621,11 @@ header {
   transition: all 0.15s ease;
 }
 
-.super-notif-item:hover .super-notif-action-tag {
-  background: #2563eb;
-  color: #ffffff;
-  border-color: #2563eb;
+.super-notif-item:hover .super-notif-action-tag,
+.super-notif-action-tag:hover {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #2563eb !important;
 }
 
 .super-notif-footer {
@@ -2770,7 +2771,9 @@ header {
 
 /* ─── Routine & Attendance ─── */
 .instruction {
-  max-width: 1100px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   background: var(--primary-50);
   color: var(--primary-800);
   border: 1px solid var(--primary-200);
@@ -2809,7 +2812,9 @@ header {
 .routine-card span { font-size: 12.5px; color: var(--text-muted); }
 
 .attendance-top {
-  max-width: 1100px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -2823,12 +2828,13 @@ header {
 .attendance-top div { margin-right: auto; font-size: 14px; }
 
 .attendance-list {
-  max-width: 1100px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  box-shadow: var(--shadow-xs);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .student-row {
@@ -2839,6 +2845,8 @@ header {
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   transition: background 0.1s;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .student-row:last-child { border-bottom: 0; }
@@ -2869,7 +2877,9 @@ header {
 }
 
 .submit-bar {
-  max-width: 1100px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   display: flex;
   justify-content: space-between;
   align-items: center;

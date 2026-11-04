@@ -398,52 +398,163 @@ const toggleSelectLeave = (id: string) => {
         </div>
       )}
 
-      {/* ── Tabs ── */}
-      <div className="student-tab-bar flex gap-1.5 border-b border-slate-200 dark:border-slate-700 mb-5 overflow-x-auto pb-px">
+      {/* ── Status Tab Navigation ── */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          borderBottom: '2px solid var(--border, #e2e8f0)',
+          marginBottom: 16
+        }}
+        className="overflow-x-auto pb-px"
+      >
         <button
           type="button"
-          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
-            activeTab === 'ALL'
-              ? 'border-blue-600 text-blue-600 dark:text-blue-400 active'
-              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
           onClick={() => setActiveTab('ALL')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'ALL' ? '3px solid #4f46e5' : '3px solid transparent',
+            color: activeTab === 'ALL' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            fontWeight: activeTab === 'ALL' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          All ({displayCounts.all})
+          <FileText size={18} />
+          <span>All</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 12,
+              background: activeTab === 'ALL' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
+              color: activeTab === 'ALL' ? '#4338ca' : '#64748b',
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {displayCounts.all}
+          </span>
         </button>
+
         <button
           type="button"
-          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
-            activeTab === 'PENDING'
-              ? 'border-blue-600 text-blue-600 dark:text-blue-400 active'
-              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
           onClick={() => setActiveTab('PENDING')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'PENDING' ? '3px solid #4f46e5' : '3px solid transparent',
+            color: activeTab === 'PENDING' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            fontWeight: activeTab === 'PENDING' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          Pending ({displayCounts.pending})
+          <Clock size={18} />
+          <span>Pending</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 12,
+              background: activeTab === 'PENDING' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
+              color: activeTab === 'PENDING' ? '#4338ca' : '#64748b',
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {displayCounts.pending}
+          </span>
         </button>
+
         <button
           type="button"
-          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
-            activeTab === 'SEEN'
-              ? 'border-blue-600 text-blue-600 dark:text-blue-400 active'
-              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
           onClick={() => setActiveTab('SEEN')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'SEEN' ? '3px solid #4f46e5' : '3px solid transparent',
+            color: activeTab === 'SEEN' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            fontWeight: activeTab === 'SEEN' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          Seen ({displayCounts.seen || 0})
+          <Eye size={18} />
+          <span>Seen</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 12,
+              background: activeTab === 'SEEN' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
+              color: activeTab === 'SEEN' ? '#4338ca' : '#64748b',
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {displayCounts.seen || 0}
+          </span>
         </button>
+
         {!isTeacher && (
           <button
             type="button"
-            className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'APPROVED'
-                ? 'border-blue-600 text-blue-600 dark:text-blue-400 active'
-                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
             onClick={() => setActiveTab('APPROVED')}
+            style={{
+              padding: '12px 20px',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'APPROVED' ? '3px solid #4f46e5' : '3px solid transparent',
+              color: activeTab === 'APPROVED' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+              fontWeight: activeTab === 'APPROVED' ? 700 : 500,
+              fontSize: 15,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              marginBottom: -2,
+              transition: 'all 0.15s ease',
+              whiteSpace: 'nowrap'
+            }}
+            className="hover:text-slate-900 dark:hover:text-slate-100"
           >
-            Approved ({counts.approved})
+            <CheckCircle2 size={18} />
+            <span>Approved</span>
+            <span
+              style={{
+                padding: '2px 8px',
+                borderRadius: 12,
+                background: activeTab === 'APPROVED' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
+                color: activeTab === 'APPROVED' ? '#4338ca' : '#64748b',
+                fontSize: 12,
+                fontWeight: 700
+              }}
+            >
+              {counts.approved}
+            </span>
           </button>
         )}
       </div>

@@ -264,6 +264,10 @@ export function TeacherProfile() {
     }
   };
 
+  const employeeIdValue = (profile?.employeeId && profile.employeeId !== 'TINT-TCH-001')
+    ? profile.employeeId
+    : ((user as any)?.employeeId || (user as any)?.employee_id || (profile?.email === 'teacher1@dav.com' || user?.email === 'teacher1@dav.com' ? '50359' : profile?.employeeId || '50359'));
+
   if (loading) {
     return (
       <div className="p-16 text-center text-slate-500">
@@ -301,101 +305,153 @@ export function TeacherProfile() {
         </div>
       )}
 
-      {/* ── Main 3-Column Profile Layout (matching student structure) ── */}
-      <div className="student-profile-layout grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 1. Hero Summary Card */}
-        <div className="student-card student-profile-hero-card rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm flex flex-col items-center text-center">
-          <div className="student-profile-avatar-large relative w-24 h-24 rounded-full overflow-hidden bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 flex items-center justify-center text-3xl font-bold border-2 border-slate-200 dark:border-slate-700">
-            {profile?.photoUrl ? (
-              <img
-                src={profile.photoUrl}
-                alt={profile.name}
-                className="student-profile-avatar-img w-full h-full object-cover"
-              />
-            ) : (
-              <span>{profile?.name?.charAt(0) || 'T'}</span>
-            )}
-            {uploadingPhoto && (
-              <div className="student-avatar-loading-overlay absolute inset-0 bg-black/50 flex items-center justify-center text-white">
-                <Loader2 size={24} className="animate-spin" />
-              </div>
-            )}
-          </div>
-
-          {/* Upload / Change Picture action buttons */}
-          <div className="student-avatar-actions flex items-center gap-2 mt-4">
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept="image/png,image/jpeg,image/jpg,image/webp"
-              className="hidden"
-              onChange={handlePhotoSelect}
-            />
-            <button
-              type="button"
-              className="student-avatar-btn-upload inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 cursor-pointer transition-colors"
+      {/* ── Top Hero Banner (Matching School Admin Profile UI) ── */}
+      <div className="panel mb-5" style={{ position: 'relative', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+            {/* Picture Frame with Hover Camera Overlay */}
+            <div
+              style={{
+                position: 'relative',
+                width: 92,
+                height: 92,
+                borderRadius: '50%',
+                border: '3.5px solid #ffffff',
+                boxShadow: '0 8px 24px -4px rgba(37, 99, 235, 0.3), 0 2px 6px rgba(0, 0, 0, 0.08)',
+                backgroundColor: '#2563eb',
+                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 55%, #1d4ed8 100%)',
+                overflow: 'hidden',
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer'
+              }}
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploadingPhoto}
-              title={profile?.photoUrl ? 'Click to change profile picture' : 'Click to upload picture'}
+              title="Click to upload or change picture"
             >
-              <Camera size={14} />
-              <span>{profile?.photoUrl ? 'Change Picture' : 'Upload Picture'}</span>
-            </button>
-            {profile?.photoUrl && (
-              <button
-                type="button"
-                className="student-avatar-btn-remove p-1.5 text-xs rounded-md bg-red-50 hover:bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 cursor-pointer transition-colors"
-                onClick={handleRemovePhoto}
-                disabled={uploadingPhoto}
-                title="Remove picture"
+              {profile?.photoUrl ? (
+                <img
+                  src={profile.photoUrl}
+                  alt={profile.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <div style={{ color: '#ffffff', fontWeight: 800, fontSize: 28, letterSpacing: '0.02em', userSelect: 'none' }}>
+                  {profile?.name ? profile.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'T'}
+                </div>
+              )}
+
+              {/* Camera overlay on hover */}
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  backgroundColor: 'rgba(15, 23, 42, 0.45)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: 0,
+                  transition: 'opacity 0.2s ease',
+                  color: '#ffffff'
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0'; }}
               >
-                <Trash2 size={13} />
-              </button>
-            )}
-          </div>
-
-          {photoMsg && (
-            <div className={`student-photo-notice ${photoMsg.type} mt-3 px-3 py-2 rounded-md text-xs flex items-center gap-1.5 ${
-              photoMsg.type === 'success'
-                ? 'bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400'
-                : 'bg-red-500/10 border border-red-500/25 text-red-500'
-            }`}>
-              {photoMsg.type === 'success' ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
-              <span>{photoMsg.text}</span>
+                {uploadingPhoto ? <Loader2 size={24} className="animate-spin" /> : <Camera size={24} />}
+              </div>
             </div>
-          )}
 
-          <h2 className="profile-hero-name text-lg font-bold text-slate-900 dark:text-slate-100 mt-4 mb-0.5">{profile?.name || 'Faculty Teacher'}</h2>
-          <p className="profile-hero-role text-xs text-slate-500 dark:text-slate-400 m-0 mb-3">{profile?.designation} · {profile?.department}</p>
-          <div 
-            className="profile-hero-badge inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 text-xs font-semibold"
-            onClick={() => {
-              const site = profile?.schoolWebsite || (profile as any)?.school_website;
-              if (site) {
-                window.open(site, '_blank', 'noopener,noreferrer');
-              }
-            }}
-            style={{ 
-              cursor: (profile?.schoolWebsite || (profile as any)?.school_website) ? 'pointer' : 'default'
-            }}
-            title={(profile?.schoolWebsite || (profile as any)?.school_website) ? `Visit Official Website: ${profile?.schoolWebsite || (profile as any)?.school_website}` : profile?.schoolName}
-          >
-            <School size={14} />
-            <span>{profile?.schoolName}</span>
-            {(profile?.schoolWebsite || (profile as any)?.school_website) && (
-              <ExternalLink size={12} className="ml-1 opacity-80" />
-            )}
-          </div>
+            {/* Title & Info */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 750, color: 'var(--text, #0f172a)' }}>
+                  {profile?.name || 'Faculty Teacher'}
+                </h3>
+                <span className="badge active" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
+                  <ShieldCheck size={12} /> {profile?.designation || 'Teacher'} · {profile?.department || 'Academic Faculty'}
+                </span>
+              </div>
+              <p className="muted" style={{ margin: '0 0 10px', fontSize: 13 }}>
+                Official faculty display picture and institutional profile badge. Faculty ID: <code>{employeeIdValue}</code>
+              </p>
 
-          <div className="mt-4 p-2.5 px-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700 w-full box-border text-left">
-            <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-              Faculty ID
-            </div>
-            <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
-              <code>{(profile?.employeeId && profile.employeeId !== 'TINT-TCH-001') ? profile.employeeId : ((user as any)?.employeeId || (user as any)?.employee_id || (profile?.email === 'teacher1@dav.com' || user?.email === 'teacher1@dav.com' ? '50359' : profile?.employeeId || '50359'))}</code>
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                  style={{ display: 'none' }}
+                  onChange={handlePhotoSelect}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontSize: 13,
+                    padding: '7px 14px',
+                    backgroundColor: '#2563eb',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: 8,
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Camera size={14} />
+                  {uploadingPhoto ? 'Uploading...' : (profile?.photoUrl ? 'Change Picture' : 'Upload Picture')}
+                </button>
+
+                {profile?.photoUrl && (
+                  <button
+                    type="button"
+                    onClick={handleRemovePhoto}
+                    disabled={uploadingPhoto}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      fontSize: 13,
+                      padding: '7px 12px',
+                      backgroundColor: '#fee2e2',
+                      color: '#b91c1c',
+                      border: '1px solid #fca5a5',
+                      borderRadius: 8,
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                    title="Remove picture"
+                  >
+                    <Trash2 size={13} />
+                    Remove Picture
+                  </button>
+                )}
+                <span style={{ fontSize: 12, color: 'var(--muted, #64748b)' }}>
+                  PNG, JPG, WebP up to 5MB
+                </span>
+              </div>
             </div>
           </div>
         </div>
+
+        {photoMsg && (
+          <div
+            className={photoMsg.type === 'success' ? 'success' : 'error'}
+            style={{ marginTop: 14, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            {photoMsg.type === 'success' ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
+            <span>{photoMsg.text}</span>
+          </div>
+        )}
+      </div>
+
+      {/* ── 2-Column Main Section (Matching School Admin Profile UI) ── */}
+      <div className="student-profile-layout grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* 2. Academic & Faculty Details Card */}
         <div className="student-card student-profile-details-card rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">

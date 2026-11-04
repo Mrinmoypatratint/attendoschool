@@ -1468,9 +1468,7 @@ function SuperAdminHeader({
                 >
                   <X size={13} />
                 </button>
-              ) : (
-                <span className="super-search-kbd">Ctrl + K</span>
-              )}
+              ) : null}
             </div>
 
             {searchOpen && searchQuery.trim() && (
@@ -3155,7 +3153,6 @@ function Layout({ children }: { children: React.ReactNode }) {
             <div className="header-search" style={{ width: 380, maxWidth: 440 }} onClick={() => setSearchOpen(true)}>
               <Search size={15} />
               <input placeholder="Search menu, pages..." readOnly style={{ cursor: 'pointer' }} />
-              <span className="header-kbd">CTRL+K</span>
             </div>
           </div>
           <div className="header-right">
@@ -3284,7 +3281,6 @@ function Layout({ children }: { children: React.ReactNode }) {
             <div className="header-search" style={{ marginLeft: 16, width: 380, maxWidth: 440, cursor: 'pointer' }} onClick={() => setSearchOpen(true)}>
               <Search size={15} />
               <input placeholder="Search menu, pages..." readOnly style={{ cursor: 'pointer' }} />
-              <span className="header-kbd">CTRL+K</span>
             </div>
           </div>
           <div className="header-right">
@@ -3527,7 +3523,6 @@ function Layout({ children }: { children: React.ReactNode }) {
           <div className="header-search" onClick={() => setSearchOpen(true)} style={{ width: 380, maxWidth: 440, cursor: 'pointer' }}>
             <Search size={15} />
             <input placeholder="Search menu, pages..." readOnly style={{ cursor: 'pointer' }} />
-            <span className="header-kbd">CTRL+K</span>
           </div>
           <div className="header-right">
             {/* Connected Academic Session Selector Dropdown */}
@@ -3712,7 +3707,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                                     </span>
                                   </div>
                                   <p className="super-notif-msg">{n.message}</p>
-                                  <span className="super-notif-action-tag" style={{ color: '#2563eb' }}>
+                                  <span className="super-notif-action-tag">
                                     From: {n.authorName || 'School Administration'} · View Notice →
                                   </span>
                                 </div>
@@ -16311,7 +16306,9 @@ function Attendance() {
           overflow: 'hidden',
           background: 'var(--bg-card, #ffffff)',
           marginBottom: 16,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+          width: '100%',
+          boxSizing: 'border-box'
         }}
       >
         {/* Red-Circled Sub-Toolbar: Refresh, Last fetched, Rows per page selector, Showing counts */}
@@ -16346,7 +16343,7 @@ function Attendance() {
           </div>
         ) : (
           <>
-            <div className="attendance-list" style={{ padding: '14px 16px', margin: 0 }}>
+            <div className="attendance-list" style={{ padding: '14px 16px', margin: 0, width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
               {displayedStudents.map((s: any) => {
                 const stObj = studentStatusMap[s.id] || {};
                 const rawStatus = stObj.status || (checked[s.id] !== undefined ? (checked[s.id] ? 'PRESENT' : 'ABSENT') : undefined);
@@ -16385,7 +16382,9 @@ function Attendance() {
                       borderRadius: 10,
                       marginBottom: 8,
                       gap: 12,
-                      flexWrap: 'wrap'
+                      flexWrap: 'wrap',
+                      width: '100%',
+                      boxSizing: 'border-box'
                     }}
                   >
                     {/* Left: Roll and Student Info */}

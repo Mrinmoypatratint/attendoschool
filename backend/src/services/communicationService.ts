@@ -833,6 +833,9 @@ export async function teacherInbox(teacherUserId: string, schoolId: string, from
            AND a.status = 'PUBLISHED'
            AND a.audience_type IN ('TEACHER', 'SCHOOL')
            AND (u.role IS NULL OR u.role IN ('SCHOOL_ADMIN', 'SUPER_ADMIN'))
+           AND COALESCE(u.role::text, '') != 'TEACHER'
+           AND COALESCE(a.author_role, '') != 'TEACHER'
+           AND COALESCE(a.created_by_role, '') != 'TEACHER'
            AND (a.created_by IS NULL OR a.created_by != $1)
            AND (a.expires_at IS NULL OR a.expires_at > NOW())
            ${dateClauses}
