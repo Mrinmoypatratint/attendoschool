@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   FileCheck, ArrowLeft, Send, CheckCircle2, Clock, Paperclip, Calendar,
   Upload, X, Download, Eye, FileText, AlertCircle, Loader2, Search, Edit3, RotateCcw,
-  Image
+  Image, BookOpen
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { studentApi, Assignment, AssignmentAttachment } from '../../services/studentApi';
@@ -551,27 +551,127 @@ export function StudentAssignments() {
       </div>
 
       {/* Tabs */}
-      <div className="student-tab-bar">
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          borderBottom: '2px solid var(--border, #e2e8f0)',
+          marginBottom: 16,
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
+        }}
+        className="no-scrollbar pb-px [&::-webkit-scrollbar]:hidden"
+      >
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'ALL' ? 'active' : ''}`}
           onClick={() => setActiveTab('ALL')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'ALL' ? '3px solid #4f46e5' : '3px solid transparent',
+            color: activeTab === 'ALL' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            fontWeight: activeTab === 'ALL' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          All ({assignments.length})
+          <BookOpen size={18} />
+          <span>All</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 12,
+              background: activeTab === 'ALL' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
+              color: activeTab === 'ALL' ? '#4338ca' : '#64748b',
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {assignments.length}
+          </span>
         </button>
+
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'PENDING' ? 'active' : ''}`}
           onClick={() => setActiveTab('PENDING')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'PENDING' ? '3px solid #4f46e5' : '3px solid transparent',
+            color: activeTab === 'PENDING' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            fontWeight: activeTab === 'PENDING' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          Pending ({assignments.filter((a) => a.submission_status === 'PENDING').length})
+          <Clock size={18} />
+          <span>Pending</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 12,
+              background: activeTab === 'PENDING' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
+              color: activeTab === 'PENDING' ? '#4338ca' : '#64748b',
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {assignments.filter((a) => a.submission_status === 'PENDING').length}
+          </span>
         </button>
+
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'SUBMITTED' ? 'active' : ''}`}
           onClick={() => setActiveTab('SUBMITTED')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'SUBMITTED' ? '3px solid #4f46e5' : '3px solid transparent',
+            color: activeTab === 'SUBMITTED' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            fontWeight: activeTab === 'SUBMITTED' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          Submitted ({assignments.filter((a) => a.submission_status !== 'PENDING').length})
+          <CheckCircle2 size={18} />
+          <span>Submitted</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 12,
+              background: activeTab === 'SUBMITTED' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
+              color: activeTab === 'SUBMITTED' ? '#4338ca' : '#64748b',
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {assignments.filter((a) => a.submission_status !== 'PENDING').length}
+          </span>
         </button>
       </div>
 

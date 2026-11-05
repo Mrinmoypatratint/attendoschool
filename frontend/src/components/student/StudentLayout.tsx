@@ -576,7 +576,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
       <div className="student-main-wrapper">
         {/* Topbar */}
         <header className="student-topbar">
-          <div className="student-topbar-left">
+          <div className="student-topbar-left" style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: '1 1 auto', maxWidth: 'none' }}>
             <button
               type="button"
               className="student-hamburger-btn mobile-only-menu-btn"
@@ -586,7 +586,80 @@ export function StudentLayout({ children }: StudentLayoutProps) {
             >
               <Menu size={20} />
             </button>
-            <StudentSearchBar />
+
+            {/* School Crest & Institutional Identity */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                minWidth: 0,
+                flexShrink: 0,
+                cursor: targetWebsiteUrl ? 'pointer' : 'default'
+              }}
+              onClick={handleOpenSchoolWebsite}
+              title={targetWebsiteUrl ? `Visit Official School Website: ${targetWebsiteUrl}` : displaySchoolName}
+            >
+              <div
+                className="school-crest"
+                style={{
+                  width: 34,
+                  height: 34,
+                  background: '#ffffff',
+                  border: '1px solid var(--border, #e2e8f0)',
+                  padding: 2,
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  overflow: 'hidden'
+                }}
+              >
+                <img
+                  src={displaySchoolPhoto}
+                  alt={displaySchoolName}
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    const fallback = isDav ? '/dav-logo.png' : '/attendo-school-logo.png';
+                    if (target.src !== fallback && !target.src.endsWith(fallback)) {
+                      target.src = fallback;
+                    }
+                  }}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    color: 'var(--text, #0f172a)',
+                    lineHeight: 1.2,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}
+                >
+                  {displaySchoolName}
+                </div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--text-muted, #64748b)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}
+                >
+                  {user?.name || 'Student'} · {studentClass || 'Student'}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ width: 360, maxWidth: 440, flex: '0 1 380px' }}>
+              <StudentSearchBar />
+            </div>
           </div>
 
           <div className="student-topbar-right">
