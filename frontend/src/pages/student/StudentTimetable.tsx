@@ -51,7 +51,7 @@ export function StudentTimetable() {
   const dayEntries = entries.filter((e) => Number(e.day_of_week) === selectedDay);
 
   return (
-    <div className="student-subpage max-w-6xl mx-auto p-4 sm:p-6">
+    <div className="student-subpage">
       <div className="student-subpage-header mb-6">
         <div className="student-subpage-title-row">
           <Link to="/student/dashboard" className="student-back-link inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline mb-2">
