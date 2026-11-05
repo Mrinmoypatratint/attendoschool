@@ -404,9 +404,13 @@ const toggleSelectLeave = (id: string) => {
           display: 'flex',
           gap: 12,
           borderBottom: '2px solid var(--border, #e2e8f0)',
-          marginBottom: 16
+          marginBottom: 16,
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
         }}
-        className="overflow-x-auto pb-px"
+        className="no-scrollbar pb-px [&::-webkit-scrollbar]:hidden"
       >
         <button
           type="button"
