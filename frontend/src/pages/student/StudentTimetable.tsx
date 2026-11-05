@@ -81,21 +81,60 @@ export function StudentTimetable() {
       )}
 
       {/* Day Tabs */}
-      <div className="student-tab-bar flex items-center gap-1 border-b border-slate-200 dark:border-slate-800 pb-px overflow-x-auto">
-        {days.map((d) => (
-          <button
-            key={d.num}
-            type="button"
-            className={`student-tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-              selectedDay === d.num
-                ? 'active border-b-blue-600 text-blue-600 dark:text-blue-400 font-bold'
-                : 'border-b-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-            onClick={() => setSelectedDay(d.num)}
-          >
-            {d.name}
-          </button>
-        ))}
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          borderBottom: '2px solid var(--border, #e2e8f0)',
+          marginBottom: 16,
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
+        }}
+        className="no-scrollbar pb-px [&::-webkit-scrollbar]:hidden"
+      >
+        {days.map((d) => {
+          const isSelected = selectedDay === d.num;
+          const dayCount = entries.filter((e) => Number(e.day_of_week) === d.num).length;
+          return (
+            <button
+              key={d.num}
+              type="button"
+              onClick={() => setSelectedDay(d.num)}
+              style={{
+                padding: '12px 20px',
+                background: 'none',
+                border: 'none',
+                borderBottom: isSelected ? '3px solid #4f46e5' : '3px solid transparent',
+                color: isSelected ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+                fontWeight: isSelected ? 700 : 500,
+                fontSize: 15,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: -2,
+                transition: 'all 0.15s ease',
+                whiteSpace: 'nowrap'
+              }}
+              className="hover:text-slate-900 dark:hover:text-slate-100"
+            >
+              <span>{d.name}</span>
+              <span
+                style={{
+                  padding: '2px 8px',
+                  borderRadius: 12,
+                  background: isSelected ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
+                  color: isSelected ? '#4338ca' : '#64748b',
+                  fontSize: 12,
+                  fontWeight: 700
+                }}
+              >
+                {dayCount}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="student-card bg-white dark:bg-[#131b2e] rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm mt-5">
