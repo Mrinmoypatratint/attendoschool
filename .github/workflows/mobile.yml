@@ -20,6 +20,14 @@ on:
         description: Diagnose a previously built APK without rebuilding
         type: boolean
         default: false
+      apk_run_id:
+        description: Existing Actions run containing the APK for startup-only tests
+        type: string
+        default: '42474833037'
+      apk_artifact:
+        description: Existing APK artifact name for startup-only tests
+        type: string
+        default: android-test-and-unsigned-5
 
 permissions:
   contents: read
@@ -46,8 +54,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          run-id: 42474833037
-          name: android-test-and-unsigned-5
+          run-id: ${{ inputs.apk_run_id }}
+          name: ${{ inputs.apk_artifact }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: artifacts/startup/apk
       - run: sudo chmod 666 /dev/kvm

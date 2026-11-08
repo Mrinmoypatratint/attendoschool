@@ -14,7 +14,9 @@ iOS uses `capacitor://localhost`, explicitly allowed by the backend. Web browser
 continue using the same-origin `/api`. No database credentials are bundled.
 
 App name: **AttendoSchool**. Android application ID and Apple bundle ID:
-**online.attendoschool.app**. Version: **0.11.0**.
+**online.attendoschool.app**. Android version: **0.11.1**; iOS version: **0.11.0**.
+Android supports Android 11 (API 30) and later, targeting Android 16 (API 36).
+Native web assets are compiled for Android 11-era WebViews as well as newer ones.
 
 ## Build locally
 
