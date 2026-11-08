@@ -98,8 +98,10 @@ for 30 days otherwise — see known issues).
 These are legacy behaviours kept for backward compatibility (R1). Each is a separately toggleable permission,
 so a school admin can already switch them off per role:
 
-1. **Login demo fallback** (`routes/auth.ts`): when no Firestore/SQL account matches, a demo SCHOOL_ADMIN/TEACHER/STUDENT
-   is synthesised for any active school and any password ≥ 4 characters is accepted. Highest priority.
+1. ~~Login demo fallback accepted any password ≥ 4 characters (incl. the demo SUPER_ADMIN) and synthesised accounts.~~
+   **Fixed** (2026-11-08, `tests/auth-demo-fallback.test.ts`): in production only a demo account's exact stored password
+   is accepted and nothing is synthesised; development keeps the demo conveniences. Remaining: the demo accounts and their
+   passwords are still hard-coded in `backend/src/store/demoUsers.ts` — rotate/remove them for production (owner decision).
 2. `/api/attendance-reports/*` and `POST /api/attendance-reports/import-offline`: no role check and `?schoolId` is honoured for any role (cross-tenant read/write).
 3. `reviews.ts` student-leave and photo approve/reject: STUDENT/PARENT tokens fall into the admin branch; `POST /reviews/leaves` trusts body `studentId`.
 4. `GET /reviews/teacher-leaves` and `/export-excel`: any school role can list/export teacher leaves.
