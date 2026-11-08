@@ -18,6 +18,14 @@ App name: **AttendoSchool**. Android application ID and Apple bundle ID:
 Android supports Android 11 (API 30) and later, targeting Android 16 (API 36).
 Native web assets are compiled for Android 11-era WebViews as well as newer ones.
 
+Android 0.11.1 fixes a startup crash caused by the launcher Java source being
+excluded by a repository ignore rule. The launcher is now tracked, and CI checks
+that its class is actually defined in the APK before testing three cold launches
+and the rendered login form on Android 11, 13 and 16 emulators. These checks cover
+startup; they do not certify every manufacturer's physical device or every app
+feature. Uninstall the earlier test APK before installing the replacement because
+debug signing keys can differ between builds.
+
 ## Build locally
 
 Requires Node 22+, Java 21 and Android SDK 36 for Android. iOS requires a Mac with
