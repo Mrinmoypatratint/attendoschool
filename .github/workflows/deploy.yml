@@ -142,10 +142,14 @@ jobs:
               exit 1
             fi
             git checkout --detach "${{ env.DEPLOY_VERSION }}"
+            BACKUP_SETUP_READY=false
             if [ -f scripts/backup/provision.cjs ]; then
               echo "Preparing private backup folders, tools and paused schedule..."
-              bash scripts/backup/install-tools.sh
-              node scripts/backup/provision.cjs prepare
+              if bash scripts/backup/install-tools.sh && node scripts/backup/provision.cjs prepare; then
+                BACKUP_SETUP_READY=true
+              else
+                echo "::warning::Backup setup is incomplete. Continuing the web/API deployment without starting or restarting backup workers. Existing backup configuration is unchanged."
+              fi
             fi
             echo "📦 Installing Dependencies on VPS..."
             npm --prefix frontend install --include=dev --no-audit
@@ -154,7 +158,11 @@ jobs:
             echo "🔨 Building Frontend React SPA with Vite..."
             npm --prefix frontend run build
             echo "⚡ Reloading PM2 backend cluster..."
-            pm2 startOrReload ecosystem.config.cjs --env production
+            if [ "$BACKUP_SETUP_READY" = true ]; then
+              pm2 startOrReload ecosystem.config.cjs --env production
+            else
+              pm2 startOrReload ecosystem.config.cjs --only attendoschool-backend --env production
+            fi
             pm2 save
             echo "✅ Deployment completed on https://attendoschool.online"
 
