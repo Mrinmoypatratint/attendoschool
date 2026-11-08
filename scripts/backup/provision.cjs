@@ -56,8 +56,9 @@ async function inspect(env, root = ROOT, clientFactory) {
   report.externalCoverage = report.firebaseCredentialsPresent || report.firebaseStorageConfigured ? 'Legacy Firebase requires confirmation or a separately verified export; PostgreSQL alone is not full coverage' : 'No configured legacy Firebase credentials found';
   return report;
 }
-async function prepare({ root = ROOT, base = '/home/attendoschool', env = process.env, parse, clientFactory }) {
-  const state = path.join(base, '.attendoschool-backup-state'), dir = path.join(state, 'private');
+async function prepare({ root = ROOT, base, env = process.env, parse, clientFactory }) {
+  const state = base ? path.join(base, '.attendoschool-backup-state') : path.join(root, 'backend/.backup-state');
+  const dir = path.join(state, 'private');
   const configDir = state, config = path.join(configDir, 'backup.env');
   await fs.mkdir(dir, { recursive: true, mode: 0o700 }); await fs.chmod(state, 0o700); await fs.chmod(dir, 0o700);
   await fs.mkdir(configDir, { recursive: true, mode: 0o700 });
@@ -125,7 +126,7 @@ async function main(args) {
     await replacePrivate(path.join(result.state, 'setup-report.json'), JSON.stringify(result.report, null, 2) + '\n');
     console.log(JSON.stringify(result.report, null, 2));
   } else if (args[0] === 'monitor') {
-    const config = '/home/attendoschool/.attendoschool-backup-state/backup.env';
+    const config = path.join(ROOT, 'backend/.backup-state/backup.env');
     const stat = await fs.lstat(config); if (!stat.isFile() || stat.isSymbolicLink() || (stat.mode & 0o777) !== 0o600) throw Error('Unsafe backup config');
     const settings = { ...env, ...dotenv.parse(await fs.readFile(config)) };
     const outcome = await monitor(settings); console.log(JSON.stringify(outcome, null, 2));

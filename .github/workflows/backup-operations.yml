@@ -44,7 +44,7 @@ jobs:
               monitor) node scripts/backup/provision.cjs monitor ;;
               daily)
                 if ! crontab -l 2>/dev/null | grep -q '# attendoschool-backup-managed'; then
-                  BACKUP_CONFIG_FILE=/home/attendoschool/.attendoschool-backup-state/backup.env bash scripts/backup/scheduled.sh
+                  BACKUP_CONFIG_FILE="$PWD/backend/.backup-state/backup.env" bash scripts/backup/scheduled.sh
                 fi
                 node scripts/backup/provision.cjs monitor
                 ;;
