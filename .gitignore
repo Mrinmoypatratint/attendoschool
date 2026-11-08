@@ -12,7 +12,7 @@ backups/
 backend/.backup-state/
 deploy/nginx/certs/*.key
 deploy/nginx/certs/*.pem
-attendoschool/
+/attendoschool/
 serviceAccountKey.json
 *serviceAccount*.json
 backend/serviceAccountKey.json
