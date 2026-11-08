@@ -12,6 +12,10 @@ on:
         description: Build store-signed releases (requires signing secrets)
         type: boolean
         default: false
+      android_apis:
+        description: Android startup-test API levels as a JSON array
+        type: string
+        default: '[29,35,36]'
 
 permissions:
   contents: read
@@ -58,7 +62,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        android-api: [29, 35]
+        android-api: ${{ fromJSON(inputs.android_apis || '[29,35,36]') }}
     defaults:
       run:
         working-directory: frontend
