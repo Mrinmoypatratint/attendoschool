@@ -316,10 +316,10 @@ export function TeacherProfile() {
                 width: 92,
                 height: 92,
                 borderRadius: '50%',
-                border: '3.5px solid #ffffff',
+                border: "3.5px solid var(--border)",
                 boxShadow: 'none',
-                backgroundColor: '#e11d55',
-                background: '#e11d55',
+                backgroundColor: "var(--primary)",
+                background: "var(--primary)",
                 overflow: 'hidden',
                 flexShrink: 0,
                 display: 'flex',
@@ -337,7 +337,7 @@ export function TeacherProfile() {
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               ) : (
-                <div style={{ color: '#ffffff', fontWeight: 800, fontSize: 28, letterSpacing: '0.02em', userSelect: 'none' }}>
+                <div style={{ color: "var(--background)", fontWeight: 800, fontSize: 28, letterSpacing: '0.02em', userSelect: 'none' }}>
                   {profile?.name ? profile.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'T'}
                 </div>
               )}
@@ -347,13 +347,13 @@ export function TeacherProfile() {
                 style={{
                   position: 'absolute',
                   inset: 0,
-                  backgroundColor: 'rgba(28, 31, 46, 0.45)',
+                  backgroundColor: "var(--card)",
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   opacity: 0,
                   transition: 'opacity 0.2s ease',
-                  color: '#ffffff'
+                  color: "var(--background)"
                 }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0'; }}
@@ -365,7 +365,7 @@ export function TeacherProfile() {
             {/* Title & Info */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 750, color: 'var(--text, #1c1f2e)' }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 750, color: "var(--text, var(--foreground))" }}>
                   {profile?.name || 'Faculty Teacher'}
                 </h3>
                 <span className="badge active" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
@@ -395,8 +395,8 @@ export function TeacherProfile() {
                     gap: 6,
                     fontSize: 13,
                     padding: '7px 14px',
-                    backgroundColor: '#e11d55',
-                    color: '#ffffff',
+                    backgroundColor: "var(--primary)",
+                    color: "var(--background)",
                     border: 'none',
                     borderRadius: 4,
                     fontWeight: 600,
@@ -418,9 +418,9 @@ export function TeacherProfile() {
                       gap: 5,
                       fontSize: 13,
                       padding: '7px 12px',
-                      backgroundColor: '#f7d5d5',
-                      color: '#a82424',
-                      border: '1px solid #e88d8d',
+                      backgroundColor: "var(--secondary)",
+                      color: "var(--destructive)",
+                      border: "1px solid var(--border)",
                       borderRadius: 4,
                       fontWeight: 600,
                       cursor: 'pointer'
@@ -431,7 +431,7 @@ export function TeacherProfile() {
                     Remove Picture
                   </button>
                 )}
-                <span style={{ fontSize: 12, color: 'var(--muted, #696e79)' }}>
+                <span style={{ fontSize: 12, color: "var(--muted, var(--muted-foreground))" }}>
                   PNG, JPG, WebP up to 5MB
                 </span>
               </div>
@@ -626,9 +626,9 @@ export function TeacherProfile() {
                             borderRadius: 4,
                             fontSize: 12.5,
                             fontWeight: 600,
-                            backgroundColor: '#dde1f2',
-                            color: '#48549a',
-                            border: '1px solid #c9cee9'
+                            backgroundColor: "var(--secondary)",
+                            color: "var(--info)",
+                            border: "1px solid var(--border)"
                           }}
                         >
                           {cls}
@@ -636,7 +636,7 @@ export function TeacherProfile() {
                       ))}
                     </div>
                   ) : (
-                    <span style={{ color: 'var(--text-muted, #94969f)' }}>No class mentorship or timetable assignments</span>
+                    <span style={{ color: "var(--text-muted, var(--muted-foreground))" }}>No class mentorship or timetable assignments</span>
                   )}
                 </span>
               </div>
@@ -655,9 +655,9 @@ export function TeacherProfile() {
                             borderRadius: 4,
                             fontSize: 12.5,
                             fontWeight: 600,
-                            backgroundColor: '#f5f5f6',
-                            color: '#3e4152',
-                            border: '1px solid #d4d5d9'
+                            backgroundColor: "var(--secondary)",
+                            color: "var(--muted-foreground)",
+                            border: "1px solid var(--border)"
                           }}
                         >
                           {sub}

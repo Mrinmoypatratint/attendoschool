@@ -1212,8 +1212,8 @@ export function TeacherAnnouncements() {
       {/* ── Page Header Row ── */}
       <div className="as-communication-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text, #1c1f2e)' }}>Announcement</h1>
-          <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted, #696e79)' }}>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "var(--text, var(--foreground))" }}>Announcement</h1>
+          <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: "var(--text-muted, var(--muted-foreground))" }}>
             Multi-channel institutional announcements, role-based audience broadcasts, and student notices.
           </p>
         </div>
@@ -1223,10 +1223,10 @@ export function TeacherAnnouncements() {
         <div style={{
           padding: '10px 14px',
           marginBottom: 16,
-          backgroundColor: '#fff2f4',
-          border: '1px solid #fcc3d1',
+          backgroundColor: "var(--card)",
+          border: "1px solid var(--border)",
           borderRadius: 4,
-          color: '#9a133c',
+          color: "var(--primary)",
           fontSize: 13,
           display: 'flex',
           justifyContent: 'space-between',
@@ -1235,14 +1235,14 @@ export function TeacherAnnouncements() {
           width: '100%'
         }}>
           <span>{msg}</span>
-          <button onClick={() => setMsg('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9a133c' }}>✕</button>
+          <button onClick={() => setMsg('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: "var(--primary)" }}>✕</button>
         </div>
       )}
 
       {/* ── New Broadcast Announcement Form (Audience: Student, Priority Removed) ── */}
           <div className="form-card as-announcement-card" style={{
-            backgroundColor: 'var(--bg-card, #ffffff)',
-            border: '1px solid var(--border, #eaeaec)',
+            backgroundColor: "var(--bg-card, var(--card))",
+            border: "1px solid var(--border, var(--border))",
             borderRadius: 4,
             padding: 20,
             marginBottom: 24,
@@ -1252,7 +1252,7 @@ export function TeacherAnnouncements() {
             minWidth: 0,
             boxSizing: 'border-box'
           }}>
-            <h3 style={{ margin: '0 0 14px', fontSize: 16, fontWeight: 700, color: 'var(--text, #1c1f2e)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h3 style={{ margin: '0 0 14px', fontSize: 16, fontWeight: 700, color: "var(--text, var(--foreground))", display: 'flex', alignItems: 'center', gap: 8 }}>
               <MessageSquare size={18} color="#e11d55" /> New Broadcast Announcement
             </h3>
 
@@ -1267,9 +1267,9 @@ export function TeacherAnnouncements() {
                   minWidth: 0,
                   padding: '10px 12px',
                   borderRadius: 4,
-                  border: '1px solid var(--border, #d4d5d9)',
-                  backgroundColor: 'var(--bg, #ffffff)',
-                  color: 'var(--text, #1c1f2e)',
+                  border: "1px solid var(--border, var(--border))",
+                  backgroundColor: "var(--bg, var(--card))",
+                  color: "var(--text, var(--foreground))",
                   fontSize: 14,
                   boxSizing: 'border-box'
                 }}
@@ -1287,9 +1287,9 @@ export function TeacherAnnouncements() {
                   minWidth: 0,
                   padding: '10px 12px',
                   borderRadius: 4,
-                  border: '1px solid var(--border, #d4d5d9)',
-                  backgroundColor: 'var(--bg, #ffffff)',
-                  color: 'var(--text, #1c1f2e)',
+                  border: "1px solid var(--border, var(--border))",
+                  backgroundColor: "var(--bg, var(--card))",
+                  color: "var(--text, var(--foreground))",
                   fontSize: 13.5,
                   boxSizing: 'border-box',
                   fontFamily: 'inherit'
@@ -1306,9 +1306,9 @@ export function TeacherAnnouncements() {
                       gap: 6,
                       padding: '7px 14px',
                       borderRadius: 4,
-                      border: '1px dashed var(--border, #d4d5d9)',
-                      backgroundColor: 'var(--card-subtle, #f9f9fa)',
-                      color: 'var(--text, #3e4152)',
+                      border: "1px dashed var(--border, var(--border))",
+                      backgroundColor: "var(--card-subtle, var(--card))",
+                      color: "var(--text, var(--muted-foreground))",
                       fontSize: 13,
                       fontWeight: 500,
                       cursor: 'pointer',
@@ -1333,9 +1333,9 @@ export function TeacherAnnouncements() {
                       gap: 8,
                       padding: '6px 12px',
                       borderRadius: 4,
-                      border: '1px solid #fcc3d1',
-                      backgroundColor: '#fff2f4',
-                      color: '#9a133c',
+                      border: "1px solid var(--border)",
+                      backgroundColor: "var(--card)",
+                      color: "var(--primary)",
                       fontSize: 12.5,
                       maxWidth: '100%',
                       boxSizing: 'border-box'
@@ -1344,7 +1344,7 @@ export function TeacherAnnouncements() {
                       <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 280 }}>
                         {attachment.name}
                       </span>
-                      <span style={{ fontSize: 11, color: '#e11d55', backgroundColor: '#ffe1e8', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
+                      <span style={{ fontSize: 11, color: "var(--primary)", backgroundColor: "var(--card)", padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
                         {(attachment.size / 1024).toFixed(1)} KB
                       </span>
                       <button
@@ -1355,7 +1355,7 @@ export function TeacherAnnouncements() {
                           background: 'none',
                           border: 'none',
                           cursor: 'pointer',
-                          color: '#d32f2f',
+                          color: "var(--destructive)",
                           padding: 2,
                           display: 'inline-flex',
                           alignItems: 'center'
@@ -1365,14 +1365,14 @@ export function TeacherAnnouncements() {
                       </button>
                     </div>
                   ) : (
-                    <span style={{ fontSize: 12, color: 'var(--text-muted, #696e79)' }}>
+                    <span style={{ fontSize: 12, color: "var(--text-muted, var(--muted-foreground))" }}>
                       Supports PDF, Word, Excel, images, or documents (max 10MB)
                     </span>
                   )}
                 </div>
 
                 {attachmentError && (
-                  <div style={{ fontSize: 12, color: '#d32f2f', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{ fontSize: 12, color: "var(--destructive)", display: 'flex', alignItems: 'center', gap: 4 }}>
                     <AlertTriangle size={13} /> {attachmentError}
                   </div>
                 )}
@@ -1382,16 +1382,16 @@ export function TeacherAnnouncements() {
               <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
                 {/* Audience Type: Strictly Student as requested (No dropdown arrow) */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 150px', minWidth: 0, maxWidth: '100%' }}>
-                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted, #696e79)', display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>AUDIENCE TYPE</label>
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))", display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>AUDIENCE TYPE</label>
                   <div
                     style={{
                       width: '100%',
                       minWidth: 0,
                       padding: '8px 12px',
                       borderRadius: 4,
-                      border: '1px solid var(--border, #d4d5d9)',
-                      backgroundColor: 'var(--card-subtle, #f9f9fa)',
-                      color: 'var(--text, #1c1f2e)',
+                      border: "1px solid var(--border, var(--border))",
+                      backgroundColor: "var(--card-subtle, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       fontSize: 13,
                       fontWeight: 600,
                       boxSizing: 'border-box',
@@ -1412,7 +1412,7 @@ export function TeacherAnnouncements() {
                     alignItems: 'center',
                     gap: 3,
                     lineHeight: 1,
-                    color: form.classId ? '#e11d55' : 'var(--text-muted, #696e79)'
+                    color: form.classId ? "var(--primary)" : "var(--text-muted, var(--muted-foreground))"
                   }}>
                     <span>CLASS</span>
                   </label>
@@ -1424,11 +1424,11 @@ export function TeacherAnnouncements() {
                       minWidth: 0,
                       padding: '8px 12px',
                       borderRadius: 4,
-                      border: '1px solid var(--border, #d4d5d9)',
+                      border: "1px solid var(--border, var(--border))",
                       fontSize: 13,
                       boxSizing: 'border-box',
-                      backgroundColor: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #1c1f2e)',
+                      backgroundColor: "var(--bg, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       cursor: 'pointer'
                     }}
                   >
@@ -1449,7 +1449,7 @@ export function TeacherAnnouncements() {
                     alignItems: 'center',
                     gap: 3,
                     lineHeight: 1,
-                    color: selectedSectionLetter ? '#e11d55' : 'var(--text-muted, #696e79)'
+                    color: selectedSectionLetter ? "var(--primary)" : "var(--text-muted, var(--muted-foreground))"
                   }}>
                     <span>SECTION</span>
                   </label>
@@ -1461,11 +1461,11 @@ export function TeacherAnnouncements() {
                       minWidth: 0,
                       padding: '8px 12px',
                       borderRadius: 4,
-                      border: '1px solid var(--border, #d4d5d9)',
+                      border: "1px solid var(--border, var(--border))",
                       fontSize: 13,
                       boxSizing: 'border-box',
-                      backgroundColor: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #1c1f2e)',
+                      backgroundColor: "var(--bg, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       cursor: 'pointer'
                     }}
                   >
@@ -1486,8 +1486,8 @@ export function TeacherAnnouncements() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: 6,
-                      backgroundColor: '#e11d55',
-                      color: '#ffffff',
+                      backgroundColor: "var(--primary)",
+                      color: "var(--background)",
                       padding: '9px 18px',
                       borderRadius: 4,
                       border: 'none',
@@ -1508,9 +1508,9 @@ export function TeacherAnnouncements() {
               <div style={{
                 padding: '10px 14px',
                 borderRadius: 4,
-                backgroundColor: form.sectionId ? 'rgba(92, 107, 192, 0.12)' : form.classId ? 'rgba(225, 29, 85, 0.12)' : 'var(--card-subtle, #f9f9fa)',
-                border: form.sectionId ? '1px solid rgba(92, 107, 192, 0.3)' : form.classId ? '1px solid rgba(225, 29, 85, 0.3)' : '1px solid var(--border, #eaeaec)',
-                color: form.sectionId ? '#7f8ccd' : form.classId ? '#ef5a85' : 'var(--text, #3e4152)',
+                backgroundColor: form.sectionId ? "var(--secondary)" : form.classId ? "var(--accent)" : "var(--card-subtle, var(--card))",
+                border: form.sectionId ? "1px solid var(--border)" : form.classId ? "1px solid var(--border)" : "1px solid var(--border, var(--border))",
+                color: form.sectionId ? "var(--info)" : form.classId ? "var(--primary)" : "var(--text, var(--muted-foreground))",
                 fontSize: 12.5,
                 display: 'flex',
                 alignItems: 'center',
@@ -1544,7 +1544,7 @@ export function TeacherAnnouncements() {
 
           {/* ── Filter Bar Header Row (All | Sent | Receive) ── */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text, #282c3f)' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
               {tableFilter === 'SENT' ? (
                 <>My Sent Broadcasts ({sentNotices.length})</>
               ) : tableFilter === 'RECEIVE' ? (
@@ -1555,7 +1555,7 @@ export function TeacherAnnouncements() {
             </div>
 
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: 'var(--text-muted, #696e79)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 12, color: "var(--text-muted, var(--muted-foreground))", display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Filter size={13} /> Filter:
               </span>
               {(['ALL', 'SENT', 'RECEIVE'] as const).map(f => {
@@ -1571,8 +1571,8 @@ export function TeacherAnnouncements() {
                       borderRadius: 4,
                       fontSize: 12,
                       fontWeight: tableFilter === f ? 700 : 500,
-                      backgroundColor: tableFilter === f ? 'var(--sidebar-accent, #e11d55)' : 'var(--card-subtle, #f5f5f6)',
-                      color: tableFilter === f ? '#ffffff' : 'var(--text-secondary, #535766)',
+                      backgroundColor: tableFilter === f ? "var(--sidebar-accent, var(--primary))" : "var(--card-subtle, var(--secondary))",
+                      color: tableFilter === f ? "var(--background)" : "var(--text-secondary, var(--muted-foreground))",
                       border: '1px solid var(--border, transparent)',
                       cursor: 'pointer',
                       display: 'inline-flex',
@@ -1585,7 +1585,7 @@ export function TeacherAnnouncements() {
                     <span style={{
                       fontSize: 10.5,
                       opacity: tableFilter === f ? 0.9 : 0.7,
-                      backgroundColor: tableFilter === f ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.06)',
+                      backgroundColor: tableFilter === f ? "var(--card)" : "var(--card)",
                       padding: '1px 5px',
                       borderRadius: 4
                     }}>
@@ -1620,9 +1620,9 @@ export function TeacherAnnouncements() {
                   flexWrap: 'wrap',
                   gap: 12,
                   padding: '12px 16px',
-                  backgroundColor: 'var(--card, #ffffff)',
+                  backgroundColor: "var(--card, var(--card))",
                   borderRadius: 4,
-                  border: '1px solid var(--border, #eaeaec)',
+                  border: "1px solid var(--border, var(--border))",
                   marginBottom: 20,
                   boxShadow: 'none'
                 }}
@@ -1637,8 +1637,8 @@ export function TeacherAnnouncements() {
                       borderRadius: 4,
                       fontSize: 12,
                       fontWeight: priorityFilter === 'ALL' ? 700 : 500,
-                      backgroundColor: priorityFilter === 'ALL' ? '#e11d55' : 'var(--card-subtle, #f5f5f6)',
-                      color: priorityFilter === 'ALL' ? '#ffffff' : 'var(--text-secondary, #535766)',
+                      backgroundColor: priorityFilter === 'ALL' ? "var(--primary)" : "var(--card-subtle, var(--secondary))",
+                      color: priorityFilter === 'ALL' ? "var(--background)" : "var(--text-secondary, var(--muted-foreground))",
                       border: '1px solid var(--border, transparent)',
                       cursor: 'pointer'
                     }}
@@ -1653,8 +1653,8 @@ export function TeacherAnnouncements() {
                       borderRadius: 4,
                       fontSize: 12,
                       fontWeight: priorityFilter === 'UNREAD' ? 700 : 500,
-                      backgroundColor: priorityFilter === 'UNREAD' ? '#ffe1e8' : 'var(--card-subtle, #f5f5f6)',
-                      color: priorityFilter === 'UNREAD' ? '#9a133c' : 'var(--text-secondary, #535766)',
+                      backgroundColor: priorityFilter === 'UNREAD' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+                      color: priorityFilter === 'UNREAD' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
                       border: '1px solid var(--border, transparent)',
                       cursor: 'pointer'
                     }}
@@ -1669,8 +1669,8 @@ export function TeacherAnnouncements() {
                       borderRadius: 4,
                       fontSize: 12,
                       fontWeight: priorityFilter === 'EMERGENCY' ? 700 : 500,
-                      backgroundColor: priorityFilter === 'EMERGENCY' ? '#f7d5d5' : 'var(--card-subtle, #f5f5f6)',
-                      color: priorityFilter === 'EMERGENCY' ? '#a82424' : 'var(--text-secondary, #535766)',
+                      backgroundColor: priorityFilter === 'EMERGENCY' ? "var(--secondary)" : "var(--card-subtle, var(--secondary))",
+                      color: priorityFilter === 'EMERGENCY' ? "var(--destructive)" : "var(--text-secondary, var(--muted-foreground))",
                       border: '1px solid var(--border, transparent)',
                       cursor: 'pointer'
                     }}
@@ -1685,8 +1685,8 @@ export function TeacherAnnouncements() {
                       borderRadius: 4,
                       fontSize: 12,
                       fontWeight: priorityFilter === 'HIGH' ? 700 : 500,
-                      backgroundColor: priorityFilter === 'HIGH' ? '#fbecd3' : 'var(--card-subtle, #f5f5f6)',
-                      color: priorityFilter === 'HIGH' ? '#8f5c12' : 'var(--text-secondary, #535766)',
+                      backgroundColor: priorityFilter === 'HIGH' ? "var(--secondary)" : "var(--card-subtle, var(--secondary))",
+                      color: priorityFilter === 'HIGH' ? "var(--warning)" : "var(--text-secondary, var(--muted-foreground))",
                       border: '1px solid var(--border, transparent)',
                       cursor: 'pointer'
                     }}
@@ -1697,7 +1697,7 @@ export function TeacherAnnouncements() {
 
                 {/* Search Bar */}
                 <div style={{ position: 'relative', width: 260 }}>
-                  <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted, #94969f)' }} />
+                  <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: "var(--text-muted, var(--muted-foreground))" }} />
                   <input
                     type="text"
                     placeholder="Search circulars..."
@@ -1708,9 +1708,9 @@ export function TeacherAnnouncements() {
                       padding: '7px 10px 7px 32px',
                       fontSize: 12.5,
                       borderRadius: 4,
-                      border: '1px solid var(--border, #d4d5d9)',
-                      backgroundColor: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #1c1f2e)',
+                      border: "1px solid var(--border, var(--border))",
+                      backgroundColor: "var(--bg, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       boxSizing: 'border-box'
                     }}
                   />
@@ -1718,7 +1718,7 @@ export function TeacherAnnouncements() {
                     <button
                       type="button"
                       onClick={() => setSearchQuery('')}
-                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94969f', padding: 2 }}
+                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: "var(--muted-foreground)", padding: 2 }}
                     >
                       <X size={13} />
                     </button>
@@ -1728,17 +1728,17 @@ export function TeacherAnnouncements() {
 
               {/* Received Notices Cards from Image 2 */}
               {loading ? (
-                <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted, #696e79)' }}>
+                <div style={{ padding: 40, textAlign: 'center', color: "var(--text-muted, var(--muted-foreground))" }}>
                   Loading school circulars...
                 </div>
               ) : filteredReceived.length === 0 ? (
                 <div style={{
                   padding: 48,
                   textAlign: 'center',
-                  backgroundColor: 'var(--bg-card, #ffffff)',
-                  border: '1px solid var(--border, #eaeaec)',
+                  backgroundColor: "var(--bg-card, var(--card))",
+                  border: "1px solid var(--border, var(--border))",
                   borderRadius: 4,
-                  color: 'var(--text-muted, #696e79)'
+                  color: "var(--text-muted, var(--muted-foreground))"
                 }}>
                   <Megaphone size={32} style={{ opacity: 0.35, margin: '0 auto 10px' }} />
                   <div style={{ fontWeight: 600, fontSize: 14 }}>No received notices found</div>
@@ -1754,11 +1754,11 @@ export function TeacherAnnouncements() {
                       <div
                         key={notice.id}
                         style={{
-                          backgroundColor: 'var(--bg-card, #ffffff)',
-                          border: isUnread ? '1.5px solid #e11d55' : '1px solid var(--border, #eaeaec)',
+                          backgroundColor: "var(--bg-card, var(--card))",
+                          border: isUnread ? "1.5px solid var(--border)" : "1px solid var(--border, var(--border))",
                           borderRadius: 4,
                           padding: 20,
-                          boxShadow: isUnread ? '0 2px 8px rgba(225, 29, 85, 0.08)' : '0 1px 3px rgba(0,0,0,0.02)',
+                          boxShadow: isUnread ? "none" : "none",
                           position: 'relative'
                         }}
                       >
@@ -1770,15 +1770,15 @@ export function TeacherAnnouncements() {
                               borderRadius: 4,
                               fontSize: 11,
                               fontWeight: 700,
-                              backgroundColor: notice.priority === 'EMERGENCY' ? '#f7d5d5' : notice.priority === 'HIGH' ? '#fbecd3' : '#f5f5f6',
-                              color: notice.priority === 'EMERGENCY' ? '#a82424' : notice.priority === 'HIGH' ? '#8f5c12' : '#535766'
+                              backgroundColor: notice.priority === 'EMERGENCY' ? "var(--secondary)" : notice.priority === 'HIGH' ? "var(--secondary)" : "var(--secondary)",
+                              color: notice.priority === 'EMERGENCY' ? "var(--destructive)" : notice.priority === 'HIGH' ? "var(--warning)" : "var(--muted-foreground)"
                             }}>
                               {notice.priority}
                             </span>
-                            <span style={{ fontSize: 12, color: 'var(--text-muted, #696e79)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontSize: 12, color: "var(--text-muted, var(--muted-foreground))", display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                               <Calendar size={13} /> {formatPublishDate(notice.published_at || notice.created_at)}
                             </span>
-                            <span style={{ fontSize: 12, color: 'var(--text-muted, #696e79)' }}>
+                            <span style={{ fontSize: 12, color: "var(--text-muted, var(--muted-foreground))" }}>
                               From: <b>{notice.author_name || 'Administration'}</b>
                             </span>
                           </div>
@@ -1797,16 +1797,16 @@ export function TeacherAnnouncements() {
                                   borderRadius: 4,
                                   fontSize: 11.5,
                                   fontWeight: 600,
-                                  border: '1px solid #e11d55',
-                                  backgroundColor: '#fff2f4',
-                                  color: '#c0174a',
+                                  border: "1px solid var(--border)",
+                                  backgroundColor: "var(--card)",
+                                  color: "var(--primary)",
                                   cursor: 'pointer'
                                 }}
                               >
                                 <Check size={13} /> Mark as Read
                               </button>
                             ) : (
-                              <span style={{ fontSize: 11.5, color: '#03806a', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
+                              <span style={{ fontSize: 11.5, color: "var(--success)", display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
                                 <CheckCircle2 size={13} /> Read
                               </span>
                             )}
@@ -1814,10 +1814,10 @@ export function TeacherAnnouncements() {
                         </div>
 
                         {/* Notice Title & Message */}
-                        <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: 'var(--text, #1c1f2e)' }}>
+                        <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
                           {notice.title}
                         </h3>
-                        <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--text, #3e4152)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
+                        <p style={{ margin: '0 0 12px', fontSize: 13.5, color: "var(--text, var(--muted-foreground))", lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
                           {notice.message}
                         </p>
 
@@ -1835,9 +1835,9 @@ export function TeacherAnnouncements() {
                                 gap: 6,
                                 padding: '6px 12px',
                                 borderRadius: 4,
-                                backgroundColor: 'var(--card-subtle, #f9f9fa)',
-                                border: '1px solid var(--border, #d4d5d9)',
-                                color: '#e11d55',
+                                backgroundColor: "var(--card-subtle, var(--card))",
+                                border: "1px solid var(--border, var(--border))",
+                                color: "var(--primary)",
                                 fontSize: 12,
                                 fontWeight: 600,
                                 textDecoration: 'none'
@@ -1851,8 +1851,8 @@ export function TeacherAnnouncements() {
                         )}
 
                         {/* Responses & Threaded Discussion Section */}
-                        <div style={{ borderTop: '1px solid var(--border, #f5f5f6)', paddingTop: 12 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text, #1c1f2e)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ borderTop: "1px solid var(--border, var(--border))", paddingTop: 12 }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text, var(--foreground))", marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                             <MessageSquare size={14} color="#e11d55" />
                             <span>Responses & Discussion ({replies.length})</span>
                           </div>
@@ -1860,12 +1860,12 @@ export function TeacherAnnouncements() {
                           {replies.length > 0 && (
                             <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
                               {replies.map(r => (
-                                <div key={r.id} style={{ padding: '8px 12px', borderRadius: 4, backgroundColor: 'var(--card-subtle, #f9f9fa)', borderLeft: '3px solid #e11d55', fontSize: 12.5 }}>
+                                <div key={r.id} style={{ padding: '8px 12px', borderRadius: 4, backgroundColor: "var(--card-subtle, var(--card))", borderLeft: "3px solid var(--border)", fontSize: 12.5 }}>
                                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                                    <span style={{ fontWeight: 600, color: 'var(--text, #1c1f2e)' }}>{r.author_name}</span>
-                                    <span style={{ fontSize: 11, color: 'var(--text-muted, #94969f)' }}>{r.created_at ? new Date(r.created_at).toLocaleString() : ''}</span>
+                                    <span style={{ fontWeight: 600, color: "var(--text, var(--foreground))" }}>{r.author_name}</span>
+                                    <span style={{ fontSize: 11, color: "var(--text-muted, var(--muted-foreground))" }}>{r.created_at ? new Date(r.created_at).toLocaleString() : ''}</span>
                                   </div>
-                                  <div style={{ color: 'var(--text, #3e4152)', whiteSpace: 'pre-wrap' }}>{r.reply_text}</div>
+                                  <div style={{ color: "var(--text, var(--muted-foreground))", whiteSpace: 'pre-wrap' }}>{r.reply_text}</div>
                                 </div>
                               ))}
                             </div>
@@ -1882,9 +1882,9 @@ export function TeacherAnnouncements() {
                                   fontSize: 11.5,
                                   padding: '3px 8px',
                                   borderRadius: 4,
-                                  backgroundColor: 'var(--card-subtle, #f5f5f6)',
-                                  border: '1px solid var(--border, #d4d5d9)',
-                                  color: 'var(--text-secondary, #535766)',
+                                  backgroundColor: "var(--card-subtle, var(--secondary))",
+                                  border: "1px solid var(--border, var(--border))",
+                                  color: "var(--text-secondary, var(--muted-foreground))",
                                   cursor: 'pointer'
                                 }}
                               >
@@ -1907,9 +1907,9 @@ export function TeacherAnnouncements() {
                                 padding: '8px 12px',
                                 fontSize: 13,
                                 borderRadius: 4,
-                                border: '1px solid var(--border, #d4d5d9)',
-                                backgroundColor: 'var(--bg, #ffffff)',
-                                color: 'var(--text, #1c1f2e)'
+                                border: "1px solid var(--border, var(--border))",
+                                backgroundColor: "var(--bg, var(--card))",
+                                color: "var(--text, var(--foreground))"
                               }}
                             />
                             <button
@@ -1920,8 +1920,8 @@ export function TeacherAnnouncements() {
                                 padding: '8px 16px',
                                 borderRadius: 4,
                                 border: 'none',
-                                backgroundColor: '#e11d55',
-                                color: '#ffffff',
+                                backgroundColor: "var(--primary)",
+                                color: "var(--background)",
                                 fontSize: 13,
                                 fontWeight: 600,
                                 cursor: (submittingReplyId === notice.id || !replyInputs[notice.id]?.trim()) ? 'not-allowed' : 'pointer',
@@ -1936,7 +1936,7 @@ export function TeacherAnnouncements() {
                           </div>
 
                           {replySuccessMap[notice.id] && (
-                            <div style={{ fontSize: 12, color: '#03806a', marginTop: 4, fontWeight: 500 }}>
+                            <div style={{ fontSize: 12, color: "var(--success)", marginTop: 4, fontWeight: 500 }}>
                               ✓ {replySuccessMap[notice.id]}
                             </div>
                           )}
@@ -1963,11 +1963,11 @@ export function TeacherAnnouncements() {
 
               {/* Search bar for sent notices */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
-                <div style={{ fontSize: 13, color: 'var(--text-muted, #696e79)' }}>
+                <div style={{ fontSize: 13, color: "var(--text-muted, var(--muted-foreground))" }}>
                   Announcements broadcasted to students and parents by you ({filteredSent.length}):
                 </div>
                 <div style={{ position: 'relative', width: 260 }}>
-                  <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted, #94969f)' }} />
+                  <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: "var(--text-muted, var(--muted-foreground))" }} />
                   <input
                     type="text"
                     placeholder="Search my broadcasts..."
@@ -1978,9 +1978,9 @@ export function TeacherAnnouncements() {
                       padding: '7px 10px 7px 32px',
                       fontSize: 12.5,
                       borderRadius: 4,
-                      border: '1px solid var(--border, #d4d5d9)',
-                      backgroundColor: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #1c1f2e)',
+                      border: "1px solid var(--border, var(--border))",
+                      backgroundColor: "var(--bg, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       boxSizing: 'border-box'
                     }}
                   />
@@ -1988,7 +1988,7 @@ export function TeacherAnnouncements() {
                     <button
                       type="button"
                       onClick={() => setSearchQuery('')}
-                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94969f', padding: 2 }}
+                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: "var(--muted-foreground)", padding: 2 }}
                     >
                       <X size={13} />
                     </button>
@@ -2000,10 +2000,10 @@ export function TeacherAnnouncements() {
                 <div style={{
                   padding: 48,
                   textAlign: 'center',
-                  backgroundColor: 'var(--bg-card, #ffffff)',
-                  border: '1px solid var(--border, #eaeaec)',
+                  backgroundColor: "var(--bg-card, var(--card))",
+                  border: "1px solid var(--border, var(--border))",
                   borderRadius: 4,
-                  color: 'var(--text-muted, #696e79)'
+                  color: "var(--text-muted, var(--muted-foreground))"
                 }}>
                   <Send size={32} style={{ opacity: 0.35, margin: '0 auto 10px' }} />
                   <div style={{ fontWeight: 600, fontSize: 14 }}>No sent broadcasts yet</div>
@@ -2012,18 +2012,18 @@ export function TeacherAnnouncements() {
                   </p>
                 </div>
               ) : (
-                <div className="table-wrap" style={{ border: '1px solid var(--border, #eaeaec)', borderRadius: 4, overflow: 'hidden', overflowX: 'auto', backgroundColor: 'var(--bg-card, #ffffff)', width: '100%', boxSizing: 'border-box' }}>
+                <div className="table-wrap" style={{ border: "1px solid var(--border, var(--border))", borderRadius: 4, overflow: 'hidden', overflowX: 'auto', backgroundColor: "var(--bg-card, var(--card))", width: '100%', boxSizing: 'border-box' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: 640 }}>
                     <thead>
-                      <tr style={{ backgroundColor: 'var(--card-subtle, #f9f9fa)', borderBottom: '1px solid var(--border, #eaeaec)' }}>
-                        <th style={{ width: '25%', padding: '10px 12px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #535766)', fontWeight: 600 }}>TITLE</th>
-                        <th style={{ width: '14%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #535766)', fontWeight: 600 }}>AUDIENCE</th>
-                        <th style={{ width: '10%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #535766)', fontWeight: 600 }}>STATUS</th>
-                        <th style={{ width: '14%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #535766)', fontWeight: 600 }}>PUBLISHED AT</th>
-                        <th style={{ width: '8%', padding: '10px 4px', textAlign: 'center', fontSize: 11.5, color: 'var(--text-secondary, #535766)', fontWeight: 600 }}>RECIPIENTS</th>
-                        <th style={{ width: '8%', padding: '10px 4px', textAlign: 'center', fontSize: 11.5, color: 'var(--text-secondary, #535766)', fontWeight: 600 }}>READ</th>
-                        <th style={{ width: '7%', padding: '10px 4px', textAlign: 'center', fontSize: 11.5, color: 'var(--text-secondary, #535766)', fontWeight: 600 }}>REPLIES</th>
-                        <th style={{ width: '14%', padding: '10px 12px', textAlign: 'right', fontSize: 11.5, color: 'var(--text-secondary, #535766)', fontWeight: 600 }}>ACTION</th>
+                      <tr style={{ backgroundColor: "var(--card-subtle, var(--card))", borderBottom: "1px solid var(--border, var(--border))" }}>
+                        <th style={{ width: '25%', padding: '10px 12px', textAlign: 'left', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>TITLE</th>
+                        <th style={{ width: '14%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>AUDIENCE</th>
+                        <th style={{ width: '10%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>STATUS</th>
+                        <th style={{ width: '14%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>PUBLISHED AT</th>
+                        <th style={{ width: '8%', padding: '10px 4px', textAlign: 'center', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>RECIPIENTS</th>
+                        <th style={{ width: '8%', padding: '10px 4px', textAlign: 'center', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>READ</th>
+                        <th style={{ width: '7%', padding: '10px 4px', textAlign: 'center', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>REPLIES</th>
+                        <th style={{ width: '14%', padding: '10px 12px', textAlign: 'right', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>ACTION</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2052,7 +2052,7 @@ export function TeacherAnnouncements() {
                         }
 
                         return (
-                          <tr key={x.id} style={{ borderBottom: '1px solid var(--border, #f5f5f6)' }}>
+                          <tr key={x.id} style={{ borderBottom: "1px solid var(--border, var(--border))" }}>
                             <td style={{ padding: '10px 12px', verticalAlign: 'middle', overflow: 'hidden' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <button
@@ -2065,7 +2065,7 @@ export function TeacherAnnouncements() {
                                     cursor: 'pointer',
                                     fontWeight: 600,
                                     fontSize: 13,
-                                    color: 'var(--text, #1c1f2e)',
+                                    color: "var(--text, var(--foreground))",
                                     textAlign: 'left',
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
@@ -2076,7 +2076,7 @@ export function TeacherAnnouncements() {
                                   {x.title}
                                 </button>
                                 {x.attachment_url && (
-                                  <span title="File attached" style={{ color: '#e11d55' }}>
+                                  <span title="File attached" style={{ color: "var(--primary)" }}>
                                     <Paperclip size={12} />
                                   </span>
                                 )}
@@ -2088,8 +2088,8 @@ export function TeacherAnnouncements() {
                                 borderRadius: 4,
                                 fontSize: 11,
                                 fontWeight: 600,
-                                backgroundColor: '#fff2f4',
-                                color: '#9a133c'
+                                backgroundColor: "var(--card)",
+                                color: "var(--primary)"
                               }}>
                                 {audienceBadgeText}
                               </span>
@@ -2100,17 +2100,17 @@ export function TeacherAnnouncements() {
                                 borderRadius: 4,
                                 fontSize: 11,
                                 fontWeight: 700,
-                                backgroundColor: x.status === 'PUBLISHED' ? '#cce6e1' : '#f5f5f6',
-                                color: x.status === 'PUBLISHED' ? '#02604f' : '#696e79'
+                                backgroundColor: x.status === 'PUBLISHED' ? "var(--secondary)" : "var(--secondary)",
+                                color: x.status === 'PUBLISHED' ? "var(--success)" : "var(--muted-foreground)"
                               }}>
                                 {x.status || 'PUBLISHED'}
                               </span>
                             </td>
-                            <td style={{ padding: '10px 8px', verticalAlign: 'middle', fontSize: 12, color: 'var(--text-secondary, #535766)' }}>
+                            <td style={{ padding: '10px 8px', verticalAlign: 'middle', fontSize: 12, color: "var(--text-secondary, var(--muted-foreground))" }}>
                               <div>{formatPublishDate(x.published_at || x.created_at)}</div>
-                              <div style={{ fontSize: 10.5, color: 'var(--text-muted, #94969f)' }}>{formatPublishTime(x.published_at || x.created_at)}</div>
+                              <div style={{ fontSize: 10.5, color: "var(--text-muted, var(--muted-foreground))" }}>{formatPublishTime(x.published_at || x.created_at)}</div>
                             </td>
-                            <td style={{ padding: '10px 4px', textAlign: 'center', verticalAlign: 'middle', fontSize: 11.5, color: 'var(--text-secondary, #535766)' }}>
+                            <td style={{ padding: '10px 4px', textAlign: 'center', verticalAlign: 'middle', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))" }}>
                               {x.recipient_count || 0}
                             </td>
                             <td style={{ padding: '10px 4px', textAlign: 'center', verticalAlign: 'middle' }}>
@@ -2124,16 +2124,16 @@ export function TeacherAnnouncements() {
                                     borderRadius: 4,
                                     fontSize: 11.5,
                                     fontWeight: 700,
-                                    backgroundColor: '#e6f2f0',
-                                    color: '#02604f',
-                                    border: '1px solid #99ccc3'
+                                    backgroundColor: "var(--secondary)",
+                                    color: "var(--success)",
+                                    border: "1px solid var(--border)"
                                   }}
                                   title={`${x.read_count} student(s) read this announcement`}
                                 >
                                   ✓ {x.read_count} Read
                                 </span>
                               ) : (
-                                <span style={{ fontSize: 11.5, color: 'var(--text-muted, #94969f)' }}>0</span>
+                                <span style={{ fontSize: 11.5, color: "var(--text-muted, var(--muted-foreground))" }}>0</span>
                               )}
                             </td>
                             <td style={{ padding: '10px 4px', textAlign: 'center', verticalAlign: 'middle' }}>
@@ -2147,9 +2147,9 @@ export function TeacherAnnouncements() {
                                     gap: 3,
                                     padding: '2px 6px',
                                     borderRadius: 4,
-                                    border: '1px solid #fcc3d1',
-                                    backgroundColor: '#fff2f4',
-                                    color: '#c0174a',
+                                    border: "1px solid var(--border)",
+                                    backgroundColor: "var(--card)",
+                                    color: "var(--primary)",
                                     fontSize: 11,
                                     fontWeight: 600,
                                     cursor: 'pointer'
@@ -2158,7 +2158,7 @@ export function TeacherAnnouncements() {
                                   <MessageCircle size={11} /> {x.reply_count}
                                 </button>
                               ) : (
-                                <span style={{ fontSize: 11, color: 'var(--text-muted, #94969f)' }}>0</span>
+                                <span style={{ fontSize: 11, color: "var(--text-muted, var(--muted-foreground))" }}>0</span>
                               )}
                             </td>
                             <td style={{ padding: '10px 12px', textAlign: 'right', verticalAlign: 'middle' }}>
@@ -2170,9 +2170,9 @@ export function TeacherAnnouncements() {
                                     style={{
                                       padding: '4px 10px',
                                       borderRadius: 4,
-                                      border: '1px solid var(--border, #d4d5d9)',
-                                      backgroundColor: 'var(--bg, #ffffff)',
-                                      color: '#e11d55',
+                                      border: "1px solid var(--border, var(--border))",
+                                      backgroundColor: "var(--bg, var(--card))",
+                                      color: "var(--primary)",
                                       fontSize: 11.5,
                                       fontWeight: 600,
                                       cursor: 'pointer',
@@ -2191,9 +2191,9 @@ export function TeacherAnnouncements() {
                                     style={{
                                       padding: '4px 10px',
                                       borderRadius: 4,
-                                      border: '1px solid var(--border, #d4d5d9)',
-                                      backgroundColor: 'var(--bg, #ffffff)',
-                                      color: '#e11d55',
+                                      border: "1px solid var(--border, var(--border))",
+                                      backgroundColor: "var(--bg, var(--card))",
+                                      color: "var(--primary)",
                                       fontSize: 11.5,
                                       fontWeight: 600,
                                       cursor: 'pointer',
@@ -2231,24 +2231,24 @@ export function TeacherAnnouncements() {
               />
 
               {/* Combined List Grid */}
-              <div className="table-wrap" style={{ border: '1px solid var(--border, #eaeaec)', borderRadius: 4, overflow: 'hidden', overflowX: 'auto', backgroundColor: 'var(--bg-card, #ffffff)', width: '100%', boxSizing: 'border-box' }}>
+              <div className="table-wrap" style={{ border: "1px solid var(--border, var(--border))", borderRadius: 4, overflow: 'hidden', overflowX: 'auto', backgroundColor: "var(--bg-card, var(--card))", width: '100%', boxSizing: 'border-box' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: 640 }}>
                   <thead>
-                    <tr style={{ backgroundColor: 'var(--card-subtle, #f9f9fa)', borderBottom: '1px solid var(--border, #eaeaec)' }}>
-                      <th style={{ width: '32%', padding: '10px 12px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #535766)', fontWeight: 600 }}>TITLE</th>
-                      <th style={{ width: '18%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #535766)', fontWeight: 600 }}>TYPE & SCOPE</th>
-                      <th style={{ width: '14%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #535766)', fontWeight: 600 }}>STATUS / SENDER</th>
-                      <th style={{ width: '18%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #535766)', fontWeight: 600 }}>DATE</th>
-                      <th style={{ width: '18%', padding: '10px 12px', textAlign: 'right', fontSize: 11.5, color: 'var(--text-secondary, #535766)', fontWeight: 600 }}>ACTION</th>
+                    <tr style={{ backgroundColor: "var(--card-subtle, var(--card))", borderBottom: "1px solid var(--border, var(--border))" }}>
+                      <th style={{ width: '32%', padding: '10px 12px', textAlign: 'left', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>TITLE</th>
+                      <th style={{ width: '18%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>TYPE & SCOPE</th>
+                      <th style={{ width: '14%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>STATUS / SENDER</th>
+                      <th style={{ width: '18%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>DATE</th>
+                      <th style={{ width: '18%', padding: '10px 12px', textAlign: 'right', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>ACTION</th>
                     </tr>
                   </thead>
                   <tbody>
                     {/* Sent Items */}
                     {filteredSent.map(x => (
-                      <tr key={`sent-${x.id}`} style={{ borderBottom: '1px solid var(--border, #f5f5f6)', backgroundColor: 'rgba(225, 29, 85,0.015)' }}>
+                      <tr key={`sent-${x.id}`} style={{ borderBottom: "1px solid var(--border, var(--border))", backgroundColor: "var(--accent)" }}>
                         <td style={{ padding: '10px 12px', verticalAlign: 'middle', overflow: 'hidden' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 5px', borderRadius: 4, backgroundColor: '#fff2f4', color: '#c0174a' }}>SENT</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 5px', borderRadius: 4, backgroundColor: "var(--card)", color: "var(--primary)" }}>SENT</span>
                             <button
                               type="button"
                               onClick={() => setViewingNotice(x)}
@@ -2259,7 +2259,7 @@ export function TeacherAnnouncements() {
                                 cursor: 'pointer',
                                 fontWeight: 600,
                                 fontSize: 13,
-                                color: 'var(--text, #1c1f2e)',
+                                color: "var(--text, var(--foreground))",
                                 textAlign: 'left',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
@@ -2272,23 +2272,23 @@ export function TeacherAnnouncements() {
                           </div>
                         </td>
                         <td style={{ padding: '10px 8px', verticalAlign: 'middle' }}>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: '#9a133c' }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--primary)" }}>
                             Students {x.class_number ? `(Class ${x.class_number})` : ''}
                           </span>
                         </td>
                         <td style={{ padding: '10px 8px', verticalAlign: 'middle' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: '#03806a' }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--success)" }}>
                               ✓ {x.status || 'Published'}
                             </span>
                             {(x.read_count || 0) > 0 && (
-                              <span style={{ fontSize: 10.5, fontWeight: 700, color: '#02604f' }}>
+                              <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--success)" }}>
                                 ✓ {x.read_count} Read
                               </span>
                             )}
                           </div>
                         </td>
-                        <td style={{ padding: '10px 8px', verticalAlign: 'middle', fontSize: 12, color: 'var(--text-secondary, #535766)' }}>
+                        <td style={{ padding: '10px 8px', verticalAlign: 'middle', fontSize: 12, color: "var(--text-secondary, var(--muted-foreground))" }}>
                           {formatPublishDate(x.published_at || x.created_at)}
                         </td>
                         <td style={{ padding: '10px 12px', textAlign: 'right', verticalAlign: 'middle' }}>
@@ -2299,9 +2299,9 @@ export function TeacherAnnouncements() {
                               style={{
                                 padding: '4px 10px',
                                 borderRadius: 4,
-                                border: '1px solid var(--border, #d4d5d9)',
-                                backgroundColor: 'var(--bg, #ffffff)',
-                                color: '#e11d55',
+                                border: "1px solid var(--border, var(--border))",
+                                backgroundColor: "var(--bg, var(--card))",
+                                color: "var(--primary)",
                                 fontSize: 11.5,
                                 fontWeight: 600,
                                 cursor: 'pointer',
@@ -2320,9 +2320,9 @@ export function TeacherAnnouncements() {
                               style={{
                                 padding: '4px 10px',
                                 borderRadius: 4,
-                                border: '1px solid var(--border, #d4d5d9)',
-                                backgroundColor: 'var(--bg, #ffffff)',
-                                color: '#e11d55',
+                                border: "1px solid var(--border, var(--border))",
+                                backgroundColor: "var(--bg, var(--card))",
+                                color: "var(--primary)",
                                 fontSize: 11.5,
                                 fontWeight: 600,
                                 cursor: 'pointer',
@@ -2341,10 +2341,10 @@ export function TeacherAnnouncements() {
 
                     {/* Received Items */}
                     {filteredReceived.map(x => (
-                      <tr key={`recv-${x.id}`} style={{ borderBottom: '1px solid var(--border, #f5f5f6)' }}>
+                      <tr key={`recv-${x.id}`} style={{ borderBottom: "1px solid var(--border, var(--border))" }}>
                         <td style={{ padding: '10px 12px', verticalAlign: 'middle', overflow: 'hidden' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 5px', borderRadius: 4, backgroundColor: '#e6f2f0', color: '#02604f' }}>RECEIVED</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 5px', borderRadius: 4, backgroundColor: "var(--secondary)", color: "var(--success)" }}>RECEIVED</span>
                             <button
                               type="button"
                               onClick={() => {
@@ -2358,7 +2358,7 @@ export function TeacherAnnouncements() {
                                 cursor: 'pointer',
                                 fontWeight: !x.read_at ? 700 : 500,
                                 fontSize: 13,
-                                color: 'var(--text, #1c1f2e)',
+                                color: "var(--text, var(--foreground))",
                                 textAlign: 'left',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
@@ -2368,21 +2368,21 @@ export function TeacherAnnouncements() {
                               {x.title}
                             </button>
                             {!x.read_at && (
-                              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#e11d55', flexShrink: 0 }} />
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: "var(--primary)", flexShrink: 0 }} />
                             )}
                           </div>
                         </td>
                         <td style={{ padding: '10px 8px', verticalAlign: 'middle' }}>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary, #535766)' }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary, var(--muted-foreground))" }}>
                             Faculty & Staff
                           </span>
                         </td>
                         <td style={{ padding: '10px 8px', verticalAlign: 'middle' }}>
-                          <span style={{ fontSize: 11, color: 'var(--text-secondary, #535766)' }}>
+                          <span style={{ fontSize: 11, color: "var(--text-secondary, var(--muted-foreground))" }}>
                             From: {x.author_name || 'Admin'}
                           </span>
                         </td>
-                        <td style={{ padding: '10px 8px', verticalAlign: 'middle', fontSize: 12, color: 'var(--text-secondary, #535766)' }}>
+                        <td style={{ padding: '10px 8px', verticalAlign: 'middle', fontSize: 12, color: "var(--text-secondary, var(--muted-foreground))" }}>
                           {formatPublishDate(x.published_at || x.created_at)}
                         </td>
                         <td style={{ padding: '10px 12px', textAlign: 'right', verticalAlign: 'middle' }}>
@@ -2395,9 +2395,9 @@ export function TeacherAnnouncements() {
                             style={{
                               padding: '4px 8px',
                               borderRadius: 4,
-                              border: '1px solid var(--border, #d4d5d9)',
-                              backgroundColor: 'var(--bg, #ffffff)',
-                              color: '#e11d55',
+                              border: "1px solid var(--border, var(--border))",
+                              backgroundColor: "var(--bg, var(--card))",
+                              color: "var(--primary)",
                               fontSize: 11.5,
                               fontWeight: 600,
                               cursor: 'pointer'
@@ -2411,7 +2411,7 @@ export function TeacherAnnouncements() {
 
                     {filteredSent.length === 0 && filteredReceived.length === 0 && (
                       <tr>
-                        <td colSpan={5} style={{ padding: 36, textAlign: 'center', color: 'var(--text-muted, #696e79)' }}>
+                        <td colSpan={5} style={{ padding: 36, textAlign: 'center', color: "var(--text-muted, var(--muted-foreground))" }}>
                           No notices recorded yet.
                         </td>
                       </tr>
@@ -2455,7 +2455,7 @@ export function TeacherAnnouncements() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(28, 31, 46, 0.65)',
+            background: "var(--card)",
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
             display: 'flex',
@@ -2471,8 +2471,8 @@ export function TeacherAnnouncements() {
               width: isNoticeMaximized ? 'min(1280px, 98vw)' : 'min(640px, 95vw)',
               height: isNoticeMaximized ? '94vh' : 'auto',
               maxHeight: '94vh',
-              background: 'var(--bg-card, #ffffff)',
-              border: '1px solid var(--border, #eaeaec)',
+              background: "var(--bg-card, var(--card))",
+              border: "1px solid var(--border, var(--border))",
               borderRadius: isNoticeMaximized ? 12 : 16,
               boxShadow: 'none',
               display: 'flex',
@@ -2485,8 +2485,8 @@ export function TeacherAnnouncements() {
             {/* Modal Header */}
             <div style={{
               padding: isNoticeMaximized ? '16px 24px' : '18px 24px',
-              borderBottom: '1px solid var(--border, #eaeaec)',
-              background: 'var(--card-subtle, #f9f9fa)',
+              borderBottom: "1px solid var(--border, var(--border))",
+              background: "var(--card-subtle, var(--card))",
               display: 'flex',
               alignItems: 'flex-start',
               justifyContent: 'space-between',
@@ -2497,8 +2497,8 @@ export function TeacherAnnouncements() {
                   width: 42,
                   height: 42,
                   borderRadius: 4,
-                  background: viewingNotice.status === 'PUBLISHED' ? 'rgba(3, 128, 106, 0.12)' : 'rgba(225, 29, 85, 0.12)',
-                  color: viewingNotice.status === 'PUBLISHED' ? '#03806a' : '#e11d55',
+                  background: viewingNotice.status === 'PUBLISHED' ? "var(--secondary)" : "var(--accent)",
+                  color: viewingNotice.status === 'PUBLISHED' ? "var(--success)" : "var(--primary)",
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -2517,9 +2517,9 @@ export function TeacherAnnouncements() {
                       borderRadius: 4,
                       fontSize: 11,
                       fontWeight: 700,
-                      backgroundColor: viewingNotice.status === 'PUBLISHED' ? '#e6f2f0' : '#f9f9fa',
-                      color: viewingNotice.status === 'PUBLISHED' ? '#02604f' : '#696e79',
-                      border: viewingNotice.status === 'PUBLISHED' ? '1px solid #99ccc3' : '1px solid #eaeaec'
+                      backgroundColor: viewingNotice.status === 'PUBLISHED' ? "var(--secondary)" : "var(--card)",
+                      color: viewingNotice.status === 'PUBLISHED' ? "var(--success)" : "var(--muted-foreground)",
+                      border: viewingNotice.status === 'PUBLISHED' ? "1px solid var(--border)" : "1px solid var(--border)"
                     }}>
                       {viewingNotice.status === 'PUBLISHED' ? <CheckCircle2 size={12} /> : <FileText size={12} />}
                       {viewingNotice.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT'}
@@ -2534,8 +2534,8 @@ export function TeacherAnnouncements() {
                       borderRadius: 4,
                       fontSize: 11,
                       fontWeight: 700,
-                      backgroundColor: viewingNotice.priority === 'EMERGENCY' ? '#f7d5d5' : viewingNotice.priority === 'HIGH' ? '#fbecd3' : 'var(--card-subtle, #f5f5f6)',
-                      color: viewingNotice.priority === 'EMERGENCY' ? '#a82424' : viewingNotice.priority === 'HIGH' ? '#8f5c12' : 'var(--text-secondary, #535766)'
+                      backgroundColor: viewingNotice.priority === 'EMERGENCY' ? "var(--secondary)" : viewingNotice.priority === 'HIGH' ? "var(--secondary)" : "var(--card-subtle, var(--secondary))",
+                      color: viewingNotice.priority === 'EMERGENCY' ? "var(--destructive)" : viewingNotice.priority === 'HIGH' ? "var(--warning)" : "var(--text-secondary, var(--muted-foreground))"
                     }}>
                       {viewingNotice.priority === 'EMERGENCY' && <AlertTriangle size={11} />}
                       {viewingNotice.priority || 'NORMAL'}
@@ -2547,9 +2547,9 @@ export function TeacherAnnouncements() {
                       fontWeight: 600,
                       padding: '2px 8px',
                       borderRadius: 4,
-                      backgroundColor: '#fff2f4',
-                      color: '#c0174a',
-                      border: '1px solid #fcc3d1'
+                      backgroundColor: "var(--card)",
+                      color: "var(--primary)",
+                      border: "1px solid var(--border)"
                     }}>
                       {getAudienceBadgeText(viewingNotice)}
                     </span>
@@ -2559,7 +2559,7 @@ export function TeacherAnnouncements() {
                     margin: 0,
                     fontSize: isNoticeMaximized ? 20 : 17,
                     fontWeight: 700,
-                    color: 'var(--text, #1c1f2e)',
+                    color: "var(--text, var(--foreground))",
                     lineHeight: 1.35,
                     wordBreak: 'break-word'
                   }}>
@@ -2575,7 +2575,7 @@ export function TeacherAnnouncements() {
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: 'var(--text-muted, #696e79)',
+                    color: "var(--text-muted, var(--muted-foreground))",
                     cursor: 'pointer',
                     padding: 4,
                     borderRadius: 4,
@@ -2599,7 +2599,7 @@ export function TeacherAnnouncements() {
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: 'var(--text-muted, #696e79)',
+                    color: "var(--text-muted, var(--muted-foreground))",
                     cursor: 'pointer',
                     padding: 4,
                     borderRadius: 4,
@@ -2635,12 +2635,12 @@ export function TeacherAnnouncements() {
                 gap: 12,
                 padding: '10px 14px',
                 borderRadius: 4,
-                backgroundColor: 'var(--card-subtle, #f9f9fa)',
-                border: '1px solid var(--border, #eaeaec)',
+                backgroundColor: "var(--card-subtle, var(--card))",
+                border: "1px solid var(--border, var(--border))",
                 fontSize: 12
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary, #535766)' }}>
-                  <Clock size={14} style={{ color: viewingNotice.status === 'PUBLISHED' ? '#03806a' : '#696e79' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: "var(--text-secondary, var(--muted-foreground))" }}>
+                  <Clock size={14} style={{ color: viewingNotice.status === 'PUBLISHED' ? "var(--success)" : "var(--muted-foreground)" }} />
                   {viewingNotice.status === 'PUBLISHED' ? (
                     <span>
                       Published on <b>{formatPublishDate(viewingNotice.published_at || viewingNotice.created_at)}</b> at <b>{formatPublishTime(viewingNotice.published_at || viewingNotice.created_at)}</b>
@@ -2653,14 +2653,14 @@ export function TeacherAnnouncements() {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <span style={{ color: 'var(--text-muted, #696e79)' }}>
-                    Recipients: <strong style={{ color: 'var(--text, #1c1f2e)' }}>{viewingNotice.recipient_count || 0}</strong>
+                  <span style={{ color: "var(--text-muted, var(--muted-foreground))" }}>
+                    Recipients: <strong style={{ color: "var(--text, var(--foreground))" }}>{viewingNotice.recipient_count || 0}</strong>
                   </span>
-                  <span style={{ color: 'var(--text-muted, #696e79)' }}>
-                    Read: <strong style={{ color: 'var(--text, #1c1f2e)' }}>{viewingNotice.read_count || 0}</strong>
+                  <span style={{ color: "var(--text-muted, var(--muted-foreground))" }}>
+                    Read: <strong style={{ color: "var(--text, var(--foreground))" }}>{viewingNotice.read_count || 0}</strong>
                   </span>
-                  <span style={{ color: 'var(--text-muted, #696e79)' }}>
-                    Replies: <strong style={{ color: '#e11d55' }}>{viewingNotice.reply_count || 0}</strong>
+                  <span style={{ color: "var(--text-muted, var(--muted-foreground))" }}>
+                    Replies: <strong style={{ color: "var(--primary)" }}>{viewingNotice.reply_count || 0}</strong>
                   </span>
                 </div>
               </div>
@@ -2673,20 +2673,20 @@ export function TeacherAnnouncements() {
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.04em',
-                  color: 'var(--text-muted, #696e79)',
+                  color: "var(--text-muted, var(--muted-foreground))",
                   marginBottom: 8
                 }}>
                   Announcement Message
                 </label>
                 <div style={{
-                  backgroundColor: 'var(--bg-card, #ffffff)',
-                  border: '1px solid var(--border, #d4d5d9)',
-                  borderLeft: viewingNotice.status === 'PUBLISHED' ? '4px solid #03806a' : '4px solid #e11d55',
+                  backgroundColor: "var(--bg-card, var(--card))",
+                  border: "1px solid var(--border, var(--border))",
+                  borderLeft: viewingNotice.status === 'PUBLISHED' ? "4px solid var(--border)" : "4px solid var(--border)",
                   borderRadius: 4,
                   padding: isNoticeMaximized ? '20px 22px' : '16px 18px',
                   fontSize: 14,
                   lineHeight: 1.7,
-                  color: 'var(--text, #282c3f)',
+                  color: "var(--text, var(--foreground))",
                   whiteSpace: 'pre-wrap',
                   wordBreak: 'break-word',
                   maxHeight: isNoticeMaximized ? 'calc(94vh - 360px)' : 280,
@@ -2696,7 +2696,7 @@ export function TeacherAnnouncements() {
                   {viewingNotice.message ? (
                     viewingNotice.message
                   ) : (
-                    <span style={{ color: 'var(--text-muted, #94969f)', fontStyle: 'italic' }}>
+                    <span style={{ color: "var(--text-muted, var(--muted-foreground))", fontStyle: 'italic' }}>
                       No message content available.
                     </span>
                   )}
@@ -2711,7 +2711,7 @@ export function TeacherAnnouncements() {
                     fontWeight: 700,
                     textTransform: 'uppercase',
                     letterSpacing: '0.04em',
-                    color: 'var(--text-muted, #696e79)',
+                    color: "var(--text-muted, var(--muted-foreground))",
                     marginBottom: 8
                   }}>
                     Attached Document
@@ -2722,8 +2722,8 @@ export function TeacherAnnouncements() {
                     justifyContent: 'space-between',
                     padding: '12px 16px',
                     borderRadius: 4,
-                    backgroundColor: 'var(--card-subtle, #f9f9fa)',
-                    border: '1px solid var(--border, #d4d5d9)',
+                    backgroundColor: "var(--card-subtle, var(--card))",
+                    border: "1px solid var(--border, var(--border))",
                     gap: 12,
                     flexWrap: 'wrap'
                   }}>
@@ -2732,8 +2732,8 @@ export function TeacherAnnouncements() {
                         width: 36,
                         height: 36,
                         borderRadius: 4,
-                        backgroundColor: '#fff2f4',
-                        color: '#e11d55',
+                        backgroundColor: "var(--card)",
+                        color: "var(--primary)",
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -2745,7 +2745,7 @@ export function TeacherAnnouncements() {
                         <div style={{
                           fontWeight: 600,
                           fontSize: 13.5,
-                          color: 'var(--text, #1c1f2e)',
+                          color: "var(--text, var(--foreground))",
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap'
@@ -2753,7 +2753,7 @@ export function TeacherAnnouncements() {
                           {viewingNotice.attachment_name || 'Attached File'}
                         </div>
                         {viewingNotice.attachment_size ? (
-                          <div style={{ fontSize: 11.5, color: 'var(--text-muted, #696e79)' }}>
+                          <div style={{ fontSize: 11.5, color: "var(--text-muted, var(--muted-foreground))" }}>
                             {(viewingNotice.attachment_size / 1024).toFixed(1)} KB
                           </div>
                         ) : null}
@@ -2771,9 +2771,9 @@ export function TeacherAnnouncements() {
                             gap: 6,
                             padding: '7px 14px',
                             borderRadius: 4,
-                            backgroundColor: '#fff2f4',
-                            color: '#e11d55',
-                            border: '1px solid #fcc3d1',
+                            backgroundColor: "var(--card)",
+                            color: "var(--primary)",
+                            border: "1px solid var(--border)",
                             fontSize: 12.5,
                             fontWeight: 600,
                             cursor: 'pointer',
@@ -2795,8 +2795,8 @@ export function TeacherAnnouncements() {
                           gap: 6,
                           padding: '7px 14px',
                           borderRadius: 4,
-                          backgroundColor: '#e11d55',
-                          color: '#ffffff',
+                          backgroundColor: "var(--primary)",
+                          color: "var(--background)",
                           fontSize: 12.5,
                           fontWeight: 600,
                           textDecoration: 'none',
@@ -2814,8 +2814,8 @@ export function TeacherAnnouncements() {
             {/* Modal Footer */}
             <div style={{
               padding: '14px 24px',
-              borderTop: '1px solid var(--border, #eaeaec)',
-              background: 'var(--card-subtle, #f9f9fa)',
+              borderTop: "1px solid var(--border, var(--border))",
+              background: "var(--card-subtle, var(--card))",
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -2840,9 +2840,9 @@ export function TeacherAnnouncements() {
                       fontSize: 12.5,
                       fontWeight: 600,
                       cursor: 'pointer',
-                      border: '1px solid #fcc3d1',
-                      backgroundColor: '#fff2f4',
-                      color: '#c0174a'
+                      border: "1px solid var(--border)",
+                      backgroundColor: "var(--card)",
+                      color: "var(--primary)"
                     }}
                   >
                     <MessageCircle size={14} />
@@ -2870,9 +2870,9 @@ export function TeacherAnnouncements() {
                       fontSize: 13,
                       fontWeight: 600,
                       cursor: 'pointer',
-                      border: '1px solid var(--border, #d4d5d9)',
-                      backgroundColor: 'var(--bg-card, #ffffff)',
-                      color: 'var(--text, #1c1f2e)'
+                      border: "1px solid var(--border, var(--border))",
+                      backgroundColor: "var(--bg-card, var(--card))",
+                      color: "var(--text, var(--foreground))"
                     }}
                   >
                     <Edit3 size={14} />
@@ -2893,8 +2893,8 @@ export function TeacherAnnouncements() {
                     fontWeight: 600,
                     cursor: 'pointer',
                     border: 'none',
-                    backgroundColor: '#e11d55',
-                    color: '#ffffff',
+                    backgroundColor: "var(--primary)",
+                    color: "var(--background)",
                     boxShadow: 'none'
                   }}
                 >
@@ -2914,7 +2914,7 @@ export function TeacherAnnouncements() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(28, 31, 46, 0.65)',
+          backgroundColor: "var(--card)",
           backdropFilter: 'blur(3px)',
           display: 'flex',
           justifyContent: 'flex-end',
@@ -2926,7 +2926,7 @@ export function TeacherAnnouncements() {
             width: '100%',
             maxWidth: 520,
             height: '100%',
-            backgroundColor: 'var(--bg-card, #ffffff)',
+            backgroundColor: "var(--bg-card, var(--card))",
             boxShadow: 'none',
             display: 'flex',
             flexDirection: 'column',
@@ -2934,71 +2934,71 @@ export function TeacherAnnouncements() {
           }}>
             <div style={{
               padding: '16px 20px',
-              borderBottom: '1px solid var(--border, #eaeaec)',
+              borderBottom: "1px solid var(--border, var(--border))",
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              backgroundColor: 'var(--card-subtle, #f9f9fa)'
+              backgroundColor: "var(--card-subtle, var(--card))"
             }}>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 4, backgroundColor: '#fff2f4', color: '#c0174a' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 4, backgroundColor: "var(--card)", color: "var(--primary)" }}>
                   {selectedNoticeForReplies.audience_type}
                 </span>
-                <h3 style={{ margin: '4px 0 0', fontSize: 16, fontWeight: 700, color: 'var(--text, #1c1f2e)' }}>
+                <h3 style={{ margin: '4px 0 0', fontSize: 16, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
                   {selectedNoticeForReplies.title}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedNoticeForReplies(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #696e79)' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: "var(--text-muted, var(--muted-foreground))" }}
               >
                 <X size={20} />
               </button>
             </div>
 
             <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1 }}>
-              <div style={{ fontSize: 13, color: 'var(--text, #3e4152)', lineHeight: 1.5, marginBottom: 16, padding: '10px 12px', borderRadius: 4, backgroundColor: 'var(--card-subtle, #f9f9fa)' }}>
+              <div style={{ fontSize: 13, color: "var(--text, var(--muted-foreground))", lineHeight: 1.5, marginBottom: 16, padding: '10px 12px', borderRadius: 4, backgroundColor: "var(--card-subtle, var(--card))" }}>
                 {selectedNoticeForReplies.message}
               </div>
 
-              <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text, #1c1f2e)', margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <h4 style={{ fontSize: 14, fontWeight: 700, color: "var(--text, var(--foreground))", margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <MessageCircle size={15} color="#e11d55" /> Threaded Responses ({noticeReplies.length})
               </h4>
 
               {loadingNoticeReplies ? (
-                <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted, #696e79)' }}>
+                <div style={{ textAlign: 'center', padding: 24, color: "var(--text-muted, var(--muted-foreground))" }}>
                   Loading responses...
                 </div>
               ) : noticeReplies.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted, #696e79)', fontSize: 13 }}>
+                <div style={{ textAlign: 'center', padding: 32, color: "var(--text-muted, var(--muted-foreground))", fontSize: 13 }}>
                   No responses received for this announcement yet.
                 </div>
               ) : (
                 <div style={{ display: 'grid', gap: 10 }}>
                   {noticeReplies.map(r => (
-                    <div key={r.id} style={{ padding: '10px 12px', borderRadius: 4, backgroundColor: 'var(--card-subtle, #f9f9fa)', borderLeft: '3px solid #e11d55', fontSize: 12.5 }}>
+                    <div key={r.id} style={{ padding: '10px 12px', borderRadius: 4, backgroundColor: "var(--card-subtle, var(--card))", borderLeft: "3px solid var(--border)", fontSize: 12.5 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                        <span style={{ fontWeight: 700, color: 'var(--text, #1c1f2e)' }}>{r.author_name}</span>
-                        <span style={{ fontSize: 11, color: 'var(--text-muted, #94969f)' }}>{r.created_at ? new Date(r.created_at).toLocaleString() : ''}</span>
+                        <span style={{ fontWeight: 700, color: "var(--text, var(--foreground))" }}>{r.author_name}</span>
+                        <span style={{ fontSize: 11, color: "var(--text-muted, var(--muted-foreground))" }}>{r.created_at ? new Date(r.created_at).toLocaleString() : ''}</span>
                       </div>
-                      <div style={{ color: 'var(--text, #3e4152)', whiteSpace: 'pre-wrap' }}>{r.reply_text}</div>
+                      <div style={{ color: "var(--text, var(--muted-foreground))", whiteSpace: 'pre-wrap' }}>{r.reply_text}</div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border, #eaeaec)', display: 'flex', justifyContent: 'flex-end', backgroundColor: 'var(--card-subtle, #f9f9fa)' }}>
+            <div style={{ padding: '12px 20px', borderTop: "1px solid var(--border, var(--border))", display: 'flex', justifyContent: 'flex-end', backgroundColor: "var(--card-subtle, var(--card))" }}>
               <button
                 type="button"
                 onClick={() => setSelectedNoticeForReplies(null)}
                 style={{
                   padding: '7px 18px',
                   borderRadius: 4,
-                  border: '1px solid var(--border, #d4d5d9)',
-                  backgroundColor: 'var(--bg-card, #ffffff)',
-                  color: 'var(--text, #1c1f2e)',
+                  border: "1px solid var(--border, var(--border))",
+                  backgroundColor: "var(--bg-card, var(--card))",
+                  color: "var(--text, var(--foreground))",
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: 'pointer'
@@ -3018,7 +3018,7 @@ export function TeacherAnnouncements() {
             zIndex: 10050,
             position: 'fixed',
             inset: 0,
-            background: 'rgba(28, 31, 46, 0.65)',
+            background: "var(--card)",
             backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
@@ -3034,8 +3034,8 @@ export function TeacherAnnouncements() {
               width: 'min(640px, 95vw)',
               maxHeight: '90vh',
               overflowY: 'auto',
-              background: 'var(--bg-card, #ffffff)',
-              border: '1px solid var(--border, #eaeaec)',
+              background: "var(--bg-card, var(--card))",
+              border: "1px solid var(--border, var(--border))",
               borderRadius: 4,
               boxShadow: 'none',
               display: 'flex',
@@ -3045,8 +3045,8 @@ export function TeacherAnnouncements() {
             {/* Modal Header */}
             <div style={{
               padding: '18px 24px',
-              borderBottom: '1px solid var(--border, #eaeaec)',
-              background: 'var(--card-subtle, #f9f9fa)',
+              borderBottom: "1px solid var(--border, var(--border))",
+              background: "var(--card-subtle, var(--card))",
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'
@@ -3056,8 +3056,8 @@ export function TeacherAnnouncements() {
                   width: 36,
                   height: 36,
                   borderRadius: 4,
-                  background: 'rgba(225, 29, 85, 0.15)',
-                  color: '#e11d55',
+                  background: "var(--accent)",
+                  color: "var(--primary)",
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -3066,10 +3066,10 @@ export function TeacherAnnouncements() {
                   <Edit3 size={18} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #1c1f2e)' }}>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
                     Edit Draft Announcement
                   </h3>
-                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted, #696e79)' }}>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: "var(--text-muted, var(--muted-foreground))" }}>
                     Update details, scope, or publish directly to students
                   </p>
                 </div>
@@ -3078,7 +3078,7 @@ export function TeacherAnnouncements() {
                 type="button"
                 onClick={() => setEditingDraft(null)}
                 disabled={editSaving}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #696e79)', padding: 4 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: "var(--text-muted, var(--muted-foreground))", padding: 4 }}
               >
                 <X size={20} />
               </button>
@@ -3090,9 +3090,9 @@ export function TeacherAnnouncements() {
                 <div style={{
                   padding: '10px 14px',
                   borderRadius: 4,
-                  backgroundColor: '#fbeaea',
-                  border: '1px solid #f2c0c0',
-                  color: '#7e1b1b',
+                  backgroundColor: "var(--card)",
+                  border: "1px solid var(--border)",
+                  color: "var(--destructive)",
                   fontSize: 13,
                   display: 'flex',
                   alignItems: 'center',
@@ -3105,8 +3105,8 @@ export function TeacherAnnouncements() {
 
               {/* Title Field */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #696e79)' }}>
-                  ANNOUNCEMENT TITLE <span style={{ color: '#d32f2f' }}>*</span>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))" }}>
+                  ANNOUNCEMENT TITLE <span style={{ color: "var(--destructive)" }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -3117,9 +3117,9 @@ export function TeacherAnnouncements() {
                     width: '100%',
                     padding: '9px 12px',
                     borderRadius: 4,
-                    border: '1px solid var(--border, #d4d5d9)',
-                    backgroundColor: 'var(--bg, #ffffff)',
-                    color: 'var(--text, #1c1f2e)',
+                    border: "1px solid var(--border, var(--border))",
+                    backgroundColor: "var(--bg, var(--card))",
+                    color: "var(--text, var(--foreground))",
                     fontSize: 13.5,
                     boxSizing: 'border-box'
                   }}
@@ -3128,8 +3128,8 @@ export function TeacherAnnouncements() {
 
               {/* Message Details Field */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #696e79)' }}>
-                  BROADCAST DETAILS & INSTRUCTIONS <span style={{ color: '#d32f2f' }}>*</span>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))" }}>
+                  BROADCAST DETAILS & INSTRUCTIONS <span style={{ color: "var(--destructive)" }}>*</span>
                 </label>
                 <AutoExpandingTextarea
                   value={editForm.message}
@@ -3141,9 +3141,9 @@ export function TeacherAnnouncements() {
                     width: '100%',
                     padding: '10px 12px',
                     borderRadius: 4,
-                    border: '1px solid var(--border, #d4d5d9)',
-                    backgroundColor: 'var(--bg, #ffffff)',
-                    color: 'var(--text, #1c1f2e)',
+                    border: "1px solid var(--border, var(--border))",
+                    backgroundColor: "var(--bg, var(--card))",
+                    color: "var(--text, var(--foreground))",
                     fontSize: 13,
                     boxSizing: 'border-box'
                   }}
@@ -3152,7 +3152,7 @@ export function TeacherAnnouncements() {
 
               {/* Attachment Option in Edit Draft */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #696e79)' }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))" }}>
                   ATTACHMENT
                 </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -3163,9 +3163,9 @@ export function TeacherAnnouncements() {
                       gap: 6,
                       padding: '7px 14px',
                       borderRadius: 4,
-                      border: '1px dashed var(--border, #d4d5d9)',
-                      backgroundColor: 'var(--card-subtle, #f9f9fa)',
-                      color: 'var(--text, #3e4152)',
+                      border: "1px dashed var(--border, var(--border))",
+                      backgroundColor: "var(--card-subtle, var(--card))",
+                      color: "var(--text, var(--muted-foreground))",
                       fontSize: 13,
                       fontWeight: 500,
                       cursor: 'pointer',
@@ -3190,9 +3190,9 @@ export function TeacherAnnouncements() {
                       gap: 8,
                       padding: '6px 12px',
                       borderRadius: 4,
-                      border: '1px solid #fcc3d1',
-                      backgroundColor: '#fff2f4',
-                      color: '#9a133c',
+                      border: "1px solid var(--border)",
+                      backgroundColor: "var(--card)",
+                      color: "var(--primary)",
                       fontSize: 12.5,
                       maxWidth: '100%',
                       boxSizing: 'border-box'
@@ -3201,7 +3201,7 @@ export function TeacherAnnouncements() {
                       <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 240 }}>
                         {editAttachment.name}
                       </span>
-                      <span style={{ fontSize: 11, color: '#e11d55', backgroundColor: '#ffe1e8', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
+                      <span style={{ fontSize: 11, color: "var(--primary)", backgroundColor: "var(--card)", padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
                         {(editAttachment.size / 1024).toFixed(1)} KB
                       </span>
                       <button
@@ -3212,7 +3212,7 @@ export function TeacherAnnouncements() {
                           background: 'none',
                           border: 'none',
                           cursor: 'pointer',
-                          color: '#d32f2f',
+                          color: "var(--destructive)",
                           padding: 2,
                           display: 'inline-flex',
                           alignItems: 'center'
@@ -3225,7 +3225,7 @@ export function TeacherAnnouncements() {
                 </div>
 
                 {editAttachmentError && (
-                  <div style={{ fontSize: 12, color: '#d32f2f', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{ fontSize: 12, color: "var(--destructive)", display: 'flex', alignItems: 'center', gap: 4 }}>
                     <AlertTriangle size={13} /> {editAttachmentError}
                   </div>
                 )}
@@ -3234,15 +3234,15 @@ export function TeacherAnnouncements() {
               {/* Targeting Controls in Edit Modal (Audience Type: Student without arrow) */}
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 140px', minWidth: 0 }}>
-                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted, #696e79)', display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>AUDIENCE TYPE</label>
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))", display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>AUDIENCE TYPE</label>
                   <div
                     style={{
                       width: '100%',
                       padding: '8px 12px',
                       borderRadius: 4,
-                      border: '1px solid var(--border, #d4d5d9)',
-                      backgroundColor: 'var(--card-subtle, #f9f9fa)',
-                      color: 'var(--text, #1c1f2e)',
+                      border: "1px solid var(--border, var(--border))",
+                      backgroundColor: "var(--card-subtle, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       fontSize: 13,
                       fontWeight: 600,
                       boxSizing: 'border-box'
@@ -3261,7 +3261,7 @@ export function TeacherAnnouncements() {
                     alignItems: 'center',
                     gap: 3,
                     lineHeight: 1,
-                    color: editForm.classId ? '#e11d55' : 'var(--text-muted, #696e79)'
+                    color: editForm.classId ? "var(--primary)" : "var(--text-muted, var(--muted-foreground))"
                   }}>
                     <span>CLASS</span>
                   </label>
@@ -3272,9 +3272,9 @@ export function TeacherAnnouncements() {
                       width: '100%',
                       padding: '8px 12px',
                       borderRadius: 4,
-                      border: '1px solid var(--border, #d4d5d9)',
-                      backgroundColor: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #1c1f2e)',
+                      border: "1px solid var(--border, var(--border))",
+                      backgroundColor: "var(--bg, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       fontSize: 13,
                       boxSizing: 'border-box'
                     }}
@@ -3295,7 +3295,7 @@ export function TeacherAnnouncements() {
                     alignItems: 'center',
                     gap: 3,
                     lineHeight: 1,
-                    color: editSelectedSectionLetter ? '#e11d55' : 'var(--text-muted, #696e79)'
+                    color: editSelectedSectionLetter ? "var(--primary)" : "var(--text-muted, var(--muted-foreground))"
                   }}>
                     <span>SECTION</span>
                   </label>
@@ -3306,9 +3306,9 @@ export function TeacherAnnouncements() {
                       width: '100%',
                       padding: '8px 12px',
                       borderRadius: 4,
-                      border: '1px solid var(--border, #d4d5d9)',
-                      backgroundColor: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #1c1f2e)',
+                      border: "1px solid var(--border, var(--border))",
+                      backgroundColor: "var(--bg, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       fontSize: 13,
                       boxSizing: 'border-box'
                     }}
@@ -3325,8 +3325,8 @@ export function TeacherAnnouncements() {
             {/* Modal Footer */}
             <div style={{
               padding: '14px 24px',
-              borderTop: '1px solid var(--border, #eaeaec)',
-              background: 'var(--card-subtle, #f9f9fa)',
+              borderTop: "1px solid var(--border, var(--border))",
+              background: "var(--card-subtle, var(--card))",
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'flex-end',
@@ -3342,9 +3342,9 @@ export function TeacherAnnouncements() {
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: editSaving ? 'not-allowed' : 'pointer',
-                  border: '1px solid var(--border, #d4d5d9)',
+                  border: "1px solid var(--border, var(--border))",
                   background: 'transparent',
-                  color: 'var(--text, #3e4152)'
+                  color: "var(--text, var(--muted-foreground))"
                 }}
               >
                 Cancel
@@ -3363,9 +3363,9 @@ export function TeacherAnnouncements() {
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: editSaving ? 'not-allowed' : 'pointer',
-                  border: '1px solid var(--border, #d4d5d9)',
-                  background: 'var(--bg-card, #ffffff)',
-                  color: 'var(--text, #1c1f2e)'
+                  border: "1px solid var(--border, var(--border))",
+                  background: "var(--bg-card, var(--card))",
+                  color: "var(--text, var(--foreground))"
                 }}
               >
                 <FileText size={14} />
@@ -3386,8 +3386,8 @@ export function TeacherAnnouncements() {
                   fontWeight: 600,
                   cursor: editSaving ? 'not-allowed' : 'pointer',
                   border: 'none',
-                  background: '#e11d55',
-                  color: '#ffffff',
+                  background: "var(--primary)",
+                  color: "var(--background)",
                   boxShadow: 'none'
                 }}
               >
@@ -3405,7 +3405,7 @@ export function TeacherAnnouncements() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(28, 31, 46, 0.75)',
+            background: "var(--card)",
             backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
@@ -3419,19 +3419,19 @@ export function TeacherAnnouncements() {
               width: '100%',
               maxWidth: 900,
               height: '85vh',
-              background: 'var(--panel, #ffffff)',
+              background: "var(--panel, var(--card))",
               borderRadius: 4,
               boxShadow: 'none',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
-              border: '1px solid var(--border, #d4d5d9)'
+              border: "1px solid var(--border, var(--border))"
             }}
           >
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border, #eaeaec)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card-subtle, #f9f9fa)' }}>
+            <div style={{ padding: '14px 20px', borderBottom: "1px solid var(--border, var(--border))", display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: "var(--card-subtle, var(--card))" }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                <Eye size={18} style={{ color: '#e11d55' }} />
-                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text, #1c1f2e)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <Eye size={18} style={{ color: "var(--primary)" }} />
+                <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text, var(--foreground))", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {attachmentPreview.fileName}
                 </span>
               </div>
@@ -3442,9 +3442,9 @@ export function TeacherAnnouncements() {
                   style={{
                     padding: '6px 12px',
                     borderRadius: 4,
-                    border: '1px solid var(--border, #d4d5d9)',
-                    background: '#ffffff',
-                    color: 'var(--text, #282c3f)',
+                    border: "1px solid var(--border, var(--border))",
+                    background: "var(--card)",
+                    color: "var(--text, var(--foreground))",
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -3458,7 +3458,7 @@ export function TeacherAnnouncements() {
                 <button
                   type="button"
                   onClick={closeAttachmentPreview}
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #696e79)', padding: 4 }}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: "var(--text-muted, var(--muted-foreground))", padding: 4 }}
                   aria-label="Close preview"
                 >
                   <X size={20} />
@@ -3466,14 +3466,14 @@ export function TeacherAnnouncements() {
               </div>
             </div>
 
-            <div style={{ flex: 1, overflow: 'hidden', background: '#1c1f2e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ flex: 1, overflow: 'hidden', background: "var(--card)", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {attachmentPreview.loading ? (
-                <div style={{ textAlign: 'center', color: '#d4d5d9' }}>
+                <div style={{ textAlign: 'center', color: "var(--muted-foreground)" }}>
                   <Loader2 size={32} className="animate-spin" style={{ margin: '0 auto 12px' }} />
                   <p style={{ margin: 0, fontSize: 14 }}>Loading preview securely...</p>
                 </div>
               ) : attachmentPreview.error ? (
-                <div style={{ textAlign: 'center', color: '#dd5c5c', padding: 24 }}>
+                <div style={{ textAlign: 'center', color: "var(--destructive)", padding: 24 }}>
                   <AlertCircle size={32} style={{ margin: '0 auto 12px' }} />
                   <p style={{ margin: 0, fontSize: 14 }}>{attachmentPreview.error}</p>
                 </div>
@@ -3490,10 +3490,10 @@ export function TeacherAnnouncements() {
                   style={{ width: '100%', height: '100%', border: 'none' }}
                 />
               ) : (
-                <div style={{ textAlign: 'center', color: '#eaeaec', padding: 32 }}>
-                  <FileText size={48} style={{ color: '#94969f', margin: '0 auto 16px' }} />
+                <div style={{ textAlign: 'center', color: "var(--background)", padding: 32 }}>
+                  <FileText size={48} style={{ color: "var(--muted-foreground)", margin: '0 auto 16px' }} />
                   <h4 style={{ margin: '0 0 8px', fontSize: 16 }}>Inline preview not supported for this format</h4>
-                  <p style={{ margin: '0 0 16px', fontSize: 13, color: '#94969f' }}>
+                  <p style={{ margin: '0 0 16px', fontSize: 13, color: "var(--muted-foreground)" }}>
                     Document files (.doc, .docx, .xlsx) can be downloaded directly to view on your device.
                   </p>
                   <button
@@ -3503,8 +3503,8 @@ export function TeacherAnnouncements() {
                       padding: '8px 16px',
                       borderRadius: 4,
                       border: 'none',
-                      background: '#e11d55',
-                      color: '#ffffff',
+                      background: "var(--primary)",
+                      color: "var(--background)",
                       fontWeight: 600,
                       fontSize: 13,
                       cursor: 'pointer',

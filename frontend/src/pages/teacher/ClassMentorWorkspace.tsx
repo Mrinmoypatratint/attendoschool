@@ -76,7 +76,7 @@ export function ClassMentorWorkspace() {
 
   if (classesError) {
     return (
-      <div className="panel" style={{ textAlign: 'center', padding: 40, color: '#d32f2f' }}>
+      <div className="panel" style={{ textAlign: 'center', padding: 40, color: "var(--destructive)" }}>
         <AlertCircle size={32} style={{ margin: '0 auto 12px' }} />
         <p style={{ fontWeight: 600, fontSize: 16 }}>{classesError}</p>
         <button type="button" className="btn-secondary" onClick={loadMyClasses} style={{ marginTop: 16 }}>
@@ -90,7 +90,7 @@ export function ClassMentorWorkspace() {
   if (mentoredClasses.length === 0) {
     return (
       <div className="panel" style={{ textAlign: 'center', padding: '60px 20px', maxWidth: 640, margin: '40px auto' }}>
-        <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(127, 140, 205, 0.12)', border: '1px solid var(--border-focus, rgba(127, 140, 205, 0.3))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--sidebar-accent)', margin: '0 auto 16px' }}>
+        <div style={{ width: 56, height: 56, borderRadius: '50%', background: "var(--secondary)", border: "1px solid var(--border-focus, var(--border))", display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--sidebar-accent)', margin: '0 auto 16px' }}>
           <Users size={28} />
         </div>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px' }}>
@@ -115,7 +115,7 @@ export function ClassMentorWorkspace() {
             <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: 'var(--text)' }}>
               Class Mentor Workspace
             </h1>
-            <span style={{ fontSize: 11.5, fontWeight: 700, background: 'rgba(225, 29, 85, 0.1)', color: 'var(--sidebar-accent)', border: '1px solid var(--border-focus)', padding: '2px 8px', borderRadius: 9999 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 700, background: "var(--accent)", color: 'var(--sidebar-accent)', border: '1px solid var(--border-focus)', padding: '2px 8px', borderRadius: 9999 }}>
               Mentor Access
             </span>
           </div>
@@ -180,7 +180,7 @@ export function ClassMentorWorkspace() {
         style={{
           display: 'flex',
           gap: 12,
-          borderBottom: '2px solid var(--border, #eaeaec)',
+          borderBottom: "2px solid var(--border, var(--border))",
           marginBottom: 20
         }}
       >
@@ -191,8 +191,8 @@ export function ClassMentorWorkspace() {
             padding: '12px 20px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'REPORTS' ? '3px solid #e11d55' : '3px solid transparent',
-            color: activeTab === 'REPORTS' ? '#e11d55' : 'var(--text-secondary, #696e79)',
+            borderBottom: activeTab === 'REPORTS' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'REPORTS' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
             fontWeight: activeTab === 'REPORTS' ? 700 : 500,
             fontSize: 15,
             cursor: 'pointer',
@@ -214,8 +214,8 @@ export function ClassMentorWorkspace() {
             padding: '12px 20px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'RESULTS' ? '3px solid #e11d55' : '3px solid transparent',
-            color: activeTab === 'RESULTS' ? '#e11d55' : 'var(--text-secondary, #696e79)',
+            borderBottom: activeTab === 'RESULTS' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'RESULTS' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
             fontWeight: activeTab === 'RESULTS' ? 700 : 500,
             fontSize: 15,
             cursor: 'pointer',
@@ -248,8 +248,8 @@ export function ClassMentorWorkspace() {
       {activeTab === 'RESULTS' && (
         <div
           style={{
-            background: 'var(--surface, #FFF)',
-            border: '1px solid var(--border, #eaeaec)',
+            background: "var(--surface, var(--card))",
+            border: "1px solid var(--border, var(--border))",
             borderRadius: 4,
             padding: '72px 24px',
             textAlign: 'center',
@@ -261,8 +261,8 @@ export function ClassMentorWorkspace() {
               width: 56,
               height: 56,
               borderRadius: 4,
-              background: 'rgba(225, 29, 85, 0.1)',
-              color: '#e11d55',
+              background: "var(--accent)",
+              color: "var(--primary)",
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -271,10 +271,10 @@ export function ClassMentorWorkspace() {
           >
             <Award size={28} />
           </div>
-          <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text, #1c1f2e)', margin: '0 0 8px' }}>
+          <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text, var(--foreground))", margin: '0 0 8px' }}>
             Result Publish
           </h3>
-          <p style={{ fontSize: 14, color: 'var(--text-secondary, #696e79)', maxWidth: 460, margin: '0 auto' }}>
+          <p style={{ fontSize: 14, color: "var(--text-secondary, var(--muted-foreground))", maxWidth: 460, margin: '0 auto' }}>
             Result publication and marks management for Class {selectedSection?.class_number} — Section {selectedSection?.section_name} will be available here soon.
           </p>
         </div>
