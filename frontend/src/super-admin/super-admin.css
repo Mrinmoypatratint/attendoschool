@@ -1692,6 +1692,40 @@ p.sa-hero-sub {
 .bg-purple { background: #5c6bc0; }
 .bg-slate { background: #696e79; }
 
+/* Flat overview metrics; retain computed chips and progress widths. */
+.sa-overview-view .sa-stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: none;
+}
+.sa-overview-view .sa-stat-card:hover { transform: none; box-shadow: none; border-color: var(--input); }
+.sa-overview-view .sa-stat-icon-wrap {
+  background: none;
+  color: var(--muted-foreground);
+  border: 0;
+  border-radius: 4px;
+  box-shadow: none;
+}
+.sa-overview-view .sa-stat-label {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.sa-overview-view .sa-stat-value {
+  color: var(--foreground);
+  font-size: 30px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.sa-overview-view .sa-stat-sub-text { color: var(--muted-foreground); font-size: 12px; }
+.sa-overview-view .sa-stat-micro-bar { height: 4px; background: var(--border); }
+.sa-overview-view .sa-micro-fill { background: var(--primary); }
+.sa-overview-view .sa-stat-kpi-badge { background: var(--secondary); color: var(--muted-foreground); }
+.sa-overview-view .sa-stat-kpi-badge.success { background: var(--secondary); color: var(--success); }
+.sa-overview-view .sa-stat-kpi-badge.warning { background: var(--secondary); color: var(--warning); }
+
 /* Table header filters & controls */
 .sa-table-controls {
   display: flex;

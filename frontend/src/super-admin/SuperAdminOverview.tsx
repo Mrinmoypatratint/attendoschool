@@ -213,7 +213,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
       {/* ─── 6 Stat Cards Row (Real Data) ─── */}
       <div className="sa-stats-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
         {/* Card 1: Total Schools */}
-        <div className="sa-stat-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
+        <div className="sa-stat-card rounded border border-border bg-card p-4">
           <div className="sa-stat-top">
             <div className="sa-stat-icon-wrap icon-blue">
               <School size={20} />
@@ -233,7 +233,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
         </div>
 
         {/* Card 2: Active Schools */}
-        <div className="sa-stat-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
+        <div className="sa-stat-card rounded border border-border bg-card p-4">
           <div className="sa-stat-top">
             <div className="sa-stat-icon-wrap icon-green">
               <CheckCircle2 size={20} />
@@ -253,7 +253,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
         </div>
 
         {/* Card 3: Expired / Attention */}
-        <div className="sa-stat-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
+        <div className="sa-stat-card rounded border border-border bg-card p-4">
           <div className="sa-stat-top">
             <div className="sa-stat-icon-wrap icon-amber">
               <Clock size={20} />
@@ -273,7 +273,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
         </div>
 
         {/* Card 4: Total Students */}
-        <div className="sa-stat-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
+        <div className="sa-stat-card rounded border border-border bg-card p-4">
           <div className="sa-stat-top">
             <div className="sa-stat-icon-wrap icon-purple">
               <GraduationCap size={20} />
@@ -293,7 +293,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
         </div>
 
         {/* Card 5: Platform Revenue */}
-        <div className="sa-stat-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
+        <div className="sa-stat-card rounded border border-border bg-card p-4">
           <div className="sa-stat-top">
             <div className="sa-stat-icon-wrap icon-amber">
               <span style={{ fontWeight: 800, fontSize: 18 }}>₹</span>
@@ -313,7 +313,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
         </div>
 
         {/* Card 6: Pending Collections */}
-        <div className="sa-stat-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
+        <div className="sa-stat-card rounded border border-border bg-card p-4">
           <div className="sa-stat-top">
             <div className="sa-stat-icon-wrap icon-slate">
               <CreditCard size={20} />
