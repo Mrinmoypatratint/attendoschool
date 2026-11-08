@@ -346,3 +346,25 @@ table tbody tr[aria-selected="true"] > td, table tbody tr.selected > td { backgr
   .student-main-wrapper > .student-topbar,
   .sa-main-wrap > .sa-topbar { padding: 0 12px; gap: 8px; }
 }
+
+/* Student guidance surfaces share a quiet, neutral treatment. */
+.student-sidebar .student-motivation-card,
+.student-main-wrapper .student-hero-quote-card,
+.student-main-wrapper .student-footer-banner {
+  background: var(--secondary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 4px !important;
+  color: var(--foreground);
+  box-shadow: none !important;
+}
+.student-sidebar .student-motivation-emblem,
+.student-main-wrapper .student-hero-quote-card svg,
+.student-main-wrapper .student-trophy-badge {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 4px;
+  color: var(--muted-foreground) !important;
+  box-shadow: none !important;
+}
+.student-sidebar .student-motivation-title { color: var(--foreground) !important; }
+.student-sidebar .student-motivation-desc { color: var(--muted-foreground) !important; }
