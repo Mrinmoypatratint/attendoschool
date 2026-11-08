@@ -10,7 +10,7 @@ async function replacePrivate(file, text) {
   const tmp = `${file}.${process.pid}.tmp`;
   try {
     await fs.writeFile(tmp, text, { flag: 'wx', mode: 0o600 });
-    if (previous) await fs.chown(tmp, previous.uid, previous.gid);
+    if (previous) await fs.chown(tmp, previous.uid, previous.gid).catch(e => { if (e.code !== 'EPERM') throw e; });
     await fs.rename(tmp, file); await fs.chmod(file, 0o600);
   } finally { await fs.rm(tmp, { force: true }); }
 }
@@ -57,8 +57,8 @@ async function inspect(env, root = ROOT, clientFactory) {
   return report;
 }
 async function prepare({ root = ROOT, base = '/home/attendoschool', env = process.env, parse, clientFactory }) {
-  const state = path.join(base, 'backups'), dir = path.join(state, 'private');
-  const configDir = path.join(base, '.config'), config = path.join(configDir, 'attendoschool-backup.env');
+  const state = path.join(base, '.attendoschool-backup-state'), dir = path.join(state, 'private');
+  const configDir = state, config = path.join(configDir, 'backup.env');
   await fs.mkdir(dir, { recursive: true, mode: 0o700 }); await fs.chmod(state, 0o700); await fs.chmod(dir, 0o700);
   await fs.mkdir(configDir, { recursive: true, mode: 0o700 });
   let saved = {};
@@ -125,7 +125,7 @@ async function main(args) {
     await replacePrivate(path.join(result.state, 'setup-report.json'), JSON.stringify(result.report, null, 2) + '\n');
     console.log(JSON.stringify(result.report, null, 2));
   } else if (args[0] === 'monitor') {
-    const config = '/home/attendoschool/.config/attendoschool-backup.env';
+    const config = '/home/attendoschool/.attendoschool-backup-state/backup.env';
     const stat = await fs.lstat(config); if (!stat.isFile() || stat.isSymbolicLink() || (stat.mode & 0o777) !== 0o600) throw Error('Unsafe backup config');
     const settings = { ...env, ...dotenv.parse(await fs.readFile(config)) };
     const outcome = await monitor(settings); console.log(JSON.stringify(outcome, null, 2));
@@ -142,5 +142,5 @@ async function monitor(env, now = Date.now()) {
     return { state: 'healthy', lastEncryptedReleaseAt: last.at };
   } catch { return { state: 'failed', message: 'No complete encrypted release recorded in the last 36 hours. Check backup cron, worker, disk, database and token expiry.' }; }
 }
-if (require.main === module) main(process.argv.slice(2)).catch(() => { console.error('Backup provisioning failed; no secrets were printed. Inspect private server configuration and permissions.'); process.exitCode = 1; });
+if (require.main === module) main(process.argv.slice(2)).catch(e => { const code = /^[A-Z0-9_]+$/.test(e.code || '') ? e.code : 'SETUP_ERROR'; console.error(`Backup provisioning failed (${code}); no secrets were printed. Inspect private server configuration and permissions.`); process.exitCode = 1; });
 module.exports = { inspect, prepare, cronText, setEnv, monitor };

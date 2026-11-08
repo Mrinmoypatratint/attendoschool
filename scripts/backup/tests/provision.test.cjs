@@ -19,6 +19,7 @@ test('prepare creates private paused configuration, preserves app settings, and 
   await fs.mkdir(path.join(root, 'backend'), { recursive: true }); await fs.writeFile(path.join(root, 'backend/.env'), 'JWT_SECRET="original-value"\nDB_DRIVER=postgres\n');
   const result = await prepare({ root, base, env: { NODE_ENV: 'test', DB_DRIVER: 'postgres' }, parse });
   assert.equal(result.report.publicRecipientConfigured, false); assert.equal(result.report.privateKeyCreatedOnServer, false);
+  assert.ok(result.config.startsWith(path.join(base, '.attendoschool-backup-state')));
   assert.match(result.report.state, /paused/); assert.match(await fs.readFile(path.join(root, 'backend/.env'), 'utf8'), /original-value/);
   assert.equal(parse(await fs.readFile(result.config)).BACKUP_GH_TOKEN, '');
   const saved = await fs.readFile(result.config, 'utf8'); await fs.writeFile(result.config, saved.replace("BACKUP_AGE_RECIPIENT=''", "BACKUP_AGE_RECIPIENT='public-recipient-only'"));
