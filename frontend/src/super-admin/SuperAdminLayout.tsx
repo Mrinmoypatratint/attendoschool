@@ -212,7 +212,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
       title: 'ACCESS & SECURITY',
       items: [
         { path: '/super-admin/people', label: 'People', icon: Users },
-        { path: '/super-admin/permissions', label: 'Roles & Permissions', icon: ShieldCheck },
+        { path: '/super-admin/permissions', label: 'Features & Permissions', icon: ShieldCheck },
         { path: '/super-admin/security', label: 'Security', icon: Shield },
         { path: '/super-admin/audit-logs', label: 'Audit Logs', icon: Database }
       ]

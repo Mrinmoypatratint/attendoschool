@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { Can } from '../../rbac/AccessProvider';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -671,8 +672,8 @@ export default function PhotoApprove() {
                 </div>
               )}
 
-              {/* Action Buttons for PENDING */}
-              {photo.status === 'PENDING' && (
+              {/* Action Buttons for PENDING (RBAC: hidden without photos.review) */}
+              {photo.status === 'PENDING' && (<Can perm="photos.review">
                 <div
                   style={{
                     display: 'flex',
@@ -734,7 +735,7 @@ export default function PhotoApprove() {
                     <X size={15} />
                     <span>Reject</span>
                   </button>
-                </div>
+                </div></Can>
               )}
             </div>
           ))}

@@ -4,7 +4,8 @@ import compression from 'compression';
 import path from 'path';
 import fs from 'fs';
 import { env } from './config/env';
-import { requireAuth } from './middleware/auth';
+import { requireAuth, decodeAuthToken } from './middleware/auth';
+import { rbacGate } from './rbac/middleware';
 import { securityHeaders, apiRateLimit, requestContext } from './middleware/security';
 
 // Core routes
@@ -51,6 +52,8 @@ import teacherAssignments from './routes/teacherAssignments';
 import designations from './routes/designations';
 import leavePolicies from './routes/leavePolicies';
 import demoRequest from './routes/demoRequest';
+import access from './routes/access';
+import superAdminFeatures from './routes/superAdminFeatures';
 
 const app = express();
 app.disable('x-powered-by');
@@ -122,6 +125,10 @@ app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 app.use(securityHeaders);
 app.use(requestContext);
 app.use(apiRateLimit);
+
+// RBAC feature/permission gate (restrict-only; mode via RBAC_ENFORCEMENT=off|shadow|enforce, default shadow).
+// Runs before route mounts but never replaces their guards: see backend/src/rbac/middleware.ts.
+app.use(rbacGate(decodeAuthToken));
 
 // Root health probe for cloud platform monitors (Render / Railway / Kubernetes)
 app.get('/health', (_q, res) => res.json({ status: 'ok', uptime: process.uptime() }));
@@ -228,6 +235,8 @@ app.get('/api', (_q, res) => res.json({ name: 'School Attendance SaaS API', vers
 app.use('/api/health', health);
 app.use('/api/auth', auth);
 app.use('/api/dashboard', dashboard);
+app.use('/api/access', requireAuth, access);
+app.use('/api/super-admin/features', superAdminFeatures);
 app.use('/api/super-admin', superAdmin);
 app.use('/api/super-admin', superAdminOperations);
 app.use('/api/super-admin', payment);

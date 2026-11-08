@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAccessCheck, AccessRestricted } from '../rbac/accessGate';
 import { AUTH_EXPIRED_EVENT } from '../api';
 
 export type Role = 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PARENT' | 'STUDENT';
@@ -97,20 +98,31 @@ export function useAuth() {
   return ctx;
 }
 
-export function Guard({ children }: { children: ReactNode }) {
+type AccessProps = { permission?: string; feature?: string };
+
+export function Guard({ children, permission, feature }: { children: ReactNode } & AccessProps) {
   const { isAuthenticated } = useAuth();
   const nav = useNavigate();
+  const location = useLocation();
+  const check = useAccessCheck();
   useEffect(() => {
     if (!isAuthenticated) nav('/login', { replace: true });
   }, [isAuthenticated, nav]);
-  return isAuthenticated ? <>{children}</> : null;
+  if (!isAuthenticated) return null;
+  // RBAC (UX only): explicit permission/feature, else derived from the path. Renders a page, never redirects.
+  const verdict = check({ permission, feature, path: location.pathname });
+  return verdict.allowed ? <>{children}</> : <AccessRestricted verdict={verdict} />;
 }
 
-export function RoleGuard({ roles, children }: { roles: Role[]; children: ReactNode }) {
+export function RoleGuard({ roles, children, permission, feature }: { roles: Role[]; children: ReactNode } & AccessProps) {
   const { user } = useAuth();
   const nav = useNavigate();
+  const location = useLocation();
+  const check = useAccessCheck();
   useEffect(() => {
     if (!user || !roles.includes(user.role)) nav('/dashboard', { replace: true });
   }, [user, roles, nav]);
-  return user && roles.includes(user.role) ? <>{children}</> : null;
+  if (!user || !roles.includes(user.role)) return null;
+  const verdict = check({ permission, feature, path: location.pathname });
+  return verdict.allowed ? <>{children}</> : <AccessRestricted verdict={verdict} />;
 }

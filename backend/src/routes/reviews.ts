@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import * as XLSX from 'xlsx';
-import { AuthRequest } from '../middleware/auth';
+import { AuthRequest, requireRoles } from '../middleware/auth';
 import { pool, isPostgresConfigured } from '../db';
 import { collections, isFirebaseConfigured } from '../firebase';
 import { sendPhotoReviewEmail } from '../services/emailService';
@@ -1649,7 +1649,10 @@ router.get('/teacher-leaves', async (req: AuthRequest, res: Response) => {
 });
 
 // PUT /api/reviews/teacher-leaves/:id/approve - School Admin approves teacher leave
-router.put('/teacher-leaves/:id/approve', async (req: AuthRequest, res: Response) => {
+// Security fix (P6): teacher-leave review is administrator-only (was reachable by any authenticated role).
+const teacherLeaveReviewers = requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN');
+
+router.put('/teacher-leaves/:id/approve', teacherLeaveReviewers, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { notes } = req.body;
@@ -1703,7 +1706,7 @@ router.put('/teacher-leaves/:id/approve', async (req: AuthRequest, res: Response
 });
 
 // PUT /api/reviews/teacher-leaves/:id/reject - School Admin rejects teacher leave
-router.put('/teacher-leaves/:id/reject', async (req: AuthRequest, res: Response) => {
+router.put('/teacher-leaves/:id/reject', teacherLeaveReviewers, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { reason, notes } = req.body;

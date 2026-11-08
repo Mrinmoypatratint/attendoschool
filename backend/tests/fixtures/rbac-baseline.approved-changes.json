@@ -1,0 +1,261 @@
+{
+  "note": "Reviewed deviations from the frozen P0 snapshot. Each entry must cite its reason. Do not add entries without owner review.",
+  "changes": {
+    "GET /api/production-v26/jobs": {
+      "reason": "P6 security fix: /api/production/jobs now authenticates (requireAuth + SUPER_ADMIN). Before: mount unauthenticated, handler always 403 because req.user was never populated.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SCHOOL_ADMIN": "DENY_403",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "DENY_403"
+      }
+    },
+    "GET /api/production/jobs": {
+      "reason": "P6 security fix: /api/production/jobs now authenticates (requireAuth + SUPER_ADMIN). Before: mount unauthenticated, handler always 403 because req.user was never populated.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SCHOOL_ADMIN": "DENY_403",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "DENY_403"
+      }
+    },
+    "PUT /api/reviews/teacher-leaves/:id/approve": {
+      "reason": "P6 security fix: teacher-leave approve/reject restricted to SCHOOL_ADMIN/SUPER_ADMIN (was any authenticated role).",
+      "principals": {
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "PUT /api/reviews/teacher-leaves/:id/reject": {
+      "reason": "P6 security fix: teacher-leave approve/reject restricted to SCHOOL_ADMIN/SUPER_ADMIN (was any authenticated role).",
+      "principals": {
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    }
+  },
+  "additions": {
+    "GET /api/access/audit": {
+      "reason": "New RBAC API (P2-P4): /api/access requires SCHOOL_ADMIN|SUPER_ADMIN (+ access.manage) except /me; /api/super-admin/features is SUPER_ADMIN only.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/access/catalog": {
+      "reason": "New RBAC API (P2-P4): /api/access requires SCHOOL_ADMIN|SUPER_ADMIN (+ access.manage) except /me; /api/super-admin/features is SUPER_ADMIN only.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/access/me": {
+      "reason": "New RBAC API (P2-P4): /api/access requires SCHOOL_ADMIN|SUPER_ADMIN (+ access.manage) except /me; /api/super-admin/features is SUPER_ADMIN only.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "ALLOW",
+        "PARENT": "ALLOW",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/access/principals": {
+      "reason": "New RBAC API (P2-P4): /api/access requires SCHOOL_ADMIN|SUPER_ADMIN (+ access.manage) except /me; /api/super-admin/features is SUPER_ADMIN only.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/access/principals/:role/:id": {
+      "reason": "New RBAC API (P2-P4): /api/access requires SCHOOL_ADMIN|SUPER_ADMIN (+ access.manage) except /me; /api/super-admin/features is SUPER_ADMIN only.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/access/roles": {
+      "reason": "New RBAC API (P2-P4): /api/access requires SCHOOL_ADMIN|SUPER_ADMIN (+ access.manage) except /me; /api/super-admin/features is SUPER_ADMIN only.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/super-admin/features/audit": {
+      "reason": "New RBAC API (P2-P4): /api/access requires SCHOOL_ADMIN|SUPER_ADMIN (+ access.manage) except /me; /api/super-admin/features is SUPER_ADMIN only.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "DENY_403",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "DENY_403"
+      }
+    },
+    "GET /api/super-admin/features/catalog": {
+      "reason": "New RBAC API (P2-P4): /api/access requires SCHOOL_ADMIN|SUPER_ADMIN (+ access.manage) except /me; /api/super-admin/features is SUPER_ADMIN only.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "DENY_403",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "DENY_403"
+      }
+    },
+    "GET /api/super-admin/features/global": {
+      "reason": "New RBAC API (P2-P4): /api/access requires SCHOOL_ADMIN|SUPER_ADMIN (+ access.manage) except /me; /api/super-admin/features is SUPER_ADMIN only.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "DENY_403",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "DENY_403"
+      }
+    },
+    "GET /api/super-admin/features/plans": {
+      "reason": "New RBAC API (P2-P4): /api/access requires SCHOOL_ADMIN|SUPER_ADMIN (+ access.manage) except /me; /api/super-admin/features is SUPER_ADMIN only.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "DENY_403",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "DENY_403"
+      }
+    },
+    "GET /api/super-admin/features/schools/:schoolId": {
+      "reason": "New RBAC API (P2-P4): /api/access requires SCHOOL_ADMIN|SUPER_ADMIN (+ access.manage) except /me; /api/super-admin/features is SUPER_ADMIN only.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "DENY_403",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "DENY_403"
+      }
+    },
+    "POST /api/access/principals/:role/:id/reset": {
+      "reason": "New RBAC API (P2-P4): /api/access requires SCHOOL_ADMIN|SUPER_ADMIN (+ access.manage) except /me; /api/super-admin/features is SUPER_ADMIN only.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "PUT /api/access/principals/:role/:id/login": {
+      "reason": "New RBAC API (P2-P4): /api/access requires SCHOOL_ADMIN|SUPER_ADMIN (+ access.manage) except /me; /api/super-admin/features is SUPER_ADMIN only.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "PUT /api/access/principals/:role/:id/permissions": {
+      "reason": "New RBAC API (P2-P4): /api/access requires SCHOOL_ADMIN|SUPER_ADMIN (+ access.manage) except /me; /api/super-admin/features is SUPER_ADMIN only.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "PUT /api/access/roles/:role/permissions": {
+      "reason": "New RBAC API (P2-P4): /api/access requires SCHOOL_ADMIN|SUPER_ADMIN (+ access.manage) except /me; /api/super-admin/features is SUPER_ADMIN only.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "PUT /api/super-admin/features/global": {
+      "reason": "New RBAC API (P2-P4): /api/access requires SCHOOL_ADMIN|SUPER_ADMIN (+ access.manage) except /me; /api/super-admin/features is SUPER_ADMIN only.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "DENY_403",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "DENY_403"
+      }
+    },
+    "PUT /api/super-admin/features/plans/:planKey": {
+      "reason": "New RBAC API (P2-P4): /api/access requires SCHOOL_ADMIN|SUPER_ADMIN (+ access.manage) except /me; /api/super-admin/features is SUPER_ADMIN only.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "DENY_403",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "DENY_403"
+      }
+    },
+    "PUT /api/super-admin/features/schools/:schoolId": {
+      "reason": "New RBAC API (P2-P4): /api/access requires SCHOOL_ADMIN|SUPER_ADMIN (+ access.manage) except /me; /api/super-admin/features is SUPER_ADMIN only.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "DENY_403",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "DENY_403"
+      }
+    }
+  }
+}

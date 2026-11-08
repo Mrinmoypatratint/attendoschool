@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { api, API_BASE_URL } from './api';
 import { useAuth, Guard, RoleGuard } from './hooks/useAuth';
+import { useAccess } from './rbac/AccessProvider';
 
 // Canonical domain enforcement: Redirect from legacy domains
 if (typeof window !== 'undefined' && (window.location.hostname.includes('optinetinnovations.in') || window.location.hostname.includes('vercel.app'))) {
@@ -14,7 +15,8 @@ const AttendanceReports = lazy(() => import('./pages/admin/AttendanceReports'));
 const AttendanceCorrections = lazy(() => import('./pages/admin/AttendanceCorrections'));
 const AcademicYears = lazy(() => import('./pages/admin/AcademicYears'));
 const StudentPromotion = lazy(() => import('./pages/admin/StudentPromotion'));
-const Permissions = lazy(() => import('./pages/admin/Permissions'));
+// RBAC: /permissions now renders the Access Control page (roles, people, audit). Route path unchanged.
+const Permissions = lazy(() => import('./pages/admin/access/AccessControl'));
 const SubscriptionEnforcement = lazy(() => import('./pages/admin/SubscriptionEnforcement'));
 const Security = lazy(() => import('./pages/admin/Security'));
 const Backup = lazy(() => import('./pages/admin/Backup'));
@@ -567,6 +569,11 @@ function Login() {
   useEffect(() => {
     if (typeof window !== 'undefined' && (window.location.hash.includes('session_expired=1') || window.location.search.includes('session_expired=1'))) {
       setError('Your session has expired. Please sign in again.');
+    }
+    let disabledFlag = false;
+    try { disabledFlag = sessionStorage.getItem('attendo_logout_reason') === 'account_disabled'; sessionStorage.removeItem('attendo_logout_reason'); } catch {}
+    if (disabledFlag || (typeof window !== 'undefined' && (window.location.hash.includes('account_disabled=1') || window.location.search.includes('account_disabled=1')))) {
+      setError('Your account has been disabled by your school administrator. Please contact them.');
     }
   }, []);
 
@@ -2809,6 +2816,9 @@ function Layout({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // RBAC (UX only): hide sidebar items the current user cannot open
+  const { canPath } = useAccess();
+
   // Dynamic browser title for School Admin & Teacher portals
   useEffect(() => {
     const originalTitle = 'AttendoSchool - Smart School Attendance & Cloud SIS Platform';
@@ -2900,6 +2910,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       adminLinks;
 
   const links = rawLinks.filter(item => {
+    if (item[0] !== '—' && !canPath(String(item[0]))) return false;
     if (user.role === 'SCHOOL_ADMIN') {
       if (item[0] === '/notifications' || item[1] === 'Parent Communication') return false;
       if (item[0] === '/leave-applications' || item[1] === 'Leave Applications' || item[1] === 'Leave Review') return false;
@@ -2911,6 +2922,10 @@ function Layout({ children }: { children: React.ReactNode }) {
     }
     return true;
   });
+  // RBAC: drop section headers that have no visible items left
+  for (let i = links.length - 1; i >= 0; i--) {
+    if (links[i][0] === '—' && (i === links.length - 1 || links[i + 1][0] === '—')) links.splice(i, 1);
+  }
 
   const isDavSchool =
     String(schoolInfo?.school?.name || '').toUpperCase().includes('DAV') ||

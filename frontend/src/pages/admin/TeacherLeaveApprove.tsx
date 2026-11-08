@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { Can } from '../../rbac/AccessProvider';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -1701,7 +1702,7 @@ export default function TeacherLeaveApprove() {
                           </button>
 
                           {isPending && (
-                            <>
+                            <Can perm="leave.teacher.review"><>
                               <button
                                 type="button"
                                 disabled={actionLoading === l.id}
@@ -1754,7 +1755,7 @@ export default function TeacherLeaveApprove() {
                                 <X size={12} />
                                 <span>Reject</span>
                               </button>
-                            </>
+                            </></Can>
                           )}
                         </div>
                       </td>
