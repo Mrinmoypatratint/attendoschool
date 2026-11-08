@@ -24,6 +24,45 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  backup-tests:
+    name: "Backups: security, shell lint and encrypted restore"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install free local test tools
+        run: sudo apt-get update && sudo apt-get install -y age shellcheck
+      - name: Install application dependencies
+        run: npm --prefix backend ci
+      - name: Shell syntax and lint
+        run: |
+          for script in scripts/backup.sh scripts/restore.sh scripts/backup/*.sh scripts/backup/tests/*.sh; do bash -n "$script"; done
+          shellcheck -S warning scripts/backup.sh scripts/restore.sh scripts/backup/*.sh scripts/backup/tests/*.sh
+      - name: Unit, HTTP, retention mutation and real encryption tests
+        env:
+          BACKUP_REQUIRE_AGE: '1'
+        run: npm run test:backups
+      - name: Cron and worker entrypoint round trip (no real database or GitHub)
+        run: bash scripts/backup/tests/roundtrip.sh
+      - name: Real PostgreSQL 16 dump, decrypt, checksums and isolated restore
+        run: bash scripts/backup/tests/postgres-roundtrip.sh
+      - name: Install UI test dependencies
+        run: |
+          npm ci
+          npm --prefix frontend ci
+          npx playwright install --with-deps chromium
+      - name: Backup navbar UI (API mocked)
+        run: |
+          npm --prefix frontend run dev -- --port 5173 --strictPort > /tmp/backup-ui.log 2>&1 &
+          VITE_PID=$!
+          trap 'kill "$VITE_PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 60); do curl -fsS http://localhost:5173 > /dev/null && break || sleep 1; done
+          npx playwright test tests/e2e/backups.spec.ts
+
   # =========================================================================
   # STAGE 1 — PRE-FLIGHT CHECKS
   # =========================================================================
@@ -180,7 +219,7 @@ jobs:
   # =========================================================================
   conflict-check-and-pr:
     name: "Merge Safety: Conflict Detection & Auto-PR"
-    needs: [backend-ci, frontend-ci]
+    needs: [backend-ci, frontend-ci, backup-tests]
     runs-on: ubuntu-latest
     concurrency:
       # All developer branches target main. Serialize the final merge decision

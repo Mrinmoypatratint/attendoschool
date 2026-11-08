@@ -27,6 +27,16 @@ module.exports = {
         APP_BASE_URL: 'https://attendoschool.online',
         CORS_ORIGIN: 'https://attendoschool.online,https://www.attendoschool.online,http://localhost:5173',
       }
+    },
+    {
+      name: 'attendoschool-backups',
+      script: './scripts/backup/worker.sh',
+      interpreter: 'bash',
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: true,
+      kill_timeout: 10000,
+      env: { BACKUP_CONFIG_FILE: '/home/attendoschool/.config/attendoschool-backup.env' }
     }
   ]
 };

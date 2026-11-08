@@ -2,7 +2,6 @@ import * as production from '../services/productionService';
 import {enforceSubscriptions} from '../services/subscriptionEnforcementService';
 import {processScheduled} from '../services/communicationService';
 import {cleanupSecurity} from '../services/securityService';
-import {cleanupOldBackups} from '../services/backupService';
 
 async function run(name:string,fn:()=>Promise<any>){
  const job=await production.startJob(name);
@@ -13,6 +12,6 @@ async function main(){
  await run('subscription-enforcement',enforceSubscriptions);
  await run('scheduled-communications',processScheduled);
  await run('security-cleanup',cleanupSecurity);
- await run('backup-retention',()=>cleanupOldBackups(Number(process.env.BACKUP_RETENTION_DAYS||30)));
+ // Backup retention belongs to the dedicated backup worker (same queue and lock).
 }
 main().catch(e=>{console.error(e);process.exit(1)});

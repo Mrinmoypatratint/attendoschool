@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../hooks/useAuth';
 import { SidebarToggle } from '../components/SidebarToggle';
+import BackupControls from '../components/BackupControls';
 import {
   LayoutDashboard, School, CreditCard, FileText, Eye, BarChart3,
   Users, Shield, ShieldCheck, Database, Settings, Moon, Sun,
@@ -371,6 +372,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
           </div>
 
           <div className="sa-topbar-right">
+            <BackupControls />
             {/* Academic Session Selector */}
             <div className="sa-session-wrap" ref={sessionRef}>
               <div
