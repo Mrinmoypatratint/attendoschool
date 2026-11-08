@@ -12,6 +12,11 @@ export default defineConfig({
   base: './',
   envDir,
   plugins: [react()],
+  // Prebundle the native bridge before the first simulated/device login. This
+  // prevents a dependency-discovery reload from resetting a form in dev/CI.
+  optimizeDeps: {
+    include: ['@capacitor/core', '@capacitor/app', '@capacitor/browser', '@capacitor/filesystem', '@capacitor/share']
+  },
   server: {
     host: true,
     port: 5173,

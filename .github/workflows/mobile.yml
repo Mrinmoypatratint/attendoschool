@@ -1,0 +1,189 @@
+name: Mobile - Android and iOS builds
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to build
+        type: choice
+        options: [both, android, ios]
+        default: both
+      signed_release:
+        description: Build store-signed releases (requires signing secrets)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  VITE_NATIVE_API_URL: https://attendoschool.online/api
+  MOBILE_BUILD_NUMBER: ${{ github.run_number }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+      - run: npm ci
+      - run: npm --prefix frontend ci
+      - run: npx playwright install --with-deps chromium
+      - name: Verify login and shared API routing
+        env:
+          VITE_API_URL: /api
+        run: |
+          npm --prefix frontend run dev -- --port 5173 --strictPort > /tmp/mobile-web.log 2>&1 &
+          WEB_PID=$!
+          trap 'kill "$WEB_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do curl -fsS http://localhost:5173 > /dev/null && break || sleep 1; done
+          npx playwright test tests/e2e/login.spec.ts tests/e2e/mobile.spec.ts
+
+  android:
+    needs: verify
+    if: inputs.platform != 'ios'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - run: npm run mobile:android
+      - name: Load upload signing key when requested
+        if: inputs.signed_release
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          python3 - <<'PY'
+          import base64, os
+          from pathlib import Path
+          for name in ('KEYSTORE_BASE64', 'KEYSTORE_PASSWORD', 'KEY_ALIAS', 'KEY_PASSWORD'):
+              if not os.environ.get(name):
+                  raise SystemExit('Missing Android signing secret: ' + name)
+          path = Path(os.environ['RUNNER_TEMP']) / 'android-upload.jks'
+          path.write_bytes(base64.b64decode(os.environ['KEYSTORE_BASE64'], validate=True))
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              f.write('ANDROID_KEYSTORE_PATH=' + str(path) + '\n')
+          PY
+      - name: Build installable debug APK and release app bundle
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: bash android/gradlew -p android assembleDebug bundleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ inputs.signed_release && 'signed' || 'test-and-unsigned' }}-${{ github.run_number }}
+          path: |
+            frontend/android/app/build/outputs/apk/debug/*.apk
+            frontend/android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+          retention-days: 14
+      - name: Explain distribution status
+        run: |
+          echo '### Android artifacts' >> "$GITHUB_STEP_SUMMARY"
+          echo 'The debug APK can be installed on an Android device. It uses the production API and real school data.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'The release AAB can be uploaded to Play Console only when built with signed_release=true. No store upload occurs in this workflow.' >> "$GITHUB_STEP_SUMMARY"
+
+  ios:
+    needs: verify
+    if: inputs.platform != 'android'
+    runs-on: macos-26
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: xcodebuild -version
+      - run: npm ci
+      - run: npm run mobile:ios
+      - name: Compile simulator app
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath ios/DerivedData CODE_SIGNING_ALLOWED=NO build
+          mkdir -p ios/output
+          ditto -c -k --keepParent ios/DerivedData/Build/Products/Debug-iphonesimulator/App.app ios/output/AttendoSchool-simulator.zip
+      - name: Launch the app in an iPhone simulator
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; print(next(d['udid'] for ds in json.load(sys.stdin)['devices'].values() for d in ds if 'iPhone' in d['name']))")
+          xcrun simctl boot "$DEVICE_ID"
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+          xcrun simctl install "$DEVICE_ID" ios/DerivedData/Build/Products/Debug-iphonesimulator/App.app
+          xcrun simctl launch "$DEVICE_ID" online.attendoschool.app
+          sleep 5
+          xcrun simctl io "$DEVICE_ID" screenshot ios/output/AttendoSchool-ios-login.png
+      - name: Import distribution signing when requested
+        if: inputs.signed_release
+        env:
+          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          IOS_PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
+          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+        run: python3 ../scripts/mobile/ios-signing.py
+      - name: Archive for physical devices
+        env:
+          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+          SIGNED_RELEASE: ${{ inputs.signed_release }}
+        run: |
+          if [ "$SIGNED_RELEASE" = 'true' ]; then
+            xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+              -destination 'generic/platform=iOS' -archivePath ios/output/AttendoSchool.xcarchive \
+              CURRENT_PROJECT_VERSION="$MOBILE_BUILD_NUMBER" DEVELOPMENT_TEAM="$IOS_TEAM_ID" \
+              CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY='Apple Distribution' \
+              PROVISIONING_PROFILE_SPECIFIER="$IOS_PROFILE_UUID" archive
+            xcodebuild -exportArchive -archivePath ios/output/AttendoSchool.xcarchive \
+              -exportPath ios/output/store -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+          else
+            xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+              -destination 'generic/platform=iOS' -archivePath ios/output/AttendoSchool.xcarchive \
+              CURRENT_PROJECT_VERSION="$MOBILE_BUILD_NUMBER" CODE_SIGNING_ALLOWED=NO archive
+          fi
+          ditto -c -k --keepParent ios/output/AttendoSchool.xcarchive ios/output/AttendoSchool-device-archive.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-${{ inputs.signed_release && 'signed' || 'simulator-and-unsigned' }}-${{ github.run_number }}
+          path: |
+            frontend/ios/output/*.zip
+            frontend/ios/output/*.png
+            frontend/ios/output/store/*.ipa
+          if-no-files-found: error
+          retention-days: 14
+      - name: Explain distribution status
+        run: |
+          echo '### iOS artifacts' >> "$GITHUB_STEP_SUMMARY"
+          echo 'The simulator app runs on a Mac simulator. An unsigned device archive cannot be installed on an iPhone.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'A signed IPA requires Apple Developer enrollment, a distribution certificate and an App Store provisioning profile. No store upload occurs in this workflow.' >> "$GITHUB_STEP_SUMMARY"

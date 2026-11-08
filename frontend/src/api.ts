@@ -1,6 +1,11 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { Capacitor } from '@capacitor/core';
+import { nativeApiUrl } from './platform/apiConfig';
 
 export const getApiBaseUrl = (): string => {
+  if (Capacitor.isNativePlatform()) {
+    return nativeApiUrl(import.meta.env.VITE_NATIVE_API_URL);
+  }
   if (typeof window !== 'undefined') {
     // Enforce canonical domain: Redirect legacy domains to https://attendoschool.online
     if (window.location.hostname.includes('optinetinnovations.in') || window.location.hostname.includes('vercel.app')) {
