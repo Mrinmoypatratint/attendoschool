@@ -68,7 +68,7 @@ const getFileIcon = (fileName?: string, mimeType?: string) => {
   const lowerMime = (mimeType || '').toLowerCase();
 
   if (lowerMime === 'application/pdf' || lowerName.endsWith('.pdf')) {
-    return <FileText size={18} color="#dc2626" />;
+    return <FileText size={18} color="#d32f2f" />;
   }
   if (
     lowerMime.startsWith('image/') ||
@@ -78,15 +78,15 @@ const getFileIcon = (fileName?: string, mimeType?: string) => {
     lowerName.endsWith('.webp') ||
     lowerName.endsWith('.gif')
   ) {
-    return <Image size={18} color="#2563eb" />;
+    return <Image size={18} color="#e11d55" />;
   }
   if (lowerName.endsWith('.doc') || lowerName.endsWith('.docx')) {
-    return <FileText size={18} color="#2563eb" />;
+    return <FileText size={18} color="#e11d55" />;
   }
   if (lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx') || lowerName.endsWith('.csv')) {
-    return <FileCheck size={18} color="#16a34a" />;
+    return <FileCheck size={18} color="#03806a" />;
   }
-  return <Paperclip size={18} color="#2563eb" />;
+  return <Paperclip size={18} color="#e11d55" />;
 };
 
 const isPreviewableFile = (fileName?: string, mimeType?: string) => {
@@ -555,7 +555,7 @@ export function StudentAssignments() {
         style={{
           display: 'flex',
           gap: 12,
-          borderBottom: '2px solid var(--border, #e2e8f0)',
+          borderBottom: '2px solid var(--border, #eaeaec)',
           marginBottom: 16,
           overflowX: 'auto',
           scrollbarWidth: 'none',
@@ -570,8 +570,8 @@ export function StudentAssignments() {
             padding: '12px 20px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'ALL' ? '3px solid #4f46e5' : '3px solid transparent',
-            color: activeTab === 'ALL' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            borderBottom: activeTab === 'ALL' ? '3px solid #e11d55' : '3px solid transparent',
+            color: activeTab === 'ALL' ? '#e11d55' : 'var(--text-secondary, #696e79)',
             fontWeight: activeTab === 'ALL' ? 700 : 500,
             fontSize: 15,
             cursor: 'pointer',
@@ -589,9 +589,9 @@ export function StudentAssignments() {
           <span
             style={{
               padding: '2px 8px',
-              borderRadius: 12,
-              background: activeTab === 'ALL' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
-              color: activeTab === 'ALL' ? '#4338ca' : '#64748b',
+              borderRadius: 4,
+              background: activeTab === 'ALL' ? '#ffe1e8' : 'var(--card-subtle, #f5f5f6)',
+              color: activeTab === 'ALL' ? '#c0174a' : '#696e79',
               fontSize: 12,
               fontWeight: 700
             }}
@@ -607,8 +607,8 @@ export function StudentAssignments() {
             padding: '12px 20px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'PENDING' ? '3px solid #4f46e5' : '3px solid transparent',
-            color: activeTab === 'PENDING' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            borderBottom: activeTab === 'PENDING' ? '3px solid #e11d55' : '3px solid transparent',
+            color: activeTab === 'PENDING' ? '#e11d55' : 'var(--text-secondary, #696e79)',
             fontWeight: activeTab === 'PENDING' ? 700 : 500,
             fontSize: 15,
             cursor: 'pointer',
@@ -626,9 +626,9 @@ export function StudentAssignments() {
           <span
             style={{
               padding: '2px 8px',
-              borderRadius: 12,
-              background: activeTab === 'PENDING' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
-              color: activeTab === 'PENDING' ? '#4338ca' : '#64748b',
+              borderRadius: 4,
+              background: activeTab === 'PENDING' ? '#ffe1e8' : 'var(--card-subtle, #f5f5f6)',
+              color: activeTab === 'PENDING' ? '#c0174a' : '#696e79',
               fontSize: 12,
               fontWeight: 700
             }}
@@ -644,8 +644,8 @@ export function StudentAssignments() {
             padding: '12px 20px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'SUBMITTED' ? '3px solid #4f46e5' : '3px solid transparent',
-            color: activeTab === 'SUBMITTED' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            borderBottom: activeTab === 'SUBMITTED' ? '3px solid #e11d55' : '3px solid transparent',
+            color: activeTab === 'SUBMITTED' ? '#e11d55' : 'var(--text-secondary, #696e79)',
             fontWeight: activeTab === 'SUBMITTED' ? 700 : 500,
             fontSize: 15,
             cursor: 'pointer',
@@ -663,9 +663,9 @@ export function StudentAssignments() {
           <span
             style={{
               padding: '2px 8px',
-              borderRadius: 12,
-              background: activeTab === 'SUBMITTED' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
-              color: activeTab === 'SUBMITTED' ? '#4338ca' : '#64748b',
+              borderRadius: 4,
+              background: activeTab === 'SUBMITTED' ? '#ffe1e8' : 'var(--card-subtle, #f5f5f6)',
+              color: activeTab === 'SUBMITTED' ? '#c0174a' : '#696e79',
               fontSize: 12,
               fontWeight: 700
             }}
@@ -882,7 +882,7 @@ export function StudentAssignments() {
                       type="button"
                       onClick={() => handleOpenSubmitModal(a)}
                       className="student-btn-primary"
-                      style={{ background: '#4f46e5', borderColor: '#4f46e5', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                      style={{ background: '#e11d55', borderColor: '#e11d55', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                     >
                       <Edit3 size={14} /> Edit / Resubmit Work
                     </button>
@@ -923,7 +923,7 @@ export function StudentAssignments() {
 
               {/* Informational banner if editing a graded submission */}
               {activeModal.submission_status === 'GRADED' && (
-                <div style={{ margin: '8px 0 12px', padding: '10px 12px', borderRadius: 6, background: '#fef3c7', border: '1px solid #fde68a', color: '#92400e', fontSize: 12.5 }}>
+                <div style={{ margin: '8px 0 12px', padding: '10px 12px', borderRadius: 4, background: '#fbecd3', border: '1px solid #f6dcb2', color: '#6b450e', fontSize: 12.5 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, marginBottom: 2 }}>
                     <AlertCircle size={15} />
                     <span>Graded Submission Notice</span>
@@ -1014,10 +1014,10 @@ export function StudentAssignments() {
               {activeModal.attachments && activeModal.attachments.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted, #64748b)' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted, #696e79)' }}>
                       Current Submitted Attachments:
                     </span>
-                    <span style={{ fontSize: 11, color: '#64748b' }}>
+                    <span style={{ fontSize: 11, color: '#696e79' }}>
                       {activeModal.attachments.filter(a => !removedAttachmentIds.includes(a.id)).length} kept / {activeModal.attachments.length} total
                     </span>
                   </div>
@@ -1033,9 +1033,9 @@ export function StudentAssignments() {
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             padding: '8px 12px',
-                            borderRadius: 6,
-                            border: `1px solid ${isRemoved ? '#fca5a5' : 'var(--border, #cbd5e1)'}`,
-                            background: isRemoved ? '#fef2f2' : 'var(--card-subtle, #f8fafc)',
+                            borderRadius: 4,
+                            border: `1px solid ${isRemoved ? '#e88d8d' : 'var(--border, #d4d5d9)'}`,
+                            background: isRemoved ? '#fbeaea' : 'var(--card-subtle, #f9f9fa)',
                             opacity: isRemoved ? 0.65 : 1,
                             gap: 10
                           }}
@@ -1045,7 +1045,7 @@ export function StudentAssignments() {
                               width: 30,
                               height: 30,
                               borderRadius: 4,
-                              backgroundColor: isRemoved ? '#fecaca' : '#eff6ff',
+                              backgroundColor: isRemoved ? '#f2c0c0' : '#fff2f4',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -1059,7 +1059,7 @@ export function StudentAssignments() {
                                   fontSize: 12.5,
                                   fontWeight: 600,
                                   textDecoration: isRemoved ? 'line-through' : 'none',
-                                  color: isRemoved ? '#991b1b' : 'var(--text, #1e293b)',
+                                  color: isRemoved ? '#7e1b1b' : 'var(--text, #282c3f)',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
                                   whiteSpace: 'nowrap'
@@ -1067,7 +1067,7 @@ export function StudentAssignments() {
                               >
                                 {att.file_name}
                               </div>
-                              <span style={{ color: '#94a3b8', fontSize: 11 }}>
+                              <span style={{ color: '#94969f', fontSize: 11 }}>
                                 {formatBytes(att.file_size)}
                               </span>
                             </div>
@@ -1086,9 +1086,9 @@ export function StudentAssignments() {
                                       gap: 3,
                                       padding: '3px 8px',
                                       borderRadius: 4,
-                                      border: '1px solid #bfdbfe',
-                                      backgroundColor: '#eff6ff',
-                                      color: '#2563eb',
+                                      border: '1px solid #fcc3d1',
+                                      backgroundColor: '#fff2f4',
+                                      color: '#e11d55',
                                       fontSize: 11,
                                       fontWeight: 600,
                                       cursor: 'pointer'
@@ -1107,7 +1107,7 @@ export function StudentAssignments() {
                                     padding: '3px 8px',
                                     borderRadius: 4,
                                     border: 'none',
-                                    backgroundColor: '#2563eb',
+                                    backgroundColor: '#e11d55',
                                     color: '#ffffff',
                                     fontSize: 11,
                                     fontWeight: 600,
@@ -1120,10 +1120,10 @@ export function StudentAssignments() {
                                   type="button"
                                   onClick={() => handleToggleRemoveExistingAttachment(att.id)}
                                   style={{
-                                    border: '1px solid #fecaca',
+                                    border: '1px solid #f2c0c0',
                                     borderRadius: 4,
-                                    background: '#fee2e2',
-                                    color: '#dc2626',
+                                    background: '#f7d5d5',
+                                    color: '#d32f2f',
                                     padding: '3px 8px',
                                     fontSize: 11,
                                     cursor: 'pointer',
@@ -1142,10 +1142,10 @@ export function StudentAssignments() {
                                 type="button"
                                 onClick={() => handleToggleRemoveExistingAttachment(att.id)}
                                 style={{
-                                  border: '1px solid #cbd5e1',
+                                  border: '1px solid #d4d5d9',
                                   borderRadius: 4,
-                                  background: '#f1f5f9',
-                                  color: '#334155',
+                                  background: '#f5f5f6',
+                                  color: '#3e4152',
                                   padding: '3px 8px',
                                   fontSize: 11,
                                   cursor: 'pointer',
@@ -1167,7 +1167,7 @@ export function StudentAssignments() {
 
               {/* Attachments Section */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 2 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #282c3f)', marginBottom: 2 }}>
                   Attach Document / File
                 </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -1177,10 +1177,10 @@ export function StudentAssignments() {
                       alignItems: 'center',
                       gap: 6,
                       padding: '7px 14px',
-                      borderRadius: 6,
-                      border: '1px dashed var(--border, #cbd5e1)',
-                      backgroundColor: 'var(--card-subtle, #f8fafc)',
-                      color: 'var(--text, #334155)',
+                      borderRadius: 4,
+                      border: '1px dashed var(--border, #d4d5d9)',
+                      backgroundColor: 'var(--card-subtle, #f9f9fa)',
+                      color: 'var(--text, #3e4152)',
                       fontSize: 13,
                       fontWeight: 500,
                       cursor: 'pointer',
@@ -1188,7 +1188,7 @@ export function StudentAssignments() {
                     }}
                     title="Attach files to your submission"
                   >
-                    <Paperclip size={15} color="#2563eb" />
+                    <Paperclip size={15} color="#e11d55" />
                     <span>{selectedFiles.length > 0 ? 'Attach More Files' : 'Attach Document / File'}</span>
                     <input
                       id="assignment-file-input"
@@ -1200,7 +1200,7 @@ export function StudentAssignments() {
                       disabled={((activeModal.attachments || []).filter(a => !removedAttachmentIds.includes(a.id)).length + selectedFiles.length) >= MAX_FILE_COUNT}
                     />
                   </label>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted, #696e79)' }}>
                     {((activeModal.attachments || []).filter(a => !removedAttachmentIds.includes(a.id)).length + selectedFiles.length)} / {MAX_FILE_COUNT} files (Max 10MB each, 25MB total)
                   </span>
                 </div>
@@ -1218,9 +1218,9 @@ export function StudentAssignments() {
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             padding: '8px 12px',
-                            borderRadius: 6,
+                            borderRadius: 4,
                             background: 'var(--card, #ffffff)',
-                            border: '1px solid var(--border, #cbd5e1)',
+                            border: '1px solid var(--border, #d4d5d9)',
                             gap: 10
                           }}
                         >
@@ -1229,7 +1229,7 @@ export function StudentAssignments() {
                               width: 28,
                               height: 28,
                               borderRadius: 4,
-                              backgroundColor: '#eff6ff',
+                              backgroundColor: '#fff2f4',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -1238,10 +1238,10 @@ export function StudentAssignments() {
                               {getFileIcon(f.name, f.file.type)}
                             </div>
                             <div style={{ minWidth: 0 }}>
-                              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text, #1e293b)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text, #282c3f)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {f.name}
                               </span>
-                              <span style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 11, marginLeft: 6 }}>
+                              <span style={{ color: 'var(--text-muted, #94969f)', fontSize: 11, marginLeft: 6 }}>
                                 ({formatBytes(f.size)})
                               </span>
                             </div>
@@ -1257,9 +1257,9 @@ export function StudentAssignments() {
                                   gap: 3,
                                   padding: '3px 8px',
                                   borderRadius: 4,
-                                  border: '1px solid #bfdbfe',
-                                  backgroundColor: '#eff6ff',
-                                  color: '#2563eb',
+                                  border: '1px solid #fcc3d1',
+                                  backgroundColor: '#fff2f4',
+                                  color: '#e11d55',
                                   fontSize: 11,
                                   fontWeight: 600,
                                   cursor: 'pointer'
@@ -1276,7 +1276,7 @@ export function StudentAssignments() {
                                 border: 'none',
                                 background: 'none',
                                 cursor: 'pointer',
-                                color: '#ef4444',
+                                color: '#d32f2f',
                                 padding: 2,
                                 display: 'inline-flex',
                                 alignItems: 'center'
@@ -1334,13 +1334,13 @@ export function StudentAssignments() {
           <div className="student-preview-modal">
             <div className="student-preview-modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                <Paperclip size={16} color="var(--text-muted, #64748b)" />
+                <Paperclip size={16} color="var(--text-muted, #696e79)" />
                 <h3
                   style={{
                     margin: 0,
                     fontSize: 15,
                     fontWeight: 700,
-                    color: 'var(--text, #0f172a)',
+                    color: 'var(--text, #1c1f2e)',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap'
@@ -1365,7 +1365,7 @@ export function StudentAssignments() {
                     border: 'none',
                     background: 'none',
                     cursor: 'pointer',
-                    color: 'var(--text-muted, #64748b)',
+                    color: 'var(--text-muted, #696e79)',
                     padding: 4
                   }}
                 >
@@ -1376,12 +1376,12 @@ export function StudentAssignments() {
 
             <div className="student-preview-modal-body">
               {previewState.loading ? (
-                <div style={{ textAlign: 'center', color: '#64748b' }}>
+                <div style={{ textAlign: 'center', color: '#696e79' }}>
                   <Loader2 size={32} className="animate-spin" style={{ margin: '0 auto 8px' }} />
                   <p style={{ margin: 0, fontSize: 14 }}>Loading preview securely...</p>
                 </div>
               ) : previewState.error ? (
-                <div style={{ textAlign: 'center', color: '#ef4444', padding: 20 }}>
+                <div style={{ textAlign: 'center', color: '#d32f2f', padding: 20 }}>
                   <AlertCircle size={32} style={{ margin: '0 auto 8px' }} />
                   <p style={{ margin: 0, fontSize: 14 }}>{previewState.error}</p>
                 </div>
@@ -1398,10 +1398,10 @@ export function StudentAssignments() {
                   style={{ width: '100%', height: '100%', border: 'none', borderRadius: 4 }}
                 />
               ) : (
-                <div style={{ textAlign: 'center', padding: 30, color: '#475569' }}>
-                  <FileText size={48} color="#94a3b8" style={{ margin: '0 auto 12px' }} />
+                <div style={{ textAlign: 'center', padding: 30, color: '#535766' }}>
+                  <FileText size={48} color="#94969f" style={{ margin: '0 auto 12px' }} />
                   <h4 style={{ margin: '0 0 6px', fontSize: 16 }}>Inline preview not supported for this file type</h4>
-                  <p style={{ margin: '0 0 16px', fontSize: 13, color: '#64748b' }}>
+                  <p style={{ margin: '0 0 16px', fontSize: 13, color: '#696e79' }}>
                     Word and Excel documents can be downloaded to view with your preferred software.
                   </p>
                   <button
@@ -1409,8 +1409,8 @@ export function StudentAssignments() {
                     onClick={handlePreviewDownload}
                     style={{
                       padding: '8px 16px',
-                      borderRadius: 6,
-                      background: '#2563eb',
+                      borderRadius: 4,
+                      background: '#e11d55',
                       color: '#fff',
                       border: 'none',
                       fontWeight: 600,

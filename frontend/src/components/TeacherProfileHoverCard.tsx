@@ -154,20 +154,20 @@ export function TeacherProfileHoverCard({
           display: 'inline-flex',
           alignItems: 'center',
           cursor: 'pointer',
-          borderRadius: 6,
+          borderRadius: 4,
           padding: '2px 6px',
           margin: '-2px -6px',
-          color: 'var(--text, #1e293b)',
+          color: 'var(--text, #282c3f)',
           textDecoration: 'none',
           transition: 'all 0.15s ease',
           userSelect: 'none'
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.color = '#4f46e5';
-          e.currentTarget.style.backgroundColor = 'rgba(79, 70, 229, 0.08)';
+          e.currentTarget.style.color = '#e11d55';
+          e.currentTarget.style.backgroundColor = 'rgba(225, 29, 85, 0.08)';
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.color = 'var(--text, #1e293b)';
+          e.currentTarget.style.color = 'var(--text, #282c3f)';
           e.currentTarget.style.backgroundColor = 'transparent';
         }}
         className="teacher-name-click-trigger"
@@ -187,7 +187,7 @@ export function TeacherProfileHoverCard({
               right: 0,
               bottom: 0,
               zIndex: 99999,
-              backgroundColor: 'rgba(15, 23, 42, 0.52)',
+              backgroundColor: 'rgba(28, 31, 46, 0.52)',
               backdropFilter: 'blur(6px)',
               WebkitBackdropFilter: 'blur(6px)',
               display: 'flex',
@@ -203,10 +203,10 @@ export function TeacherProfileHoverCard({
                 width: '100%',
                 maxWidth: 440,
                 backgroundColor: 'var(--bg-card, #ffffff)',
-                borderRadius: 20,
+                borderRadius: 4,
                 boxShadow:
-                  '0 25px 60px -15px rgba(15, 23, 42, 0.45), 0 0 0 1px rgba(226, 232, 240, 0.1), 0 10px 25px -5px rgba(0, 0, 0, 0.2)',
-                border: '1px solid var(--border, #e2e8f0)',
+                  'none',
+                border: '1px solid var(--border, #eaeaec)',
                 overflow: 'hidden',
                 zIndex: 100000,
                 fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
@@ -219,7 +219,7 @@ export function TeacherProfileHoverCard({
               <div
                 style={{
                   height: 74,
-                  background: 'linear-gradient(135deg, #3730a3 0%, #4f46e5 55%, #6366f1 100%)',
+                  background: '#9a133c',
                   position: 'relative',
                   display: 'flex',
                   alignItems: 'flex-start',
@@ -237,7 +237,7 @@ export function TeacherProfileHoverCard({
                     width: 140,
                     height: 140,
                     borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(255, 255, 255, 0.22) 0%, transparent 70%)',
+                    background: 'transparent',
                     pointerEvents: 'none'
                   }}
                 />
@@ -249,7 +249,7 @@ export function TeacherProfileHoverCard({
                     width: 100,
                     height: 100,
                     borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(199, 210, 254, 0.2) 0%, transparent 70%)',
+                    background: 'transparent',
                     pointerEvents: 'none'
                   }}
                 />
@@ -270,7 +270,7 @@ export function TeacherProfileHoverCard({
                     border: '1px solid rgba(255, 255, 255, 0.25)',
                     padding: '4px 10px',
                     borderRadius: 999,
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
+                    boxShadow: 'none'
                   }}
                 >
                   <Briefcase size={13} />
@@ -282,7 +282,7 @@ export function TeacherProfileHoverCard({
                   <div
                     style={{
                       fontSize: 11,
-                      color: '#e0e7ff',
+                      color: '#ffe1e8',
                       fontWeight: 650,
                       display: 'flex',
                       alignItems: 'center',
@@ -300,8 +300,8 @@ export function TeacherProfileHoverCard({
                         width: 6,
                         height: 6,
                         borderRadius: '50%',
-                        backgroundColor: '#34d399',
-                        boxShadow: '0 0 6px #34d399',
+                        backgroundColor: '#339988',
+                        boxShadow: 'none',
                         display: 'inline-block'
                       }}
                     />
@@ -362,9 +362,9 @@ export function TeacherProfileHoverCard({
                         height: 66,
                         borderRadius: '50%',
                         border: '3.5px solid var(--bg-card, #ffffff)',
-                        boxShadow: '0 8px 22px -3px rgba(79, 70, 229, 0.35), 0 2px 6px rgba(0, 0, 0, 0.08)',
-                        backgroundColor: '#4f46e5',
-                        background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 55%, #3730a3 100%)',
+                        boxShadow: 'none',
+                        backgroundColor: '#e11d55',
+                        background: '#e11d55',
                         color: '#ffffff',
                         display: 'flex',
                         alignItems: 'center',
@@ -404,9 +404,9 @@ export function TeacherProfileHoverCard({
                         width: 14,
                         height: 14,
                         borderRadius: '50%',
-                        backgroundColor: isActive ? '#10b981' : '#94a3b8',
+                        backgroundColor: isActive ? '#03806a' : '#94969f',
                         border: '2.5px solid var(--bg-card, #ffffff)',
-                        boxShadow: '0 1px 4px rgba(0,0,0,0.15)'
+                        boxShadow: 'none'
                       }}
                       title={isActive ? 'Active Faculty' : 'Inactive'}
                     />
@@ -418,19 +418,19 @@ export function TeacherProfileHoverCard({
                       style={{
                         fontSize: 11.5,
                         fontWeight: 750,
-                        color: '#4338ca',
-                        backgroundColor: 'rgba(99, 102, 241, 0.15)',
-                        border: '1px solid rgba(99, 102, 241, 0.3)',
+                        color: '#c0174a',
+                        backgroundColor: 'rgba(225, 29, 85, 0.15)',
+                        border: '1px solid rgba(225, 29, 85, 0.3)',
                         padding: '3px 9px',
-                        borderRadius: 8,
+                        borderRadius: 4,
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 4,
-                        boxShadow: '0 1px 2px rgba(79, 70, 229, 0.05)'
+                        boxShadow: 'none'
                       }}
                       title="Employee ID / Savior No"
                     >
-                      <Hash size={12} color="#818cf8" />
+                      <Hash size={12} color="#ef5a85" />
                       <span>ID: {empId}</span>
                     </div>
 
@@ -438,11 +438,11 @@ export function TeacherProfileHoverCard({
                       style={{
                         fontSize: 11,
                         fontWeight: 700,
-                        color: isActive ? '#34d399' : 'var(--text-muted, #64748b)',
-                        backgroundColor: isActive ? 'rgba(16, 185, 129, 0.15)' : 'var(--card-subtle, #f1f5f9)',
-                        border: `1px solid ${isActive ? 'rgba(16, 185, 129, 0.3)' : 'var(--border, #e2e8f0)'}`,
+                        color: isActive ? '#339988' : 'var(--text-muted, #696e79)',
+                        backgroundColor: isActive ? 'rgba(3, 128, 106, 0.15)' : 'var(--card-subtle, #f5f5f6)',
+                        border: `1px solid ${isActive ? 'rgba(3, 128, 106, 0.3)' : 'var(--border, #eaeaec)'}`,
                         padding: '3px 8px',
-                        borderRadius: 8
+                        borderRadius: 4
                       }}
                       title="Faculty Account Status"
                     >
@@ -458,7 +458,7 @@ export function TeacherProfileHoverCard({
                       margin: '0 0 4px 0',
                       fontSize: 18,
                       fontWeight: 800,
-                      color: 'var(--text, #0f172a)',
+                      color: 'var(--text, #1c1f2e)',
                       letterSpacing: '-0.02em',
                       lineHeight: 1.25
                     }}
@@ -471,11 +471,11 @@ export function TeacherProfileHoverCard({
                       style={{
                         fontSize: 12,
                         fontWeight: 700,
-                        color: '#6366f1',
-                        backgroundColor: 'rgba(99, 102, 241, 0.14)',
-                        border: '1px solid rgba(99, 102, 241, 0.3)',
+                        color: '#e11d55',
+                        backgroundColor: 'rgba(225, 29, 85, 0.14)',
+                        border: '1px solid rgba(225, 29, 85, 0.3)',
                         padding: '2px 8px',
-                        borderRadius: 6,
+                        borderRadius: 4,
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 4
@@ -489,14 +489,14 @@ export function TeacherProfileHoverCard({
                       <span
                         style={{
                           fontSize: 11.5,
-                          color: '#64748b',
+                          color: '#696e79',
                           fontWeight: 500,
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 4
                         }}
                       >
-                        <Award size={12} color="#94a3b8" />
+                        <Award size={12} color="#94969f" />
                         <span>{qualification}</span>
                       </span>
                     )}
@@ -515,17 +515,17 @@ export function TeacherProfileHoverCard({
                   {/* Gender Card */}
                   <div
                     style={{
-                      backgroundColor: 'var(--card-subtle, #f8fafc)',
+                      backgroundColor: 'var(--card-subtle, #f9f9fa)',
                       padding: '8px 12px',
-                      borderRadius: 10,
-                      border: '1px solid var(--border, #e2e8f0)'
+                      borderRadius: 4,
+                      border: '1px solid var(--border, #eaeaec)'
                     }}
                   >
                     <div
                       style={{
                         fontSize: 10,
                         fontWeight: 700,
-                        color: 'var(--text-muted, #64748b)',
+                        color: 'var(--text-muted, #696e79)',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em'
                       }}
@@ -539,16 +539,16 @@ export function TeacherProfileHoverCard({
                           fontWeight: 700,
                           color:
                             genderStr.toLowerCase() === 'female'
-                              ? '#f472b6'
+                              ? '#ef5a85'
                               : genderStr.toLowerCase() === 'male'
-                              ? '#38bdf8'
-                              : 'var(--text, #334155)',
+                              ? '#7f8ccd'
+                              : 'var(--text, #3e4152)',
                           backgroundColor:
                             genderStr.toLowerCase() === 'female'
-                              ? 'rgba(219, 39, 119, 0.15)'
+                              ? 'rgba(225, 29, 85, 0.15)'
                               : genderStr.toLowerCase() === 'male'
-                              ? 'rgba(2, 132, 199, 0.15)'
-                              : 'var(--card-subtle, #f1f5f9)',
+                              ? 'rgba(92, 107, 192, 0.15)'
+                              : 'var(--card-subtle, #f5f5f6)',
                           padding: '1px 6px',
                           borderRadius: 4,
                           display: 'inline-block'
@@ -562,17 +562,17 @@ export function TeacherProfileHoverCard({
                   {/* Joining Date Card */}
                   <div
                     style={{
-                      backgroundColor: 'var(--card-subtle, #f8fafc)',
+                      backgroundColor: 'var(--card-subtle, #f9f9fa)',
                       padding: '8px 12px',
-                      borderRadius: 10,
-                      border: '1px solid var(--border, #e2e8f0)'
+                      borderRadius: 4,
+                      border: '1px solid var(--border, #eaeaec)'
                     }}
                   >
                     <div
                       style={{
                         fontSize: 10,
                         fontWeight: 700,
-                        color: 'var(--text-muted, #64748b)',
+                        color: 'var(--text-muted, #696e79)',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em',
                         display: 'flex',
@@ -580,14 +580,14 @@ export function TeacherProfileHoverCard({
                         gap: 4
                       }}
                     >
-                      <Calendar size={10} color="#94a3b8" />
+                      <Calendar size={10} color="#94969f" />
                       <span>Joining Date</span>
                     </div>
                     <div
                       style={{
                         fontSize: 12,
                         fontWeight: joiningDateStr ? 650 : 500,
-                        color: joiningDateStr ? 'var(--text, #0f172a)' : 'var(--text-muted, #94a3b8)',
+                        color: joiningDateStr ? 'var(--text, #1c1f2e)' : 'var(--text-muted, #94969f)',
                         fontStyle: joiningDateStr ? 'normal' : 'italic',
                         marginTop: 2
                       }}
@@ -604,19 +604,19 @@ export function TeacherProfileHoverCard({
                       display: 'flex',
                       alignItems: 'flex-start',
                       gap: 8,
-                      backgroundColor: 'rgba(147, 51, 234, 0.12)',
-                      border: '1px solid rgba(147, 51, 234, 0.25)',
-                      borderRadius: 10,
+                      backgroundColor: 'rgba(92, 107, 192, 0.12)',
+                      border: '1px solid rgba(92, 107, 192, 0.25)',
+                      borderRadius: 4,
                       padding: '8px 12px',
                       fontSize: 12,
-                      color: '#c084fc',
+                      color: '#7f8ccd',
                       marginBottom: 10
                     }}
                   >
-                    <BookOpen size={14} color="#a855f7" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <BookOpen size={14} color="#5c6bc0" style={{ flexShrink: 0, marginTop: 2 }} />
                     <div style={{ minWidth: 0 }}>
                       <span style={{ fontWeight: 700 }}>Assigned Classes: </span>
-                      <span style={{ color: '#d8b4fe' }}>{routine}</span>
+                      <span style={{ color: '#a3abda' }}>{routine}</span>
                     </div>
                   </div>
                 )}
@@ -625,8 +625,8 @@ export function TeacherProfileHoverCard({
                 <div
                   style={{
                     backgroundColor: 'var(--card-subtle, #ffffff)',
-                    border: '1px solid var(--border, #e2e8f0)',
-                    borderRadius: 12,
+                    border: '1px solid var(--border, #eaeaec)',
+                    borderRadius: 4,
                     padding: '8px 10px',
                     display: 'grid',
                     gap: 6
@@ -640,8 +640,8 @@ export function TeacherProfileHoverCard({
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         padding: '4px 6px',
-                        borderRadius: 6,
-                        backgroundColor: 'var(--bg-card, #f8fafc)'
+                        borderRadius: 4,
+                        backgroundColor: 'var(--bg-card, #f9f9fa)'
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
@@ -650,21 +650,21 @@ export function TeacherProfileHoverCard({
                             width: 22,
                             height: 22,
                             borderRadius: '50%',
-                            backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                            backgroundColor: 'rgba(225, 29, 85, 0.15)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             flexShrink: 0
                           }}
                         >
-                          <Mail size={12} color="#818cf8" />
+                          <Mail size={12} color="#ef5a85" />
                         </div>
                         <a
                           href={`mailto:${email}`}
                           style={{
                             fontSize: 12,
                             fontWeight: 600,
-                            color: 'var(--sidebar-accent, #4338ca)',
+                            color: 'var(--sidebar-accent, #c0174a)',
                             textDecoration: 'none',
                             textOverflow: 'ellipsis',
                             overflow: 'hidden',
@@ -686,7 +686,7 @@ export function TeacherProfileHoverCard({
                           border: 'none',
                           cursor: 'pointer',
                           padding: 3,
-                          color: copiedKey === 'email' ? '#16a34a' : 'var(--text-muted, #94a3b8)',
+                          color: copiedKey === 'email' ? '#03806a' : 'var(--text-muted, #94969f)',
                           display: 'flex',
                           alignItems: 'center'
                         }}
@@ -704,8 +704,8 @@ export function TeacherProfileHoverCard({
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         padding: '4px 6px',
-                        borderRadius: 6,
-                        backgroundColor: 'var(--bg-card, #f8fafc)'
+                        borderRadius: 4,
+                        backgroundColor: 'var(--bg-card, #f9f9fa)'
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
@@ -714,21 +714,21 @@ export function TeacherProfileHoverCard({
                             width: 22,
                             height: 22,
                             borderRadius: '50%',
-                            backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                            backgroundColor: 'rgba(3, 128, 106, 0.15)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             flexShrink: 0
                           }}
                         >
-                          <Phone size={12} color="#16a34a" />
+                          <Phone size={12} color="#03806a" />
                         </div>
                         <a
                           href={`tel:${mobile}`}
                           style={{
                             fontSize: 12,
                             fontWeight: 700,
-                            color: '#34d399',
+                            color: '#339988',
                             textDecoration: 'none',
                             fontFamily: 'ui-monospace, SFMono-Regular, monospace'
                           }}
@@ -748,7 +748,7 @@ export function TeacherProfileHoverCard({
                           border: 'none',
                           cursor: 'pointer',
                           padding: 3,
-                          color: copiedKey === 'mobile' ? '#16a34a' : 'var(--text-muted, #94a3b8)',
+                          color: copiedKey === 'mobile' ? '#03806a' : 'var(--text-muted, #94969f)',
                           display: 'flex',
                           alignItems: 'center'
                         }}
@@ -766,8 +766,8 @@ export function TeacherProfileHoverCard({
                         alignItems: 'center',
                         gap: 8,
                         padding: '4px 6px',
-                        borderRadius: 6,
-                        backgroundColor: 'var(--bg-card, #f8fafc)'
+                        borderRadius: 4,
+                        backgroundColor: 'var(--bg-card, #f9f9fa)'
                       }}
                     >
                       <div
@@ -775,19 +775,19 @@ export function TeacherProfileHoverCard({
                           width: 22,
                           height: 22,
                           borderRadius: '50%',
-                          backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                          backgroundColor: 'rgba(233, 162, 59, 0.15)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           flexShrink: 0
                         }}
                       >
-                        <MapPin size={12} color="#f59e0b" />
+                        <MapPin size={12} color="#e9a23b" />
                       </div>
                       <span
                         style={{
                           fontSize: 11.5,
-                          color: 'var(--text-secondary, #475569)',
+                          color: 'var(--text-secondary, #535766)',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap'
@@ -804,32 +804,32 @@ export function TeacherProfileHoverCard({
               {/* Bottom Premium Status Stripe */}
               <div
                 style={{
-                  backgroundColor: 'var(--card-subtle, #f8fafc)',
-                  borderTop: '1px solid var(--border, #e2e8f0)',
+                  backgroundColor: 'var(--card-subtle, #f9f9fa)',
+                  borderTop: '1px solid var(--border, #eaeaec)',
                   padding: '9px 18px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   fontSize: 11,
-                  color: 'var(--text-muted, #64748b)'
+                  color: 'var(--text-muted, #696e79)'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: isActive ? '#15803d' : '#64748b', fontWeight: 700 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: isActive ? '#02604f' : '#696e79', fontWeight: 700 }}>
                   <span
                     style={{
                       width: 7,
                       height: 7,
                       borderRadius: '50%',
-                      backgroundColor: isActive ? '#10b981' : '#94a3b8',
-                      boxShadow: isActive ? '0 0 0 2.5px rgba(16, 185, 129, 0.2)' : 'none',
+                      backgroundColor: isActive ? '#03806a' : '#94969f',
+                      boxShadow: isActive ? '0 0 0 2.5px rgba(3, 128, 106, 0.2)' : 'none',
                       display: 'inline-block'
                     }}
                   />
                   <span>{isActive ? 'Active Faculty Member' : 'Deactivated Account'}</span>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4.5, color: '#475569', fontWeight: 600 }}>
-                  <ShieldCheck size={13} color="#4f46e5" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4.5, color: '#535766', fontWeight: 600 }}>
+                  <ShieldCheck size={13} color="#e11d55" />
                   <span>Verified Staff Record</span>
                 </div>
               </div>

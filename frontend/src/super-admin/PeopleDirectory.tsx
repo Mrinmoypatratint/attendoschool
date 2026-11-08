@@ -93,7 +93,7 @@ export const PeopleDirectory: React.FC = () => {
       </div>
 
       {successToast && (
-        <div style={{ margin: '14px 0', padding: '12px 16px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ margin: '14px 0', padding: '12px 16px', borderRadius: '4px', background: 'rgba(3, 128, 106, 0.1)', color: '#03806a', border: '1px solid rgba(3, 128, 106, 0.2)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="20 6 9 17 4 12" />
           </svg>
@@ -102,7 +102,7 @@ export const PeopleDirectory: React.FC = () => {
       )}
 
       {error && (
-        <div className="error-banner" style={{ margin: '16px 0', padding: '12px 16px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+        <div className="error-banner" style={{ margin: '16px 0', padding: '12px 16px', borderRadius: '4px', background: 'rgba(211, 47, 47, 0.1)', color: '#d32f2f', border: '1px solid rgba(211, 47, 47, 0.2)' }}>
           {error}
         </div>
       )}
@@ -110,49 +110,49 @@ export const PeopleDirectory: React.FC = () => {
       {/* KPI Cards Strip */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', margin: '20px 0' }}>
         <div className="card" style={{ padding: '16px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>
+          <div style={{ fontSize: '12px', fontWeight: '600', color: '#696e79', textTransform: 'uppercase' }}>
             Total User Accounts
           </div>
-          <div style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', marginTop: '4px' }}>
+          <div style={{ fontSize: '24px', fontWeight: '800', color: '#1c1f2e', marginTop: '4px' }}>
             {users.length}
           </div>
-          <div style={{ fontSize: '12px', color: '#10b981', marginTop: '2px' }}>
+          <div style={{ fontSize: '12px', color: '#03806a', marginTop: '2px' }}>
             Active authentication identities
           </div>
         </div>
 
         <div className="card" style={{ padding: '16px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>
+          <div style={{ fontSize: '12px', fontWeight: '600', color: '#696e79', textTransform: 'uppercase' }}>
             Institutional Admins
           </div>
-          <div style={{ fontSize: '24px', fontWeight: '800', color: '#6366f1', marginTop: '4px' }}>
+          <div style={{ fontSize: '24px', fontWeight: '800', color: '#e11d55', marginTop: '4px' }}>
             {adminCount}
           </div>
-          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+          <div style={{ fontSize: '12px', color: '#696e79', marginTop: '2px' }}>
             School & Super Admins
           </div>
         </div>
 
         <div className="card" style={{ padding: '16px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>
+          <div style={{ fontSize: '12px', fontWeight: '600', color: '#696e79', textTransform: 'uppercase' }}>
             Faculty & Teachers
           </div>
-          <div style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', marginTop: '4px' }}>
+          <div style={{ fontSize: '24px', fontWeight: '800', color: '#1c1f2e', marginTop: '4px' }}>
             {teacherCount}
           </div>
-          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+          <div style={{ fontSize: '12px', color: '#696e79', marginTop: '2px' }}>
             Instructors & Roll callers
           </div>
         </div>
 
         <div className="card" style={{ padding: '16px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>
+          <div style={{ fontSize: '12px', fontWeight: '600', color: '#696e79', textTransform: 'uppercase' }}>
             Students & Parents
           </div>
-          <div style={{ fontSize: '24px', fontWeight: '800', color: '#10b981', marginTop: '4px' }}>
+          <div style={{ fontSize: '24px', fontWeight: '800', color: '#03806a', marginTop: '4px' }}>
             {studentCount + parentCount}
           </div>
-          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+          <div style={{ fontSize: '12px', color: '#696e79', marginTop: '2px' }}>
             Portal & Mobile app users
           </div>
         </div>
@@ -175,7 +175,7 @@ export const PeopleDirectory: React.FC = () => {
               height="16"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#94a3b8"
+              stroke="#94969f"
               strokeWidth="2"
               style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}
             >
@@ -185,7 +185,7 @@ export const PeopleDirectory: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '500' }}>Role Filter:</span>
+            <span style={{ fontSize: '13px', color: '#696e79', fontWeight: '500' }}>Role Filter:</span>
             <select
               className="form-control"
               style={{ width: '160px' }}
@@ -234,14 +234,14 @@ export const PeopleDirectory: React.FC = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                    <div className="spinner" style={{ margin: '0 auto 12px', width: '28px', height: '28px', border: '3px solid #e2e8f0', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#696e79' }}>
+                    <div className="spinner" style={{ margin: '0 auto 12px', width: '28px', height: '28px', border: '3px solid #eaeaec', borderTopColor: '#e11d55', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
                     Loading platform identities...
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#696e79' }}>
                     No users found matching your criteria.
                   </td>
                 </tr>
@@ -257,8 +257,8 @@ export const PeopleDirectory: React.FC = () => {
                             width: '32px',
                             height: '32px',
                             borderRadius: '50%',
-                            background: u.role === 'SUPER_ADMIN' ? '#4f46e5' : u.role === 'SCHOOL_ADMIN' ? '#0f172a' : '#e2e8f0',
-                            color: u.role === 'SUPER_ADMIN' || u.role === 'SCHOOL_ADMIN' ? '#fff' : '#475569',
+                            background: u.role === 'SUPER_ADMIN' ? '#e11d55' : u.role === 'SCHOOL_ADMIN' ? '#1c1f2e' : '#eaeaec',
+                            color: u.role === 'SUPER_ADMIN' || u.role === 'SCHOOL_ADMIN' ? '#fff' : '#535766',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -268,8 +268,8 @@ export const PeopleDirectory: React.FC = () => {
                             {(u.name || 'U').charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div style={{ fontWeight: '600', color: '#0f172a' }}>{u.name}</div>
-                            <div style={{ fontSize: '11px', color: '#64748b' }}>{u.email}</div>
+                            <div style={{ fontWeight: '600', color: '#1c1f2e' }}>{u.name}</div>
+                            <div style={{ fontSize: '11px', color: '#696e79' }}>{u.email}</div>
                           </div>
                         </div>
                       </td>
@@ -277,21 +277,21 @@ export const PeopleDirectory: React.FC = () => {
                         <span
                           className="badge"
                           style={{
-                            background: u.role === 'SUPER_ADMIN' ? '#eff6ff' : u.role === 'SCHOOL_ADMIN' ? '#f5f3ff' : '#f8fafc',
-                            color: u.role === 'SUPER_ADMIN' ? '#2563eb' : u.role === 'SCHOOL_ADMIN' ? '#7c3aed' : '#475569',
-                            border: `1px solid ${u.role === 'SUPER_ADMIN' ? '#bfdbfe' : u.role === 'SCHOOL_ADMIN' ? '#ddd6fe' : '#e2e8f0'}`
+                            background: u.role === 'SUPER_ADMIN' ? '#fff2f4' : u.role === 'SCHOOL_ADMIN' ? '#eef0f9' : '#f9f9fa',
+                            color: u.role === 'SUPER_ADMIN' ? '#e11d55' : u.role === 'SCHOOL_ADMIN' ? '#5c6bc0' : '#535766',
+                            border: `1px solid ${u.role === 'SUPER_ADMIN' ? '#fcc3d1' : u.role === 'SCHOOL_ADMIN' ? '#c9cee9' : '#eaeaec'}`
                           }}
                         >
                           {u.role.replace('_', ' ')}
                         </span>
                       </td>
                       <td>
-                        <span style={{ fontSize: '13px', color: '#334155' }}>
+                        <span style={{ fontSize: '13px', color: '#3e4152' }}>
                           {u.schoolName || 'Platform Global'}
                         </span>
                       </td>
                       <td>
-                        <span style={{ fontSize: '12px', color: '#64748b' }}>
+                        <span style={{ fontSize: '12px', color: '#696e79' }}>
                           {u.phone || '—'}
                         </span>
                       </td>
@@ -301,7 +301,7 @@ export const PeopleDirectory: React.FC = () => {
                         </span>
                       </td>
                       <td>
-                        <div style={{ fontSize: '12px', color: '#64748b' }}>
+                        <div style={{ fontSize: '12px', color: '#696e79' }}>
                           {u.lastLogin || 'Recent'}
                         </div>
                       </td>
@@ -312,7 +312,7 @@ export const PeopleDirectory: React.FC = () => {
                             style={{
                               padding: '4px 10px',
                               fontSize: '11px',
-                              color: isActive ? '#ef4444' : '#10b981'
+                              color: isActive ? '#d32f2f' : '#03806a'
                             }}
                             disabled={actionId === u.id}
                             onClick={() => handleToggleStatus(u)}

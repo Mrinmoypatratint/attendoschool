@@ -379,7 +379,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
                 title="Academic Session"
                 style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
               >
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#03806a', flexShrink: 0 }}></span>
                 <span>{(() => {
                   const clean = String(activeSession || '').replace(/\b(academic\s+)?sessions?\b/gi, '').trim() || '2026–27';
                   return `${clean} ACADEMIC SESSION`.toUpperCase();

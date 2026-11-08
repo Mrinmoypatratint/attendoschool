@@ -85,7 +85,7 @@ export function StudentTimetable() {
         style={{
           display: 'flex',
           gap: 12,
-          borderBottom: '2px solid var(--border, #e2e8f0)',
+          borderBottom: '2px solid var(--border, #eaeaec)',
           marginBottom: 16,
           overflowX: 'auto',
           scrollbarWidth: 'none',
@@ -105,8 +105,8 @@ export function StudentTimetable() {
                 padding: '12px 20px',
                 background: 'none',
                 border: 'none',
-                borderBottom: isSelected ? '3px solid #4f46e5' : '3px solid transparent',
-                color: isSelected ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+                borderBottom: isSelected ? '3px solid #e11d55' : '3px solid transparent',
+                color: isSelected ? '#e11d55' : 'var(--text-secondary, #696e79)',
                 fontWeight: isSelected ? 700 : 500,
                 fontSize: 15,
                 cursor: 'pointer',
@@ -123,9 +123,9 @@ export function StudentTimetable() {
               <span
                 style={{
                   padding: '2px 8px',
-                  borderRadius: 12,
-                  background: isSelected ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
-                  color: isSelected ? '#4338ca' : '#64748b',
+                  borderRadius: 4,
+                  background: isSelected ? '#ffe1e8' : 'var(--card-subtle, #f5f5f6)',
+                  color: isSelected ? '#c0174a' : '#696e79',
                   fontSize: 12,
                   fontWeight: 700
                 }}
@@ -137,7 +137,7 @@ export function StudentTimetable() {
         })}
       </div>
 
-      <div className="student-card bg-white dark:bg-[#131b2e] rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm mt-5">
+      <div className="student-card bg-white dark:bg-[#1c1c1c] rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm mt-5">
         <div className="student-card-header flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100 dark:border-slate-800/80">
           <div className="student-card-title-wrap flex items-center gap-2.5 text-blue-600 dark:text-blue-400">
             <Calendar size={18} />

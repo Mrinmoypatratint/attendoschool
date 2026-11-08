@@ -62,10 +62,10 @@ export const ProductDashboard3D: React.FC = () => {
           <span className="lp-window-dot yellow" />
           <span className="lp-window-dot green" />
         </div>
-        <div style={{ color: '#E2E8F0', fontWeight: 600 }}>
+        <div style={{ color: '#eaeaec', fontWeight: 600 }}>
           https://portal.dav.attendoschool.online/live-attendance
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#34D399', fontSize: 11 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#339988', fontSize: 11 }}>
           <ShieldCheck size={14} />
           <span>256-Bit SSL Secured</span>
         </div>
@@ -96,11 +96,11 @@ export const ProductDashboard3D: React.FC = () => {
                 gap: 6,
                 fontSize: 12,
                 fontWeight: 600,
-                color: '#047857',
-                background: '#ECFDF5',
+                color: '#02604f',
+                background: '#e6f2f0',
                 padding: '3px 8px',
                 borderRadius: 4,
-                border: '1px solid #A7F3D0'
+                border: '1px solid #99ccc3'
               }}
             >
               <CheckCircle2 size={13} />
@@ -150,7 +150,7 @@ export const ProductDashboard3D: React.FC = () => {
         </div>
 
         {/* Live Attendance Table with Confidential Masked Data (**) */}
-        <div style={{ border: '1px solid var(--lp-border-subtle)', borderRadius: 8, overflow: 'hidden', marginBottom: 12 }}>
+        <div style={{ border: '1px solid var(--lp-border-subtle)', borderRadius: 4, overflow: 'hidden', marginBottom: 12 }}>
           <div
             style={{
               display: 'flex',
@@ -166,7 +166,7 @@ export const ProductDashboard3D: React.FC = () => {
               <ClipboardCheck size={14} style={{ color: 'var(--lp-brand-green)' }} />
               <span>Live Roll Call: Class 10-A (Morning Session)</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#B45309', fontWeight: 600, fontSize: 11 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#8f5c12', fontWeight: 600, fontSize: 11 }}>
               <Lock size={12} />
               <span>PII Masked with ** for Confidentiality</span>
             </div>
@@ -220,17 +220,17 @@ export const ProductDashboard3D: React.FC = () => {
             alignItems: 'center',
             justifyContent: 'space-between',
             background: '#0B192C',
-            color: '#F8FAFC',
+            color: '#f9f9fa',
             padding: '10px 14px',
-            borderRadius: 8,
+            borderRadius: 4,
             fontSize: 12
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Wifi size={14} style={{ color: '#34D399' }} />
+            <Wifi size={14} style={{ color: '#339988' }} />
             <span style={{ fontWeight: 600 }}>{lastScanMessage}</span>
           </div>
-          <span style={{ fontSize: 11, fontWeight: 600, color: '#34D399', background: 'rgba(52, 211, 153, 0.15)', padding: '2px 8px', borderRadius: 4 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#339988', background: 'rgba(51, 153, 136, 0.15)', padding: '2px 8px', borderRadius: 4 }}>
             SMS Dispatched
           </span>
         </div>

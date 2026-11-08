@@ -30,8 +30,8 @@ export const LandingTrust: React.FC = () => {
             <p className="c360-trust-desc">
               Sensitive student records, parent phone numbers, and RFID identifiers are masked with ** in shared views and public previews to ensure strict minor confidentiality.
             </p>
-            <div style={{ marginTop: 14, background: '#F8FAFC', border: '1px solid var(--color-border-default)', borderRadius: 8, padding: '8px 10px', fontSize: 11, fontFamily: 'monospace', color: '#0F172A' }}>
-              <span style={{ color: '#059669', fontWeight: 700 }}>DPDP Act · </span>
+            <div style={{ marginTop: 14, background: '#f9f9fa', border: '1px solid var(--color-border-default)', borderRadius: 4, padding: '8px 10px', fontSize: 11, fontFamily: 'monospace', color: '#1c1f2e' }}>
+              <span style={{ color: '#03806a', fontWeight: 700 }}>DPDP Act · </span>
               Aa**av Sh**ma · +91 98310 *****
             </div>
           </div>
@@ -45,7 +45,7 @@ export const LandingTrust: React.FC = () => {
             <p className="c360-trust-desc">
               Every institution runs in an isolated tenant partition. Records from one school branch never bleed across boundaries, enforced at the database query layer.
             </p>
-            <div style={{ marginTop: 14, background: '#F8FAFC', border: '1px solid var(--color-border-default)', borderRadius: 8, padding: '8px 10px', fontSize: 11, color: '#0284C7', fontWeight: 600 }}>
+            <div style={{ marginTop: 14, background: '#f9f9fa', border: '1px solid var(--color-border-default)', borderRadius: 4, padding: '8px 10px', fontSize: 11, color: '#5c6bc0', fontWeight: 600 }}>
               <span>Tenant DB Partition · Zero Cross-School Bleed</span>
             </div>
           </div>
@@ -59,7 +59,7 @@ export const LandingTrust: React.FC = () => {
             <p className="c360-trust-desc">
               A teacher's queries are strictly bound to their assigned classes. A student's portal queries are scoped to their personal record. Scoping is enforced in the backend logic.
             </p>
-            <div style={{ marginTop: 14, background: '#F8FAFC', border: '1px solid var(--color-border-default)', borderRadius: 8, padding: '8px 10px', fontSize: 11, color: '#059669', fontWeight: 600 }}>
+            <div style={{ marginTop: 14, background: '#f9f9fa', border: '1px solid var(--color-border-default)', borderRadius: 4, padding: '8px 10px', fontSize: 11, color: '#03806a', fontWeight: 600 }}>
               <span>SQL Row-Level Security · Role-Bound Scopes</span>
             </div>
           </div>
@@ -73,7 +73,7 @@ export const LandingTrust: React.FC = () => {
             <p className="c360-trust-desc">
               Attendance registers, gate scan timestamps, and correction logs are maintained as permanent audit trails—nothing is silently overwritten before board inspections.
             </p>
-            <div style={{ marginTop: 14, background: '#F8FAFC', border: '1px solid var(--color-border-default)', borderRadius: 8, padding: '8px 10px', fontSize: 11, color: '#64748B', fontFamily: 'monospace' }}>
+            <div style={{ marginTop: 14, background: '#f9f9fa', border: '1px solid var(--color-border-default)', borderRadius: 4, padding: '8px 10px', fontSize: 11, color: '#696e79', fontFamily: 'monospace' }}>
               <span>Audit Log Hash: #9842 · Immutable Record</span>
             </div>
           </div>
@@ -86,9 +86,9 @@ export const LandingTrust: React.FC = () => {
             alt="School library academic environment"
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(15, 23, 42, 0.90) 0%, rgba(15, 23, 42, 0.50) 60%, transparent 100%)', display: 'flex', alignItems: 'center', padding: '0 36px' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(28, 31, 46, 0.90)', display: 'flex', alignItems: 'center', padding: '0 36px' }}>
             <div style={{ maxWidth: 520, textAlign: 'left', color: '#FFFFFF' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#38BDF8', marginBottom: 6 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#7f8ccd', marginBottom: 6 }}>
                 Academic Heritage &amp; Modern Accountability
               </div>
               <h3 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 8px 0', lineHeight: 1.3 }}>

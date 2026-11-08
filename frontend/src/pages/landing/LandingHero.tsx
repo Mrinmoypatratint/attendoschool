@@ -121,7 +121,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onScrollTo }) => {
                   <div className="c360-metric-label">Today's attendance</div>
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
                     <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--color-text-primary)' }}>96.4%</span>
-                    <span style={{ fontSize: 11, color: '#047857', fontWeight: 600 }}>Active</span>
+                    <span style={{ fontSize: 11, color: '#02604f', fontWeight: 600 }}>Active</span>
                   </div>
                   <div className="c360-metric-bar-bg">
                     <div className="c360-metric-bar-fill" style={{ width: '96.4%', background: 'var(--color-primary)' }} />
@@ -129,7 +129,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onScrollTo }) => {
                 </div>
 
                 <div className="c360-metric-box">
-                  <div className="c360-metric-icon-wrap" style={{ background: 'rgba(5, 150, 105, 0.12)', color: '#059669' }}>
+                  <div className="c360-metric-icon-wrap" style={{ background: 'rgba(3, 128, 106, 0.12)', color: '#03806a' }}>
                     <Users size={16} />
                   </div>
                   <div className="c360-metric-label">Enrolled students</div>
@@ -138,7 +138,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onScrollTo }) => {
                     <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 600 }}>Verified</span>
                   </div>
                   <div className="c360-metric-bar-bg">
-                    <div className="c360-metric-bar-fill" style={{ width: '92%', background: '#059669' }} />
+                    <div className="c360-metric-bar-fill" style={{ width: '92%', background: '#03806a' }} />
                   </div>
                 </div>
               </div>
@@ -147,10 +147,10 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onScrollTo }) => {
               <div className="c360-chart-box">
                 <div className="c360-chart-header">
                   <div className="c360-chart-title">
-                    <BarChart3 size={13} style={{ color: '#059669' }} />
+                    <BarChart3 size={13} style={{ color: '#03806a' }} />
                     <span>Weekly Campus Attendance Rate</span>
                   </div>
-                  <span className="c360-chart-badge" style={{ background: '#ECFDF5', color: '#047857' }}>
+                  <span className="c360-chart-badge" style={{ background: '#e6f2f0', color: '#02604f' }}>
                     Avg: 96.2%
                   </span>
                 </div>
@@ -171,9 +171,9 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onScrollTo }) => {
                     <span className="c360-bar-day">Wed</span>
                   </div>
                   <div className="c360-bar-col">
-                    <span className="c360-bar-val" style={{ color: '#059669', fontWeight: 800 }}>96.4%</span>
+                    <span className="c360-bar-val" style={{ color: '#03806a', fontWeight: 800 }}>96.4%</span>
                     <div className="c360-bar-track"><div className="c360-bar-fill active" style={{ height: '92%' }} /></div>
-                    <span className="c360-bar-day" style={{ color: '#059669', fontWeight: 800 }}>Thu · Live</span>
+                    <span className="c360-bar-day" style={{ color: '#03806a', fontWeight: 800 }}>Thu · Live</span>
                   </div>
                   <div className="c360-bar-col">
                     <span className="c360-bar-val">95.5%</span>
@@ -199,7 +199,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onScrollTo }) => {
                       Roll 10* · Class 10-A · Card #RF-88**
                     </div>
                   </div>
-                  <span style={{ color: '#047857', background: '#ECFDF5', padding: '2px 8px', borderRadius: 4, fontWeight: 700, fontSize: 11 }}>
+                  <span style={{ color: '#02604f', background: '#e6f2f0', padding: '2px 8px', borderRadius: 4, fontWeight: 700, fontSize: 11 }}>
                     ✓ 08:14 AM
                   </span>
                 </div>
@@ -213,7 +213,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onScrollTo }) => {
                       Roll 10* · Class 10-A · Card #RF-89**
                     </div>
                   </div>
-                  <span style={{ color: '#047857', background: '#ECFDF5', padding: '2px 8px', borderRadius: 4, fontWeight: 700, fontSize: 11 }}>
+                  <span style={{ color: '#02604f', background: '#e6f2f0', padding: '2px 8px', borderRadius: 4, fontWeight: 700, fontSize: 11 }}>
                     ✓ 08:16 AM
                   </span>
                 </div>
@@ -231,14 +231,14 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onScrollTo }) => {
                 <svg viewBox="0 0 320 46" className="c360-sparkline-svg">
                   <defs>
                     <linearGradient id="gateGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#0284C7" stopOpacity="0.30" />
-                      <stop offset="100%" stopColor="#0284C7" stopOpacity="0.0" />
+                      <stop offset="0%" stopColor="#5c6bc0" stopOpacity="0.30" />
+                      <stop offset="100%" stopColor="#5c6bc0" stopOpacity="0.0" />
                     </linearGradient>
                   </defs>
-                  <line x1="0" y1="36" x2="320" y2="36" stroke="rgba(15,23,42,0.06)" strokeDasharray="3 3" />
+                  <line x1="0" y1="36" x2="320" y2="36" stroke="rgba(28, 31, 46,0.06)" strokeDasharray="3 3" />
                   <path d="M 0 42 Q 40 40 80 34 T 160 8 T 240 24 T 320 38 L 320 46 L 0 46 Z" fill="url(#gateGrad)" />
-                  <path d="M 0 42 Q 40 40 80 34 T 160 8 T 240 24 T 320 38" fill="none" stroke="#0284C7" strokeWidth="2.5" />
-                  <circle cx="160" cy="8" r="4" fill="#0284C7" stroke="#FFFFFF" strokeWidth="2" />
+                  <path d="M 0 42 Q 40 40 80 34 T 160 8 T 240 24 T 320 38" fill="none" stroke="#5c6bc0" strokeWidth="2.5" />
+                  <circle cx="160" cy="8" r="4" fill="#5c6bc0" stroke="#FFFFFF" strokeWidth="2" />
                 </svg>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--color-text-muted)', marginTop: 2 }}>
                   <span>07:30 AM</span>
@@ -253,10 +253,10 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onScrollTo }) => {
                   <Radar size={16} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#065F46' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#024035' }}>
                     Parent SMS Dispatcher Active
                   </div>
-                  <div style={{ fontSize: 11, color: '#047857' }}>
+                  <div style={{ fontSize: 11, color: '#02604f' }}>
                     Verified carrier delivery · Sub-second latency
                   </div>
                 </div>

@@ -372,10 +372,10 @@ export function StudentProfile() {
         className="student-card"
         style={{
           border: '1px solid var(--border)',
-          borderRadius: 14,
+          borderRadius: 4,
           padding: '24px 28px',
           background: 'var(--surface, #ffffff)',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          boxShadow: 'none',
           marginBottom: 24
         }}
       >
@@ -389,9 +389,9 @@ export function StudentProfile() {
                 height: 90,
                 borderRadius: '50%',
                 border: '3px solid #ffffff',
-                boxShadow: '0 8px 24px -4px rgba(37, 99, 235, 0.3), 0 2px 6px rgba(0, 0, 0, 0.08)',
-                backgroundColor: '#2563eb',
-                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 55%, #1d4ed8 100%)',
+                boxShadow: 'none',
+                backgroundColor: '#e11d55',
+                background: '#e11d55',
                 overflow: 'hidden',
                 flexShrink: 0,
                 display: 'flex',
@@ -419,7 +419,7 @@ export function StudentProfile() {
                 style={{
                   position: 'absolute',
                   inset: 0,
-                  backgroundColor: 'rgba(15, 23, 42, 0.45)',
+                  backgroundColor: 'rgba(28, 31, 46, 0.45)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -437,7 +437,7 @@ export function StudentProfile() {
             {/* Title & Info */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 750, color: 'var(--text, #0f172a)' }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 750, color: 'var(--text, #1c1f2e)' }}>
                   {String(profile?.name || 'STUDENT').toUpperCase()}
                 </h3>
                 <span
@@ -448,16 +448,16 @@ export function StudentProfile() {
                     fontSize: 11,
                     fontWeight: 700,
                     padding: '2px 8px',
-                    borderRadius: 12,
-                    background: '#ecfdf5',
-                    color: '#059669',
-                    border: '1px solid #a7f3d0'
+                    borderRadius: 4,
+                    background: '#e6f2f0',
+                    color: '#03806a',
+                    border: '1px solid #99ccc3'
                   }}
                 >
                   <ShieldCheck size={12} /> {profile?.className ? `${profile.className} - Section ${profile.sectionName || ''}` : 'STUDENT'}
                 </span>
               </div>
-              <p className="muted" style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
+              <p className="muted" style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text-muted, #696e79)' }}>
                 Official student display picture and institutional profile badge. Roll: <b>{profile?.rollNumber || '—'}</b> · Admission No: <b>{profile?.admissionNumber || '—'}</b>
               </p>
 
@@ -480,10 +480,10 @@ export function StudentProfile() {
                     gap: 6,
                     fontSize: 13,
                     padding: '7px 14px',
-                    backgroundColor: '#2563eb',
+                    backgroundColor: '#e11d55',
                     color: '#ffffff',
                     border: 'none',
-                    borderRadius: 8,
+                    borderRadius: 4,
                     fontWeight: 600,
                     cursor: 'pointer'
                   }}
@@ -503,10 +503,10 @@ export function StudentProfile() {
                       gap: 5,
                       fontSize: 13,
                       padding: '7px 12px',
-                      backgroundColor: '#fee2e2',
-                      color: '#b91c1c',
-                      border: '1px solid #fca5a5',
-                      borderRadius: 8,
+                      backgroundColor: '#f7d5d5',
+                      color: '#a82424',
+                      border: '1px solid #e88d8d',
+                      borderRadius: 4,
                       fontWeight: 600,
                       cursor: 'pointer'
                     }}
@@ -516,7 +516,7 @@ export function StudentProfile() {
                     Remove Picture
                   </button>
                 )}
-                <span style={{ fontSize: 12, color: 'var(--muted, #64748b)' }}>
+                <span style={{ fontSize: 12, color: 'var(--muted, #696e79)' }}>
                   PNG, JPG, WebP up to 5MB
                 </span>
               </div>
@@ -670,7 +670,7 @@ export function StudentProfile() {
                 </label>
 
                 <label style={{ display: 'grid', gap: 4, gridColumn: 'span 2' }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #3e4152)' }}>
                     Student Email:
                   </span>
                   <input
@@ -681,12 +681,12 @@ export function StudentProfile() {
                     style={{
                       width: '100%',
                       padding: '8px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border-strong, #cbd5e1)',
+                      borderRadius: 4,
+                      border: '1px solid var(--border-strong, #d4d5d9)',
                       fontSize: 13,
                       outline: 'none',
                       backgroundColor: 'var(--card-bg, #ffffff)',
-                      color: 'var(--text, #0f172a)',
+                      color: 'var(--text, #1c1f2e)',
                       boxSizing: 'border-box'
                     }}
                   />

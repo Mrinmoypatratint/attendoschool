@@ -93,10 +93,10 @@ export const BackupsManagement: React.FC = () => {
         <div
           style={{
             padding: '12px 18px',
-            borderRadius: 10,
-            background: notice.type === 'success' ? '#f0fdf4' : '#fef2f2',
-            border: `1px solid ${notice.type === 'success' ? '#86efac' : '#fca5a5'}`,
-            color: notice.type === 'success' ? '#166534' : '#991b1b',
+            borderRadius: 4,
+            background: notice.type === 'success' ? '#e6f2f0' : '#fbeaea',
+            border: `1px solid ${notice.type === 'success' ? '#66b3a6' : '#e88d8d'}`,
+            color: notice.type === 'success' ? '#024035' : '#7e1b1b',
             display: 'flex',
             alignItems: 'center',
             gap: 10
@@ -154,7 +154,7 @@ export const BackupsManagement: React.FC = () => {
 
       {/* Backups Table */}
       <div className="sa-card">
-        <div className="sa-card-head" style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0' }}>
+        <div className="sa-card-head" style={{ padding: '16px 20px', borderBottom: '1px solid #eaeaec' }}>
           <div className="sa-card-title-group">
             <Database size={18} className="sa-card-icon" />
             <h3>Database Snapshot Ledger</h3>
@@ -175,7 +175,7 @@ export const BackupsManagement: React.FC = () => {
             <tbody>
               {jobs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '36px 0', color: '#64748b' }}>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '36px 0', color: '#696e79' }}>
                     No backup records found.
                   </td>
                 </tr>
@@ -187,11 +187,11 @@ export const BackupsManagement: React.FC = () => {
                         {j.status}
                       </span>
                     </td>
-                    <td style={{ color: '#0f172a', fontWeight: 600 }}>
+                    <td style={{ color: '#1c1f2e', fontWeight: 600 }}>
                       {new Date(j.started_at).toLocaleString()}
                     </td>
                     <td>
-                      <code style={{ fontSize: 12, background: '#f1f5f9', padding: '3px 6px', borderRadius: 4 }}>
+                      <code style={{ fontSize: 12, background: '#f5f5f6', padding: '3px 6px', borderRadius: 4 }}>
                         {j.file_name || 'attendoschool_db_snapshot.dump'}
                       </code>
                     </td>
@@ -199,7 +199,7 @@ export const BackupsManagement: React.FC = () => {
                       {j.size_bytes ? `${(j.size_bytes / (1024 * 1024)).toFixed(2)} MB` : '4.67 MB'}
                     </td>
                     <td>
-                      <code style={{ fontSize: 11, color: '#64748b' }}>
+                      <code style={{ fontSize: 11, color: '#696e79' }}>
                         {j.checksum_sha256 ? `${j.checksum_sha256.slice(0, 18)}...` : 'sha256-verified'}
                       </code>
                     </td>

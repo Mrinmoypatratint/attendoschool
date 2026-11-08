@@ -59,7 +59,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           return (
             <div
               key={toast.id}
-              className={`toast toast-${toast.type} relative flex items-center gap-3 py-3 px-4.5 rounded-[14px] bg-white dark:bg-[#131b2e] text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 shadow-lg text-[13.5px] font-medium cursor-pointer overflow-hidden transition-all hover:opacity-90 ${typeBorder}`}
+              className={`toast toast-${toast.type} relative flex items-center gap-3 py-3 px-4.5 rounded-[4px] bg-white dark:bg-[#1c1c1c] text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 shadow-lg text-[13.5px] font-medium cursor-pointer overflow-hidden transition-all hover:opacity-90 ${typeBorder}`}
               onClick={() => removeToast(toast.id)}
             >
               <span className={`toast-icon flex items-center justify-center font-bold text-sm ${iconColor}`}>

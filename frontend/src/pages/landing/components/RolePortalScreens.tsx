@@ -147,7 +147,7 @@ export const RolePortalScreens: React.FC<RolePortalScreensProps> = ({ activeRole
         {/* Visual / Screenshot Column */}
         <div className="lp-role-panel-visual">
           {currentRole.photo && (
-            <div style={{ borderRadius: 8, overflow: 'hidden', marginBottom: 14, border: '1px solid var(--lp-border-subtle)', maxHeight: 200 }}>
+            <div style={{ borderRadius: 4, overflow: 'hidden', marginBottom: 14, border: '1px solid var(--lp-border-subtle)', maxHeight: 200 }}>
               <img
                 src={currentRole.photo}
                 alt={currentRole.title}
@@ -158,64 +158,64 @@ export const RolePortalScreens: React.FC<RolePortalScreensProps> = ({ activeRole
 
           {/* Role UI Preview */}
           {activeRole === 'SUPER_ADMIN' && (
-            <div style={{ background: 'var(--lp-bg-warm)', padding: 14, borderRadius: 8, border: '1px solid var(--lp-border-subtle)' }}>
+            <div style={{ background: 'var(--lp-bg-warm)', padding: 14, borderRadius: 4, border: '1px solid var(--lp-border-subtle)' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--lp-text-muted)', marginBottom: 8, textTransform: 'uppercase' }}>
                 INSTITUTIONS CLUSTER OVERVIEW
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: '#FFFFFF', borderRadius: 6, marginBottom: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: '#FFFFFF', borderRadius: 4, marginBottom: 6 }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 12.5 }}>D.A.V. Public School (Sector 14)</div>
                   <div style={{ fontSize: 11, color: 'var(--lp-text-muted)' }}>1,284 Students · 82 Faculty · Tenant ID: #DAV-**01</div>
                 </div>
-                <span style={{ fontSize: 11, color: '#047857', fontWeight: 600 }}>Active</span>
+                <span style={{ fontSize: 11, color: '#02604f', fontWeight: 600 }}>Active</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: '#FFFFFF', borderRadius: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: '#FFFFFF', borderRadius: 4 }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 12.5 }}>D.A.V. Centenary Public School</div>
                   <div style={{ fontSize: 11, color: 'var(--lp-text-muted)' }}>960 Students · 64 Faculty · Tenant ID: #DAV-**02</div>
                 </div>
-                <span style={{ fontSize: 11, color: '#047857', fontWeight: 600 }}>Active</span>
+                <span style={{ fontSize: 11, color: '#02604f', fontWeight: 600 }}>Active</span>
               </div>
             </div>
           )}
 
           {activeRole === 'SCHOOL_ADMIN' && (
-            <div style={{ background: 'var(--lp-bg-warm)', padding: 14, borderRadius: 8, border: '1px solid var(--lp-border-subtle)' }}>
+            <div style={{ background: 'var(--lp-bg-warm)', padding: 14, borderRadius: 4, border: '1px solid var(--lp-border-subtle)' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--lp-text-muted)', marginBottom: 8, textTransform: 'uppercase' }}>
                 CAMPUS OPERATIONS · D.A.V. PUBLIC SCHOOL
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 8 }}>
-                <div style={{ background: '#FFFFFF', padding: 10, borderRadius: 6 }}>
+                <div style={{ background: '#FFFFFF', padding: 10, borderRadius: 4 }}>
                   <div style={{ fontSize: 10.5, color: 'var(--lp-text-muted)', fontWeight: 600 }}>TODAY'S ATTENDANCE</div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--lp-brand-green)' }}>96.8%</div>
                 </div>
-                <div style={{ background: '#FFFFFF', padding: 10, borderRadius: 6 }}>
+                <div style={{ background: '#FFFFFF', padding: 10, borderRadius: 4 }}>
                   <div style={{ fontSize: 10.5, color: 'var(--lp-text-muted)', fontWeight: 600 }}>FACULTY ACTIVE</div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--lp-text-primary)' }}>78 / 82</div>
                 </div>
               </div>
-              <div style={{ fontSize: 11.5, color: 'var(--lp-text-secondary)', background: '#FFFFFF', padding: '6px 10px', borderRadius: 6 }}>
+              <div style={{ fontSize: 11.5, color: 'var(--lp-text-secondary)', background: '#FFFFFF', padding: '6px 10px', borderRadius: 4 }}>
                 Academic Session: <strong>2026–2027</strong> · Active School Routine
               </div>
             </div>
           )}
 
           {activeRole === 'TEACHER' && (
-            <div style={{ background: 'var(--lp-bg-warm)', padding: 14, borderRadius: 8, border: '1px solid var(--lp-border-subtle)' }}>
+            <div style={{ background: 'var(--lp-bg-warm)', padding: 14, borderRadius: 4, border: '1px solid var(--lp-border-subtle)' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--lp-text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>
                 TEACHER WORKSPACE · PERIOD 2
               </div>
-              <div style={{ background: '#FFFFFF', padding: 10, borderRadius: 6, marginBottom: 8 }}>
+              <div style={{ background: '#FFFFFF', padding: 10, borderRadius: 4, marginBottom: 8 }}>
                 <div style={{ fontSize: 11, color: 'var(--lp-text-muted)' }}>Class 10-A · Physics Lab</div>
                 <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--lp-text-primary)', marginTop: 2 }}>
                   38 Students Present · Roll Call Complete
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
-                <span style={{ fontSize: 11, background: '#ECFDF5', color: '#047857', padding: '3px 8px', borderRadius: 4, fontWeight: 600 }}>
+                <span style={{ fontSize: 11, background: '#e6f2f0', color: '#02604f', padding: '3px 8px', borderRadius: 4, fontWeight: 600 }}>
                   ✓ Attendance Saved
                 </span>
-                <span style={{ fontSize: 11, background: '#EFF6FF', color: '#1D4ED8', padding: '3px 8px', borderRadius: 4, fontWeight: 600 }}>
+                <span style={{ fontSize: 11, background: '#fff2f4', color: '#c0174a', padding: '3px 8px', borderRadius: 4, fontWeight: 600 }}>
                   Class Mentor Active
                 </span>
               </div>
@@ -223,17 +223,17 @@ export const RolePortalScreens: React.FC<RolePortalScreensProps> = ({ activeRole
           )}
 
           {activeRole === 'STUDENT' && (
-            <div style={{ background: 'var(--lp-bg-warm)', padding: 14, borderRadius: 8, border: '1px solid var(--lp-border-subtle)' }}>
+            <div style={{ background: 'var(--lp-bg-warm)', padding: 14, borderRadius: 4, border: '1px solid var(--lp-border-subtle)' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--lp-text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>
                 STUDENT & PARENT PORTAL · ROLL 10*
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
-                <div style={{ background: '#FFFFFF', padding: 10, borderRadius: 6 }}>
+                <div style={{ background: '#FFFFFF', padding: 10, borderRadius: 4 }}>
                   <div style={{ fontSize: 10.5, color: 'var(--lp-text-muted)', fontWeight: 600 }}>ATTENDANCE RATE</div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--lp-brand-green)' }}>98.4%</div>
-                  <div style={{ fontSize: 10.5, color: '#047857', fontWeight: 600 }}>Exam Eligible</div>
+                  <div style={{ fontSize: 10.5, color: '#02604f', fontWeight: 600 }}>Exam Eligible</div>
                 </div>
-                <div style={{ background: '#FFFFFF', padding: 10, borderRadius: 6 }}>
+                <div style={{ background: '#FFFFFF', padding: 10, borderRadius: 4 }}>
                   <div style={{ fontSize: 10.5, color: 'var(--lp-text-muted)', fontWeight: 600 }}>HOMEWORK TASKS</div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--lp-brand-blue)' }}>2 Active</div>
                   <div style={{ fontSize: 10.5, color: 'var(--lp-text-muted)' }}>Due Tomorrow</div>

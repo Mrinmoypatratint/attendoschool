@@ -135,7 +135,7 @@ export const LandingDemo: React.FC = () => {
             <button
               type="button"
               className="c360-btn-primary c360-hero-btn-lg"
-              style={{ background: '#FFFFFF', color: '#0F172A', boxShadow: '0 4px 20px rgba(255,255,255,0.2)' }}
+              style={{ background: '#FFFFFF', color: '#1c1f2e', boxShadow: 'none' }}
               onClick={() => {
                 const el = document.getElementById('demo-form');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -163,9 +163,9 @@ export const LandingDemo: React.FC = () => {
               style={{
                 textAlign: 'center',
                 padding: '40px 20px',
-                background: '#ECFDF5',
-                borderRadius: 14,
-                border: '1px solid #A7F3D0'
+                background: '#e6f2f0',
+                borderRadius: 4,
+                border: '1px solid #99ccc3'
               }}
             >
               <div
@@ -173,7 +173,7 @@ export const LandingDemo: React.FC = () => {
                   width: 52,
                   height: 52,
                   borderRadius: '50%',
-                  background: '#059669',
+                  background: '#03806a',
                   color: '#FFFFFF',
                   display: 'flex',
                   alignItems: 'center',
@@ -183,13 +183,13 @@ export const LandingDemo: React.FC = () => {
               >
                 <CheckCircle2 size={30} />
               </div>
-              <h3 style={{ fontSize: 20, fontWeight: 800, color: '#065F46', marginBottom: 8 }}>
+              <h3 style={{ fontSize: 20, fontWeight: 800, color: '#024035', marginBottom: 8 }}>
                 Demo Request Registered Successfully
               </h3>
-              <p style={{ fontSize: 14, color: '#047857', maxWidth: 460, margin: '0 auto 16px auto', lineHeight: 1.6 }}>
+              <p style={{ fontSize: 14, color: '#02604f', maxWidth: 460, margin: '0 auto 16px auto', lineHeight: 1.6 }}>
                 {successBooking.message}
               </p>
-              <div style={{ display: 'inline-block', background: '#FFFFFF', padding: '6px 14px', borderRadius: 6, border: '1px solid #A7F3D0', fontSize: 12.5, fontWeight: 700, color: '#065F46' }}>
+              <div style={{ display: 'inline-block', background: '#FFFFFF', padding: '6px 14px', borderRadius: 4, border: '1px solid #99ccc3', fontSize: 12.5, fontWeight: 700, color: '#024035' }}>
                 Booking ID: {successBooking.id}
               </div>
             </div>
@@ -199,7 +199,7 @@ export const LandingDemo: React.FC = () => {
                 {/* School Name */}
                 <div className="c360-form-group">
                   <label className="c360-label" htmlFor="schoolName">
-                    School / Institution Name <span style={{ color: '#EF4444' }}>*</span>
+                    School / Institution Name <span style={{ color: '#d32f2f' }}>*</span>
                   </label>
                   <input
                     type="text"
@@ -216,7 +216,7 @@ export const LandingDemo: React.FC = () => {
                 {/* Contact Person */}
                 <div className="c360-form-group">
                   <label className="c360-label" htmlFor="contactPerson">
-                    Principal / Contact Person <span style={{ color: '#EF4444' }}>*</span>
+                    Principal / Contact Person <span style={{ color: '#d32f2f' }}>*</span>
                   </label>
                   <input
                     type="text"
@@ -233,7 +233,7 @@ export const LandingDemo: React.FC = () => {
                 {/* Email Address */}
                 <div className="c360-form-group">
                   <label className="c360-label" htmlFor="email">
-                    Official Email Address <span style={{ color: '#EF4444' }}>*</span>
+                    Official Email Address <span style={{ color: '#d32f2f' }}>*</span>
                   </label>
                   <input
                     type="email"
@@ -250,7 +250,7 @@ export const LandingDemo: React.FC = () => {
                 {/* Phone Number */}
                 <div className="c360-form-group">
                   <label className="c360-label" htmlFor="phone">
-                    Mobile / Contact Number <span style={{ color: '#EF4444' }}>*</span>
+                    Mobile / Contact Number <span style={{ color: '#d32f2f' }}>*</span>
                   </label>
                   <input
                     type="tel"
@@ -320,11 +320,11 @@ export const LandingDemo: React.FC = () => {
               {errorMessage && (
                 <div
                   style={{
-                    background: '#FEF2F2',
-                    color: '#991B1B',
-                    border: '1px solid #FECACA',
+                    background: '#fbeaea',
+                    color: '#7e1b1b',
+                    border: '1px solid #f2c0c0',
                     padding: '10px 14px',
-                    borderRadius: 8,
+                    borderRadius: 4,
                     fontSize: 13,
                     marginTop: 16
                   }}
@@ -347,7 +347,7 @@ export const LandingDemo: React.FC = () => {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--color-text-muted)' }}>
-                  <ShieldCheck size={15} style={{ color: '#059669' }} />
+                  <ShieldCheck size={15} style={{ color: '#03806a' }} />
                   <span>Free consultation for schools · No credit card required</span>
                 </div>
 

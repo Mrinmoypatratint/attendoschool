@@ -6,26 +6,26 @@
 /* ─── Base Theme Variables Override for Student Portal ─── */
 [data-theme="dark"],
 .dark {
-  --student-bg: #0b0f19;
-  --student-sidebar-bg: #0e1626;
-  --student-card-bg: #131b2e;
-  --student-card-hover: #17223b;
-  --student-nested-bg: #0e1626;
-  --student-border: #1e293b;
-  --student-border-focus: #3b82f6;
-  --student-text: #f8fafc;
-  --student-text-muted: #94a3b8;
-  --student-text-subtle: #64748b;
+  --student-bg: #121212;
+  --student-sidebar-bg: #181818;
+  --student-card-bg: #1c1c1c;
+  --student-card-hover: #262626;
+  --student-nested-bg: #181818;
+  --student-border: #282c3f;
+  --student-border-focus: #e11d55;
+  --student-text: #f9f9fa;
+  --student-text-muted: #94969f;
+  --student-text-subtle: #696e79;
 }
 
 /* ─── 1. Student Portal Root & Layout Shell ─── */
 [data-theme="dark"] .student-portal-root {
-  background-color: var(--bg, #0b0f19) !important;
-  color: var(--text, #f8fafc) !important;
+  background-color: var(--bg, #121212) !important;
+  color: var(--text, #f9f9fa) !important;
 }
 
 [data-theme="dark"] .student-main-wrapper {
-  background: var(--bg, #0b0f19) !important;
+  background: var(--bg, #121212) !important;
 }
 
 [data-theme="dark"] .student-page-container {
@@ -34,257 +34,257 @@
 
 /* ─── 2. Student Sidebar (Desktop & Mobile) ─── */
 [data-theme="dark"] .student-sidebar {
-  background: #0e1626 !important;
-  border-right: 1px solid #1e293b !important;
+  background: #181818 !important;
+  border-right: 1px solid #282c3f !important;
 }
 
 [data-theme="dark"] .student-sidebar-brand {
-  border-bottom: 1px solid #1e293b !important;
+  border-bottom: 1px solid #282c3f !important;
 }
 
 [data-theme="dark"] .student-sidebar-brand-name,
 [data-theme="dark"] .student-logo-wrap span:first-of-type {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-sidebar-website,
 [data-theme="dark"] .student-logo-wrap span:last-of-type {
-  color: #60a5fa !important;
+  color: #ef5a85 !important;
 }
 
 [data-theme="dark"] .student-mobile-close-btn {
-  background: #1e293b !important;
-  border-color: #334155 !important;
-  color: #cbd5e1 !important;
+  background: #282c3f !important;
+  border-color: #3e4152 !important;
+  color: #d4d5d9 !important;
 }
 
 [data-theme="dark"] .student-nav-item {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .student-nav-item:hover {
-  background: #17223b !important;
-  color: #f8fafc !important;
+  background: #262626 !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-nav-item.active {
-  background: rgba(37, 99, 235, 0.18) !important;
-  color: #60a5fa !important;
+  background: rgba(225, 29, 85, 0.18) !important;
+  color: #ef5a85 !important;
   font-weight: 600 !important;
 }
 
 [data-theme="dark"] .student-nav-item.active .student-nav-icon {
-  color: #60a5fa !important;
+  color: #ef5a85 !important;
 }
 
 /* Motivational Card in Sidebar */
 [data-theme="dark"] .student-motivation-card {
-  background: linear-gradient(135deg, rgba(14, 116, 144, 0.22) 0%, rgba(3, 105, 161, 0.18) 100%) !important;
-  border: 1px solid rgba(14, 116, 144, 0.4) !important;
+  background: rgba(72, 84, 154, 0.22) !important;
+  border: 1px solid rgba(72, 84, 154, 0.4) !important;
 }
 
 [data-theme="dark"] .student-motivation-title {
-  color: #38bdf8 !important;
+  color: #7f8ccd !important;
 }
 
 [data-theme="dark"] .student-motivation-desc {
-  color: #bae6fd !important;
+  color: #c9cee9 !important;
 }
 
 /* Sidebar Footer & Logout */
 [data-theme="dark"] .student-sidebar-footer {
-  border-top: 1px solid #1e293b !important;
+  border-top: 1px solid #282c3f !important;
 }
 
 [data-theme="dark"] .student-logout-btn {
   background: transparent !important;
-  border: 1px solid #1e293b !important;
-  color: #94a3b8 !important;
+  border: 1px solid #282c3f !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .student-logout-btn:hover {
-  background: rgba(220, 38, 38, 0.15) !important;
-  border-color: rgba(220, 38, 38, 0.35) !important;
-  color: #f87171 !important;
+  background: rgba(211, 47, 47, 0.15) !important;
+  border-color: rgba(211, 47, 47, 0.35) !important;
+  color: #dd5c5c !important;
 }
 
 /* ─── 3. Topbar & Header Navigation ─── */
 [data-theme="dark"] .student-topbar {
-  background: var(--bg-card, #0e1626) !important;
-  border: 1px solid var(--border, #1e293b) !important;
+  background: var(--bg-card, #181818) !important;
+  border: 1px solid var(--border, #282c3f) !important;
 }
 
 [data-theme="dark"] .student-hamburger-btn {
-  background: #17223b !important;
-  border-color: #1e293b !important;
-  color: #f8fafc !important;
+  background: #262626 !important;
+  border-color: #282c3f !important;
+  color: #f9f9fa !important;
 }
 
 /* Search Bar in Topbar */
 [data-theme="dark"] .student-search-bar {
-  background: #131b2e !important;
-  border-color: #1e293b !important;
+  background: #1c1c1c !important;
+  border-color: #282c3f !important;
 }
 
 [data-theme="dark"] .student-search-bar:focus-within {
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+  border-color: #e11d55 !important;
+  box-shadow: none;
 }
 
 [data-theme="dark"] .student-search-bar input {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-search-bar input::placeholder {
-  color: #64748b !important;
+  color: #696e79 !important;
 }
 
 [data-theme="dark"] .student-search-icon {
-  color: #64748b !important;
+  color: #696e79 !important;
 }
 
 /* Search Floating Results Dropdown */
 [data-theme="dark"] .student-search-dropdown {
-  background: #131b2e !important;
-  border-color: #1e293b !important;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 4px 14px rgba(0, 0, 0, 0.4) !important;
+  background: #1c1c1c !important;
+  border-color: #282c3f !important;
+  box-shadow: var(--shadow-float);
 }
 
 [data-theme="dark"] .search-dropdown-header {
-  border-bottom: 1px solid #1e293b !important;
-  color: #94a3b8 !important;
+  border-bottom: 1px solid #282c3f !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .search-cat-title {
-  color: #64748b !important;
+  color: #696e79 !important;
 }
 
 [data-theme="dark"] .search-result-item:hover,
 [data-theme="dark"] .search-result-item.selected {
-  background: rgba(37, 99, 235, 0.18) !important;
+  background: rgba(225, 29, 85, 0.18) !important;
 }
 
 [data-theme="dark"] .search-suggestion-pill {
-  background: #0e1626 !important;
-  border-color: #1e293b !important;
-  color: #60a5fa !important;
+  background: #181818 !important;
+  border-color: #282c3f !important;
+  color: #ef5a85 !important;
 }
 
 /* Institute Pill */
 [data-theme="dark"] .student-institute-pill {
-  background: #131b2e !important;
-  border: 1px solid #1e293b !important;
-  color: #f8fafc !important;
+  background: #1c1c1c !important;
+  border: 1px solid #282c3f !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-institute-pill:hover {
-  background: #17223b !important;
-  border-color: #334155 !important;
+  background: #262626 !important;
+  border-color: #3e4152 !important;
 }
 
 [data-theme="dark"] .student-inst-icon {
-  color: #60a5fa !important;
+  color: #ef5a85 !important;
 }
 
 [data-theme="dark"] .student-inst-name {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-inst-chevron {
-  color: #64748b !important;
+  color: #696e79 !important;
 }
 
 [data-theme="dark"] .student-inst-ext-icon {
-  color: #60a5fa !important;
+  color: #ef5a85 !important;
 }
 
 /* Icon Buttons (Notifications, Dark Toggle) */
 [data-theme="dark"] .student-topbar-icon-btn {
-  background: #131b2e !important;
-  border: 1px solid #1e293b !important;
-  color: #cbd5e1 !important;
+  background: #1c1c1c !important;
+  border: 1px solid #282c3f !important;
+  color: #d4d5d9 !important;
 }
 
 [data-theme="dark"] .student-topbar-icon-btn:hover {
-  background: #17223b !important;
-  border-color: #334155 !important;
-  color: #f8fafc !important;
+  background: #262626 !important;
+  border-color: #3e4152 !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-notification-badge {
-  border-color: #0e1626 !important;
+  border-color: #181818 !important;
 }
 
 /* Profile Pill in Header */
 [data-theme="dark"] .profile-pill {
-  background: #131b2e !important;
-  border: 1px solid #1e293b !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important;
+  background: #1c1c1c !important;
+  border: 1px solid #282c3f !important;
+  box-shadow: none;
 }
 
 [data-theme="dark"] .profile-pill:hover {
-  border-color: #3b82f6 !important;
-  background: #17223b !important;
+  border-color: #e11d55 !important;
+  background: #262626 !important;
 }
 
 [data-theme="dark"] .profile-name {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .profile-role {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .profile-pill .header-icon-btn {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .profile-pill .header-icon-btn:hover {
-  color: #f87171 !important;
-  background: rgba(220, 38, 38, 0.18) !important;
+  color: #dd5c5c !important;
+  background: rgba(211, 47, 47, 0.18) !important;
 }
 
 /* ─── 4. Student Dashboard - Hero Banner ─── */
 [data-theme="dark"] .student-greeting-title {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-greeting-name {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-greeting-meta {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .student-meta-pill {
-  background: #131b2e !important;
-  border: 1px solid #1e293b !important;
-  color: #94a3b8 !important;
+  background: #1c1c1c !important;
+  border: 1px solid #282c3f !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .student-meta-school {
-  color: #cbd5e1 !important;
+  color: #d4d5d9 !important;
 }
 
 /* Hero Quote Card in Dark Mode */
 [data-theme="dark"] .student-hero-quote-card {
-  background: #131b2e !important;
-  border: 1px solid #1e293b !important;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35) !important;
+  background: #1c1c1c !important;
+  border: 1px solid #282c3f !important;
+  box-shadow: none;
 }
 
 [data-theme="dark"] .student-hero-quote {
-  color: #f1f5f9 !important;
+  color: #f5f5f6 !important;
 }
 
 /* Quote card time-based glowing accents in dark mode */
 [data-theme="dark"] .student-visual-morning {
-  border-color: rgba(249, 115, 22, 0.45) !important;
+  border-color: rgba(233, 162, 59, 0.45) !important;
 }
 
 [data-theme="dark"] .student-visual-afternoon {
-  border-color: rgba(14, 165, 233, 0.45) !important;
+  border-color: rgba(92, 107, 192, 0.45) !important;
 }
 
 [data-theme="dark"] .student-visual-evening {
@@ -292,94 +292,94 @@
 }
 
 [data-theme="dark"] .student-visual-night {
-  border-color: rgba(99, 102, 241, 0.45) !important;
+  border-color: rgba(225, 29, 85, 0.45) !important;
 }
 
 /* ─── 5. 4 KPI Summary Cards Grid ─── */
 [data-theme="dark"] .student-kpi-card {
-  background: #131b2e !important;
-  border: 1px solid #1e293b !important;
-  color: #f8fafc !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28) !important;
+  background: #1c1c1c !important;
+  border: 1px solid #282c3f !important;
+  color: #f9f9fa !important;
+  box-shadow: none;
 }
 
 [data-theme="dark"] .student-kpi-card:hover {
-  background: #17223b !important;
-  border-color: #334155 !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
-  transform: translateY(-2px) !important;
+  background: #262626 !important;
+  border-color: #3e4152 !important;
+  box-shadow: none;
+  transform: none;
 }
 
 [data-theme="dark"] .student-kpi-label {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .student-kpi-chevron {
-  color: #64748b !important;
+  color: #696e79 !important;
 }
 
 [data-theme="dark"] .student-kpi-value {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-kpi-sub {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 /* KPI Icon Bubbles in Dark Mode */
 [data-theme="dark"] .green-icon {
-  background: rgba(22, 163, 74, 0.2) !important;
-  color: #4ade80 !important;
+  background: rgba(3, 128, 106, 0.2) !important;
+  color: #339988 !important;
 }
 
 [data-theme="dark"] .blue-icon {
-  background: rgba(37, 99, 235, 0.2) !important;
-  color: #60a5fa !important;
+  background: rgba(225, 29, 85, 0.2) !important;
+  color: #ef5a85 !important;
 }
 
 [data-theme="dark"] .coral-icon {
-  background: rgba(220, 38, 38, 0.2) !important;
-  color: #f87171 !important;
+  background: rgba(211, 47, 47, 0.2) !important;
+  color: #dd5c5c !important;
 }
 
 [data-theme="dark"] .purple-icon {
-  background: rgba(124, 58, 237, 0.2) !important;
-  color: #c084fc !important;
+  background: rgba(92, 107, 192, 0.2) !important;
+  color: #7f8ccd !important;
 }
 
 /* ─── 6. Universal Student Card ─── */
 [data-theme="dark"] .student-card {
-  background: #131b2e !important;
-  border: 1px solid #1e293b !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+  background: #1c1c1c !important;
+  border: 1px solid #282c3f !important;
+  box-shadow: none;
 }
 
 [data-theme="dark"] .student-card-title {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-card-title-icon {
-  color: #60a5fa !important;
+  color: #ef5a85 !important;
 }
 
 [data-theme="dark"] .student-card-action-link {
-  color: #60a5fa !important;
+  color: #ef5a85 !important;
 }
 
 [data-theme="dark"] .student-card-action-link:hover {
-  color: #93c5fd !important;
+  color: #f896b0 !important;
 }
 
 /* ─── 7. Timetable Table Widget ─── */
 [data-theme="dark"] .student-table th {
-  background: #0e1626 !important;
-  color: #94a3b8 !important;
-  border-bottom: 1px solid #1e293b !important;
+  background: #181818 !important;
+  color: #94969f !important;
+  border-bottom: 1px solid #282c3f !important;
 }
 
 [data-theme="dark"] .student-table td {
-  border-bottom: 1px solid #1e293b !important;
-  color: #f8fafc !important;
+  border-bottom: 1px solid #282c3f !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-table tr:hover td {
@@ -387,209 +387,209 @@
 }
 
 [data-theme="dark"] .period-cell {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .time-cell {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .subject-cell {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .teacher-cell {
-  color: #cbd5e1 !important;
+  color: #d4d5d9 !important;
 }
 
 [data-theme="dark"] .room-cell {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 /* Mobile Period Timeline Card */
 [data-theme="dark"] .student-period-card {
-  background: #0e1626 !important;
-  border: 1px solid #1e293b !important;
+  background: #181818 !important;
+  border: 1px solid #282c3f !important;
 }
 
 [data-theme="dark"] .student-period-num {
-  background: rgba(37, 99, 235, 0.2) !important;
-  color: #60a5fa !important;
+  background: rgba(225, 29, 85, 0.2) !important;
+  color: #ef5a85 !important;
 }
 
 [data-theme="dark"] .student-period-subject {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-period-meta {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 /* Timetable & General Status Badges in Dark Mode */
 [data-theme="dark"] .status-completed {
-  background: rgba(22, 163, 74, 0.2) !important;
-  color: #4ade80 !important;
+  background: rgba(3, 128, 106, 0.2) !important;
+  color: #339988 !important;
 }
 
 [data-theme="dark"] .status-ongoing {
-  background: rgba(37, 99, 235, 0.2) !important;
-  color: #60a5fa !important;
+  background: rgba(225, 29, 85, 0.2) !important;
+  color: #ef5a85 !important;
 }
 
 [data-theme="dark"] .status-upcoming {
-  background: rgba(100, 116, 139, 0.2) !important;
-  color: #94a3b8 !important;
+  background: rgba(105, 110, 121, 0.2) !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .status-present {
-  background: rgba(22, 163, 74, 0.2) !important;
-  color: #4ade80 !important;
+  background: rgba(3, 128, 106, 0.2) !important;
+  color: #339988 !important;
 }
 
 [data-theme="dark"] .status-absent {
-  background: rgba(220, 38, 38, 0.2) !important;
-  color: #f87171 !important;
+  background: rgba(211, 47, 47, 0.2) !important;
+  color: #dd5c5c !important;
 }
 
 [data-theme="dark"] .status-pending {
-  background: rgba(217, 119, 6, 0.2) !important;
-  color: #fbbf24 !important;
+  background: rgba(184, 120, 28, 0.2) !important;
+  color: #edb35f !important;
 }
 
 [data-theme="dark"] .status-submitted {
-  background: rgba(37, 99, 235, 0.2) !important;
-  color: #60a5fa !important;
+  background: rgba(225, 29, 85, 0.2) !important;
+  color: #ef5a85 !important;
 }
 
 [data-theme="dark"] .status-approved {
-  background: rgba(22, 163, 74, 0.2) !important;
-  color: #4ade80 !important;
+  background: rgba(3, 128, 106, 0.2) !important;
+  color: #339988 !important;
 }
 
 [data-theme="dark"] .status-rejected {
-  background: rgba(220, 38, 38, 0.2) !important;
-  color: #f87171 !important;
+  background: rgba(211, 47, 47, 0.2) !important;
+  color: #dd5c5c !important;
 }
 
 [data-theme="dark"] .status-seen {
-  background: rgba(99, 102, 241, 0.2) !important;
-  color: #818cf8 !important;
-  border: 1px solid rgba(129, 140, 248, 0.3) !important;
+  background: rgba(225, 29, 85, 0.2) !important;
+  color: #ef5a85 !important;
+  border: 1px solid rgba(239, 90, 133, 0.3) !important;
 }
 
 /* ─── 8. Latest Announcements & Pending Tasks Widgets ─── */
 [data-theme="dark"] .student-announcement-item,
 [data-theme="dark"] .student-task-item {
-  background: #0e1626 !important;
-  border: 1px solid #1e293b !important;
-  color: #f8fafc !important;
+  background: #181818 !important;
+  border: 1px solid #282c3f !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-announcement-item:hover,
 [data-theme="dark"] .student-task-item:hover {
-  background: #17223b !important;
-  border-color: #334155 !important;
+  background: #262626 !important;
+  border-color: #3e4152 !important;
 }
 
 [data-theme="dark"] .student-item-title {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-item-desc {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .student-item-date {
-  color: #64748b !important;
+  color: #696e79 !important;
 }
 
 [data-theme="dark"] .student-item-sub {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .student-item-chevron {
-  color: #64748b !important;
+  color: #696e79 !important;
 }
 
 [data-theme="dark"] .student-countdown-pill {
-  background: rgba(220, 38, 38, 0.2) !important;
-  color: #f87171 !important;
+  background: rgba(211, 47, 47, 0.2) !important;
+  color: #dd5c5c !important;
 }
 
 /* Item Icon Bubbles */
 [data-theme="dark"] .blue-bubble,
 [data-theme="dark"] .search-bubble-blue {
-  background: rgba(37, 99, 235, 0.2) !important;
-  color: #60a5fa !important;
+  background: rgba(225, 29, 85, 0.2) !important;
+  color: #ef5a85 !important;
 }
 
 [data-theme="dark"] .green-bubble,
 [data-theme="dark"] .search-bubble-green {
-  background: rgba(22, 163, 74, 0.2) !important;
-  color: #4ade80 !important;
+  background: rgba(3, 128, 106, 0.2) !important;
+  color: #339988 !important;
 }
 
 [data-theme="dark"] .coral-bubble,
 [data-theme="dark"] .search-bubble-coral {
-  background: rgba(220, 38, 38, 0.2) !important;
-  color: #f87171 !important;
+  background: rgba(211, 47, 47, 0.2) !important;
+  color: #dd5c5c !important;
 }
 
 [data-theme="dark"] .purple-bubble,
 [data-theme="dark"] .search-bubble-purple {
-  background: rgba(124, 58, 237, 0.2) !important;
-  color: #c084fc !important;
+  background: rgba(92, 107, 192, 0.2) !important;
+  color: #7f8ccd !important;
 }
 
 [data-theme="dark"] .amber-bubble,
 [data-theme="dark"] .search-bubble-amber {
-  background: rgba(217, 119, 6, 0.2) !important;
-  color: #fbbf24 !important;
+  background: rgba(184, 120, 28, 0.2) !important;
+  color: #edb35f !important;
 }
 
 /* ─── 9. Calendar Widget ─── */
 [data-theme="dark"] .student-calendar-title-wrap {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-calendar-month {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-calendar-nav button {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .student-calendar-nav button:hover {
-  background: #1e293b !important;
-  color: #f8fafc !important;
+  background: #282c3f !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-cal-today-btn {
-  background: rgba(37, 99, 235, 0.2) !important;
-  border: 1px solid rgba(37, 99, 235, 0.4) !important;
-  color: #93c5fd !important;
+  background: rgba(225, 29, 85, 0.2) !important;
+  border: 1px solid rgba(225, 29, 85, 0.4) !important;
+  color: #f896b0 !important;
 }
 
 [data-theme="dark"] .student-cal-today-btn:hover {
-  background: rgba(37, 99, 235, 0.3) !important;
-  color: #bfdbfe !important;
+  background: rgba(225, 29, 85, 0.3) !important;
+  color: #fcc3d1 !important;
 }
 
 [data-theme="dark"] .cal-day-header {
-  color: #64748b !important;
+  color: #696e79 !important;
 }
 
 [data-theme="dark"] .cal-date {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .cal-date:not(.muted):not(.active-date):hover {
-  background: #1e293b !important;
+  background: #282c3f !important;
 }
 
 [data-theme="dark"] .cal-date.muted {
-  color: #475569 !important;
+  color: #535766 !important;
   opacity: 0.55 !important;
 }
 
@@ -598,55 +598,55 @@
 }
 
 [data-theme="dark"] .cal-date.active-date {
-  background: #2563eb !important;
+  background: #e11d55 !important;
   color: #ffffff !important;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.5) !important;
+  box-shadow: none;
 }
 
 [data-theme="dark"] .cal-date.today-date {
-  border: 1.5px solid #3b82f6 !important;
-  color: #60a5fa !important;
+  border: 1.5px solid #e11d55 !important;
+  color: #ef5a85 !important;
 }
 
 /* ─── 10. Recent Attendance Widget ─── */
 [data-theme="dark"] .student-recent-att-row {
-  background: #0e1626 !important;
-  border: 1px solid #1e293b !important;
+  background: #181818 !important;
+  border: 1px solid #282c3f !important;
 }
 
 [data-theme="dark"] .student-att-date {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-att-pill.present {
-  color: #4ade80 !important;
+  color: #339988 !important;
 }
 
 [data-theme="dark"] .student-att-pill.absent {
-  color: #f87171 !important;
+  color: #dd5c5c !important;
 }
 
 /* ─── 11. Inspiring Footer Banner ─── */
 [data-theme="dark"] .student-footer-banner {
-  background: rgba(37, 99, 235, 0.12) !important;
-  border: 1px solid rgba(37, 99, 235, 0.28) !important;
+  background: rgba(225, 29, 85, 0.12) !important;
+  border: 1px solid rgba(225, 29, 85, 0.28) !important;
 }
 
 [data-theme="dark"] .student-trophy-badge {
-  background: rgba(234, 179, 8, 0.2) !important;
-  color: #facc15 !important;
+  background: rgba(233, 162, 59, 0.2) !important;
+  color: #edb35f !important;
 }
 
 [data-theme="dark"] .student-footer-title {
-  color: #93c5fd !important;
+  color: #f896b0 !important;
 }
 
 [data-theme="dark"] .student-footer-sub {
-  color: #cbd5e1 !important;
+  color: #d4d5d9 !important;
 }
 
 [data-theme="dark"] .student-footer-badges {
-  color: #93c5fd !important;
+  color: #f896b0 !important;
 }
 
 /* ─── 12. Skeletons & Error Box ─── */
@@ -659,8 +659,8 @@
 
 .student-skeleton-hero {
   height: 110px;
-  border-radius: 14px;
-  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  border-radius: 4px;
+  background: #eaeaec;
   background-size: 200% 100%;
   animation: studentShimmer 1.5s infinite;
 }
@@ -673,8 +673,8 @@
 
 .student-skeleton-card {
   height: 94px;
-  border-radius: 14px;
-  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  border-radius: 4px;
+  background: #eaeaec;
   background-size: 200% 100%;
   animation: studentShimmer 1.5s infinite;
 }
@@ -686,23 +686,23 @@
 
 [data-theme="dark"] .student-skeleton-hero,
 [data-theme="dark"] .student-skeleton-card {
-  background: linear-gradient(90deg, #131b2e 25%, #1e293b 50%, #131b2e 75%) !important;
+  background: #1c1c1c !important;
   background-size: 200% 100% !important;
 }
 
 .student-error-box {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 14px;
+  background: #fbeaea;
+  border: 1px solid #f2c0c0;
+  border-radius: 4px;
   padding: 24px;
   text-align: center;
-  color: #991b1b;
+  color: #7e1b1b;
 }
 
 [data-theme="dark"] .student-error-box {
-  background: #131b2e !important;
-  border-color: rgba(220, 38, 38, 0.4) !important;
-  color: #f87171 !important;
+  background: #1c1c1c !important;
+  border-color: rgba(211, 47, 47, 0.4) !important;
+  color: #dd5c5c !important;
 }
 
 .student-error-box h3 {
@@ -719,186 +719,186 @@
 
 /* ─── 13. Subpages Common Dark Mode Styling ─── */
 [data-theme="dark"] .student-subpage-title {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-subpage-desc {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .student-back-link {
-  color: #60a5fa !important;
+  color: #ef5a85 !important;
 }
 
 [data-theme="dark"] .student-filter-bar input {
-  background: #131b2e !important;
-  border-color: #1e293b !important;
-  color: #f8fafc !important;
+  background: #1c1c1c !important;
+  border-color: #282c3f !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-btn-secondary {
-  background: #131b2e !important;
-  border-color: #1e293b !important;
-  color: #cbd5e1 !important;
+  background: #1c1c1c !important;
+  border-color: #282c3f !important;
+  color: #d4d5d9 !important;
 }
 
 [data-theme="dark"] .student-btn-secondary:hover {
-  background: #17223b !important;
-  border-color: #334155 !important;
-  color: #f8fafc !important;
+  background: #262626 !important;
+  border-color: #3e4152 !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-readonly-tag {
-  background: #17223b !important;
-  color: #94a3b8 !important;
+  background: #262626 !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .student-tab-bar {
-  border-bottom-color: #1e293b !important;
+  border-bottom-color: #282c3f !important;
 }
 
 [data-theme="dark"] .student-tab-btn {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .student-tab-btn:hover {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-tab-btn.active {
-  color: #60a5fa !important;
-  border-bottom-color: #60a5fa !important;
+  color: #ef5a85 !important;
+  border-bottom-color: #ef5a85 !important;
 }
 
 /* Attendance KPI stat cards */
 [data-theme="dark"] .student-kpi-stat-card {
-  background: #131b2e !important;
-  border-color: #1e293b !important;
-  color: #f8fafc !important;
+  background: #1c1c1c !important;
+  border-color: #282c3f !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .stat-label {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .stat-sub {
-  color: #64748b !important;
+  color: #696e79 !important;
 }
 
 /* Assignments Subpage */
 [data-theme="dark"] .student-assignment-card {
-  background: #131b2e !important;
-  border-color: #1e293b !important;
-  color: #f8fafc !important;
+  background: #1c1c1c !important;
+  border-color: #282c3f !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .assignment-subject-badge {
-  background: rgba(37, 99, 235, 0.2) !important;
-  color: #60a5fa !important;
+  background: rgba(225, 29, 85, 0.2) !important;
+  color: #ef5a85 !important;
 }
 
 [data-theme="dark"] .assignment-desc {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .assignment-meta-row {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .assignment-graded-box {
-  background: rgba(22, 163, 74, 0.15) !important;
-  border-color: rgba(22, 163, 74, 0.3) !important;
-  color: #4ade80 !important;
+  background: rgba(3, 128, 106, 0.15) !important;
+  border-color: rgba(3, 128, 106, 0.3) !important;
+  color: #339988 !important;
 }
 
 /* Announcements Feed */
 [data-theme="dark"] .student-notice-card {
-  background: #131b2e !important;
-  border-color: #1e293b !important;
-  color: #f8fafc !important;
+  background: #1c1c1c !important;
+  border-color: #282c3f !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .notice-body {
-  color: #cbd5e1 !important;
+  color: #d4d5d9 !important;
 }
 
 [data-theme="dark"] .notice-date {
-  color: #64748b !important;
+  color: #696e79 !important;
 }
 
 [data-theme="dark"] .priority-high,
 [data-theme="dark"] .priority-emergency {
-  background: rgba(220, 38, 38, 0.2) !important;
-  color: #f87171 !important;
+  background: rgba(211, 47, 47, 0.2) !important;
+  color: #dd5c5c !important;
 }
 
 [data-theme="dark"] .priority-normal {
-  background: rgba(37, 99, 235, 0.2) !important;
-  color: #60a5fa !important;
+  background: rgba(225, 29, 85, 0.2) !important;
+  color: #ef5a85 !important;
 }
 
 /* Profile Layout */
 [data-theme="dark"] .student-profile-hero-card {
-  background: #131b2e !important;
-  border-color: #1e293b !important;
-  color: #f8fafc !important;
+  background: #1c1c1c !important;
+  border-color: #282c3f !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .profile-hero-role {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 [data-theme="dark"] .profile-hero-badge {
-  background: rgba(37, 99, 235, 0.2) !important;
-  color: #60a5fa !important;
+  background: rgba(225, 29, 85, 0.2) !important;
+  color: #ef5a85 !important;
 }
 
 [data-theme="dark"] .detail-label {
-  color: #64748b !important;
+  color: #696e79 !important;
 }
 
 [data-theme="dark"] .detail-val {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-avatar-btn-upload {
-  background: rgba(37, 99, 235, 0.2) !important;
-  color: #93c5fd !important;
-  border-color: rgba(37, 99, 235, 0.4) !important;
+  background: rgba(225, 29, 85, 0.2) !important;
+  color: #f896b0 !important;
+  border-color: rgba(225, 29, 85, 0.4) !important;
 }
 
 [data-theme="dark"] .student-avatar-btn-upload:hover {
-  background: #2563eb !important;
+  background: #e11d55 !important;
   color: #ffffff !important;
 }
 
 [data-theme="dark"] .student-form-vertical input,
 [data-theme="dark"] .student-form-vertical textarea {
-  background: #0e1626 !important;
-  border-color: #1e293b !important;
-  color: #f8fafc !important;
+  background: #181818 !important;
+  border-color: #282c3f !important;
+  color: #f9f9fa !important;
 }
 
 /* Modals in Dark Mode */
 [data-theme="dark"] .student-modal {
-  background: #131b2e !important;
-  border: 1px solid #1e293b !important;
-  color: #f8fafc !important;
+  background: #1c1c1c !important;
+  border: 1px solid #282c3f !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-modal-header {
-  border-bottom: 1px solid #1e293b !important;
+  border-bottom: 1px solid #282c3f !important;
 }
 
 [data-theme="dark"] .student-modal-form textarea,
 [data-theme="dark"] .student-modal-form input {
-  background: #0e1626 !important;
-  border: 1px solid #1e293b !important;
-  color: #f8fafc !important;
+  background: #181818 !important;
+  border: 1px solid #282c3f !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .modal-sub {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 /* ─── 14. Exam Grade Badges & Marksheet Theming ─── */
@@ -910,32 +910,32 @@
   font-size: 12px;
   padding: 3px 10px;
   border-radius: 9999px;
-  background: rgba(37, 99, 235, 0.12);
-  color: #2563eb;
-  border: 1px solid rgba(37, 99, 235, 0.25);
+  background: rgba(225, 29, 85, 0.12);
+  color: #e11d55;
+  border: 1px solid rgba(225, 29, 85, 0.25);
 }
 
 [data-theme="dark"] .student-grade-badge {
-  background: rgba(37, 99, 235, 0.22) !important;
-  color: #93c5fd !important;
-  border-color: rgba(96, 165, 250, 0.35) !important;
+  background: rgba(225, 29, 85, 0.22) !important;
+  color: #f896b0 !important;
+  border-color: rgba(239, 90, 133, 0.35) !important;
 }
 
 /* ─── 15. Attendance KPI Stat Values & Contrast ─── */
 [data-theme="dark"] .student-kpi-stat-card .stat-value {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-kpi-stat-card .stat-value.text-primary {
-  color: #60a5fa !important;
+  color: #ef5a85 !important;
 }
 
 [data-theme="dark"] .student-kpi-stat-card .stat-value.text-success {
-  color: #4ade80 !important;
+  color: #339988 !important;
 }
 
 [data-theme="dark"] .student-kpi-stat-card .stat-value.text-danger {
-  color: #f87171 !important;
+  color: #dd5c5c !important;
 }
 
 /* ─── 16. In-Page Search Bar & Dropdown Results ─── */
@@ -944,8 +944,8 @@
   align-items: center;
   gap: 8px;
   background: var(--bg-card, #ffffff);
-  border: 1px solid var(--border, #cbd5e1);
-  border-radius: 8px;
+  border: 1px solid var(--border, #d4d5d9);
+  border-radius: 4px;
   padding: 6px 12px;
   flex: 1;
   max-width: 420px;
@@ -953,17 +953,17 @@
 }
 
 [data-theme="dark"] .student-inpage-search-bar {
-  background: #131b2e !important;
-  border-color: #1e293b !important;
+  background: #1c1c1c !important;
+  border-color: #282c3f !important;
 }
 
 [data-theme="dark"] .student-inpage-search-bar:focus-within {
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+  border-color: #e11d55 !important;
+  box-shadow: none;
 }
 
 [data-theme="dark"] .student-inpage-search-bar input {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
   background: transparent !important;
 }
 
@@ -973,58 +973,58 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 8px;
+  background: #fff2f4;
+  border: 1px solid #fcc3d1;
+  border-radius: 4px;
   margin-bottom: 16px;
 }
 
 [data-theme="dark"] .student-timetable-filter-banner {
-  background: rgba(37, 99, 235, 0.12) !important;
-  border-color: rgba(59, 130, 246, 0.3) !important;
-  color: #93c5fd !important;
+  background: rgba(225, 29, 85, 0.12) !important;
+  border-color: rgba(225, 29, 85, 0.3) !important;
+  color: #f896b0 !important;
 }
 
 [data-theme="dark"] .student-timetable-filter-banner span {
-  color: #93c5fd !important;
+  color: #f896b0 !important;
 }
 
 [data-theme="dark"] .student-timetable-filter-banner button {
-  color: #60a5fa !important;
+  color: #ef5a85 !important;
 }
 
 /* ─── 18. Assignment Submission Modal & Attachments Dropzone ─── */
 .student-file-dropzone {
-  border: 2px dashed #cbd5e1;
-  border-radius: 8px;
+  border: 2px dashed #d4d5d9;
+  border-radius: 4px;
   padding: 16px;
   text-align: center;
-  background: #f8fafc;
+  background: #f9f9fa;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .student-file-dropzone:hover {
-  border-color: #3b82f6;
-  background: rgba(59, 130, 246, 0.04);
+  border-color: #e11d55;
+  background: rgba(225, 29, 85, 0.04);
 }
 
 [data-theme="dark"] .student-file-dropzone {
-  border-color: #334155 !important;
-  background: #0e1626 !important;
+  border-color: #3e4152 !important;
+  background: #181818 !important;
 }
 
 [data-theme="dark"] .student-file-dropzone:hover {
-  border-color: #3b82f6 !important;
-  background: rgba(59, 130, 246, 0.1) !important;
+  border-color: #e11d55 !important;
+  background: rgba(225, 29, 85, 0.1) !important;
 }
 
 [data-theme="dark"] .student-file-dropzone p:first-of-type {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-file-dropzone p:last-of-type {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 .student-selected-file-item {
@@ -1032,27 +1032,27 @@
   align-items: center;
   justify-content: space-between;
   background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
+  border: 1px solid #eaeaec;
+  border-radius: 4px;
   padding: 6px 10px;
   font-size: 12px;
 }
 
 [data-theme="dark"] .student-selected-file-item {
-  background: #0e1626 !important;
-  border-color: #1e293b !important;
-  color: #f8fafc !important;
+  background: #181818 !important;
+  border-color: #282c3f !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-selected-file-item span:first-of-type {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 /* ─── 19. Assignment File Preview Modal ─── */
 .student-preview-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.82);
+  background: rgba(28, 31, 46, 0.82);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   z-index: 1100;
@@ -1064,20 +1064,20 @@
 
 .student-preview-modal {
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 4px;
   width: min(920px, 95vw);
   height: min(85vh, 800px);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow-float);
   overflow: hidden;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #eaeaec;
 }
 
 [data-theme="dark"] .student-preview-modal {
-  background: #131b2e !important;
-  border-color: #1e293b !important;
-  box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.8) !important;
+  background: #1c1c1c !important;
+  border-color: #282c3f !important;
+  box-shadow: var(--shadow-float);
 }
 
 .student-preview-modal-header {
@@ -1085,23 +1085,23 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 18px;
-  border-bottom: 1px solid #e2e8f0;
-  background: #f8fafc;
+  border-bottom: 1px solid #eaeaec;
+  background: #f9f9fa;
 }
 
 [data-theme="dark"] .student-preview-modal-header {
-  background: #0e1626 !important;
-  border-bottom-color: #1e293b !important;
+  background: #181818 !important;
+  border-bottom-color: #282c3f !important;
 }
 
 [data-theme="dark"] .student-preview-modal-header h3 {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-preview-modal-header button {
-  background: #17223b !important;
-  border-color: #1e293b !important;
-  color: #f8fafc !important;
+  background: #262626 !important;
+  border-color: #282c3f !important;
+  color: #f9f9fa !important;
 }
 
 .student-preview-modal-body {
@@ -1110,131 +1110,131 @@
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background: #f8fafc;
+  background: #f9f9fa;
   overflow: auto;
 }
 
 [data-theme="dark"] .student-preview-modal-body {
-  background: #0b0f19 !important;
-  color: #cbd5e1 !important;
+  background: #121212 !important;
+  color: #d4d5d9 !important;
 }
 
 /* ─── 20. Student Profile Alerts & Editable Fields ─── */
 .student-profile-pending-banner {
   margin: 12px 0 4px;
-  background: #fef3c7;
-  border: 1px solid #fde68a;
-  border-radius: 10px;
+  background: #fbecd3;
+  border: 1px solid #f6dcb2;
+  border-radius: 4px;
   padding: 10px 12px;
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: 12.5px;
-  color: #92400e;
+  color: #6b450e;
   text-align: left;
 }
 
 [data-theme="dark"] .student-profile-pending-banner {
-  background: rgba(245, 158, 11, 0.15) !important;
-  border-color: rgba(245, 158, 11, 0.35) !important;
-  color: #fde68a !important;
+  background: rgba(233, 162, 59, 0.15) !important;
+  border-color: rgba(233, 162, 59, 0.35) !important;
+  color: #f6dcb2 !important;
 }
 
 [data-theme="dark"] .student-profile-pending-banner div {
-  color: #fde68a !important;
+  color: #f6dcb2 !important;
 }
 
 .student-profile-rejected-banner {
   margin: 12px 0 4px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 10px;
+  background: #fbeaea;
+  border: 1px solid #f2c0c0;
+  border-radius: 4px;
   padding: 10px 12px;
   font-size: 12.5px;
-  color: #991b1b;
+  color: #7e1b1b;
   text-align: left;
 }
 
 [data-theme="dark"] .student-profile-rejected-banner {
-  background: rgba(220, 38, 38, 0.15) !important;
-  border-color: rgba(220, 38, 38, 0.35) !important;
-  color: #fca5a5 !important;
+  background: rgba(211, 47, 47, 0.15) !important;
+  border-color: rgba(211, 47, 47, 0.35) !important;
+  color: #e88d8d !important;
 }
 
 [data-theme="dark"] .student-profile-rejected-banner div {
-  color: #fca5a5 !important;
+  color: #e88d8d !important;
 }
 
 [data-theme="dark"] .student-profile-details-card .detail-val {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-profile-details-card .detail-label {
-  color: #94a3b8 !important;
+  color: #94969f !important;
 }
 
 /* ─── 21. Interactive Announcement Responses & Reply Box ─── */
 .student-notice-reply-box {
   margin-top: 12px;
-  background-color: #f8fafc;
+  background-color: #f9f9fa;
   padding: 12px;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  border: 1px solid #eaeaec;
 }
 
 [data-theme="dark"] .student-notice-reply-box {
-  background-color: #0e1626 !important;
-  border-color: #1e293b !important;
+  background-color: #181818 !important;
+  border-color: #282c3f !important;
 }
 
 [data-theme="dark"] .student-notice-reply-box textarea {
-  background-color: #131b2e !important;
-  border-color: #1e293b !important;
-  color: #f8fafc !important;
+  background-color: #1c1c1c !important;
+  border-color: #282c3f !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-notice-reply-box textarea::placeholder {
-  color: #64748b !important;
+  color: #696e79 !important;
 }
 
 [data-theme="dark"] .student-notice-reply-cancel-btn,
 .dark .student-notice-reply-cancel-btn {
-  background: #17223b !important;
-  border-color: #1e293b !important;
-  color: #cbd5e1 !important;
+  background: #262626 !important;
+  border-color: #282c3f !important;
+  color: #d4d5d9 !important;
 }
 
 [data-theme="dark"] .student-notice-reply-success,
 .dark .student-notice-reply-success {
-  background-color: rgba(16, 185, 129, 0.15) !important;
-  border-color: rgba(16, 185, 129, 0.35) !important;
-  color: #6ee7b7 !important;
+  background-color: rgba(3, 128, 106, 0.15) !important;
+  border-color: rgba(3, 128, 106, 0.35) !important;
+  color: #66b3a6 !important;
 }
 
 /* ─── 22. Submission Info Box & Attachments Items ─── */
 .student-submission-info-box {
-  background: var(--card-subtle, #f8fafc);
+  background: var(--card-subtle, #f9f9fa);
   padding: 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 4px;
+  border: 1px solid var(--border, #eaeaec);
   margin: 12px 0;
   font-size: 13px;
 }
 
 [data-theme="dark"] .student-submission-info-box,
 .dark .student-submission-info-box {
-  background: #0e1626 !important;
-  border-color: #1e293b !important;
+  background: #181818 !important;
+  border-color: #282c3f !important;
 }
 
 [data-theme="dark"] .student-submission-info-box .submission-header,
 .dark .student-submission-info-box .submission-header {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 [data-theme="dark"] .student-submission-info-box p,
 .dark .student-submission-info-box p {
-  color: #cbd5e1 !important;
+  color: #d4d5d9 !important;
 }
 
 .student-attachment-card-item {
@@ -1242,26 +1242,26 @@
   align-items: center;
   justify-content: space-between;
   background: var(--card, #ffffff);
-  border: 1px solid var(--border, #cbd5e1);
-  border-radius: 6px;
+  border: 1px solid var(--border, #d4d5d9);
+  border-radius: 4px;
   padding: 6px 10px;
   font-size: 12px;
 }
 
 [data-theme="dark"] .student-attachment-card-item,
 .dark .student-attachment-card-item {
-  background: #131b2e !important;
-  border-color: #1e293b !important;
+  background: #1c1c1c !important;
+  border-color: #282c3f !important;
 }
 
 [data-theme="dark"] .student-attachment-card-item .file-name,
 .dark .student-attachment-card-item .file-name {
-  color: #f8fafc !important;
+  color: #f9f9fa !important;
 }
 
 .student-attachment-preview-btn {
-  border: 1px solid var(--border, #cbd5e1);
-  background: var(--card-subtle, #f1f5f9);
+  border: 1px solid var(--border, #d4d5d9);
+  background: var(--card-subtle, #f5f5f6);
   border-radius: 4px;
   padding: 3px 8px;
   cursor: pointer;
@@ -1269,19 +1269,19 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: var(--text, #334155);
+  color: var(--text, #3e4152);
 }
 
 [data-theme="dark"] .student-attachment-preview-btn,
 .dark .student-attachment-preview-btn {
-  background: #1e293b !important;
-  border-color: #334155 !important;
-  color: #f8fafc !important;
+  background: #282c3f !important;
+  border-color: #3e4152 !important;
+  color: #f9f9fa !important;
 }
 
 .student-attachment-download-btn {
-  border: 1px solid rgba(37, 99, 235, 0.4);
-  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(225, 29, 85, 0.4);
+  background: rgba(225, 29, 85, 0.08);
   border-radius: 4px;
   padding: 3px 8px;
   cursor: pointer;
@@ -1289,12 +1289,12 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: #2563eb;
+  color: #e11d55;
 }
 
 [data-theme="dark"] .student-attachment-download-btn,
 .dark .student-attachment-download-btn {
-  background: rgba(37, 99, 235, 0.22) !important;
-  color: #93c5fd !important;
-  border-color: rgba(96, 165, 250, 0.35) !important;
+  background: rgba(225, 29, 85, 0.22) !important;
+  color: #f896b0 !important;
+  border-color: rgba(239, 90, 133, 0.35) !important;
 }

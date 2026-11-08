@@ -261,11 +261,11 @@ export default function LeavePolicy() {
           display: 'flex',
           alignItems: 'center',
           gap: 10,
-          background: toastMsg.type === 'success' ? '#10b981' : '#ef4444',
+          background: toastMsg.type === 'success' ? '#03806a' : '#d32f2f',
           color: '#ffffff',
           padding: '12px 18px',
-          borderRadius: 8,
-          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.2)',
+          borderRadius: 4,
+          boxShadow: 'none',
           fontWeight: 600,
           fontSize: 13.5,
           animation: 'fadeInDown 0.25s ease'
@@ -453,14 +453,14 @@ export default function LeavePolicy() {
       {/* Main Table Card */}
       <div style={{
         background: 'var(--bg-card, #ffffff)',
-        border: '1px solid var(--border, #e2e8f0)',
-        borderRadius: 10,
+        border: '1px solid var(--border, #eaeaec)',
+        borderRadius: 4,
         overflow: 'hidden',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+        boxShadow: 'none'
       }}>
         {loading ? (
-          <div style={{ padding: '48px 20px', textAlign: 'center', color: '#64748b' }}>
-            <RefreshCw size={28} style={{ animation: 'spinAnim 0.8s linear infinite', color: '#2563eb', margin: '0 auto 12px' }} />
+          <div style={{ padding: '48px 20px', textAlign: 'center', color: '#696e79' }}>
+            <RefreshCw size={28} style={{ animation: 'spinAnim 0.8s linear infinite', color: '#e11d55', margin: '0 auto 12px' }} />
             <div style={{ fontWeight: 600, fontSize: 14 }}>Loading leave policies...</div>
           </div>
         ) : filteredPolicies.length === 0 ? (
@@ -469,8 +469,8 @@ export default function LeavePolicy() {
               width: 56,
               height: 56,
               borderRadius: '50%',
-              background: 'rgba(37, 99, 235, 0.1)',
-              color: '#2563eb',
+              background: 'rgba(225, 29, 85, 0.1)',
+              color: '#e11d55',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -478,10 +478,10 @@ export default function LeavePolicy() {
             }}>
               <Calendar size={28} />
             </div>
-            <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+            <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: 'var(--text, #1c1f2e)' }}>
               No Leave Policies Found
             </h3>
-            <p style={{ margin: '0 0 20px', fontSize: 13.5, color: 'var(--text-muted, #64748b)', maxWidth: 440, marginLeft: 'auto', marginRight: 'auto' }}>
+            <p style={{ margin: '0 0 20px', fontSize: 13.5, color: 'var(--text-muted, #696e79)', maxWidth: 440, marginLeft: 'auto', marginRight: 'auto' }}>
               {policies.length === 0
                 ? "You haven't configured any leave policies yet. Create dynamic leave types such as Casual Leave, Medical Leave, etc. with customized yearly or half-yearly counts."
                 : "No leave policies matched your active search and filter criteria."}
@@ -495,9 +495,9 @@ export default function LeavePolicy() {
                   alignItems: 'center',
                   gap: 6,
                   padding: '9px 18px',
-                  borderRadius: 6,
+                  borderRadius: 4,
                   border: 'none',
-                  background: '#2563eb',
+                  background: '#e11d55',
                   color: '#ffffff',
                   fontSize: 13.5,
                   fontWeight: 600,
@@ -512,26 +512,26 @@ export default function LeavePolicy() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: 800 }}>
               <thead>
-                <tr style={{ background: 'var(--card-subtle, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
-                  <th style={{ padding: '12px 18px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #475569)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <tr style={{ background: 'var(--card-subtle, #f9f9fa)', borderBottom: '1px solid var(--border, #eaeaec)' }}>
+                  <th style={{ padding: '12px 18px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #535766)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Leave Policy Name
                   </th>
-                  <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #475569)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #535766)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Allowed Days
                   </th>
-                  <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #475569)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #535766)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Accrual / Renewal Cycle
                   </th>
-                  <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #475569)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #535766)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Applicable To
                   </th>
-                  <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #475569)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #535766)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Rules & Pay
                   </th>
-                  <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #475569)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'center' }}>
+                  <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #535766)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'center' }}>
                     Status
                   </th>
-                  <th style={{ padding: '12px 18px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #475569)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'right' }}>
+                  <th style={{ padding: '12px 18px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #535766)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'right' }}>
                     Actions
                   </th>
                 </tr>
@@ -541,7 +541,7 @@ export default function LeavePolicy() {
                   <tr
                     key={p.id}
                     style={{
-                      borderBottom: '1px solid var(--border, #f1f5f9)',
+                      borderBottom: '1px solid var(--border, #f5f5f6)',
                       transition: 'background 0.15s ease'
                     }}
                   >
@@ -551,9 +551,9 @@ export default function LeavePolicy() {
                         <div style={{
                           width: 36,
                           height: 36,
-                          borderRadius: 8,
-                          background: p.accrual_cycle === 'YEARLY' ? 'rgba(37, 99, 235, 0.12)' : 'rgba(147, 51, 234, 0.12)',
-                          color: p.accrual_cycle === 'YEARLY' ? '#2563eb' : '#9333ea',
+                          borderRadius: 4,
+                          background: p.accrual_cycle === 'YEARLY' ? 'rgba(225, 29, 85, 0.12)' : 'rgba(92, 107, 192, 0.12)',
+                          color: p.accrual_cycle === 'YEARLY' ? '#e11d55' : '#5c6bc0',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -564,11 +564,11 @@ export default function LeavePolicy() {
                           {p.code || p.name.substring(0, 2).toUpperCase()}
                         </div>
                         <div>
-                          <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text, #0f172a)' }}>
+                          <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text, #1c1f2e)' }}>
                             {p.name}
                           </div>
                           {p.description && (
-                            <div style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', marginTop: 2, maxWidth: 300 }}>
+                            <div style={{ fontSize: 12, color: 'var(--text-muted, #696e79)', marginTop: 2, maxWidth: 300 }}>
                               {p.description}
                             </div>
                           )}
@@ -583,9 +583,9 @@ export default function LeavePolicy() {
                         alignItems: 'center',
                         gap: 4,
                         padding: '4px 10px',
-                        borderRadius: 6,
-                        background: 'rgba(37, 99, 235, 0.08)',
-                        color: '#1d4ed8',
+                        borderRadius: 4,
+                        background: 'rgba(225, 29, 85, 0.08)',
+                        color: '#c0174a',
                         fontWeight: 700,
                         fontSize: 13.5
                       }}>
@@ -602,8 +602,8 @@ export default function LeavePolicy() {
                           gap: 6,
                           padding: '4px 10px',
                           borderRadius: 999,
-                          background: 'rgba(2, 132, 199, 0.12)',
-                          color: '#0284c7',
+                          background: 'rgba(92, 107, 192, 0.12)',
+                          color: '#5c6bc0',
                           fontWeight: 600,
                           fontSize: 12
                         }}>
@@ -617,8 +617,8 @@ export default function LeavePolicy() {
                           gap: 6,
                           padding: '4px 10px',
                           borderRadius: 999,
-                          background: 'rgba(147, 51, 234, 0.12)',
-                          color: '#9333ea',
+                          background: 'rgba(92, 107, 192, 0.12)',
+                          color: '#5c6bc0',
                           fontWeight: 600,
                           fontSize: 12
                         }}>
@@ -633,8 +633,8 @@ export default function LeavePolicy() {
                       <span style={{
                         fontSize: 12.5,
                         fontWeight: 600,
-                        color: 'var(--text-secondary, #475569)',
-                        background: 'var(--card-subtle, #f1f5f9)',
+                        color: 'var(--text-secondary, #535766)',
+                        background: 'var(--card-subtle, #f5f5f6)',
                         padding: '3px 8px',
                         borderRadius: 4
                       }}>
@@ -652,8 +652,8 @@ export default function LeavePolicy() {
                           fontWeight: 600,
                           padding: '2px 7px',
                           borderRadius: 4,
-                          background: p.paid ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                          color: p.paid ? '#059669' : '#dc2626'
+                          background: p.paid ? 'rgba(3, 128, 106, 0.12)' : 'rgba(211, 47, 47, 0.12)',
+                          color: p.paid ? '#03806a' : '#d32f2f'
                         }}>
                           {p.paid ? 'Paid Leave' : 'Unpaid'}
                         </span>
@@ -663,8 +663,8 @@ export default function LeavePolicy() {
                             fontWeight: 600,
                             padding: '2px 7px',
                             borderRadius: 4,
-                            background: 'rgba(59, 130, 246, 0.1)',
-                            color: '#2563eb'
+                            background: 'rgba(225, 29, 85, 0.1)',
+                            color: '#e11d55'
                           }} title={`Max carry forward: ${p.max_carry_forward_days || 'Unlimited'} days`}>
                             Carry Forward
                           </span>
@@ -675,8 +675,8 @@ export default function LeavePolicy() {
                             fontWeight: 600,
                             padding: '2px 7px',
                             borderRadius: 4,
-                            background: 'rgba(245, 158, 11, 0.12)',
-                            color: '#d97706'
+                            background: 'rgba(233, 162, 59, 0.12)',
+                            color: '#b8781c'
                           }} title="Supporting document / certificate required">
                             Doc Req.
                           </span>
@@ -697,8 +697,8 @@ export default function LeavePolicy() {
                           borderRadius: 999,
                           border: 'none',
                           cursor: 'pointer',
-                          background: p.is_active ? 'rgba(16, 185, 129, 0.12)' : 'rgba(148, 163, 184, 0.15)',
-                          color: p.is_active ? '#059669' : '#64748b',
+                          background: p.is_active ? 'rgba(3, 128, 106, 0.12)' : 'rgba(148, 150, 159, 0.15)',
+                          color: p.is_active ? '#03806a' : '#696e79',
                           fontWeight: 600,
                           fontSize: 12
                         }}
@@ -708,7 +708,7 @@ export default function LeavePolicy() {
                           width: 6,
                           height: 6,
                           borderRadius: '50%',
-                          background: p.is_active ? '#10b981' : '#94a3b8'
+                          background: p.is_active ? '#03806a' : '#94969f'
                         }}></span>
                         {p.is_active ? 'Active' : 'Inactive'}
                       </button>
@@ -722,10 +722,10 @@ export default function LeavePolicy() {
                           onClick={() => handleOpenEditModal(p)}
                           style={{
                             padding: '6px 8px',
-                            borderRadius: 6,
-                            border: '1px solid var(--border, #cbd5e1)',
+                            borderRadius: 4,
+                            border: '1px solid var(--border, #d4d5d9)',
                             background: 'var(--bg, #ffffff)',
-                            color: '#2563eb',
+                            color: '#e11d55',
                             cursor: 'pointer'
                           }}
                           title="Edit Policy"
@@ -738,10 +738,10 @@ export default function LeavePolicy() {
                           onClick={() => setDeleteConfirmPolicy(p)}
                           style={{
                             padding: '6px 8px',
-                            borderRadius: 6,
-                            border: '1px solid rgba(239, 68, 68, 0.25)',
-                            background: 'rgba(239, 68, 68, 0.06)',
-                            color: '#ef4444',
+                            borderRadius: 4,
+                            border: '1px solid rgba(211, 47, 47, 0.25)',
+                            background: 'rgba(211, 47, 47, 0.06)',
+                            color: '#d32f2f',
                             cursor: 'pointer'
                           }}
                           title="Delete Policy"
@@ -763,7 +763,7 @@ export default function LeavePolicy() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(15, 23, 42, 0.65)',
+          background: 'rgba(28, 31, 46, 0.65)',
           backdropFilter: 'blur(3px)',
           display: 'flex',
           alignItems: 'center',
@@ -773,36 +773,36 @@ export default function LeavePolicy() {
         }}>
           <div style={{
             background: 'var(--bg-card, #ffffff)',
-            borderRadius: 12,
-            border: '1px solid var(--border, #e2e8f0)',
+            borderRadius: 4,
+            border: '1px solid var(--border, #eaeaec)',
             width: '100%',
             maxWidth: 580,
             maxHeight: '92vh',
             overflowY: 'auto',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            boxShadow: 'none',
             boxSizing: 'border-box'
           }}>
             {/* Modal Header */}
             <div style={{
               padding: '18px 24px',
-              borderBottom: '1px solid var(--border, #e2e8f0)',
+              borderBottom: '1px solid var(--border, #eaeaec)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              background: 'var(--card-subtle, #f8fafc)'
+              background: 'var(--card-subtle, #f9f9fa)'
             }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text, #1c1f2e)' }}>
                   {editingPolicy ? 'Edit Leave Policy' : 'Create Dynamic Leave Policy'}
                 </h3>
-                <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--text-muted, #64748b)' }}>
+                <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--text-muted, #696e79)' }}>
                   Configure leave name, entitlement count, and Yearly or Half-Yearly renewal.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: 4 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#696e79', padding: 4 }}
               >
                 <X size={20} />
               </button>
@@ -813,10 +813,10 @@ export default function LeavePolicy() {
               {formError && (
                 <div style={{
                   padding: '10px 14px',
-                  borderRadius: 6,
-                  background: '#fef2f2',
-                  border: '1px solid #fecaca',
-                  color: '#991b1b',
+                  borderRadius: 4,
+                  background: '#fbeaea',
+                  border: '1px solid #f2c0c0',
+                  color: '#7e1b1b',
                   fontSize: 13,
                   display: 'flex',
                   alignItems: 'center',
@@ -830,8 +830,8 @@ export default function LeavePolicy() {
               {/* Policy Name & Code */}
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)', marginBottom: 5 }}>
-                    Policy Name <span style={{ color: '#ef4444' }}>*</span>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text, #3e4152)', marginBottom: 5 }}>
+                    Policy Name <span style={{ color: '#d32f2f' }}>*</span>
                   </label>
                   <input
                     type="text"
@@ -842,10 +842,10 @@ export default function LeavePolicy() {
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border, #cbd5e1)',
+                      borderRadius: 4,
+                      border: '1px solid var(--border, #d4d5d9)',
                       background: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #0f172a)',
+                      color: 'var(--text, #1c1f2e)',
                       fontSize: 13.5,
                       boxSizing: 'border-box'
                     }}
@@ -853,7 +853,7 @@ export default function LeavePolicy() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)', marginBottom: 5 }}>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text, #3e4152)', marginBottom: 5 }}>
                     Code / Tag
                   </label>
                   <input
@@ -865,10 +865,10 @@ export default function LeavePolicy() {
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border, #cbd5e1)',
+                      borderRadius: 4,
+                      border: '1px solid var(--border, #d4d5d9)',
                       background: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #0f172a)',
+                      color: 'var(--text, #1c1f2e)',
                       fontSize: 13.5,
                       boxSizing: 'border-box',
                       textTransform: 'uppercase'
@@ -879,16 +879,16 @@ export default function LeavePolicy() {
 
               {/* Accrual / Renewal Cycle Selection (Yearly vs Half-Yearly) */}
               <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)', marginBottom: 6 }}>
-                  Accrual & Renewal Cycle <span style={{ color: '#ef4444' }}>*</span>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text, #3e4152)', marginBottom: 6 }}>
+                  Accrual & Renewal Cycle <span style={{ color: '#d32f2f' }}>*</span>
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div
                     onClick={() => setFormData({ ...formData, accrual_cycle: 'YEARLY' })}
                     style={{
-                      border: formData.accrual_cycle === 'YEARLY' ? '2px solid #2563eb' : '1px solid var(--border, #cbd5e1)',
-                      background: formData.accrual_cycle === 'YEARLY' ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg, #ffffff)',
-                      borderRadius: 8,
+                      border: formData.accrual_cycle === 'YEARLY' ? '2px solid #e11d55' : '1px solid var(--border, #d4d5d9)',
+                      background: formData.accrual_cycle === 'YEARLY' ? 'rgba(225, 29, 85, 0.08)' : 'var(--bg, #ffffff)',
+                      borderRadius: 4,
                       padding: '12px 14px',
                       cursor: 'pointer',
                       display: 'flex',
@@ -897,16 +897,16 @@ export default function LeavePolicy() {
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontWeight: 700, fontSize: 13.5, color: formData.accrual_cycle === 'YEARLY' ? '#2563eb' : 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13.5, color: formData.accrual_cycle === 'YEARLY' ? '#e11d55' : 'var(--text, #1c1f2e)', display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Calendar size={15} /> Yearly Cycle
                       </span>
                       {formData.accrual_cycle === 'YEARLY' && (
-                        <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#2563eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#e11d55', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Check size={12} />
                         </div>
                       )}
                     </div>
-                    <span style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>
+                    <span style={{ fontSize: 11.5, color: 'var(--text-muted, #696e79)' }}>
                       Count applies once per entire academic year.
                     </span>
                   </div>
@@ -914,9 +914,9 @@ export default function LeavePolicy() {
                   <div
                     onClick={() => setFormData({ ...formData, accrual_cycle: 'HALF_YEARLY' })}
                     style={{
-                      border: formData.accrual_cycle === 'HALF_YEARLY' ? '2px solid #9333ea' : '1px solid var(--border, #cbd5e1)',
-                      background: formData.accrual_cycle === 'HALF_YEARLY' ? 'rgba(147, 51, 234, 0.08)' : 'var(--bg, #ffffff)',
-                      borderRadius: 8,
+                      border: formData.accrual_cycle === 'HALF_YEARLY' ? '2px solid #5c6bc0' : '1px solid var(--border, #d4d5d9)',
+                      background: formData.accrual_cycle === 'HALF_YEARLY' ? 'rgba(92, 107, 192, 0.08)' : 'var(--bg, #ffffff)',
+                      borderRadius: 4,
                       padding: '12px 14px',
                       cursor: 'pointer',
                       display: 'flex',
@@ -925,16 +925,16 @@ export default function LeavePolicy() {
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontWeight: 700, fontSize: 13.5, color: formData.accrual_cycle === 'HALF_YEARLY' ? '#9333ea' : 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13.5, color: formData.accrual_cycle === 'HALF_YEARLY' ? '#5c6bc0' : 'var(--text, #1c1f2e)', display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Clock size={15} /> Half-Yearly Cycle
                       </span>
                       {formData.accrual_cycle === 'HALF_YEARLY' && (
-                        <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#9333ea', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#5c6bc0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Check size={12} />
                         </div>
                       )}
                     </div>
-                    <span style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>
+                    <span style={{ fontSize: 11.5, color: 'var(--text-muted, #696e79)' }}>
                       Count applies per 6 months / semester.
                     </span>
                   </div>
@@ -944,8 +944,8 @@ export default function LeavePolicy() {
               {/* Leave Days Count & Applicable To */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)', marginBottom: 5 }}>
-                    Allowed Leave Count (Days) <span style={{ color: '#ef4444' }}>*</span>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text, #3e4152)', marginBottom: 5 }}>
+                    Allowed Leave Count (Days) <span style={{ color: '#d32f2f' }}>*</span>
                   </label>
                   <input
                     type="number"
@@ -959,22 +959,22 @@ export default function LeavePolicy() {
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border, #cbd5e1)',
+                      borderRadius: 4,
+                      border: '1px solid var(--border, #d4d5d9)',
                       background: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #0f172a)',
+                      color: 'var(--text, #1c1f2e)',
                       fontSize: 13.5,
                       boxSizing: 'border-box',
                       fontWeight: 700
                     }}
                   />
-                  <span style={{ fontSize: 11.5, color: '#64748b', marginTop: 4, display: 'block' }}>
+                  <span style={{ fontSize: 11.5, color: '#696e79', marginTop: 4, display: 'block' }}>
                     {formData.days_count || 0} {Number(formData.days_count) === 1 ? 'day' : 'days'} per {formData.accrual_cycle === 'YEARLY' ? 'year' : 'half-year (6 months)'}
                   </span>
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)', marginBottom: 5 }}>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text, #3e4152)', marginBottom: 5 }}>
                     Applicable Audience
                   </label>
                   <select
@@ -983,10 +983,10 @@ export default function LeavePolicy() {
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border, #cbd5e1)',
+                      borderRadius: 4,
+                      border: '1px solid var(--border, #d4d5d9)',
                       background: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #0f172a)',
+                      color: 'var(--text, #1c1f2e)',
                       fontSize: 13.5,
                       boxSizing: 'border-box'
                     }}
@@ -1001,18 +1001,18 @@ export default function LeavePolicy() {
 
               {/* Toggles (Paid, Carry Forward, Document Required) */}
               <div style={{
-                background: 'var(--card-subtle, #f8fafc)',
-                border: '1px solid var(--border, #e2e8f0)',
-                borderRadius: 8,
+                background: 'var(--card-subtle, #f9f9fa)',
+                border: '1px solid var(--border, #eaeaec)',
+                borderRadius: 4,
                 padding: '14px 16px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 12
               }}>
-                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text, #282c3f)' }}>
                   <div>
                     <div>Paid Leave</div>
-                    <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)', fontWeight: 400 }}>Salary is maintained without deduction during this leave.</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted, #696e79)', fontWeight: 400 }}>Salary is maintained without deduction during this leave.</div>
                   </div>
                   <input
                     type="checkbox"
@@ -1022,12 +1022,12 @@ export default function LeavePolicy() {
                   />
                 </label>
 
-                <div style={{ height: 1, background: 'var(--border, #e2e8f0)' }}></div>
+                <div style={{ height: 1, background: 'var(--border, #eaeaec)' }}></div>
 
-                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text, #282c3f)' }}>
                   <div>
                     <div>Carry Forward Unused Leaves</div>
-                    <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)', fontWeight: 400 }}>Allow remaining days to rollover into the next period.</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted, #696e79)', fontWeight: 400 }}>Allow remaining days to rollover into the next period.</div>
                   </div>
                   <input
                     type="checkbox"
@@ -1039,7 +1039,7 @@ export default function LeavePolicy() {
 
                 {formData.carry_forward && (
                   <div style={{ paddingLeft: 8, paddingTop: 4 }}>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#535766', marginBottom: 4 }}>
                       Max Carry Forward Limit (0 = Unlimited)
                     </label>
                     <input
@@ -1051,20 +1051,20 @@ export default function LeavePolicy() {
                       style={{
                         width: 140,
                         padding: '6px 10px',
-                        borderRadius: 6,
-                        border: '1px solid #cbd5e1',
+                        borderRadius: 4,
+                        border: '1px solid #d4d5d9',
                         fontSize: 13
                       }}
                     />
                   </div>
                 )}
 
-                <div style={{ height: 1, background: 'var(--border, #e2e8f0)' }}></div>
+                <div style={{ height: 1, background: 'var(--border, #eaeaec)' }}></div>
 
-                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text, #282c3f)' }}>
                   <div>
                     <div>Require Supporting Document / Proof</div>
-                    <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)', fontWeight: 400 }}>Mandatory medical slip or certificate upload during application.</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted, #696e79)', fontWeight: 400 }}>Mandatory medical slip or certificate upload during application.</div>
                   </div>
                   <input
                     type="checkbox"
@@ -1074,12 +1074,12 @@ export default function LeavePolicy() {
                   />
                 </label>
 
-                <div style={{ height: 1, background: 'var(--border, #e2e8f0)' }}></div>
+                <div style={{ height: 1, background: 'var(--border, #eaeaec)' }}></div>
 
-                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text, #282c3f)' }}>
                   <div>
                     <div>Active Status</div>
-                    <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)', fontWeight: 400 }}>Available for staff/teachers to select when applying.</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted, #696e79)', fontWeight: 400 }}>Available for staff/teachers to select when applying.</div>
                   </div>
                   <input
                     type="checkbox"
@@ -1092,7 +1092,7 @@ export default function LeavePolicy() {
 
               {/* Description / Notes */}
               <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)', marginBottom: 5 }}>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text, #3e4152)', marginBottom: 5 }}>
                   Description / Institutional Rules
                 </label>
                 <textarea
@@ -1103,10 +1103,10 @@ export default function LeavePolicy() {
                   style={{
                     width: '100%',
                     padding: '9px 12px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border, #cbd5e1)',
+                    borderRadius: 4,
+                    border: '1px solid var(--border, #d4d5d9)',
                     background: 'var(--bg, #ffffff)',
-                    color: 'var(--text, #0f172a)',
+                    color: 'var(--text, #1c1f2e)',
                     fontSize: 13,
                     boxSizing: 'border-box',
                     fontFamily: 'inherit',
@@ -1122,10 +1122,10 @@ export default function LeavePolicy() {
                   onClick={() => setModalOpen(false)}
                   style={{
                     padding: '9px 16px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border, #cbd5e1)',
+                    borderRadius: 4,
+                    border: '1px solid var(--border, #d4d5d9)',
                     background: 'transparent',
-                    color: 'var(--text, #475569)',
+                    color: 'var(--text, #535766)',
                     fontSize: 13.5,
                     fontWeight: 600,
                     cursor: 'pointer'
@@ -1141,9 +1141,9 @@ export default function LeavePolicy() {
                     alignItems: 'center',
                     gap: 6,
                     padding: '9px 20px',
-                    borderRadius: 6,
+                    borderRadius: 4,
                     border: 'none',
-                    background: '#2563eb',
+                    background: '#e11d55',
                     color: '#ffffff',
                     fontSize: 13.5,
                     fontWeight: 600,
@@ -1164,7 +1164,7 @@ export default function LeavePolicy() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(15, 23, 42, 0.65)',
+          background: 'rgba(28, 31, 46, 0.65)',
           backdropFilter: 'blur(3px)',
           display: 'flex',
           alignItems: 'center',
@@ -1174,19 +1174,19 @@ export default function LeavePolicy() {
         }}>
           <div style={{
             background: 'var(--bg-card, #ffffff)',
-            borderRadius: 12,
-            border: '1px solid var(--border, #e2e8f0)',
+            borderRadius: 4,
+            border: '1px solid var(--border, #eaeaec)',
             width: '100%',
             maxWidth: 440,
             padding: 24,
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
+            boxShadow: 'none'
           }}>
             <div style={{
               width: 44,
               height: 44,
               borderRadius: '50%',
-              background: '#fee2e2',
-              color: '#dc2626',
+              background: '#f7d5d5',
+              color: '#d32f2f',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -1194,10 +1194,10 @@ export default function LeavePolicy() {
             }}>
               <Trash2 size={22} />
             </div>
-            <h3 style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+            <h3 style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, color: 'var(--text, #1c1f2e)' }}>
               Delete Leave Policy?
             </h3>
-            <p style={{ margin: '0 0 20px', fontSize: 13.5, color: 'var(--text-muted, #64748b)', lineHeight: 1.5 }}>
+            <p style={{ margin: '0 0 20px', fontSize: 13.5, color: 'var(--text-muted, #696e79)', lineHeight: 1.5 }}>
               Are you sure you want to delete <b>"{deleteConfirmPolicy.name}"</b>? Any existing leave requests associated with this category will remain, but users will no longer be able to select it.
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
@@ -1206,10 +1206,10 @@ export default function LeavePolicy() {
                 onClick={() => setDeleteConfirmPolicy(null)}
                 style={{
                   padding: '8px 16px',
-                  borderRadius: 6,
-                  border: '1px solid #cbd5e1',
+                  borderRadius: 4,
+                  border: '1px solid #d4d5d9',
                   background: 'transparent',
-                  color: '#475569',
+                  color: '#535766',
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: 'pointer'
@@ -1222,9 +1222,9 @@ export default function LeavePolicy() {
                 onClick={handleDeletePolicy}
                 style={{
                   padding: '8px 18px',
-                  borderRadius: 6,
+                  borderRadius: 4,
                   border: 'none',
-                  background: '#dc2626',
+                  background: '#d32f2f',
                   color: '#ffffff',
                   fontSize: 13,
                   fontWeight: 600,

@@ -50,26 +50,26 @@ export const LandingCapabilities: React.FC = () => {
 
             {/* Visual: Live Attendance Roster Preview with Masked Data (**) */}
             <div style={{ background: 'var(--color-marketing-bg)', borderRadius: 'var(--radius-lg)', padding: '14px 16px', border: '1px solid var(--color-border-muted)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 11.5, color: '#047857', fontWeight: 700 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 11.5, color: '#02604f', fontWeight: 700 }}>
                 <span>CLASS 10-A · MORNING GATE SCAN STREAM</span>
                 <span>38 / 40 Present (95.0%)</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-                <div style={{ background: '#FFFFFF', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border-default)', fontSize: 11 }}>
+                <div style={{ background: '#FFFFFF', padding: '8px 10px', borderRadius: 4, border: '1px solid var(--color-border-default)', fontSize: 11 }}>
                   <div style={{ fontWeight: 700, fontFamily: 'monospace' }}>Aa**av Sh**ma</div>
-                  <div style={{ color: '#047857', fontWeight: 600 }}>08:14 AM · Present</div>
+                  <div style={{ color: '#02604f', fontWeight: 600 }}>08:14 AM · Present</div>
                 </div>
-                <div style={{ background: '#FFFFFF', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border-default)', fontSize: 11 }}>
+                <div style={{ background: '#FFFFFF', padding: '8px 10px', borderRadius: 4, border: '1px solid var(--color-border-default)', fontSize: 11 }}>
                   <div style={{ fontWeight: 700, fontFamily: 'monospace' }}>Pr**ha Pa**el</div>
-                  <div style={{ color: '#047857', fontWeight: 600 }}>08:16 AM · Present</div>
+                  <div style={{ color: '#02604f', fontWeight: 600 }}>08:16 AM · Present</div>
                 </div>
-                <div style={{ background: '#FFFFFF', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border-default)', fontSize: 11 }}>
+                <div style={{ background: '#FFFFFF', padding: '8px 10px', borderRadius: 4, border: '1px solid var(--color-border-default)', fontSize: 11 }}>
                   <div style={{ fontWeight: 700, fontFamily: 'monospace' }}>Ro**n Ve**a</div>
-                  <div style={{ color: '#B45309', fontWeight: 600 }}>08:29 AM · Late</div>
+                  <div style={{ color: '#8f5c12', fontWeight: 600 }}>08:29 AM · Late</div>
                 </div>
-                <div style={{ background: '#FFFFFF', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border-default)', fontSize: 11 }}>
+                <div style={{ background: '#FFFFFF', padding: '8px 10px', borderRadius: 4, border: '1px solid var(--color-border-default)', fontSize: 11 }}>
                   <div style={{ fontWeight: 700, fontFamily: 'monospace' }}>An**ya Gu**a</div>
-                  <div style={{ color: '#B91C1C', fontWeight: 600 }}>Absent · SMS Sent</div>
+                  <div style={{ color: '#a82424', fontWeight: 600 }}>Absent · SMS Sent</div>
                 </div>
               </div>
 
@@ -95,8 +95,8 @@ export const LandingCapabilities: React.FC = () => {
                 </div>
                 <div className="c360-grade-row">
                   <span className="c360-grade-lbl">Class 9</span>
-                  <div className="c360-grade-bar-track"><div className="c360-grade-bar-fill" style={{ width: '94.2%', background: 'linear-gradient(90deg, #F59E0B, #D97706)' }} /></div>
-                  <span className="c360-grade-pct" style={{ color: '#D97706' }}>94.2%</span>
+                  <div className="c360-grade-bar-track"><div className="c360-grade-bar-fill" style={{ width: '94.2%', background: '#e9a23b' }} /></div>
+                  <span className="c360-grade-pct" style={{ color: '#b8781c' }}>94.2%</span>
                 </div>
               </div>
             </div>
@@ -124,20 +124,20 @@ export const LandingCapabilities: React.FC = () => {
             <div className="c360-risk-chart-box">
               <div className="c360-risk-threshold-label">
                 <span>Student: Ro**n Ve**a (Class 10-A) · 14-Day Trajectory</span>
-                <span style={{ color: '#DC2626', fontWeight: 800 }}>71.4% (Below 75%)</span>
+                <span style={{ color: '#d32f2f', fontWeight: 800 }}>71.4% (Below 75%)</span>
               </div>
               <svg viewBox="0 0 340 50" className="c360-sparkline-svg">
                 {/* 75% Threshold Line */}
-                <line x1="0" y1="26" x2="340" y2="26" stroke="#EF4444" strokeWidth="1.5" strokeDasharray="4 3" />
-                <text x="338" y="22" fill="#EF4444" fontSize="9" fontWeight="700" textAnchor="end">75% CBSE Board Floor</text>
+                <line x1="0" y1="26" x2="340" y2="26" stroke="#d32f2f" strokeWidth="1.5" strokeDasharray="4 3" />
+                <text x="338" y="22" fill="#d32f2f" fontSize="9" fontWeight="700" textAnchor="end">75% CBSE Board Floor</text>
                 {/* Declining Student Line */}
-                <path d="M 0 10 Q 50 12 100 16 T 200 24 T 270 34 T 340 40" fill="none" stroke="#DC2626" strokeWidth="2.5" />
-                <circle cx="340" cy="40" r="4" fill="#DC2626" />
+                <path d="M 0 10 Q 50 12 100 16 T 200 24 T 270 34 T 340 40" fill="none" stroke="#d32f2f" strokeWidth="2.5" />
+                <circle cx="340" cy="40" r="4" fill="#d32f2f" />
               </svg>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#92400E', marginTop: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#6b450e', marginTop: 4 }}>
                 <span>Day 01: 88.0%</span>
                 <span>Day 07: 81.2%</span>
-                <span style={{ color: '#DC2626', fontWeight: 700 }}>Today: 71.4% (Auto-Notice Sent to Parent)</span>
+                <span style={{ color: '#d32f2f', fontWeight: 700 }}>Today: 71.4% (Auto-Notice Sent to Parent)</span>
               </div>
             </div>
           </div>
@@ -161,8 +161,8 @@ export const LandingCapabilities: React.FC = () => {
                   alt="Student tapping RFID card at school entrance gate turnstile"
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 />
-                <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(6px)', borderRadius: 6, padding: '4px 8px', color: '#FFFFFF', display: 'flex', justifyContent: 'space-between', fontSize: 10, fontWeight: 700 }}>
-                  <span style={{ color: '#34D399' }}>● 1,238 / 1,284 Taps</span>
+                <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, background: 'rgba(28, 31, 46, 0.85)', backdropFilter: 'blur(6px)', borderRadius: 4, padding: '4px 8px', color: '#FFFFFF', display: 'flex', justifyContent: 'space-between', fontSize: 10, fontWeight: 700 }}>
+                  <span style={{ color: '#339988' }}>● 1,238 / 1,284 Taps</span>
                   <span>Latency: 380ms</span>
                 </div>
               </div>
@@ -216,10 +216,10 @@ export const LandingCapabilities: React.FC = () => {
           <div className="c360-bento-card">
             <div>
               <div className="c360-bento-top">
-                <div className="c360-bento-icon" style={{ background: 'rgba(5, 150, 105, 0.12)', color: '#059669' }}>
+                <div className="c360-bento-icon" style={{ background: 'rgba(3, 128, 106, 0.12)', color: '#03806a' }}>
                   <FileCheck2 size={22} />
                 </div>
-                <span className="c360-bento-pill" style={{ background: 'rgba(5, 150, 105, 0.12)', color: '#059669' }}>
+                <span className="c360-bento-pill" style={{ background: 'rgba(3, 128, 106, 0.12)', color: '#03806a' }}>
                   Board Ready
                 </span>
               </div>
@@ -239,12 +239,12 @@ export const LandingCapabilities: React.FC = () => {
               <div className="c360-table-row">
                 <span style={{ fontWeight: 600 }}>101 · Aa**av</span>
                 <span>212 / 218</span>
-                <span style={{ color: '#047857', fontWeight: 800 }}>97.2%</span>
+                <span style={{ color: '#02604f', fontWeight: 800 }}>97.2%</span>
               </div>
               <div className="c360-table-row">
                 <span style={{ fontWeight: 600 }}>102 · Pr**ha</span>
                 <span>208 / 218</span>
-                <span style={{ color: '#047857', fontWeight: 800 }}>95.4%</span>
+                <span style={{ color: '#02604f', fontWeight: 800 }}>95.4%</span>
               </div>
             </div>
           </div>
@@ -253,10 +253,10 @@ export const LandingCapabilities: React.FC = () => {
           <div className="c360-bento-card">
             <div>
               <div className="c360-bento-top">
-                <div className="c360-bento-icon" style={{ background: 'rgba(37, 99, 235, 0.12)', color: '#2563EB' }}>
+                <div className="c360-bento-icon" style={{ background: 'rgba(225, 29, 85, 0.12)', color: '#e11d55' }}>
                   <MessagesSquare size={22} />
                 </div>
-                <span className="c360-bento-pill" style={{ background: 'rgba(37, 99, 235, 0.12)', color: '#2563EB' }}>
+                <span className="c360-bento-pill" style={{ background: 'rgba(225, 29, 85, 0.12)', color: '#e11d55' }}>
                   One Channel
                 </span>
               </div>
@@ -266,12 +266,12 @@ export const LandingCapabilities: React.FC = () => {
               </p>
             </div>
 
-            <div style={{ background: 'rgba(37, 99, 235, 0.06)', borderRadius: 8, padding: '8px 10px', border: '1px solid rgba(37, 99, 235, 0.18)', fontSize: 11, marginTop: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: '#1D4ED8', marginBottom: 2 }}>
+            <div style={{ background: 'rgba(225, 29, 85, 0.06)', borderRadius: 4, padding: '8px 10px', border: '1px solid rgba(225, 29, 85, 0.18)', fontSize: 11, marginTop: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: '#c0174a', marginBottom: 2 }}>
                 <span>DLT National Gateway</span>
                 <span>1.8s avg</span>
               </div>
-              <div style={{ color: '#475569', fontSize: 10.5 }}>
+              <div style={{ color: '#535766', fontSize: 10.5 }}>
                 Jio · Airtel · Vi · BSNL Enterprise Route
               </div>
             </div>
@@ -288,7 +288,7 @@ export const LandingCapabilities: React.FC = () => {
             />
           </div>
           <div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#059669', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', marginBottom: 10 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#03806a', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', marginBottom: 10 }}>
               <HeartHandshake size={16} />
               <span>Parent Peace of Mind</span>
             </div>
@@ -298,7 +298,7 @@ export const LandingCapabilities: React.FC = () => {
             <p style={{ fontSize: 14.5, color: 'var(--color-text-secondary)', lineHeight: 1.6, margin: '0 0 16px 0' }}>
               Parents no longer have to worry about morning transit delays or unconfirmed arrivals. When students tap their RFID card at the school gate, an automated SMS confirmation is dispatched immediately to the registered guardian's mobile number.
             </p>
-            <div style={{ background: 'var(--color-marketing-bg)', padding: '12px 14px', borderRadius: 8, borderLeft: '3px solid #059669', fontSize: 12.5 }}>
+            <div style={{ background: 'var(--color-marketing-bg)', padding: '12px 14px', borderRadius: 4, borderLeft: '3px solid #03806a', fontSize: 12.5 }}>
               <div style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>
                 "Dear Parent, your ward Aa**av Sh**ma (Roll 10*, Class 10-A) checked in safely at 08:14 AM. — AttendoSchool"
               </div>

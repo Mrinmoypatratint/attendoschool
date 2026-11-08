@@ -101,7 +101,7 @@ export function StudentAttendance() {
         </div>
 
         {/* Date Filter */}
-        <div className="student-filter-bar flex items-center gap-2.5 flex-wrap bg-white dark:bg-[#131b2e] p-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <div className="student-filter-bar flex items-center gap-2.5 flex-wrap bg-white dark:bg-[#1c1c1c] p-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <label className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-semibold">
             <span>From:</span>
             <input
@@ -136,29 +136,29 @@ export function StudentAttendance() {
 
       {/* Summary KPI Cards */}
       <div className="student-att-kpi-row grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
-        <div className="student-kpi-stat-card bg-white dark:bg-[#131b2e] p-4.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="student-kpi-stat-card bg-white dark:bg-[#1c1c1c] p-4.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <span className="stat-label text-xs uppercase font-bold text-slate-500 dark:text-slate-400 block mb-1.5 tracking-wider">Overall Attendance</span>
           <span className="stat-value text-primary text-2xl sm:text-3xl font-extrabold text-blue-600 dark:text-blue-400 block mb-1">{summary.percentage}%</span>
           <span className="stat-sub text-xs text-slate-400 dark:text-slate-500 block">Minimum requirement: 75%</span>
         </div>
-        <div className="student-kpi-stat-card bg-white dark:bg-[#131b2e] p-4.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="student-kpi-stat-card bg-white dark:bg-[#1c1c1c] p-4.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <span className="stat-label text-xs uppercase font-bold text-slate-500 dark:text-slate-400 block mb-1.5 tracking-wider">Days Present</span>
           <span className="stat-value text-success text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 block mb-1">{summary.present}</span>
           <span className="stat-sub text-xs text-slate-400 dark:text-slate-500 block">Marked in classroom</span>
         </div>
-        <div className="student-kpi-stat-card bg-white dark:bg-[#131b2e] p-4.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="student-kpi-stat-card bg-white dark:bg-[#1c1c1c] p-4.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <span className="stat-label text-xs uppercase font-bold text-slate-500 dark:text-slate-400 block mb-1.5 tracking-wider">Days Absent</span>
           <span className="stat-value text-danger text-2xl sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400 block mb-1">{summary.absent}</span>
           <span className="stat-sub text-xs text-slate-400 dark:text-slate-500 block">Excused & unexcused</span>
         </div>
-        <div className="student-kpi-stat-card bg-white dark:bg-[#131b2e] p-4.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="student-kpi-stat-card bg-white dark:bg-[#1c1c1c] p-4.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <span className="stat-label text-xs uppercase font-bold text-slate-500 dark:text-slate-400 block mb-1.5 tracking-wider">Total Working Days</span>
           <span className="stat-value text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white block mb-1">{summary.total}</span>
           <span className="stat-sub text-xs text-slate-400 dark:text-slate-500 block">Recorded sessions</span>
         </div>
       </div>
 
-      <div className="student-card bg-white dark:bg-[#131b2e] rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm">
+      <div className="student-card bg-white dark:bg-[#1c1c1c] rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm">
         <div className="student-card-header flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100 dark:border-slate-800/80">
           <div className="student-card-title-wrap flex items-center gap-2.5 text-blue-600 dark:text-blue-400">
             <CalendarCheck size={18} />

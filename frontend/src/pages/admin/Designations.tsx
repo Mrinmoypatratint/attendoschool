@@ -568,31 +568,31 @@ export default function Designations() {
     switch (category) {
       case 'Leadership':
         return {
-          bg: 'rgba(168, 85, 247, 0.15)',
-          color: '#a855f7',
-          border: 'rgba(168, 85, 247, 0.3)',
+          bg: 'rgba(92, 107, 192, 0.15)',
+          color: '#5c6bc0',
+          border: 'rgba(92, 107, 192, 0.3)',
           label: 'Leadership'
         };
       case 'Teaching':
         return {
-          bg: 'rgba(59, 130, 246, 0.15)',
-          color: '#3b82f6',
-          border: 'rgba(59, 130, 246, 0.3)',
+          bg: 'rgba(225, 29, 85, 0.15)',
+          color: '#e11d55',
+          border: 'rgba(225, 29, 85, 0.3)',
           label: 'Teaching'
         };
       case 'Administrative':
         return {
-          bg: 'rgba(245, 158, 11, 0.15)',
-          color: '#f59e0b',
-          border: 'rgba(245, 158, 11, 0.3)',
+          bg: 'rgba(233, 162, 59, 0.15)',
+          color: '#e9a23b',
+          border: 'rgba(233, 162, 59, 0.3)',
           label: 'Administrative'
         };
       case 'Support':
       default:
         return {
-          bg: 'rgba(16, 185, 129, 0.15)',
-          color: '#10b981',
-          border: 'rgba(16, 185, 129, 0.3)',
+          bg: 'rgba(3, 128, 106, 0.15)',
+          color: '#03806a',
+          border: 'rgba(3, 128, 106, 0.3)',
           label: 'Support'
         };
     }
@@ -712,7 +712,7 @@ export default function Designations() {
           style={{
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
-            borderRadius: 10,
+            borderRadius: 4,
             padding: '16px 20px',
             display: 'flex',
             alignItems: 'center',
@@ -723,12 +723,12 @@ export default function Designations() {
             style={{
               width: 44,
               height: 44,
-              borderRadius: 10,
-              background: 'rgba(16, 185, 129, 0.1)',
+              borderRadius: 4,
+              background: 'rgba(3, 128, 106, 0.1)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#10b981'
+              color: '#03806a'
             }}
           >
             <GraduationCap size={22} />
@@ -748,7 +748,7 @@ export default function Designations() {
           style={{
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
-            borderRadius: 10,
+            borderRadius: 4,
             padding: '16px 20px',
             display: 'flex',
             alignItems: 'center',
@@ -759,12 +759,12 @@ export default function Designations() {
             style={{
               width: 44,
               height: 44,
-              borderRadius: 10,
-              background: 'rgba(245, 158, 11, 0.1)',
+              borderRadius: 4,
+              background: 'rgba(233, 162, 59, 0.1)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#f59e0b'
+              color: '#e9a23b'
             }}
           >
             <Users size={22} />
@@ -785,7 +785,7 @@ export default function Designations() {
         style={{
           background: 'var(--bg-card)',
           border: '1px solid var(--border)',
-          borderRadius: 10,
+          borderRadius: 4,
           padding: '14px 18px',
           marginBottom: 20,
           display: 'flex',
@@ -801,9 +801,9 @@ export default function Designations() {
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              background: 'var(--bg, var(--bg-subtle, #f8fafc))',
+              background: 'var(--bg, var(--bg-subtle, #f9f9fa))',
               border: '1px solid var(--border)',
-              borderRadius: 8,
+              borderRadius: 4,
               padding: '8px 12px',
               width: '100%',
               maxWidth: 380
@@ -841,12 +841,12 @@ export default function Designations() {
                 onClick={() => setSelectedCategory(cat)}
                 style={{
                   padding: '6px 14px',
-                  borderRadius: 20,
+                  borderRadius: 4,
                   fontSize: 12.5,
                   fontWeight: 600,
                   cursor: 'pointer',
-                  border: isActive ? '1px solid var(--sidebar-accent, #2563eb)' : '1px solid var(--border)',
-                  background: isActive ? 'var(--sidebar-accent, #2563eb)' : 'var(--bg-card)',
+                  border: isActive ? '1px solid var(--sidebar-accent, #e11d55)' : '1px solid var(--border)',
+                  background: isActive ? 'var(--sidebar-accent, #e11d55)' : 'var(--bg-card)',
                   color: isActive ? '#ffffff' : 'var(--text-secondary)',
                   transition: 'all 0.15s ease'
                 }}
@@ -862,7 +862,7 @@ export default function Designations() {
             onChange={e => setStatusFilter(e.target.value as any)}
             style={{
               padding: '6px 12px',
-              borderRadius: 8,
+              borderRadius: 4,
               border: '1px solid var(--border)',
               background: 'var(--bg-card)',
               color: 'var(--text)',
@@ -883,7 +883,7 @@ export default function Designations() {
         style={{
           background: 'var(--bg-card)',
           border: '1px solid var(--border)',
-          borderRadius: 10,
+          borderRadius: 4,
           overflow: 'hidden'
         }}
       >
@@ -892,7 +892,7 @@ export default function Designations() {
             <thead>
               <tr
                 style={{
-                  background: 'var(--table-header, var(--bg-subtle, #0e1626))',
+                  background: 'var(--table-header, var(--bg-subtle, #181818))',
                   borderBottom: '1px solid var(--border)',
                   color: 'var(--text-secondary)',
                   fontWeight: 600,
@@ -957,7 +957,7 @@ export default function Designations() {
                               fontSize: 12,
                               padding: '2px 8px',
                               borderRadius: 4,
-                              background: 'rgba(148, 163, 184, 0.12)',
+                              background: 'rgba(148, 150, 159, 0.12)',
                               color: 'var(--text)',
                               border: '1px solid var(--border)'
                             }}
@@ -974,7 +974,7 @@ export default function Designations() {
                           style={{
                             display: 'inline-block',
                             padding: '3px 10px',
-                            borderRadius: 12,
+                            borderRadius: 4,
                             fontSize: 11.5,
                             fontWeight: 600,
                             background: catStyle.bg,
@@ -1001,25 +1001,25 @@ export default function Designations() {
                                 alignItems: 'center',
                                 gap: 6,
                                 padding: '5px 11px',
-                                borderRadius: 6,
+                                borderRadius: 4,
                                 fontSize: 12,
                                 fontWeight: 600,
-                                background: (item.teacher_count || 0) > 0 ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-card)',
-                                color: (item.teacher_count || 0) > 0 ? '#2563eb' : 'var(--text-muted)',
-                                border: (item.teacher_count || 0) > 0 ? '1px solid rgba(37, 99, 235, 0.2)' : '1px solid var(--border)',
+                                background: (item.teacher_count || 0) > 0 ? 'rgba(225, 29, 85, 0.08)' : 'var(--bg-card)',
+                                color: (item.teacher_count || 0) > 0 ? '#e11d55' : 'var(--text-muted)',
+                                border: (item.teacher_count || 0) > 0 ? '1px solid rgba(225, 29, 85, 0.2)' : '1px solid var(--border)',
                                 cursor: 'pointer',
                                 transition: 'all 0.15s ease'
                               }}
                               onMouseEnter={e => {
                                 if ((item.teacher_count || 0) > 0) {
-                                  e.currentTarget.style.background = 'rgba(37, 99, 235, 0.16)';
-                                  e.currentTarget.style.borderColor = '#2563eb';
+                                  e.currentTarget.style.background = 'rgba(225, 29, 85, 0.16)';
+                                  e.currentTarget.style.borderColor = '#e11d55';
                                 }
                               }}
                               onMouseLeave={e => {
                                 if ((item.teacher_count || 0) > 0) {
-                                  e.currentTarget.style.background = 'rgba(37, 99, 235, 0.08)';
-                                  e.currentTarget.style.borderColor = 'rgba(37, 99, 235, 0.2)';
+                                  e.currentTarget.style.background = 'rgba(225, 29, 85, 0.08)';
+                                  e.currentTarget.style.borderColor = 'rgba(225, 29, 85, 0.2)';
                                 }
                               }}
                             >
@@ -1028,11 +1028,11 @@ export default function Designations() {
                               {promotedCount > 0 && (
                                 <span style={{
                                   marginLeft: 2,
-                                  background: '#10b981',
+                                  background: '#03806a',
                                   color: '#ffffff',
                                   fontSize: 10,
                                   padding: '1px 5px',
-                                  borderRadius: 10,
+                                  borderRadius: 4,
                                   fontWeight: 700
                                 }}>
                                   {promotedCount} promoted
@@ -1053,13 +1053,13 @@ export default function Designations() {
                             alignItems: 'center',
                             gap: 6,
                             padding: '4px 10px',
-                            borderRadius: 14,
+                            borderRadius: 4,
                             fontSize: 11.5,
                             fontWeight: 600,
                             cursor: 'pointer',
-                            border: isItemActive ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border)',
-                            background: isItemActive ? 'rgba(16, 185, 129, 0.12)' : 'rgba(148, 163, 184, 0.12)',
-                            color: isItemActive ? '#10b981' : 'var(--text-muted)'
+                            border: isItemActive ? '1px solid rgba(3, 128, 106, 0.3)' : '1px solid var(--border)',
+                            background: isItemActive ? 'rgba(3, 128, 106, 0.12)' : 'rgba(148, 150, 159, 0.12)',
+                            color: isItemActive ? '#03806a' : 'var(--text-muted)'
                           }}
                         >
                           <span
@@ -1067,7 +1067,7 @@ export default function Designations() {
                               width: 6,
                               height: 6,
                               borderRadius: '50%',
-                              background: isItemActive ? '#10b981' : '#94a3b8'
+                              background: isItemActive ? '#03806a' : '#94969f'
                             }}
                           />
                           <span>{isItemActive ? 'Active' : 'Inactive'}</span>
@@ -1082,7 +1082,7 @@ export default function Designations() {
                             title="Edit Designation"
                             style={{
                               padding: '6px 10px',
-                              borderRadius: 6,
+                              borderRadius: 4,
                               border: '1px solid var(--border)',
                               background: 'var(--bg-card)',
                               color: 'var(--text)',
@@ -1103,10 +1103,10 @@ export default function Designations() {
                             title="Delete Designation"
                             style={{
                               padding: '6px 10px',
-                              borderRadius: 6,
-                              border: '1px solid rgba(239, 68, 68, 0.3)',
-                              background: 'rgba(239, 68, 68, 0.12)',
-                              color: '#ef4444',
+                              borderRadius: 4,
+                              border: '1px solid rgba(211, 47, 47, 0.3)',
+                              background: 'rgba(211, 47, 47, 0.12)',
+                              color: '#d32f2f',
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -1152,7 +1152,7 @@ export default function Designations() {
               maxWidth: isMaximized ? '95vw' : 520,
               height: isMaximized ? '90vh' : 'auto',
               maxHeight: isMaximized ? '90vh' : '92vh',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              boxShadow: 'none',
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',
@@ -1168,11 +1168,11 @@ export default function Designations() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                background: 'var(--modal-header, var(--bg-subtle, #0e1626))'
+                background: 'var(--modal-header, var(--bg-subtle, #181818))'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Award size={20} color="var(--sidebar-accent, #2563eb)" />
+                <Award size={20} color="var(--sidebar-accent, #e11d55)" />
                 <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
                   {editingItem ? 'Edit Staff Designation' : 'Create New Staff Designation'}
                 </h3>
@@ -1198,7 +1198,7 @@ export default function Designations() {
                     cursor: 'pointer',
                     color: 'var(--text-muted)',
                     padding: 6,
-                    borderRadius: 6,
+                    borderRadius: 4,
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center'
@@ -1225,7 +1225,7 @@ export default function Designations() {
                 {/* Title */}
                 <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    Designation <span style={{ color: '#ef4444' }}>*</span>
+                    Designation <span style={{ color: '#d32f2f' }}>*</span>
                   </span>
                   <input
                     type="text"
@@ -1236,7 +1236,7 @@ export default function Designations() {
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 6,
+                      borderRadius: 4,
                       border: '1px solid var(--border)',
                       marginTop: 6,
                       boxSizing: 'border-box',
@@ -1257,7 +1257,7 @@ export default function Designations() {
                       style={{
                         width: '100%',
                         padding: '9px 12px',
-                        borderRadius: 6,
+                        borderRadius: 4,
                         border: '1px solid var(--border)',
                         marginTop: 6,
                         boxSizing: 'border-box',
@@ -1274,7 +1274,7 @@ export default function Designations() {
                       style={{
                         width: '100%',
                         padding: '9px 12px',
-                        borderRadius: 6,
+                        borderRadius: 4,
                         border: '1px solid var(--border)',
                         marginTop: 6,
                         boxSizing: 'border-box',
@@ -1298,7 +1298,7 @@ export default function Designations() {
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 6,
+                      borderRadius: 4,
                       border: '1px solid var(--border)',
                       marginTop: 6,
                       boxSizing: 'border-box',
@@ -1315,7 +1315,7 @@ export default function Designations() {
                     type="checkbox"
                     checked={formIsActive}
                     onChange={e => setFormIsActive(e.target.checked)}
-                    style={{ width: 16, height: 16, accentColor: 'var(--sidebar-accent, #2563eb)' }}
+                    style={{ width: 16, height: 16, accentColor: 'var(--sidebar-accent, #e11d55)' }}
                   />
                   <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text)' }}>
                     Active (shows in Add Teacher dropdown)
@@ -1340,7 +1340,7 @@ export default function Designations() {
                   disabled={saving}
                   style={{
                     padding: '8px 16px',
-                    borderRadius: 6,
+                    borderRadius: 4,
                     border: '1px solid var(--border)',
                     background: 'var(--bg-card)',
                     color: 'var(--text)',
@@ -1356,9 +1356,9 @@ export default function Designations() {
                   disabled={saving}
                   style={{
                     padding: '8px 20px',
-                    borderRadius: 6,
+                    borderRadius: 4,
                     border: 'none',
-                    background: 'var(--sidebar-accent, #2563eb)',
+                    background: 'var(--sidebar-accent, #e11d55)',
                     color: '#ffffff',
                     fontSize: 13.5,
                     fontWeight: 600,
@@ -1401,12 +1401,12 @@ export default function Designations() {
           <div
             style={{
               background: 'var(--bg-card)',
-              borderRadius: 12,
+              borderRadius: 4,
               border: '1px solid var(--border)',
               width: '100%',
               maxWidth: 440,
               padding: 24,
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
+              boxShadow: 'none'
             }}
             onClick={e => e.stopPropagation()}
           >
@@ -1416,11 +1416,11 @@ export default function Designations() {
                   width: 40,
                   height: 40,
                   borderRadius: '50%',
-                  background: 'rgba(239, 68, 68, 0.12)',
+                  background: 'rgba(211, 47, 47, 0.12)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#ef4444'
+                  color: '#d32f2f'
                 }}
               >
                 <AlertCircle size={22} />
@@ -1443,10 +1443,10 @@ export default function Designations() {
               <div
                 style={{
                   padding: 12,
-                  borderRadius: 8,
-                  background: 'rgba(245, 158, 11, 0.12)',
-                  border: '1px solid rgba(245, 158, 11, 0.3)',
-                  color: '#fbbf24',
+                  borderRadius: 4,
+                  background: 'rgba(233, 162, 59, 0.12)',
+                  border: '1px solid rgba(233, 162, 59, 0.3)',
+                  color: '#edb35f',
                   fontSize: 12.5,
                   marginBottom: 16
                 }}
@@ -1462,7 +1462,7 @@ export default function Designations() {
                 disabled={deleting}
                 style={{
                   padding: '8px 16px',
-                  borderRadius: 6,
+                  borderRadius: 4,
                   border: '1px solid var(--border)',
                   background: 'var(--bg-card)',
                   color: 'var(--text)',
@@ -1479,9 +1479,9 @@ export default function Designations() {
                 disabled={deleting}
                 style={{
                   padding: '8px 18px',
-                  borderRadius: 6,
+                  borderRadius: 4,
                   border: 'none',
-                  background: '#dc2626',
+                  background: '#d32f2f',
                   color: '#ffffff',
                   fontSize: 13,
                   fontWeight: 600,
@@ -1510,7 +1510,7 @@ export default function Designations() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
+            background: 'rgba(28, 31, 46, 0.65)',
             backdropFilter: 'blur(3px)',
             zIndex: 1050,
             display: 'flex',
@@ -1526,10 +1526,10 @@ export default function Designations() {
             style={{
               background: 'var(--bg-card)',
               border: '1px solid var(--border)',
-              borderRadius: 12,
+              borderRadius: 4,
               width: '100%',
               maxWidth: 520,
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
+              boxShadow: 'none',
               overflow: 'hidden'
             }}
           >
@@ -1540,7 +1540,7 @@ export default function Designations() {
                 justifyContent: 'space-between',
                 padding: '16px 20px',
                 borderBottom: '1px solid var(--border)',
-                background: 'var(--modal-header, var(--bg-subtle, #0e1626))'
+                background: 'var(--modal-header, var(--bg-subtle, #181818))'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1548,12 +1548,12 @@ export default function Designations() {
                   style={{
                     width: 36,
                     height: 36,
-                    borderRadius: 8,
-                    background: 'rgba(16, 185, 129, 0.12)',
+                    borderRadius: 4,
+                    background: 'rgba(3, 128, 106, 0.12)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#10b981'
+                    color: '#03806a'
                   }}
                 >
                   <TrendingUp size={18} />
@@ -1581,7 +1581,7 @@ export default function Designations() {
                 {/* Select Teacher */}
                 <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    Select Faculty Member <span style={{ color: '#ef4444' }}>*</span>
+                    Select Faculty Member <span style={{ color: '#d32f2f' }}>*</span>
                   </span>
                   <select
                     value={promoteTeacherId}
@@ -1589,7 +1589,7 @@ export default function Designations() {
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 6,
+                      borderRadius: 4,
                       border: '1px solid var(--border)',
                       marginTop: 6,
                       fontSize: 13.5,
@@ -1618,8 +1618,8 @@ export default function Designations() {
                     alignItems: 'center',
                     gap: 12,
                     padding: '14px',
-                    borderRadius: 8,
-                    background: 'var(--modal-header, var(--bg-subtle, #0e1626))',
+                    borderRadius: 4,
+                    background: 'var(--modal-header, var(--bg-subtle, #181818))',
                     border: '1px solid var(--border)'
                   }}
                 >
@@ -1635,10 +1635,10 @@ export default function Designations() {
                       style={{
                         width: '100%',
                         padding: '8px 10px',
-                        borderRadius: 6,
-                        border: '1px solid rgba(239, 68, 68, 0.3)',
-                        background: 'rgba(239, 68, 68, 0.12)',
-                        color: '#f87171',
+                        borderRadius: 4,
+                        border: '1px solid rgba(211, 47, 47, 0.3)',
+                        background: 'rgba(211, 47, 47, 0.12)',
+                        color: '#dd5c5c',
                         fontWeight: 700,
                         fontSize: 13,
                         cursor: 'pointer'
@@ -1655,14 +1655,14 @@ export default function Designations() {
                   </div>
 
                   {/* Arrow */}
-                  <div style={{ display: 'flex', justifyContent: 'center', color: '#10b981', paddingTop: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', color: '#03806a', paddingTop: 14 }}>
                     <ArrowRight size={20} />
                   </div>
 
                   {/* New Position Dropdown (Excludes Previous Position) */}
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      Promoted To <span style={{ color: '#ef4444' }}>*</span>
+                      Promoted To <span style={{ color: '#d32f2f' }}>*</span>
                     </div>
                     {(() => {
                       const availableDesigs = allAvailableDesignationTitles.filter(
@@ -1674,10 +1674,10 @@ export default function Designations() {
                           <div
                             style={{
                               padding: '8px 10px',
-                              borderRadius: 6,
-                              border: '1px dashed rgba(239, 68, 68, 0.35)',
-                              background: 'rgba(239, 68, 68, 0.1)',
-                              color: '#f87171',
+                              borderRadius: 4,
+                              border: '1px dashed rgba(211, 47, 47, 0.35)',
+                              background: 'rgba(211, 47, 47, 0.1)',
+                              color: '#dd5c5c',
                               fontSize: 12,
                               fontWeight: 600
                             }}
@@ -1695,10 +1695,10 @@ export default function Designations() {
                           style={{
                             width: '100%',
                             padding: '8px 10px',
-                            borderRadius: 6,
-                            border: '1px solid rgba(16, 185, 129, 0.3)',
-                            background: 'rgba(16, 185, 129, 0.12)',
-                            color: '#10b981',
+                            borderRadius: 4,
+                            border: '1px solid rgba(3, 128, 106, 0.3)',
+                            background: 'rgba(3, 128, 106, 0.12)',
+                            color: '#03806a',
                             fontWeight: 700,
                             fontSize: 13,
                             cursor: 'pointer'
@@ -1723,13 +1723,13 @@ export default function Designations() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 6,
-                      color: '#f87171',
+                      color: '#dd5c5c',
                       fontSize: 12,
                       fontWeight: 500,
-                      background: 'rgba(239, 68, 68, 0.12)',
-                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      background: 'rgba(211, 47, 47, 0.12)',
+                      border: '1px solid rgba(211, 47, 47, 0.3)',
                       padding: '8px 12px',
-                      borderRadius: 6
+                      borderRadius: 4
                     }}
                   >
                     <AlertCircle size={15} />
@@ -1741,7 +1741,7 @@ export default function Designations() {
                 <div>
                   <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', display: 'block' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      Effective Promotion Date <span style={{ color: '#ef4444' }}>*</span>
+                      Effective Promotion Date <span style={{ color: '#d32f2f' }}>*</span>
                     </span>
                     <input
                       type="date"
@@ -1774,7 +1774,7 @@ export default function Designations() {
                       style={{
                         width: '100%',
                         padding: '9px 12px',
-                        borderRadius: 6,
+                        borderRadius: 4,
                         border: '1px solid var(--border)',
                         marginTop: 6,
                         fontSize: 13.5,
@@ -1797,7 +1797,7 @@ export default function Designations() {
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 6,
+                      borderRadius: 4,
                       border: '1px solid var(--border)',
                       marginTop: 6,
                       fontSize: 13.5,
@@ -1818,7 +1818,7 @@ export default function Designations() {
                   disabled={promoting}
                   style={{
                     padding: '8px 16px',
-                    borderRadius: 6,
+                    borderRadius: 4,
                     border: '1px solid var(--border)',
                     background: 'var(--bg-card)',
                     color: 'var(--text)',
@@ -1844,9 +1844,9 @@ export default function Designations() {
                   }
                   style={{
                     padding: '8px 20px',
-                    borderRadius: 6,
+                    borderRadius: 4,
                     border: 'none',
-                    background: '#10b981',
+                    background: '#03806a',
                     color: '#ffffff',
                     fontSize: 13,
                     fontWeight: 600,
@@ -1872,7 +1872,7 @@ export default function Designations() {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
-                    boxShadow: '0 2px 4px rgba(16, 185, 129, 0.25)'
+                    boxShadow: 'none'
                   }}
                 >
                   {promoting ? (
@@ -1899,7 +1899,7 @@ export default function Designations() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
+            background: 'rgba(28, 31, 46, 0.65)',
             backdropFilter: 'blur(3px)',
             zIndex: 1040,
             display: 'flex',
@@ -1915,13 +1915,13 @@ export default function Designations() {
             style={{
               background: 'var(--bg-card)',
               border: '1px solid var(--border)',
-              borderRadius: 12,
+              borderRadius: 4,
               width: '100%',
               maxWidth: 780,
               maxHeight: '85vh',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
+              boxShadow: 'none',
               overflow: 'hidden'
             }}
           >
@@ -1933,7 +1933,7 @@ export default function Designations() {
                 justifyContent: 'space-between',
                 padding: '16px 20px',
                 borderBottom: '1px solid var(--border)',
-                background: 'var(--modal-header, var(--bg-subtle, #0e1626))'
+                background: 'var(--modal-header, var(--bg-subtle, #181818))'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1941,12 +1941,12 @@ export default function Designations() {
                   style={{
                     width: 36,
                     height: 36,
-                    borderRadius: 8,
-                    background: 'rgba(37, 99, 235, 0.12)',
+                    borderRadius: 4,
+                    background: 'rgba(225, 29, 85, 0.12)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#2563eb'
+                    color: '#e11d55'
                   }}
                 >
                   <Users size={18} />
@@ -1975,9 +1975,9 @@ export default function Designations() {
                         alignItems: 'center',
                         gap: 6,
                         padding: '6px 12px',
-                        borderRadius: 6,
-                        border: '1px solid #0284c7',
-                        background: '#0284c7',
+                        borderRadius: 4,
+                        border: '1px solid #5c6bc0',
+                        background: '#5c6bc0',
                         color: '#ffffff',
                         fontSize: 12.5,
                         fontWeight: 600,
@@ -2022,9 +2022,9 @@ export default function Designations() {
                         }}
                         style={{
                           padding: '7px 14px',
-                          borderRadius: 6,
+                          borderRadius: 4,
                           border: 'none',
-                          background: '#10b981',
+                          background: '#03806a',
                           color: '#ffffff',
                           fontSize: 12.5,
                           fontWeight: 600,
@@ -2040,7 +2040,7 @@ export default function Designations() {
                 return (
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
                     <thead>
-                      <tr style={{ background: 'var(--table-header, var(--bg-subtle, #0e1626))', borderBottom: '1px solid var(--border)' }}>
+                      <tr style={{ background: 'var(--table-header, var(--bg-subtle, #181818))', borderBottom: '1px solid var(--border)' }}>
                         <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Employee ID</th>
                         <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Teacher Name (Click for Details)</th>
                         <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Contact / Email</th>
@@ -2069,7 +2069,7 @@ export default function Designations() {
                                   border: 'none',
                                   padding: 0,
                                   cursor: 'pointer',
-                                  color: '#3b82f6',
+                                  color: '#e11d55',
                                   fontWeight: 600,
                                   fontSize: 13.5,
                                   textAlign: 'left',
@@ -2094,12 +2094,12 @@ export default function Designations() {
                                     alignItems: 'center',
                                     gap: 5,
                                     padding: '3px 8px',
-                                    borderRadius: 12,
+                                    borderRadius: 4,
                                     fontSize: 11.5,
                                     fontWeight: 600,
-                                    background: 'rgba(16, 185, 129, 0.12)',
-                                    color: '#10b981',
-                                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                                    background: 'rgba(3, 128, 106, 0.12)',
+                                    color: '#03806a',
+                                    border: '1px solid rgba(3, 128, 106, 0.3)',
                                     cursor: 'pointer'
                                   }}
                                   title="Click to view position timeline"
@@ -2125,10 +2125,10 @@ export default function Designations() {
                                   alignItems: 'center',
                                   gap: 4,
                                   padding: '4px 9px',
-                                  borderRadius: 5,
-                                  border: '1px solid #10b981',
-                                  background: 'rgba(16, 185, 129, 0.12)',
-                                  color: '#10b981',
+                                  borderRadius: 4,
+                                  border: '1px solid #03806a',
+                                  background: 'rgba(3, 128, 106, 0.12)',
+                                  color: '#03806a',
                                   fontSize: 11.5,
                                   fontWeight: 600,
                                   cursor: 'pointer'
@@ -2156,7 +2156,7 @@ export default function Designations() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
+            background: 'rgba(28, 31, 46, 0.65)',
             backdropFilter: 'blur(3px)',
             zIndex: 1060,
             display: 'flex',
@@ -2172,10 +2172,10 @@ export default function Designations() {
             style={{
               background: 'var(--bg-card)',
               border: '1px solid var(--border)',
-              borderRadius: 12,
+              borderRadius: 4,
               width: '100%',
               maxWidth: 500,
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
+              boxShadow: 'none',
               overflow: 'hidden'
             }}
           >
@@ -2187,7 +2187,7 @@ export default function Designations() {
                 justifyContent: 'space-between',
                 padding: '16px 20px',
                 borderBottom: '1px solid var(--border)',
-                background: 'linear-gradient(135deg, rgba(37,99,235,0.06), rgba(16,185,129,0.06))'
+                background: 'rgba(225, 29, 85,0.06)'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -2195,8 +2195,8 @@ export default function Designations() {
                   style={{
                     width: 42,
                     height: 42,
-                    borderRadius: 10,
-                    background: 'linear-gradient(135deg, #2563eb, #10b981)',
+                    borderRadius: 4,
+                    background: '#e11d55',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -2234,8 +2234,8 @@ export default function Designations() {
                   alignItems: 'center',
                   gap: 12,
                   padding: '16px',
-                  borderRadius: 10,
-                  background: 'var(--modal-header, var(--bg-subtle, #0e1626))',
+                  borderRadius: 4,
+                  background: 'var(--modal-header, var(--bg-subtle, #181818))',
                   border: '1px solid var(--border)',
                   marginBottom: 16
                 }}
@@ -2249,10 +2249,10 @@ export default function Designations() {
                     style={{
                       marginTop: 6,
                       padding: '8px 12px',
-                      borderRadius: 8,
-                      background: 'rgba(239, 68, 68, 0.12)',
-                      border: '1px solid rgba(239, 68, 68, 0.3)',
-                      color: '#f87171',
+                      borderRadius: 4,
+                      background: 'rgba(211, 47, 47, 0.12)',
+                      border: '1px solid rgba(211, 47, 47, 0.3)',
+                      color: '#dd5c5c',
                       fontWeight: 800,
                       fontSize: 15
                     }}
@@ -2262,27 +2262,27 @@ export default function Designations() {
                 </div>
 
                 {/* Arrow */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: '#10b981' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: '#03806a' }}>
                   <TrendingUp size={20} />
                   <ArrowRight size={20} />
                 </div>
 
                 {/* Current Position */}
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#03806a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Current Position
                   </div>
                   <div
                     style={{
                       marginTop: 6,
                       padding: '8px 12px',
-                      borderRadius: 8,
-                      background: 'rgba(16, 185, 129, 0.12)',
-                      border: '1px solid rgba(16, 185, 129, 0.3)',
-                      color: '#10b981',
+                      borderRadius: 4,
+                      background: 'rgba(3, 128, 106, 0.12)',
+                      border: '1px solid rgba(3, 128, 106, 0.3)',
+                      color: '#03806a',
                       fontWeight: 800,
                       fontSize: 15,
-                      boxShadow: '0 1px 3px rgba(16,185,129,0.15)'
+                      boxShadow: 'none'
                     }}
                   >
                     {selectedTeacherPromo.current_position}
@@ -2297,7 +2297,7 @@ export default function Designations() {
                   flexDirection: 'column',
                   gap: 10,
                   padding: '14px',
-                  borderRadius: 8,
+                  borderRadius: 4,
                   border: '1px solid var(--border)',
                   background: 'var(--bg-card)',
                   fontSize: 13
@@ -2305,7 +2305,7 @@ export default function Designations() {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Calendar size={14} style={{ color: '#2563eb' }} />
+                    <Calendar size={14} style={{ color: '#e11d55' }} />
                     <span>Promotion Date:</span>
                   </span>
                   <span style={{ fontWeight: 700, color: 'var(--text)' }}>
@@ -2315,7 +2315,7 @@ export default function Designations() {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <UserCheck size={14} style={{ color: '#10b981' }} />
+                    <UserCheck size={14} style={{ color: '#03806a' }} />
                     <span>Promoted By:</span>
                   </span>
                   <span style={{ fontWeight: 600, color: 'var(--text)' }}>
@@ -2342,7 +2342,7 @@ export default function Designations() {
                   onClick={() => setSelectedTeacherPromo(null)}
                   style={{
                     padding: '8px 16px',
-                    borderRadius: 6,
+                    borderRadius: 4,
                     border: '1px solid var(--border)',
                     background: 'var(--bg-card)',
                     color: 'var(--text)',
@@ -2377,14 +2377,14 @@ export default function Designations() {
                     alignItems: 'center',
                     gap: 6,
                     padding: '8px 18px',
-                    borderRadius: 6,
+                    borderRadius: 4,
                     border: 'none',
-                    background: '#0284c7',
+                    background: '#5c6bc0',
                     color: '#ffffff',
                     fontSize: 13,
                     fontWeight: 600,
                     cursor: 'pointer',
-                    boxShadow: '0 2px 4px rgba(2, 132, 199, 0.25)'
+                    boxShadow: 'none'
                   }}
                 >
                   <Download size={14} />
@@ -2402,7 +2402,7 @@ export default function Designations() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
+            background: 'rgba(28, 31, 46, 0.65)',
             backdropFilter: 'blur(3px)',
             zIndex: 1040,
             display: 'flex',
@@ -2418,13 +2418,13 @@ export default function Designations() {
             style={{
               background: 'var(--bg-card)',
               border: '1px solid var(--border)',
-              borderRadius: 12,
+              borderRadius: 4,
               width: '100%',
               maxWidth: 820,
               maxHeight: '85vh',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
+              boxShadow: 'none',
               overflow: 'hidden'
             }}
           >
@@ -2436,7 +2436,7 @@ export default function Designations() {
                 justifyContent: 'space-between',
                 padding: '16px 20px',
                 borderBottom: '1px solid var(--border)',
-                background: 'var(--modal-header, var(--bg-subtle, #0e1626))'
+                background: 'var(--modal-header, var(--bg-subtle, #181818))'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -2444,12 +2444,12 @@ export default function Designations() {
                   style={{
                     width: 36,
                     height: 36,
-                    borderRadius: 8,
-                    background: 'rgba(124, 58, 237, 0.12)',
+                    borderRadius: 4,
+                    background: 'rgba(92, 107, 192, 0.12)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#7c3aed'
+                    color: '#5c6bc0'
                   }}
                 >
                   <History size={18} />
@@ -2474,9 +2474,9 @@ export default function Designations() {
                     alignItems: 'center',
                     gap: 6,
                     padding: '6px 12px',
-                    borderRadius: 6,
-                    border: '1px solid #0284c7',
-                    background: '#0284c7',
+                    borderRadius: 4,
+                    border: '1px solid #5c6bc0',
+                    background: '#5c6bc0',
                     color: '#ffffff',
                     fontSize: 12.5,
                     fontWeight: 600,
@@ -2504,7 +2504,7 @@ export default function Designations() {
                   alignItems: 'center',
                   gap: 8,
                   padding: '7px 12px',
-                  borderRadius: 6,
+                  borderRadius: 4,
                   border: '1px solid var(--border)',
                   background: 'var(--bg-card)',
                   width: '100%',
@@ -2555,9 +2555,9 @@ export default function Designations() {
                         }}
                         style={{
                           padding: '7px 14px',
-                          borderRadius: 6,
+                          borderRadius: 4,
                           border: 'none',
-                          background: '#10b981',
+                          background: '#03806a',
                           color: '#ffffff',
                           fontSize: 12.5,
                           fontWeight: 600,
@@ -2573,7 +2573,7 @@ export default function Designations() {
                 return (
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
                     <thead>
-                      <tr style={{ background: 'var(--table-header, var(--bg-subtle, #0e1626))', borderBottom: '1px solid var(--border)' }}>
+                      <tr style={{ background: 'var(--table-header, var(--bg-subtle, #181818))', borderBottom: '1px solid var(--border)' }}>
                         <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Sl</th>
                         <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Teacher Name (Click for Details)</th>
                         <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Employee ID</th>
@@ -2596,7 +2596,7 @@ export default function Designations() {
                                 border: 'none',
                                 padding: 0,
                                 cursor: 'pointer',
-                                color: '#3b82f6',
+                                color: '#e11d55',
                                 fontWeight: 600,
                                 fontSize: 13.5,
                                 textAlign: 'left',
@@ -2616,9 +2616,9 @@ export default function Designations() {
                                 display: 'inline-block',
                                 padding: '2px 8px',
                                 borderRadius: 4,
-                                background: 'rgba(239, 68, 68, 0.12)',
-                                color: '#f87171',
-                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                background: 'rgba(211, 47, 47, 0.12)',
+                                color: '#dd5c5c',
+                                border: '1px solid rgba(211, 47, 47, 0.3)',
                                 fontWeight: 700,
                                 fontSize: 11.5
                               }}
@@ -2632,9 +2632,9 @@ export default function Designations() {
                                 display: 'inline-block',
                                 padding: '2px 8px',
                                 borderRadius: 4,
-                                background: 'rgba(16, 185, 129, 0.12)',
-                                color: '#10b981',
-                                border: '1px solid rgba(16, 185, 129, 0.3)',
+                                background: 'rgba(3, 128, 106, 0.12)',
+                                color: '#03806a',
+                                border: '1px solid rgba(3, 128, 106, 0.3)',
                                 fontWeight: 700,
                                 fontSize: 11.5
                               }}

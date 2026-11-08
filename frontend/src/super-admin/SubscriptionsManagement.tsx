@@ -243,7 +243,7 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
         <div className="sa-subs-kpi-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="sa-subs-kpi-top">
             <span className="sa-subs-kpi-label text-xs font-medium uppercase tracking-wider text-slate-500">Active Tiers</span>
-            <div className="sa-subs-kpi-icon-wrap" style={{ background: '#eff6ff', color: '#2563eb' }}>
+            <div className="sa-subs-kpi-icon-wrap" style={{ background: '#fff2f4', color: '#e11d55' }}>
               <Layers size={18} />
             </div>
           </div>
@@ -254,7 +254,7 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
         <div className="sa-subs-kpi-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="sa-subs-kpi-top">
             <span className="sa-subs-kpi-label text-xs font-medium uppercase tracking-wider text-slate-500">Subscribed Campuses</span>
-            <div className="sa-subs-kpi-icon-wrap" style={{ background: '#ecfdf5', color: '#16a34a' }}>
+            <div className="sa-subs-kpi-icon-wrap" style={{ background: '#e6f2f0', color: '#03806a' }}>
               <Building2 size={18} />
             </div>
           </div>
@@ -265,7 +265,7 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
         <div className="sa-subs-kpi-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="sa-subs-kpi-top">
             <span className="sa-subs-kpi-label text-xs font-medium uppercase tracking-wider text-slate-500">Total Student Quota</span>
-            <div className="sa-subs-kpi-icon-wrap" style={{ background: '#f5f3ff', color: '#7c3aed' }}>
+            <div className="sa-subs-kpi-icon-wrap" style={{ background: '#eef0f9', color: '#5c6bc0' }}>
               <Users size={18} />
             </div>
           </div>
@@ -276,7 +276,7 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
         <div className="sa-subs-kpi-card">
           <div className="sa-subs-kpi-top">
             <span className="sa-subs-kpi-label">Estimated MRR</span>
-            <div className="sa-subs-kpi-icon-wrap" style={{ background: '#f0fdf4', color: '#15803d' }}>
+            <div className="sa-subs-kpi-icon-wrap" style={{ background: '#e6f2f0', color: '#02604f' }}>
               <TrendingUp size={18} />
             </div>
           </div>
@@ -291,7 +291,7 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
           <h2 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>
             Commercial Tier Packages
           </h2>
-          <span style={{ fontSize: '12.5px', color: '#64748b' }}>
+          <span style={{ fontSize: '12.5px', color: '#696e79' }}>
             Multi-tenant license quotas and feature matrix
           </span>
         </div>
@@ -316,8 +316,8 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
       </div>
 
       {loading ? (
-        <div style={{ padding: '60px 0', textAlign: 'center', color: '#64748b' }}>
-          <div className="spinning" style={{ margin: '0 auto 16px', width: '32px', height: '32px', border: '3px solid #cbd5e1', borderTopColor: '#2563eb', borderRadius: '50%' }} />
+        <div style={{ padding: '60px 0', textAlign: 'center', color: '#696e79' }}>
+          <div className="spinning" style={{ margin: '0 auto 16px', width: '32px', height: '32px', border: '3px solid #d4d5d9', borderTopColor: '#e11d55', borderRadius: '50%' }} />
           Loading subscription tiers...
         </div>
       ) : (
@@ -354,7 +354,7 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
                           {p.is_active ? 'Active Tier' : 'Archived'}
                         </span>
                         {p.discount_percentage && p.discount_percentage > 0 ? (
-                          <span className="sa-badge-pill" style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: 'bold' }}>
+                          <span className="sa-badge-pill" style={{ background: '#e6f2f0', color: '#02604f', border: '1px solid #99ccc3', fontWeight: 'bold' }}>
                             {p.discount_percentage}% OFF
                           </span>
                         ) : null}
@@ -458,7 +458,7 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
                 <Building2 size={18} className="sa-card-icon" />
                 <div>
                   <h3>Active Tenant Subscription Ledger</h3>
-                  <span style={{ fontSize: '12px', color: '#64748b' }}>
+                  <span style={{ fontSize: '12px', color: '#696e79' }}>
                     Live quota consumption and license validity per institution.
                   </span>
                 </div>
@@ -467,7 +467,7 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
               {/* Filter and Search */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 <div className="sa-inline-search" style={{ minWidth: '200px' }}>
-                  <Search size={14} style={{ color: '#94a3b8' }} />
+                  <Search size={14} style={{ color: '#94969f' }} />
                   <input
                     type="text"
                     placeholder="Search institution or code..."
@@ -505,7 +505,7 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
                 <tbody>
                   {filteredSchools.length === 0 ? (
                     <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#696e79' }}>
                         {ledgerSearch || ledgerPlanFilter !== 'ALL'
                           ? 'No institutions match the filter criteria.'
                           : 'No institutions currently registered on any subscription tier.'}
@@ -527,12 +527,12 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
                               </div>
                               <div className="sa-school-info">
                                 <strong className="sa-school-name">{s.name}</strong>
-                                <span style={{ fontSize: '11.5px', color: '#64748b' }}>{s.code} · {s.city || 'Campus'}</span>
+                                <span style={{ fontSize: '11.5px', color: '#696e79' }}>{s.code} · {s.city || 'Campus'}</span>
                               </div>
                             </div>
                           </td>
                           <td>
-                            <span style={{ fontWeight: 600, color: '#2563eb' }}>
+                            <span style={{ fontWeight: 600, color: '#e11d55' }}>
                               {s.plan_name || 'Standard Growth'}
                             </span>
                           </td>
@@ -655,7 +655,7 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
                     value={planForm.price_yearly}
                     onChange={(e) => setPlanForm({ ...planForm, price_yearly: Number(e.target.value) })}
                   />
-                  <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                  <span style={{ fontSize: '11px', color: '#696e79', marginTop: '4px', display: 'block' }}>
                     Calculated as Monthly Price × 12 (₹{(Number(planForm.price_monthly || 0) * 12).toLocaleString('en-IN')})
                   </span>
                 </div>
@@ -672,7 +672,7 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
                       setPlanForm({ ...planForm, discount_percentage: val });
                     }}
                   />
-                  <span style={{ fontSize: '11px', color: planForm.discount_percentage > 0 ? '#059669' : '#64748b', marginTop: '4px', display: 'block', fontWeight: planForm.discount_percentage > 0 ? '600' : 'normal' }}>
+                  <span style={{ fontSize: '11px', color: planForm.discount_percentage > 0 ? '#03806a' : '#696e79', marginTop: '4px', display: 'block', fontWeight: planForm.discount_percentage > 0 ? '600' : 'normal' }}>
                     {planForm.discount_percentage > 0
                       ? `🏷️ ${planForm.discount_percentage}% OFF will be shown on School Admin page`
                       : 'No discount (discount badge will be hidden on School Admin page)'}

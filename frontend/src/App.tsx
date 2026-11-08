@@ -150,16 +150,16 @@ function AttendoEmblem({ size = 32 }: { size?: number }) {
       <path d="M6 10C12 10 18 8 24 6V36C18 38 12 40 6 40V10Z" fill="url(#heroBookL)" />
       <path d="M42 10C36 10 30 8 24 6V36C30 38 36 40 42 40V10Z" fill="url(#heroBookR)" />
       <path d="M24 6V36" stroke="#ffffff" strokeWidth="1.5" strokeOpacity="0.4" />
-      <circle cx="24" cy="14" r="3.5" fill="#f59e0b" />
+      <circle cx="24" cy="14" r="3.5" fill="#e9a23b" />
       <path d="M19 28L23 32L30 22" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
       <defs>
         <linearGradient id="heroBookL" x1="6" y1="6" x2="24" y2="40" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#38bdf8" />
-          <stop offset="1" stopColor="#1d4ed8" />
+          <stop stopColor="#7f8ccd" />
+          <stop offset="1" stopColor="#c0174a" />
         </linearGradient>
         <linearGradient id="heroBookR" x1="42" y1="6" x2="24" y2="40" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#60a5fa" />
-          <stop offset="1" stopColor="#2563eb" />
+          <stop stopColor="#ef5a85" />
+          <stop offset="1" stopColor="#e11d55" />
         </linearGradient>
       </defs>
     </svg>
@@ -205,7 +205,7 @@ const LOGIN_ROLES: Record<LoginOption, LoginRoleConfig> = {
     emailPlaceholder: 'superadmin@attendance.local',
     defaultEmail: 'superadmin@attendance.local',
     icon: Building2,
-    color: '#2563eb'
+    color: '#e11d55'
   },
   SCHOOL_ADMIN: {
     title: 'School Admin Login',
@@ -218,7 +218,7 @@ const LOGIN_ROLES: Record<LoginOption, LoginRoleConfig> = {
     emailPlaceholder: 'e.g. admin@school.edu.in',
     defaultEmail: '',
     icon: School,
-    color: '#059669'
+    color: '#03806a'
   },
   TEACHER: {
     title: 'Teacher Login',
@@ -231,7 +231,7 @@ const LOGIN_ROLES: Record<LoginOption, LoginRoleConfig> = {
     emailPlaceholder: 'e.g. teacher@school.edu.in, Employee ID, or Savior_NO (e.g. 20059)',
     defaultEmail: '',
     icon: GraduationCap,
-    color: '#d97706'
+    color: '#b8781c'
   },
   STUDENT: {
     title: 'Student Login',
@@ -244,7 +244,7 @@ const LOGIN_ROLES: Record<LoginOption, LoginRoleConfig> = {
     emailPlaceholder: 'e.g. ADM-2025-105 or student@gmail.com',
     defaultEmail: '',
     icon: BookOpen,
-    color: '#7c3aed'
+    color: '#5c6bc0'
   }
 };
 
@@ -712,7 +712,7 @@ function Login() {
   }
 
   return (
-    <div className="as-simple-page" data-theme="dark">
+    <div className="as-simple-page">
       {/* 3D Educational Dynamic Animated Background */}
       <ThreeDBackground dark={true} />
 
@@ -862,15 +862,15 @@ function Login() {
                   <div className="as-simple-field" style={{ position: 'relative' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                       <label className="as-simple-label" style={{ margin: 0 }}>
-                        School / Institute <span style={{ color: '#fb923c' }}>*</span>
+                        School / Institute <span style={{ color: '#edb35f' }}>*</span>
                       </label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         {selectedInstitute && (
                           <span style={{
                             fontSize: 10.5,
-                            color: '#34d399',
-                            background: 'rgba(16, 185, 129, 0.12)',
-                            border: '1px solid rgba(16, 185, 129, 0.3)',
+                            color: '#339988',
+                            background: 'rgba(3, 128, 106, 0.12)',
+                            border: '1px solid rgba(3, 128, 106, 0.3)',
                             padding: '2px 8px',
                             borderRadius: 9999,
                             fontWeight: 600,
@@ -893,42 +893,42 @@ function Login() {
                           justifyContent: 'space-between',
                           gap: 12,
                           padding: '10px 14px',
-                          borderRadius: 10,
-                          background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(56, 189, 248, 0.05))',
-                          border: '1px solid rgba(56, 189, 248, 0.35)',
-                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)'
+                          borderRadius: 4,
+                          background: 'rgba(225, 29, 85, 0.08)',
+                          border: '1px solid rgba(127, 140, 205, 0.35)',
+                          boxShadow: 'none'
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
                           <div style={{
                             width: 36,
                             height: 36,
-                            borderRadius: 8,
-                            background: 'linear-gradient(135deg, rgba(56,189,248,0.2), rgba(37,99,235,0.25))',
-                            border: '1px solid rgba(56, 189, 248, 0.3)',
+                            borderRadius: 4,
+                            background: 'rgba(127, 140, 205,0.2)',
+                            border: '1px solid rgba(127, 140, 205, 0.3)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             flexShrink: 0
                           }}>
-                            <School size={18} style={{ color: '#38bdf8' }} />
+                            <School size={18} style={{ color: '#7f8ccd' }} />
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                            <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-main, #f8fafc)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-main, #f9f9fa)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {selectedInstitute.name}
                             </span>
-                            <span style={{ fontSize: 11, color: '#94a3b8', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              Code: <strong style={{ color: '#38bdf8' }}>{selectedInstitute.code || 'SCH'}</strong> · {selectedInstitute.address || 'Active Institution'}
+                            <span style={{ fontSize: 11, color: '#94969f', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              Code: <strong style={{ color: '#7f8ccd' }}>{selectedInstitute.code || 'SCH'}</strong> · {selectedInstitute.address || 'Active Institution'}
                             </span>
                           </div>
                         </div>
                         <span
                           style={{
                             padding: '3px 8px',
-                            borderRadius: 6,
-                            background: 'rgba(56, 189, 248, 0.15)',
-                            border: '1px solid rgba(56, 189, 248, 0.25)',
-                            color: '#38bdf8',
+                            borderRadius: 4,
+                            background: 'rgba(127, 140, 205, 0.15)',
+                            border: '1px solid rgba(127, 140, 205, 0.25)',
+                            color: '#7f8ccd',
                             fontSize: 11,
                             fontWeight: 700,
                             letterSpacing: '0.04em',
@@ -946,10 +946,10 @@ function Login() {
                           alignItems: 'center',
                           gap: 10,
                           padding: '11px 14px',
-                          borderRadius: 10,
-                          background: 'rgba(56, 189, 248, 0.04)',
-                          border: '1px solid rgba(56, 189, 248, 0.25)',
-                          color: '#38bdf8',
+                          borderRadius: 4,
+                          background: 'rgba(127, 140, 205, 0.04)',
+                          border: '1px solid rgba(127, 140, 205, 0.25)',
+                          color: '#7f8ccd',
                           fontSize: 12.5,
                           minHeight: 46
                         }}
@@ -962,10 +962,10 @@ function Login() {
                         id="not-found-institute-placeholder"
                         style={{
                           padding: '11px 14px',
-                          borderRadius: 10,
-                          background: 'rgba(239, 68, 68, 0.05)',
-                          border: '1px dashed rgba(239, 68, 68, 0.35)',
-                          color: '#f87171',
+                          borderRadius: 4,
+                          background: 'rgba(211, 47, 47, 0.05)',
+                          border: '1px dashed rgba(211, 47, 47, 0.35)',
+                          color: '#dd5c5c',
                           fontSize: 12
                         }}
                       >
@@ -985,10 +985,10 @@ function Login() {
                             }}
                             style={{
                               padding: '4px 10px',
-                              borderRadius: 6,
+                              borderRadius: 4,
                               border: '1px solid rgba(255, 255, 255, 0.2)',
-                              background: '#0f172a',
-                              color: '#f8fafc',
+                              background: '#1c1f2e',
+                              color: '#f9f9fa',
                               fontSize: 12,
                               cursor: 'pointer'
                             }}
@@ -1010,10 +1010,10 @@ function Login() {
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           padding: '11px 14px',
-                          borderRadius: 10,
+                          borderRadius: 4,
                           background: 'rgba(255, 255, 255, 0.02)',
                           border: '1px dashed rgba(255, 255, 255, 0.14)',
-                          color: '#94a3b8',
+                          color: '#94969f',
                           fontSize: 12.5,
                           minHeight: 46
                         }}
@@ -1034,7 +1034,7 @@ function Login() {
                 {/* Identifier Input (Admission No. for Student, Email for Faculty/Admin) */}
                 <div className="as-simple-field">
                   <label className="as-simple-label">
-                    {currentConfig.emailLabel} <span style={{ color: '#fb923c' }}>*</span>
+                    {currentConfig.emailLabel} <span style={{ color: '#edb35f' }}>*</span>
                   </label>
                   <div className="as-simple-input-wrap">
                     <input
@@ -1052,7 +1052,7 @@ function Login() {
                 {/* Password Input */}
                 <div className="as-simple-field">
                   <label className="as-simple-label">
-                    Password <span style={{ color: '#fb923c' }}>*</span>
+                    Password <span style={{ color: '#edb35f' }}>*</span>
                   </label>
                   <div className="as-simple-input-wrap">
                     <input
@@ -1125,13 +1125,13 @@ function Login() {
               Need assistance signing in to your AttendoSchool portal? Use the guidelines below:
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
-              <div style={{ background: 'var(--bg-subtle)', padding: 12, borderRadius: 8 }}>
+              <div style={{ background: 'var(--bg-subtle)', padding: 12, borderRadius: 4 }}>
                 <b>Administrator Login:</b> Global platform accounts do not require school selection. Sign in directly with your platform email and password.
               </div>
-              <div style={{ background: 'var(--bg-subtle)', padding: 12, borderRadius: 8 }}>
+              <div style={{ background: 'var(--bg-subtle)', padding: 12, borderRadius: 4 }}>
                 <b>School Admin & Faculty:</b> Select your affiliated school from the dropdown, then enter your assigned institutional email and password.
               </div>
-              <div style={{ background: 'var(--bg-subtle)', padding: 12, borderRadius: 8 }}>
+              <div style={{ background: 'var(--bg-subtle)', padding: 12, borderRadius: 4 }}>
                 <b>Student Portal:</b> Select your school and enter your Student ID, Admission Number, or Roll Number with your password.
               </div>
               <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
@@ -1153,12 +1153,12 @@ function Login() {
             {forgotNotice && (
               <div style={{
                 padding: '12px 14px',
-                borderRadius: 8,
+                borderRadius: 4,
                 marginBottom: 16,
                 fontSize: 13,
-                backgroundColor: forgotNotice.type === 'error' ? '#fef2f2' : '#f0fdf4',
-                border: `1px solid ${forgotNotice.type === 'error' ? '#fecaca' : '#bbf7d0'}`,
-                color: forgotNotice.type === 'error' ? '#991b1b' : '#166534'
+                backgroundColor: forgotNotice.type === 'error' ? '#fbeaea' : '#e6f2f0',
+                border: `1px solid ${forgotNotice.type === 'error' ? '#f2c0c0' : '#99ccc3'}`,
+                color: forgotNotice.type === 'error' ? '#7e1b1b' : '#024035'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: forgotNotice.resetUrl ? 8 : 0 }}>
                   {forgotNotice.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
@@ -1174,7 +1174,7 @@ function Login() {
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 4,
-                        color: '#1d4ed8',
+                        color: '#c0174a',
                         fontWeight: 600,
                         textDecoration: 'underline'
                       }}
@@ -1197,7 +1197,7 @@ function Login() {
                   onChange={e => setForgotEmail(e.target.value)}
                   style={{
                     padding: '10px 12px',
-                    borderRadius: 6,
+                    borderRadius: 4,
                     border: '1px solid var(--border-color)',
                     backgroundColor: 'var(--bg-card)',
                     color: 'var(--text-primary)',
@@ -1212,7 +1212,7 @@ function Login() {
                   onClick={() => setForgotOpen(false)}
                   style={{
                     padding: '8px 16px',
-                    borderRadius: 6,
+                    borderRadius: 4,
                     border: '1px solid var(--border-color)',
                     background: 'transparent',
                     color: 'var(--text-secondary)',
@@ -1230,9 +1230,9 @@ function Login() {
                     alignItems: 'center',
                     gap: 6,
                     padding: '8px 18px',
-                    borderRadius: 6,
+                    borderRadius: 4,
                     border: 'none',
-                    backgroundColor: '#2563eb',
+                    backgroundColor: '#e11d55',
                     color: '#ffffff',
                     fontSize: 13,
                     fontWeight: 600,
@@ -1445,7 +1445,7 @@ function SuperAdminHeader({
                 setSidebarCollapsed(s => !s);
               }
             }}
-            style={{ border: '1px solid var(--border)', borderRadius: 8 }}
+            style={{ border: '1px solid var(--border)', borderRadius: 4 }}
           >
             <Menu size={16} />
           </button>
@@ -1640,7 +1640,7 @@ function SuperAdminHeader({
               onClick={() => setSessionOpen(s => !s)}
               title="Switch Academic Session"
             >
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#03806a', flexShrink: 0 }}></span>
               <span>{currentSession ? `${String(currentSession).replace(/\b(academic\s+)?sessions?\b/gi, '').trim()} ACADEMIC SESSION` : 'ACADEMIC SESSION'}</span>
               <ChevronDown size={14} style={{ opacity: 0.7, transform: sessionOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
             </div>
@@ -1677,7 +1677,7 @@ function SuperAdminHeader({
                         <CalendarDays size={14} style={{ opacity: 0.7 }} />
                         <span>{sess.name}</span>
                       </div>
-                      {isSelected && <Check size={14} style={{ color: '#2563eb' }} />}
+                      {isSelected && <Check size={14} style={{ color: '#e11d55' }} />}
                     </button>
                   );
                 })}
@@ -1785,7 +1785,7 @@ function SuperAdminHeader({
 
           {/* Connected User Profile Pill */}
           <div className="profile-pill">
-            <div className="user-avatar" style={{ background: '#1d4ed8', color: '#ffffff', fontWeight: 700, fontSize: 13 }}>
+            <div className="user-avatar" style={{ background: '#c0174a', color: '#ffffff', fontWeight: 700, fontSize: 13 }}>
               {initials}
             </div>
             <div className="profile-info">
@@ -1811,9 +1811,9 @@ function SuperAdminHeader({
           <div className="super-modal-card" onClick={e => e.stopPropagation()}>
             <div className="super-modal-header">
               <h3>
-                {detailItem.category === 'School' && <School size={18} color="#2563eb" />}
-                {detailItem.category === 'Student' && <GraduationCap size={18} color="#4f46e5" />}
-                {detailItem.category === 'Invoice' && <FileText size={18} color="#d97706" />}
+                {detailItem.category === 'School' && <School size={18} color="#e11d55" />}
+                {detailItem.category === 'Student' && <GraduationCap size={18} color="#e11d55" />}
+                {detailItem.category === 'Invoice' && <FileText size={18} color="#b8781c" />}
                 <span>{detailItem.category} Details — {detailItem.title}</span>
               </h3>
               <button
@@ -1846,7 +1846,7 @@ function SuperAdminHeader({
                   </div>
                   <div className="super-detail-cell">
                     <span className="super-detail-label">Enrolled School</span>
-                    <span className="super-detail-value" style={{ color: '#2563eb' }}>
+                    <span className="super-detail-value" style={{ color: '#e11d55' }}>
                       {detailItem.meta?.schoolName || detailItem.meta?.school?.name || 'Institutional Campus'}
                     </span>
                   </div>
@@ -1891,7 +1891,7 @@ function SuperAdminHeader({
                   </div>
                   <div className="super-detail-cell">
                     <span className="super-detail-label">Subscription Plan</span>
-                    <span className="super-detail-value" style={{ color: '#16a34a' }}>
+                    <span className="super-detail-value" style={{ color: '#03806a' }}>
                       {detailItem.meta?.planName || 'Enterprise Plan'}
                     </span>
                   </div>
@@ -1914,7 +1914,7 @@ function SuperAdminHeader({
                   </div>
                   <div className="super-detail-cell">
                     <span className="super-detail-label">Amount</span>
-                    <span className="super-detail-value" style={{ color: '#16a34a', fontSize: 16 }}>
+                    <span className="super-detail-value" style={{ color: '#03806a', fontSize: 16 }}>
                       ₹{Number(detailItem.meta?.amount || 1999).toLocaleString('en-IN')}
                     </span>
                   </div>
@@ -3033,6 +3033,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             <span className="school-meta">
               {user.role === 'SUPER_ADMIN' ? 'Platform Administration' : `Code: ${currentSchoolCode} · Affiliated`}
             </span>
+            <span className="role-tag">{String(user.role).replace(/_/g, ' ')}</span>
           </div>
         </div>
         <button
@@ -3109,7 +3110,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                 </div>
               );
             }
-            return <button key={`${p}-${l}`} className={loc.pathname === p ? 'nav-active' : ''} onClick={() => { setMobileSidebarOpen(false); nav(p); }} style={{ textAlign: 'left' }}>
+            return <button key={`${p}-${l}`} className={loc.pathname === p ? 'nav-active' : ''} aria-current={loc.pathname === p ? 'page' : undefined} onClick={() => { setMobileSidebarOpen(false); nav(p); }} style={{ textAlign: 'left' }}>
               <I size={16} style={{ flexShrink: 0 }} /> <span style={{ textAlign: 'left' }}>{l}</span>
             </button>;
           })}
@@ -3118,7 +3119,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       {user.role === 'SUPER_ADMIN' && (
         <div className="sidebar-promo-card">
           <div className="sidebar-promo-badge">
-            <GraduationCap size={20} color="#60a5fa" />
+            <GraduationCap size={20} color="#ef5a85" />
           </div>
           <div className="sidebar-promo-title">Smart Attendance</div>
           <div className="sidebar-promo-subtitle">Smarter Schools</div>
@@ -3178,7 +3179,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                 onClick={() => { setAyDropdownOpen(prev => !prev); if (!ayDropdownOpen) loadAcademicYears(); }}
                 title="Switch Academic Session"
               >
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#03806a', flexShrink: 0 }}></span>
                 <span>{activeSessionName ? `${activeSessionName} ACADEMIC SESSION` : 'ACADEMIC SESSION'}</span>
                 <ChevronDown size={14} style={{ opacity: 0.7, transform: ayDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
               </div>
@@ -3232,7 +3233,7 @@ function Layout({ children }: { children: React.ReactNode }) {
               <span className="header-badge-num">3</span>
             </button>
             <div className="profile-pill">
-              <div className="user-avatar" style={{ background: '#1d4ed8', color: '#ffffff', fontWeight: 700, fontSize: 13 }}>
+              <div className="user-avatar" style={{ background: '#c0174a', color: '#ffffff', fontWeight: 700, fontSize: 13 }}>
                 {user.name ? user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'SA'}
               </div>
               <div className="profile-info">
@@ -3269,7 +3270,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             >
               <div
                 className="school-crest"
-                style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 2, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}
+                style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 2, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}
               >
                 <img
                   src={currentSchoolPhoto || (isDavSchool ? '/dav-logo.png' : '/attendo-school-logo.png')}
@@ -3307,7 +3308,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                 onClick={() => { setAyDropdownOpen(prev => !prev); if (!ayDropdownOpen) loadAcademicYears(); }}
                 title="Switch Academic Session"
               >
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#03806a', flexShrink: 0 }}></span>
                 <span>{activeSessionName ? `${activeSessionName} ACADEMIC SESSION` : 'ACADEMIC SESSION'}</span>
                 <ChevronDown size={14} style={{ opacity: 0.7, transform: ayDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
               </div>
@@ -3367,7 +3368,7 @@ function Layout({ children }: { children: React.ReactNode }) {
               >
                 <Bell size={16} />
                 {(pendingLeaveCount + (schoolInfo?.pendingCorrectionsCount || 0) > 0) && (
-                  <span className="header-badge-num" style={{ background: '#ef4444' }}>
+                  <span className="header-badge-num" style={{ background: '#d32f2f' }}>
                     {pendingLeaveCount + (schoolInfo?.pendingCorrectionsCount || 0)}
                   </span>
                 )}
@@ -3389,7 +3390,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                         type="button"
                         className="super-notif-readall-btn"
                         title="Review Teacher Leave Requests"
-                        style={{ color: '#d97706', background: '#fffbeb', borderColor: '#fde68a' }}
+                        style={{ color: '#b8781c', background: '#fdf5e9', borderColor: '#f6dcb2' }}
                         onClick={() => { setAdminNotifOpen(false); nav('/teacher-leave-approvals'); }}
                       >
                         <CalendarCheck size={12} />
@@ -3401,7 +3402,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                   <div className="super-notif-list">
                     {adminNotifs.filter((n: any) => n.type === 'TEACHER_LEAVE_REQUEST').length === 0 ? (
                       <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                        <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+                        <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#e6f2f0', color: '#03806a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
                           <CheckCircle2 size={24} />
                         </div>
                         <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>All Caught Up!</div>
@@ -3417,7 +3418,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                             nav(n.link || '/teacher-leave-approvals');
                           }}
                         >
-                          <div className="super-notif-icon-wrap notif-leave" style={{ background: '#fef3c7', color: '#d97706', borderRadius: 10, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <div className="super-notif-icon-wrap notif-leave" style={{ background: '#fbecd3', color: '#b8781c', borderRadius: 4, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <CalendarCheck size={18} />
                           </div>
 
@@ -3464,7 +3465,7 @@ function Layout({ children }: { children: React.ReactNode }) {
               {dark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
             <div className="profile-pill" style={{ cursor: 'pointer' }} onClick={() => nav('/school-profile')}>
-              <div className="user-avatar" style={{ background: '#2563eb', color: '#ffffff', fontWeight: 700, fontSize: 13, overflow: 'hidden' }}>
+              <div className="user-avatar" style={{ background: '#e11d55', color: '#ffffff', fontWeight: 700, fontSize: 13, overflow: 'hidden' }}>
                 {user.photo_url || user.photoUrl || user.avatarUrl ? (
                   <img
                     src={user.photo_url || user.photoUrl || user.avatarUrl}
@@ -3510,7 +3511,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             >
               <div
                 className="school-crest"
-                style={{ width: 34, height: 34, background: "#ffffff", border: "1px solid var(--border)", padding: 2, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}
+                style={{ width: 34, height: 34, background: "#ffffff", border: "1px solid var(--border)", padding: 2, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}
               >
                 <img
                   src={currentSchoolPhoto || (isDavSchool ? '/dav-logo.png' : '/attendo-school-logo.png')}
@@ -3548,7 +3549,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                 onClick={() => { setAyDropdownOpen(prev => !prev); if (!ayDropdownOpen) loadAcademicYears(); }}
                 title="Switch Academic Session"
               >
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#03806a', flexShrink: 0 }}></span>
                 <span>{activeSessionName ? `${activeSessionName} ACADEMIC SESSION` : 'ACADEMIC SESSION'}</span>
                 <ChevronDown size={14} style={{ opacity: 0.7, transform: ayDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
               </div>
@@ -3610,7 +3611,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                 >
                   <Bell size={16} />
                   {(pendingLeaveCount + pendingPhotoCount + pendingAnnouncementCount) > 0 && (
-                    <span className="header-badge-num" style={{ background: '#ef4444' }}>
+                    <span className="header-badge-num" style={{ background: '#d32f2f' }}>
                       {pendingLeaveCount + pendingPhotoCount + pendingAnnouncementCount}
                     </span>
                   )}
@@ -3632,7 +3633,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                           <button
                             type="button"
                             className="super-notif-readall-btn"
-                            style={{ color: '#3b82f6', background: 'rgba(59, 130, 246, 0.12)', borderColor: 'rgba(59, 130, 246, 0.25)', cursor: 'pointer' }}
+                            style={{ color: '#e11d55', background: 'rgba(225, 29, 85, 0.12)', borderColor: 'rgba(225, 29, 85, 0.25)', cursor: 'pointer' }}
                             title="Review Student Photos"
                             onClick={() => { setTeacherNotifOpen(false); nav('/photo-approvals'); }}
                           >
@@ -3644,7 +3645,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                           <button
                             type="button"
                             className="super-notif-readall-btn"
-                            style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.12)', borderColor: 'rgba(16, 185, 129, 0.25)', cursor: 'pointer' }}
+                            style={{ color: '#03806a', background: 'rgba(3, 128, 106, 0.12)', borderColor: 'rgba(3, 128, 106, 0.25)', cursor: 'pointer' }}
                             title="Mark all pending leave requests as seen"
                             onClick={async () => {
                               try {
@@ -3662,7 +3663,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                         <button
                           type="button"
                           className="super-notif-readall-btn"
-                          style={{ color: '#3b82f6', background: 'rgba(59, 130, 246, 0.12)', borderColor: 'rgba(59, 130, 246, 0.25)', cursor: 'pointer' }}
+                          style={{ color: '#e11d55', background: 'rgba(225, 29, 85, 0.12)', borderColor: 'rgba(225, 29, 85, 0.25)', cursor: 'pointer' }}
                           title="Review Leave Requests"
                           onClick={() => { setTeacherNotifOpen(false); nav('/leave-applications'); }}
                         >
@@ -3673,7 +3674,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                           <button
                             type="button"
                             className="super-notif-readall-btn"
-                            style={{ color: '#2563eb', background: 'rgba(37, 99, 235, 0.12)', borderColor: 'rgba(37, 99, 235, 0.25)', cursor: 'pointer' }}
+                            style={{ color: '#e11d55', background: 'rgba(225, 29, 85, 0.12)', borderColor: 'rgba(225, 29, 85, 0.25)', cursor: 'pointer' }}
                             title="View School Announcements"
                             onClick={() => { setTeacherNotifOpen(false); nav('/announcements'); }}
                           >
@@ -3687,7 +3688,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                     <div className="super-notif-list">
                       {adminNotifs.filter((n: any) => n.type === 'LEAVE_REQUEST' || n.type === 'PHOTO_APPROVAL' || n.type === 'ANNOUNCEMENT').length === 0 ? (
                         <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                          <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+                          <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(3, 128, 106, 0.15)', color: '#03806a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
                             <CheckCircle2 size={24} />
                           </div>
                           <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>All Caught Up!</div>
@@ -3711,7 +3712,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                               }}
                             >
                               <div style={{ display: 'flex', gap: 10, flex: 1, minWidth: 0 }}>
-                                <div className="super-notif-icon-wrap notif-announcement" style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(37, 99, 235, 0.12)', color: '#2563eb', flexShrink: 0 }}>
+                                <div className="super-notif-icon-wrap notif-announcement" style={{ width: 38, height: 38, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(225, 29, 85, 0.12)', color: '#e11d55', flexShrink: 0 }}>
                                   <Megaphone size={18} />
                                 </div>
                                 <div className="super-notif-body">
@@ -3732,10 +3733,10 @@ function Layout({ children }: { children: React.ReactNode }) {
                                 type="button"
                                 title="Mark as Read"
                                 style={{
-                                  background: 'rgba(37, 99, 235, 0.12)',
-                                  border: '1px solid rgba(37, 99, 235, 0.3)',
-                                  color: '#2563eb',
-                                  borderRadius: 6,
+                                  background: 'rgba(225, 29, 85, 0.12)',
+                                  border: '1px solid rgba(225, 29, 85, 0.3)',
+                                  color: '#e11d55',
+                                  borderRadius: 4,
                                   padding: '4px 7px',
                                   fontSize: 11,
                                   fontWeight: 600,
@@ -3787,10 +3788,10 @@ function Layout({ children }: { children: React.ReactNode }) {
                                   <img
                                     src={n.avatar}
                                     alt={n.applicantName || 'Student'}
-                                    style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--border)', flexShrink: 0 }}
+                                    style={{ width: 38, height: 38, borderRadius: 4, objectFit: 'cover', border: '1px solid var(--border)', flexShrink: 0 }}
                                   />
                                 ) : (
-                                  <div className="super-notif-icon-wrap notif-photo" style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', flexShrink: 0 }}>
+                                  <div className="super-notif-icon-wrap notif-photo" style={{ width: 38, height: 38, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(225, 29, 85, 0.12)', color: '#e11d55', flexShrink: 0 }}>
                                     <Camera size={18} />
                                   </div>
                                 )
@@ -3819,10 +3820,10 @@ function Layout({ children }: { children: React.ReactNode }) {
                                 type="button"
                                 title="Mark as Seen"
                                 style={{
-                                  background: 'rgba(16, 185, 129, 0.12)',
-                                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                                  color: '#10b981',
-                                  borderRadius: 6,
+                                  background: 'rgba(3, 128, 106, 0.12)',
+                                  border: '1px solid rgba(3, 128, 106, 0.3)',
+                                  color: '#03806a',
+                                  borderRadius: 4,
                                   padding: '4px 7px',
                                   fontSize: 11,
                                   fontWeight: 600,
@@ -3897,7 +3898,7 @@ function Layout({ children }: { children: React.ReactNode }) {
               {dark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
             <div className="profile-pill" style={{ cursor: 'pointer' }} onClick={() => nav('/teacher/profile')} title="View My Profile">
-              <div className="user-avatar" style={{ background: '#2563eb', color: '#ffffff', fontWeight: 700, fontSize: 13, overflow: 'hidden', position: 'relative' }}>
+              <div className="user-avatar" style={{ background: '#e11d55', color: '#ffffff', fontWeight: 700, fontSize: 13, overflow: 'hidden', position: 'relative' }}>
                 <span style={{ position: 'absolute' }}>
                   {user.name ? user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'TC'}
                 </span>
@@ -3937,7 +3938,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.55)',
+            backgroundColor: 'rgba(28, 31, 46, 0.55)',
             display: 'flex',
             justifyContent: 'flex-end',
             zIndex: 1200
@@ -3953,18 +3954,18 @@ function Layout({ children }: { children: React.ReactNode }) {
               overflowY: 'auto',
               padding: '24px 20px',
               boxSizing: 'border-box',
-              boxShadow: '-4px 0 24px rgba(0,0,0,0.18)',
+              boxShadow: 'none',
               display: 'flex',
               flexDirection: 'column'
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 16, borderBottom: '1px solid var(--border, #e2e8f0)', marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 16, borderBottom: '1px solid var(--border, #eaeaec)', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Bell size={18} color="#2563eb" />
-                <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Faculty In-App Inbox</h2>
+                <Bell size={18} color="#e11d55" />
+                <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text, #1c1f2e)' }}>Faculty In-App Inbox</h2>
                 {teacherUnreadCount > 0 && (
-                  <span style={{ backgroundColor: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 10 }}>
+                  <span style={{ backgroundColor: '#d32f2f', color: '#fff', fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 4 }}>
                     {teacherUnreadCount} unread
                   </span>
                 )}
@@ -3972,20 +3973,20 @@ function Layout({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => setTeacherDrawerOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)', padding: 4 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #696e79)', padding: 4 }}
               >
                 ✕
               </button>
             </div>
 
-            <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--text-muted, #64748b)' }}>
+            <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--text-muted, #696e79)' }}>
               Official administrative notices and academic broadcasts strictly visible to faculty accounts.
             </p>
 
             {teacherLoadingNotices ? (
-              <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>Loading faculty inbox...</div>
+              <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted, #696e79)' }}>Loading faculty inbox...</div>
             ) : teacherNotices.length === 0 ? (
-              <div style={{ padding: 40, textAlign: 'center', border: '1px dashed var(--border, #cbd5e1)', borderRadius: 8, color: 'var(--text-muted, #94a3b8)' }}>
+              <div style={{ padding: 40, textAlign: 'center', border: '1px dashed var(--border, #d4d5d9)', borderRadius: 4, color: 'var(--text-muted, #94969f)' }}>
                 No notifications in your faculty inbox.
               </div>
             ) : (
@@ -3994,10 +3995,10 @@ function Layout({ children }: { children: React.ReactNode }) {
                   <div
                     key={n.id || n.recipient_id}
                     style={{
-                      border: n.priority === 'EMERGENCY' ? '1.5px solid #ef4444' : '1px solid var(--border, #e2e8f0)',
-                      borderRadius: 8,
+                      border: n.priority === 'EMERGENCY' ? '1.5px solid #d32f2f' : '1px solid var(--border, #eaeaec)',
+                      borderRadius: 4,
                       padding: 14,
-                      backgroundColor: n.read_at ? 'var(--card-subtle, #f8fafc)' : 'var(--bg-card, #ffffff)',
+                      backgroundColor: n.read_at ? 'var(--card-subtle, #f9f9fa)' : 'var(--bg-card, #ffffff)',
                       boxShadow: n.read_at ? 'none' : '0 1px 4px rgba(0,0,0,0.06)'
                     }}
                   >
@@ -4008,29 +4009,29 @@ function Layout({ children }: { children: React.ReactNode }) {
                           fontWeight: 700,
                           padding: '2px 6px',
                           borderRadius: 4,
-                          backgroundColor: n.priority === 'EMERGENCY' ? 'rgba(239, 68, 68, 0.15)' : n.priority === 'HIGH' ? 'rgba(249, 115, 22, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-                          color: n.priority === 'EMERGENCY' ? '#ef4444' : n.priority === 'HIGH' ? '#f97316' : '#3b82f6',
-                          border: n.priority === 'EMERGENCY' ? '1px solid rgba(239, 68, 68, 0.3)' : n.priority === 'HIGH' ? '1px solid rgba(249, 115, 22, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)'
+                          backgroundColor: n.priority === 'EMERGENCY' ? 'rgba(211, 47, 47, 0.15)' : n.priority === 'HIGH' ? 'rgba(233, 162, 59, 0.15)' : 'rgba(225, 29, 85, 0.15)',
+                          color: n.priority === 'EMERGENCY' ? '#d32f2f' : n.priority === 'HIGH' ? '#e9a23b' : '#e11d55',
+                          border: n.priority === 'EMERGENCY' ? '1px solid rgba(211, 47, 47, 0.3)' : n.priority === 'HIGH' ? '1px solid rgba(233, 162, 59, 0.3)' : '1px solid rgba(225, 29, 85, 0.3)'
                         }}
                       >
                         {n.priority}
                       </span>
-                      <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted, #94969f)' }}>
                         {n.published_at ? new Date(n.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ''}
                       </span>
                     </div>
 
-                    <h4 style={{ margin: '0 0 6px', fontSize: 14.5, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                    <h4 style={{ margin: '0 0 6px', fontSize: 14.5, fontWeight: 700, color: 'var(--text, #1c1f2e)' }}>
                       {n.title}
                     </h4>
 
-                    <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text-secondary, #94a3b8)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                    <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text-secondary, #94969f)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
                       {n.message}
                     </p>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border, #f1f5f9)', paddingTop: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border, #f5f5f6)', paddingTop: 8 }}>
                       {n.author_name ? (
-                        <span style={{ fontSize: 11, color: 'var(--text-muted, #64748b)' }}>From: {n.author_name}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted, #696e79)' }}>From: {n.author_name}</span>
                       ) : <span />}
 
                       {!n.read_at ? (
@@ -4042,16 +4043,16 @@ function Layout({ children }: { children: React.ReactNode }) {
                             fontSize: 11.5,
                             fontWeight: 600,
                             borderRadius: 4,
-                            border: '1px solid var(--border, #cbd5e1)',
+                            border: '1px solid var(--border, #d4d5d9)',
                             backgroundColor: 'transparent',
-                            color: 'var(--primary, #2563eb)',
+                            color: 'var(--primary, #e11d55)',
                             cursor: 'pointer'
                           }}
                         >
                           Mark as read
                         </button>
                       ) : (
-                        <span style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>✓ Read</span>
+                        <span style={{ fontSize: 11, color: '#03806a', fontWeight: 600 }}>✓ Read</span>
                       )}
                     </div>
                   </div>
@@ -4082,7 +4083,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             <div className="search-palette-body">
               {!searchQuery.trim() ? (
                 <div className="search-palette-hint" style={{ padding: '40px 20px', textAlign: 'center' }}>
-                  <Search size={32} color="var(--primary, #2563eb)" style={{ opacity: 0.6, margin: '0 auto 12px', display: 'block' }} />
+                  <Search size={32} color="var(--primary, #e11d55)" style={{ opacity: 0.6, margin: '0 auto 12px', display: 'block' }} />
                   <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: '0 0 6px' }}>
                     Type to search menu &amp; pages
                   </h4>
@@ -4121,7 +4122,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                             if (idx !== -1) setSelectedIndex(idx);
                           }}
                         >
-                          <div className="search-result-avatar" style={{ background: 'var(--primary, #2563eb)', color: '#fff' }}>
+                          <div className="search-result-avatar" style={{ background: 'var(--primary, #e11d55)', color: '#fff' }}>
                             <ItemIcon size={16} />
                           </div>
                           <div className="search-result-info">
@@ -4132,8 +4133,8 @@ function Layout({ children }: { children: React.ReactNode }) {
                                 fontWeight: 600,
                                 padding: '1px 6px',
                                 borderRadius: 4,
-                                background: 'var(--bg-muted, #f1f5f9)',
-                                color: 'var(--text-muted, #64748b)',
+                                background: 'var(--bg-muted, #f5f5f6)',
+                                color: 'var(--text-muted, #696e79)',
                                 border: '1px solid var(--border)'
                               }}>
                                 {item.category}
@@ -4443,15 +4444,15 @@ function AdminHome() {
       <Layout>
         {/* Dashboard Error / Quota Notice */}
         {dashboardError && (
-          <div className="admin-alert-banner warning" style={{ marginBottom: 16, backgroundColor: '#fef2f2', borderColor: '#fecaca', color: '#991b1b' }}>
+          <div className="admin-alert-banner warning" style={{ marginBottom: 16, backgroundColor: '#fbeaea', borderColor: '#f2c0c0', color: '#7e1b1b' }}>
             <div className="alert-left">
-              <AlertTriangle size={20} color="#dc2626" />
+              <AlertTriangle size={20} color="#d32f2f" />
               <div>
                 <strong>Unable to Connect to Live Database</strong>
                 <p style={{ margin: 0, fontSize: 13 }}>{dashboardError}</p>
               </div>
             </div>
-            <button className="alert-action-btn" onClick={() => load(0)} style={{ backgroundColor: '#dc2626', color: '#ffffff' }}>
+            <button className="alert-action-btn" onClick={() => load(0)} style={{ backgroundColor: '#d32f2f', color: '#ffffff' }}>
               Retry Connection
             </button>
           </div>
@@ -4494,7 +4495,7 @@ function AdminHome() {
         {pendingCorrections > 0 && (
           <div className="admin-alert-banner warning">
             <div className="alert-left">
-              <AlertTriangle size={20} color="#d97706" />
+              <AlertTriangle size={20} color="#b8781c" />
               <div>
                 <strong>Attendance Correction Requests Pending Review</strong>
                 <p>There are {pendingCorrections} attendance correction request(s) submitted by faculty waiting for administrative verification.</p>
@@ -4519,20 +4520,20 @@ function AdminHome() {
 
           {/* Student Gender Split - Session Dependent */}
           <div className="kpi-card" onClick={() => nav('/students')} title="Click to view student directory">
-            <div className="kpi-icon-wrap blue" style={{ background: 'rgba(2, 132, 199, 0.1)', color: '#0284c7' }}>
+            <div className="kpi-icon-wrap blue" style={{ background: 'rgba(92, 107, 192, 0.1)', color: '#5c6bc0' }}>
               <Users size={22} />
             </div>
             <div className="kpi-body" style={{ width: '100%' }}>
               <span className="kpi-label">Students (M / F)</span>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 4, flexWrap: 'wrap' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#0284c7' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#5c6bc0' }}>
                   <span style={{ fontSize: 13.5, fontWeight: 700 }}>Male:</span>
-                  <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.studentMaleCount ?? 0)}</strong>
+                  <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #1c1f2e)' }}>{loading ? '...' : (data?.studentMaleCount ?? 0)}</strong>
                 </span>
-                <span style={{ color: 'var(--border, #cbd5e1)', fontWeight: 300, fontSize: 13 }}>|</span>
-                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#db2777' }}>
+                <span style={{ color: 'var(--border, #d4d5d9)', fontWeight: 300, fontSize: 13 }}>|</span>
+                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#e11d55' }}>
                   <span style={{ fontSize: 13.5, fontWeight: 700 }}>Female:</span>
-                  <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.studentFemaleCount ?? 0)}</strong>
+                  <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #1c1f2e)' }}>{loading ? '...' : (data?.studentFemaleCount ?? 0)}</strong>
                 </span>
               </div>
               <span className="kpi-sub neutral" style={{ marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
@@ -4552,20 +4553,20 @@ function AdminHome() {
 
           {/* Teacher Gender Split - Session Independent */}
           <div className="kpi-card" onClick={() => nav('/teachers')} title="Click to view faculty directory">
-            <div className="kpi-icon-wrap indigo" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>
+            <div className="kpi-icon-wrap indigo" style={{ background: 'rgba(225, 29, 85, 0.1)', color: '#e11d55' }}>
               <GraduationCap size={22} />
             </div>
             <div className="kpi-body" style={{ width: '100%' }}>
               <span className="kpi-label">Faculty (M / F)</span>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 4, flexWrap: 'wrap' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#0284c7' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#5c6bc0' }}>
                   <span style={{ fontSize: 13.5, fontWeight: 700 }}>Male:</span>
-                  <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.teacherMaleCount ?? 0)}</strong>
+                  <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #1c1f2e)' }}>{loading ? '...' : (data?.teacherMaleCount ?? 0)}</strong>
                 </span>
-                <span style={{ color: 'var(--border, #cbd5e1)', fontWeight: 300, fontSize: 13 }}>|</span>
-                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#db2777' }}>
+                <span style={{ color: 'var(--border, #d4d5d9)', fontWeight: 300, fontSize: 13 }}>|</span>
+                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#e11d55' }}>
                   <span style={{ fontSize: 13.5, fontWeight: 700 }}>Female:</span>
-                  <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.teacherFemaleCount ?? 0)}</strong>
+                  <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #1c1f2e)' }}>{loading ? '...' : (data?.teacherFemaleCount ?? 0)}</strong>
                 </span>
               </div>
               <span className="kpi-sub neutral" style={{ marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
@@ -4612,7 +4613,7 @@ function AdminHome() {
           <strong className="kpi-value" style={{ fontSize: 20, display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             <span>{sub?.plan_name || 'Enterprise'}</span>
             {sub?.discount_percentage > 0 && (
-              <span style={{ fontSize: 11, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>
+              <span style={{ fontSize: 11, background: '#e6f2f0', color: '#02604f', border: '1px solid #99ccc3', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>
                 {sub.discount_percentage}% OFF
               </span>
             )}
@@ -4660,7 +4661,7 @@ function AdminHome() {
                   </div>
                   <div className="metric-stat">
                     <span className="metric-label">Left Early</span>
-                    <span className="metric-num amber" style={{ color: '#d97706' }}>{todayAtt.leftEarly ?? todayAtt.left_early ?? 0}</span>
+                    <span className="metric-num amber" style={{ color: '#b8781c' }}>{todayAtt.leftEarly ?? todayAtt.left_early ?? 0}</span>
                   </div>
                   <div className="metric-stat">
                     <span className="metric-label">Total Marked</span>
@@ -4819,7 +4820,7 @@ function AdminHome() {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)', flexWrap: 'wrap', gap: 6 }}>
                   <span>Institutional Target: <b>90% Minimum</b></span>
-                  <span style={{ color: weeklyAvg >= 90 ? '#10b981' : '#f59e0b', fontWeight: 600 }}>Weekly Average: ~{weeklyAvg}%</span>
+                  <span style={{ color: weeklyAvg >= 90 ? '#03806a' : '#e9a23b', fontWeight: 600 }}>Weekly Average: ~{weeklyAvg}%</span>
                 </div>
               </>
             )}
@@ -4869,15 +4870,15 @@ function AdminHome() {
             {/* Live status indicators */}
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 11.5, color: 'var(--text-muted)' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#03806a' }}></span>
                 SMS Gateway: Active
               </span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#03806a' }}></span>
                 Database: Tenant Isolated
               </span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#03806a' }}></span>
                 Backups: Automated Daily
               </span>
             </div>
@@ -5261,17 +5262,17 @@ function TeacherHome() {
       )}
       <Layout>
         {pendingPhotos > 0 && (
-          <div className="admin-alert-banner" style={{ marginBottom: 16, background: "rgba(37, 99, 235, 0.12)", borderColor: "rgba(59, 130, 246, 0.25)", color: "var(--text, #1e40af)" }}>
+          <div className="admin-alert-banner" style={{ marginBottom: 16, background: "rgba(225, 29, 85, 0.12)", borderColor: "rgba(225, 29, 85, 0.25)", color: "var(--text, #9a133c)" }}>
             <div className="alert-left">
-              <Camera size={20} color="#3b82f6" />
+              <Camera size={20} color="#e11d55" />
               <div>
-                <strong style={{ color: "var(--text, #1e3a8a)" }}>Student Profile Photo Submissions Pending Approval</strong>
-                <p style={{ color: "var(--text-secondary, #1e40af)", margin: 0, fontSize: 13 }}>
+                <strong style={{ color: "var(--text, #7a1031)" }}>Student Profile Photo Submissions Pending Approval</strong>
+                <p style={{ color: "var(--text-secondary, #9a133c)", margin: 0, fontSize: 13 }}>
                   There {pendingPhotos === 1 ? "is 1 photo" : `are ${pendingPhotos} photos`} submitted by students waiting for your verification.
                 </p>
               </div>
             </div>
-            <button className="alert-action-btn" onClick={() => nav("/photo-approvals")} style={{ background: "#2563eb", color: "#ffffff" }}>
+            <button className="alert-action-btn" onClick={() => nav("/photo-approvals")} style={{ background: "#e11d55", color: "#ffffff" }}>
               Review Photos ({pendingPhotos}) →
             </button>
           </div>
@@ -5302,20 +5303,20 @@ function TeacherHome() {
             </div>
             <div className="td-welcome-illustration">
               <svg width="220" height="130" viewBox="0 0 220 130" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="10" y="20" width="120" height="85" rx="8" fill="#1e293b" stroke="#38bdf8" strokeWidth="3" />
-                <rect x="18" y="28" width="104" height="69" rx="4" fill="#0f172a" />
-                <text x="32" y="52" fill="#38bdf8" fontSize="11" fontWeight="700" fontFamily="sans-serif">Teach</text>
-                <text x="44" y="68" fill="#f59e0b" fontSize="11" fontWeight="700" fontFamily="sans-serif">Learn</text>
-                <text x="36" y="84" fill="#10b981" fontSize="11" fontWeight="700" fontFamily="sans-serif">Grow</text>
+                <rect x="10" y="20" width="120" height="85" rx="8" fill="#282c3f" stroke="#7f8ccd" strokeWidth="3" />
+                <rect x="18" y="28" width="104" height="69" rx="4" fill="#1c1f2e" />
+                <text x="32" y="52" fill="#7f8ccd" fontSize="11" fontWeight="700" fontFamily="sans-serif">Teach</text>
+                <text x="44" y="68" fill="#e9a23b" fontSize="11" fontWeight="700" fontFamily="sans-serif">Learn</text>
+                <text x="36" y="84" fill="#03806a" fontSize="11" fontWeight="700" fontFamily="sans-serif">Grow</text>
 
-                <path d="M150 95C150 75 165 60 180 60C195 60 210 75 210 95V105H150V95Z" fill="#2563eb" />
-                <circle cx="180" cy="45" r="14" fill="#fdba74" />
-                <path d="M172 40C172 40 178 34 184 40" stroke="#475569" strokeWidth="2" strokeLinecap="round" />
+                <path d="M150 95C150 75 165 60 180 60C195 60 210 75 210 95V105H150V95Z" fill="#e11d55" />
+                <circle cx="180" cy="45" r="14" fill="#f2c785" />
+                <path d="M172 40C172 40 178 34 184 40" stroke="#535766" strokeWidth="2" strokeLinecap="round" />
 
-                <path d="M140 100L155 75L170 100H140Z" fill="#3b82f6" opacity="0.3" />
-                <path d="M125 105H215" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
-                <circle cx="40" cy="12" r="6" fill="#f59e0b" />
-                <path d="M190 20L205 12L198 25L190 20Z" fill="#60a5fa" />
+                <path d="M140 100L155 75L170 100H140Z" fill="#e11d55" opacity="0.3" />
+                <path d="M125 105H215" stroke="#d4d5d9" strokeWidth="3" strokeLinecap="round" />
+                <circle cx="40" cy="12" r="6" fill="#e9a23b" />
+                <path d="M190 20L205 12L198 25L190 20Z" fill="#ef5a85" />
               </svg>
             </div>
           </div>
@@ -5422,10 +5423,10 @@ function TeacherHome() {
             <div className="td-section-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
                 <h3 className="td-section-title">
-                  <ClipboardCheck size={18} style={{ color: '#2563eb' }} />
+                  <ClipboardCheck size={18} style={{ color: '#e11d55' }} />
                   Daily Class Attendance — My Assigned Sections ({authorizedSections.length})
                 </h3>
-                <span style={{ fontSize: 12, padding: '3px 8px', borderRadius: 6, background: 'var(--bg-subtle, #f1f5f9)', color: 'var(--text-muted)', fontWeight: 600 }}>
+                <span style={{ fontSize: 12, padding: '3px 8px', borderRadius: 4, background: 'var(--bg-subtle, #f5f5f6)', color: 'var(--text-muted)', fontWeight: 600 }}>
                   {currentTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </span>
               </div>
@@ -5433,7 +5434,7 @@ function TeacherHome() {
                 onClick={() => fetchTodayRoutine(true)}
                 type="button"
                 title="Refresh"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', fontSize: 12, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', cursor: 'pointer', color: 'var(--text-muted)' }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', fontSize: 12, borderRadius: 4, border: '1px solid var(--border)', background: 'var(--card)', cursor: 'pointer', color: 'var(--text-muted)' }}
               >
                 <RefreshCw size={12} className={loading ? 'spin' : ''} /> Refresh
               </button>
@@ -5442,7 +5443,7 @@ function TeacherHome() {
             {loading ? (
               <p className="muted" style={{ padding: 20, textAlign: 'center' }}>Loading assigned sections...</p>
             ) : authorizedSections.length === 0 ? (
-              <div style={{ padding: '24px 20px', textAlign: 'center', background: 'var(--card)', borderRadius: 10, border: '1px dashed var(--border)' }}>
+              <div style={{ padding: '24px 20px', textAlign: 'center', background: 'var(--card)', borderRadius: 4, border: '1px dashed var(--border)' }}>
                 <p style={{ margin: '0 0 6px', fontWeight: 600 }}>No class mentor or temporary assignments found</p>
                 <p className="muted" style={{ margin: 0, fontSize: 13 }}>
                   You are not currently assigned as a permanent mentor or temporary substitute for any section. Class attendance is restricted to assigned class teachers.
@@ -5509,22 +5510,22 @@ function TeacherHome() {
                           </td>
                           <td>
                             {sec.isTemporary ? (
-                              <span style={{ fontSize: 11, fontWeight: 700, color: '#ea580c', background: '#ffedd5', padding: '3px 8px', borderRadius: 4 }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: '#b8781c', background: '#fbecd3', padding: '3px 8px', borderRadius: 4 }}>
                                 Temporary Substitute
                               </span>
                             ) : (
-                              <span style={{ fontSize: 11, fontWeight: 700, color: '#0284c7', background: '#e0f2fe', padding: '3px 8px', borderRadius: 4 }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: '#5c6bc0', background: '#dde1f2', padding: '3px 8px', borderRadius: 4 }}>
                                 Class Mentor
                               </span>
                             )}
                           </td>
                           <td>
                             {sec.hasSubmitted ? (
-                              <span className="td-status-pill completed" style={{ background: '#dcfce7', color: '#15803d', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, fontSize: 12 }}>
+                              <span className="td-status-pill completed" style={{ background: '#cce6e1', color: '#02604f', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, fontSize: 12 }}>
                                 <CheckCircle2 size={13} /> Completed
                               </span>
                             ) : (
-                              <span className="td-status-pill in-progress" style={{ background: '#fef3c7', color: '#b45309', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, fontSize: 12 }}>
+                              <span className="td-status-pill in-progress" style={{ background: '#fbecd3', color: '#8f5c12', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, fontSize: 12 }}>
                                 <Clock size={12} /> Pending Submission
                               </span>
                             )}
@@ -5534,7 +5535,7 @@ function TeacherHome() {
                               <span>
                                 Submitted at {formattedTime} · <strong style={{ color: 'var(--text)' }}>{summaryBreakdown}</strong> ({displayTot} total)
                                 {isFinalized && (
-                                  <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: '#059669', background: '#dcfce7', padding: '2px 6px', borderRadius: 4 }}>
+                                  <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: '#03806a', background: '#cce6e1', padding: '2px 6px', borderRadius: 4 }}>
                                     Finalized
                                   </span>
                                 )}
@@ -5562,12 +5563,12 @@ function TeacherHome() {
                                   justifyContent: 'center',
                                   gap: 6,
                                   padding: '7px 14px',
-                                  borderRadius: 8,
+                                  borderRadius: 4,
                                   fontSize: 12.5,
                                   fontWeight: 600,
-                                  color: '#64748b',
-                                  background: 'var(--bg-subtle, #f1f5f9)',
-                                  border: '1px solid var(--border, #e2e8f0)',
+                                  color: '#696e79',
+                                  background: 'var(--bg-subtle, #f5f5f6)',
+                                  border: '1px solid var(--border, #eaeaec)',
                                   cursor: 'not-allowed',
                                   userSelect: 'none'
                                 }}
@@ -5603,14 +5604,14 @@ function TeacherHome() {
               <div className="td-section-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
                   <h3 className="td-section-title">
-                    <CalendarDays size={18} style={{ color: '#2563eb' }} />
+                    <CalendarDays size={18} style={{ color: '#e11d55' }} />
                     Today's Teaching Schedule ({r.length})
                   </h3>
                   <button
                     onClick={() => fetchTodayRoutine(true)}
                     type="button"
                     title="Refresh routine"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', fontSize: 11, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', cursor: 'pointer', color: 'var(--text-muted)' }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', fontSize: 11, borderRadius: 4, border: '1px solid var(--border)', background: 'var(--card)', cursor: 'pointer', color: 'var(--text-muted)' }}
                   >
                     <RefreshCw size={11} className={loading ? 'spin' : ''} /> Refresh
                   </button>
@@ -5623,16 +5624,16 @@ function TeacherHome() {
               {loading ? (
                 <p className="muted" style={{ padding: 20, textAlign: 'center' }}>Loading today's schedule...</p>
               ) : r.length === 0 ? (
-                <div style={{ padding: '28px 20px', textAlign: 'center', background: 'var(--card)', borderRadius: 10, border: '1px dashed var(--border)' }}>
+                <div style={{ padding: '28px 20px', textAlign: 'center', background: 'var(--card)', borderRadius: 4, border: '1px dashed var(--border)' }}>
                   <p style={{ margin: '0 0 8px', fontWeight: 600 }}>No routine periods assigned for today</p>
                   <p className="muted" style={{ margin: '0 auto 14px', maxWidth: 460, fontSize: 13, lineHeight: 1.5 }}>
                     You do not have any timetable entries scheduled for today. You can view the full weekly timetable or open the Attendance Station to review attendance.
                   </p>
                   <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-                    <a href="#/timetable" className="primary" style={{ display: 'inline-block', textDecoration: 'none', padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600 }}>
+                    <a href="#/timetable" className="primary" style={{ display: 'inline-block', textDecoration: 'none', padding: '8px 16px', borderRadius: 4, fontSize: 13, fontWeight: 600 }}>
                       View Weekly Timetable
                     </a>
-                    <button onClick={() => nav('/take-attendance')} style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600, background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer' }}>
+                    <button onClick={() => nav('/take-attendance')} style={{ padding: '8px 16px', borderRadius: 4, fontSize: 13, fontWeight: 600, background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer' }}>
                       Open Attendance Station
                     </button>
                   </div>
@@ -5669,7 +5670,7 @@ function TeacherHome() {
                                 Class {x.class_number}-{x.section_name}
                               </span>
                               {isAlternate && (
-                                <span style={{ fontSize: 10, fontWeight: 700, marginLeft: 6, color: '#ea580c', background: '#ffedd5', padding: '2px 6px', borderRadius: 4 }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, marginLeft: 6, color: '#b8781c', background: '#fbecd3', padding: '2px 6px', borderRadius: 4 }}>
                                   Alt Teacher
                                 </span>
                               )}
@@ -5689,7 +5690,7 @@ function TeacherHome() {
             <div className="td-section-card">
               <div className="td-section-header">
                 <h3 className="td-section-title">
-                  <Calendar size={18} style={{ color: '#2563eb' }} />
+                  <Calendar size={18} style={{ color: '#e11d55' }} />
                   Today at a glance
                 </h3>
               </div>
@@ -5718,7 +5719,7 @@ function TeacherHome() {
                       <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                         Status
                       </div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: '#0284c7' }}>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: '#5c6bc0' }}>
                         {getNextClassTimerText(nextClass)}
                       </div>
                     </div>
@@ -5738,7 +5739,7 @@ function TeacherHome() {
               ) : (
                 <div className="td-next-class-box" style={{ justifyContent: 'center', textAlign: 'center' }}>
                   <div>
-                    <CheckCircle2 size={24} style={{ color: '#10b981', margin: '0 auto 6px' }} />
+                    <CheckCircle2 size={24} style={{ color: '#03806a', margin: '0 auto 6px' }} />
                     <div className="td-next-class-name">
                       {r.length === 0 ? 'No classes scheduled today' : 'All classes completed for today'}
                     </div>
@@ -5759,7 +5760,7 @@ function TeacherHome() {
           <div className="td-section-card">
             <div className="td-section-header">
               <h3 className="td-section-title">
-                <Megaphone size={18} style={{ color: '#2563eb' }} />
+                <Megaphone size={18} style={{ color: '#e11d55' }} />
                 Announcements
               </h3>
               <a href="#/announcements" className="td-link-btn">
@@ -5770,8 +5771,8 @@ function TeacherHome() {
             {loading ? (
               <p className="muted" style={{ padding: 14 }}>Loading announcements...</p>
             ) : notices.length === 0 ? (
-              <div style={{ padding: '24px 16px', textAlign: 'center', background: 'var(--gray-50)', borderRadius: 10 }}>
-                <CheckCircle2 size={28} style={{ color: '#10b981', margin: '0 auto 6px' }} />
+              <div style={{ padding: '24px 16px', textAlign: 'center', background: 'var(--gray-50)', borderRadius: 4 }}>
+                <CheckCircle2 size={28} style={{ color: '#03806a', margin: '0 auto 6px' }} />
                 <div style={{ fontWeight: 700, fontSize: 14 }}>All caught up!</div>
                 <p className="muted" style={{ margin: '4px 0 0', fontSize: 12 }}>You have read all recent announcements.</p>
               </div>
@@ -7627,15 +7628,15 @@ function Students() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              background: '#0284c7',
+              background: '#5c6bc0',
               color: '#ffffff',
-              border: '1px solid #0369a1',
+              border: '1px solid #48549a',
               padding: '7px 13px',
-              borderRadius: 'var(--radius-sm, 6px)',
+              borderRadius: 'var(--radius-sm, 4px)',
               fontSize: 13,
               cursor: 'pointer',
               fontWeight: 500,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+              boxShadow: 'none'
             }}
             title="Export student records as Excel spreadsheet or CSV"
             id="students-top-export-btn"
@@ -7644,7 +7645,7 @@ function Students() {
           </button>
           <button
             onClick={() => setImportOpen(true)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#10b981', color: '#ffffff' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#03806a', color: '#ffffff' }}
           >
             <FileSpreadsheet size={16} /> Import Excel / CSV
           </button>
@@ -7670,20 +7671,20 @@ function Students() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              background: loading ? '#f1f5f9' : 'var(--card-bg, #ffffff)',
-              color: loading ? '#64748b' : 'var(--text, #1e293b)',
-              border: '1px solid var(--border, #cbd5e1)',
+              background: loading ? '#f5f5f6' : 'var(--card-bg, #ffffff)',
+              color: loading ? '#696e79' : 'var(--text, #282c3f)',
+              border: '1px solid var(--border, #d4d5d9)',
               padding: '7px 13px',
-              borderRadius: 'var(--radius-sm, 6px)',
+              borderRadius: 'var(--radius-sm, 4px)',
               fontSize: 13,
               cursor: loading ? 'not-allowed' : 'pointer',
               fontWeight: 500,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+              boxShadow: 'none'
             }}
             title="Refetch students directly from database"
             id="students-top-refresh-btn"
           >
-            <RefreshCw size={14} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
+            <RefreshCw size={14} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#e11d55' }} />
             <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
           </button>
           <button
@@ -7693,15 +7694,15 @@ function Students() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              background: '#0284c7',
+              background: '#5c6bc0',
               color: '#ffffff',
-              border: '1px solid #0369a1',
+              border: '1px solid #48549a',
               padding: '7px 13px',
-              borderRadius: 'var(--radius-sm, 6px)',
+              borderRadius: 'var(--radius-sm, 4px)',
               fontSize: 13,
               cursor: 'pointer',
               fontWeight: 500,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+              boxShadow: 'none'
             }}
             title="Export student records as Excel spreadsheet or CSV"
           >
@@ -7735,7 +7736,7 @@ function Students() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 4,
-                color: '#1d4ed8',
+                color: '#c0174a',
                 fontWeight: 600,
                 textDecoration: 'underline',
                 marginLeft: 4
@@ -7762,16 +7763,16 @@ function Students() {
         <div style={{
           width: '100%',
           height: '4px',
-          background: 'rgba(37, 99, 235, 0.12)',
+          background: 'rgba(225, 29, 85, 0.12)',
           overflow: 'hidden',
           position: 'relative'
         }}>
           <div style={{
             height: '100%',
             width: `${loadProgress}%`,
-            background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)',
+            background: '#e11d55',
             transition: 'width 0.15s ease-out',
-            boxShadow: '0 0 8px rgba(59, 130, 246, 0.5)'
+            boxShadow: 'none'
           }} />
         </div>
       )}
@@ -7793,7 +7794,7 @@ function Students() {
                 fontSize: 13,
                 cursor: 'pointer',
                 fontWeight: 500,
-                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                boxShadow: 'none',
                 transition: 'all 0.15s ease',
                 outline: 'none',
                 whiteSpace: 'nowrap'
@@ -7814,17 +7815,17 @@ function Students() {
                   left: 0,
                   zIndex: 1000,
                   background: 'var(--bg-card, #ffffff)',
-                  border: '1px solid var(--border, #cbd5e1)',
-                  borderRadius: 8,
-                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3), 0 8px 10px -6px rgba(0,0,0,0.2)',
+                  border: '1px solid var(--border, #d4d5d9)',
+                  borderRadius: 4,
+                  boxShadow: 'none',
                   minWidth: 260,
                   overflow: 'hidden',
                   animation: 'fadeIn 0.15s ease-out'
                 }}
               >
-                <div style={{ padding: '8px 12px', background: 'var(--card-subtle, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)', fontSize: 11, fontWeight: 700, color: 'var(--text-secondary, #64748b)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ padding: '8px 12px', background: 'var(--card-subtle, #f9f9fa)', borderBottom: '1px solid var(--border, #eaeaec)', fontSize: 11, fontWeight: 700, color: 'var(--text-secondary, #696e79)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span>Switch Academic Session</span>
-                  <span style={{ fontSize: 10, background: 'var(--border, #e2e8f0)', color: 'var(--text)', padding: '1px 5px', borderRadius: 4, textTransform: 'none' }}>{sessions.length} available</span>
+                  <span style={{ fontSize: 10, background: 'var(--border, #eaeaec)', color: 'var(--text)', padding: '1px 5px', borderRadius: 4, textTransform: 'none' }}>{sessions.length} available</span>
                 </div>
 
                 <div style={{ maxHeight: 240, overflowY: 'auto', padding: '4px 0' }}>
@@ -7839,21 +7840,21 @@ function Students() {
                       width: '100%',
                       padding: '8px 12px',
                       border: 'none',
-                      background: activeSession === 'All Sessions' ? 'rgba(37, 99, 235, 0.12)' : 'transparent',
-                      color: activeSession === 'All Sessions' ? '#3b82f6' : 'var(--text, #334155)',
+                      background: activeSession === 'All Sessions' ? 'rgba(225, 29, 85, 0.12)' : 'transparent',
+                      color: activeSession === 'All Sessions' ? '#e11d55' : 'var(--text, #3e4152)',
                       fontSize: 13,
                       textAlign: 'left',
                       cursor: 'pointer',
                       fontWeight: activeSession === 'All Sessions' ? 600 : 400
                     }}
-                    onMouseEnter={e => { if (activeSession !== 'All Sessions') e.currentTarget.style.background = 'var(--card-subtle, #f8fafc)'; }}
+                    onMouseEnter={e => { if (activeSession !== 'All Sessions') e.currentTarget.style.background = 'var(--card-subtle, #f9f9fa)'; }}
                     onMouseLeave={e => { if (activeSession !== 'All Sessions') e.currentTarget.style.background = 'transparent'; }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <Calendar size={14} style={{ opacity: 0.6 }} />
                       <span>All Sessions (View All)</span>
                     </div>
-                    {activeSession === 'All Sessions' && <Check size={14} style={{ color: '#2563eb' }} />}
+                    {activeSession === 'All Sessions' && <Check size={14} style={{ color: '#e11d55' }} />}
                   </button>
 
                   {/* Individual Sessions List */}
@@ -7876,31 +7877,31 @@ function Students() {
                           width: '100%',
                           padding: '8px 12px',
                           border: 'none',
-                          background: isSelected ? 'rgba(37, 99, 235, 0.12)' : 'transparent',
-                          color: isSelected ? '#3b82f6' : 'var(--text, #334155)',
+                          background: isSelected ? 'rgba(225, 29, 85, 0.12)' : 'transparent',
+                          color: isSelected ? '#e11d55' : 'var(--text, #3e4152)',
                           fontSize: 13,
                           textAlign: 'left',
                           cursor: 'pointer',
                           fontWeight: isSelected ? 600 : 400
                         }}
-                        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--card-subtle, #f8fafc)'; }}
+                        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--card-subtle, #f9f9fa)'; }}
                         onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <CalendarDays size={14} style={{ opacity: 0.6 }} />
                           <span>{sessName}</span>
                           {sess.is_active && (
-                            <span style={{ fontSize: 10, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>Active</span>
+                            <span style={{ fontSize: 10, background: 'rgba(3, 128, 106, 0.15)', color: '#03806a', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>Active</span>
                           )}
                         </div>
-                        {isSelected && <Check size={14} style={{ color: '#2563eb' }} />}
+                        {isSelected && <Check size={14} style={{ color: '#e11d55' }} />}
                       </button>
                     );
                   })}
                 </div>
 
                 {(user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN') && (
-                  <div style={{ borderTop: '1px solid var(--border, #e2e8f0)', padding: '6px 8px', background: 'var(--card-subtle, #f8fafc)' }}>
+                  <div style={{ borderTop: '1px solid var(--border, #eaeaec)', padding: '6px 8px', background: 'var(--card-subtle, #f9f9fa)' }}>
                     <a
                       href="#/academic-years"
                       onClick={() => setSessionPickerOpen(false)}
@@ -7910,7 +7911,7 @@ function Students() {
                         justifyContent: 'center',
                         gap: 6,
                         fontSize: 12,
-                        color: '#2563eb',
+                        color: '#e11d55',
                         textDecoration: 'none',
                         fontWeight: 600,
                         padding: '4px 8px',
@@ -7998,11 +7999,11 @@ function Students() {
               alignItems: 'center',
               gap: 6,
               padding: '6px 12px',
-              background: loading ? 'var(--card-subtle, #1e293b)' : 'var(--card-bg, #ffffff)',
-              border: '1px solid var(--border, #cbd5e1)',
-              borderRadius: 'var(--radius-sm, 6px)',
+              background: loading ? 'var(--card-subtle, #282c3f)' : 'var(--card-bg, #ffffff)',
+              border: '1px solid var(--border, #d4d5d9)',
+              borderRadius: 'var(--radius-sm, 4px)',
               fontSize: 12.5,
-              color: loading ? 'var(--text-muted, #94a3b8)' : 'var(--text, #1e293b)',
+              color: loading ? 'var(--text-muted, #94969f)' : 'var(--text, #282c3f)',
               cursor: loading ? 'not-allowed' : 'pointer',
               fontWeight: 500,
               transition: 'all 0.15s ease'
@@ -8010,7 +8011,7 @@ function Students() {
             title="Refetch student records from database"
             id="students-directory-refresh-btn"
           >
-            <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
+            <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#e11d55' }} />
             <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
           </button>
           {/* Last Fetched Time Badge */}
@@ -8028,8 +8029,8 @@ function Students() {
                 marginLeft: 3,
                 padding: '1px 5px',
                 borderRadius: 4,
-                background: 'rgba(37, 99, 235, 0.16)',
-                color: '#3b82f6',
+                background: 'rgba(225, 29, 85, 0.16)',
+                color: '#e11d55',
                 fontWeight: 600,
                 fontSize: 11
               }}>
@@ -8039,7 +8040,7 @@ function Students() {
             )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #475569)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #535766)' }}>
             <span>Rows per page:</span>
             <select
               value={directoryPageSize}
@@ -8048,8 +8049,8 @@ function Students() {
               style={{
                 padding: '4px 8px',
                 fontSize: 12.5,
-                borderRadius: 6,
-                border: '1px solid var(--border, #cbd5e1)',
+                borderRadius: 4,
+                border: '1px solid var(--border, #d4d5d9)',
                 cursor: 'pointer'
               }}
             >
@@ -8086,15 +8087,15 @@ function Students() {
             left: 0,
             right: 0,
             zIndex: 20,
-            background: 'rgba(239, 246, 255, 0.95)',
+            background: 'rgba(255, 242, 244, 0.95)',
             backdropFilter: 'blur(4px)',
-            borderBottom: '1px solid #bfdbfe',
+            borderBottom: '1px solid #fcc3d1',
             padding: '6px 14px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             fontSize: 12,
-            color: '#1d4ed8',
+            color: '#c0174a',
             fontWeight: 500
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -8103,8 +8104,8 @@ function Students() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontWeight: 700 }}>{loadProgress}%</span>
-              <div style={{ width: 70, height: 5, background: '#bfdbfe', borderRadius: 999, overflow: 'hidden' }}>
-                <div style={{ width: `${loadProgress}%`, height: '100%', background: '#2563eb', transition: 'width 0.15s ease' }} />
+              <div style={{ width: 70, height: 5, background: '#fcc3d1', borderRadius: 999, overflow: 'hidden' }}>
+                <div style={{ width: `${loadProgress}%`, height: '100%', background: '#e11d55', transition: 'width 0.15s ease' }} />
               </div>
             </div>
           </div>
@@ -8139,15 +8140,15 @@ function Students() {
                 <td colSpan={13} style={{ textAlign: 'center', padding: '48px 24px' }}>
                   <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 12, maxWidth: 320, margin: '0 auto' }}>
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Loader2 size={38} style={{ color: '#2563eb', animation: 'spinAnim 0.8s linear infinite' }} />
-                      <span style={{ position: 'absolute', fontSize: 11, fontWeight: 700, color: '#1d4ed8' }}>{loadProgress}%</span>
+                      <Loader2 size={38} style={{ color: '#e11d55', animation: 'spinAnim 0.8s linear infinite' }} />
+                      <span style={{ position: 'absolute', fontSize: 11, fontWeight: 700, color: '#c0174a' }}>{loadProgress}%</span>
                     </div>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text, #1e293b)' }}>Loading Student Directory...</div>
-                      <div style={{ fontSize: 12.5, color: 'var(--text-muted, #64748b)', marginTop: 2 }}>Fetching enrolled students from database ({loadProgress}%)</div>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text, #282c3f)' }}>Loading Student Directory...</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--text-muted, #696e79)', marginTop: 2 }}>Fetching enrolled students from database ({loadProgress}%)</div>
                     </div>
-                    <div style={{ width: '100%', height: 6, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
-                      <div style={{ width: `${loadProgress}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)', transition: 'width 0.15s ease' }} />
+                    <div style={{ width: '100%', height: 6, background: '#eaeaec', borderRadius: 999, overflow: 'hidden' }}>
+                      <div style={{ width: `${loadProgress}%`, height: '100%', background: '#e11d55', transition: 'width 0.15s ease' }} />
                     </div>
                   </div>
                 </td>
@@ -8155,7 +8156,7 @@ function Students() {
             ) : displayedStudents.length === 0 ? (
               <tr><td colSpan={13} style={{ textAlign: 'center', padding: 24 }} className="muted">No students found. Click "Add Student" or "Import Excel / CSV" to enroll students.</td></tr>
             ) : displayedStudents.map(x => (
-              <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
+              <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(225, 29, 85, 0.06)' : 'transparent' }}>
                 <td style={{ textAlign: 'center', width: 36 }}>
                   <input
                     type="checkbox"
@@ -8194,9 +8195,9 @@ function Students() {
                         borderRadius: 999,
                         fontSize: 11.5,
                         fontWeight: 500,
-                        background: formatGender(x.gender) === 'Female' ? '#fdf2f8' : formatGender(x.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
-                        color: formatGender(x.gender) === 'Female' ? '#db2777' : formatGender(x.gender) === 'Male' ? '#0284c7' : '#64748b',
-                        border: `1px solid ${formatGender(x.gender) === 'Female' ? '#fbcfe8' : formatGender(x.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
+                        background: formatGender(x.gender) === 'Female' ? '#fff2f4' : formatGender(x.gender) === 'Male' ? '#eef0f9' : '#f9f9fa',
+                        color: formatGender(x.gender) === 'Female' ? '#e11d55' : formatGender(x.gender) === 'Male' ? '#5c6bc0' : '#696e79',
+                        border: `1px solid ${formatGender(x.gender) === 'Female' ? '#fcc3d1' : formatGender(x.gender) === 'Male' ? '#c9cee9' : '#eaeaec'}`
                       }}
                     >
                       {formatGender(x.gender)}
@@ -8236,7 +8237,7 @@ function Students() {
                   <div><b>{x.parent_name || 'Parent'}</b></div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                     <code>{x.parent_sms_number}</code>
-                    {x.parent_whatsapp_no && <span style={{ marginLeft: 4, color: '#16a34a' }} title={`WhatsApp: ${x.parent_whatsapp_no}`}>• WA</span>}
+                    {x.parent_whatsapp_no && <span style={{ marginLeft: 4, color: '#03806a' }} title={`WhatsApp: ${x.parent_whatsapp_no}`}>• WA</span>}
                   </div>
                 </td>
                 <td style={{ whiteSpace: 'nowrap' }}>
@@ -8254,7 +8255,7 @@ function Students() {
                     className="table-action-btn"
                     onClick={() => sendStudentResetEmail(x)}
                     title="Send password setup / reset email"
-                    style={{ marginRight: 6, color: '#2563eb' }}
+                    style={{ marginRight: 6, color: '#e11d55' }}
                   >
                     <KeyRound size={14} />
                   </button>
@@ -8340,7 +8341,7 @@ function Students() {
 
       {/* Box Footer (Pagination Bar) */}
       <div className="directory-box-footer">
-        <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
+        <div style={{ color: 'var(--text-secondary, #535766)', fontSize: 12.5 }}>
           {filtered.length === 0 ? (
             'Showing 0 students'
           ) : (
@@ -8385,7 +8386,7 @@ function Students() {
                 padding: '3px 6px',
                 fontSize: 12,
                 borderRadius: 4,
-                border: '1px solid var(--border, #cbd5e1)',
+                border: '1px solid var(--border, #d4d5d9)',
                 cursor: 'pointer'
               }}
             >
@@ -8507,21 +8508,21 @@ function Students() {
               {/* Last Registered Student Banner in Red */}
               {lastRegisteredStudentInfo && (
                 <div style={{
-                  color: '#ef4444',
+                  color: '#d32f2f',
                   fontSize: 12.5,
                   fontWeight: 600,
                   padding: '8px 12px',
-                  backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                  borderRadius: 6,
+                  backgroundColor: 'rgba(211, 47, 47, 0.12)',
+                  border: '1px solid rgba(211, 47, 47, 0.3)',
+                  borderRadius: 4,
                   marginBottom: 12,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6
                 }}>
-                  <Info size={15} style={{ flexShrink: 0, color: '#ef4444' }} />
+                  <Info size={15} style={{ flexShrink: 0, color: '#d32f2f' }} />
                   <span>
-                    Last registered student: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.rollNumber}</strong> | Admission Number: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.admissionNumber || '—'}</strong>
+                    Last registered student: <strong style={{ color: '#d32f2f' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#d32f2f' }}>{lastRegisteredStudentInfo.rollNumber}</strong> | Admission Number: <strong style={{ color: '#d32f2f' }}>{lastRegisteredStudentInfo.admissionNumber || '—'}</strong>
                   </span>
                 </div>
               )}
@@ -8535,7 +8536,7 @@ function Students() {
               }}>
                 <label>
                   <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                    First Name <span style={{ color: '#ef4444', fontWeight: 600 }}>*</span>
+                    First Name <span style={{ color: '#d32f2f', fontWeight: 600 }}>*</span>
                   </span>
                   <input
                     required
@@ -8543,8 +8544,8 @@ function Students() {
                     maxLength={15}
                     value={fnVal || ''}
                     style={{
-                      borderColor: isFnInvalid ? '#ef4444' : undefined,
-                      boxShadow: isFnInvalid ? '0 0 0 1px #ef4444' : undefined
+                      borderColor: isFnInvalid ? '#d32f2f' : undefined,
+                      boxShadow: isFnInvalid ? '0 0 0 1px #d32f2f' : undefined
                     }}
                     onChange={e => {
                       const fn = e.target.value.replace(/\s/g, '').slice(0, 15);
@@ -8553,30 +8554,30 @@ function Students() {
                     }}
                   />
                   {fnVal && /\d/.test(fnVal) ? (
-                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Enter a string not a number
                     </span>
                   ) : fnVal && /\s/.test(fnVal) ? (
-                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Spaces are not allowed in First Name
                     </span>
                   ) : fnVal && fnVal.length < 3 ? (
-                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Must be 3 to 15 characters
                     </span>
                   ) : null}
                 </label>
                 <label>
                   <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                    Middle Name <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)', fontWeight: 'normal' }}>(Optional)</span>
+                    Middle Name <span style={{ fontSize: 11, color: 'var(--text-muted, #94969f)', fontWeight: 'normal' }}>(Optional)</span>
                   </span>
                   <input
                     placeholder="e.g. Kumar"
                     maxLength={15}
                     value={mnVal}
                     style={{
-                      borderColor: isMnInvalid ? '#ef4444' : undefined,
-                      boxShadow: isMnInvalid ? '0 0 0 1px #ef4444' : undefined
+                      borderColor: isMnInvalid ? '#d32f2f' : undefined,
+                      boxShadow: isMnInvalid ? '0 0 0 1px #d32f2f' : undefined
                     }}
                     onChange={e => {
                       const mn = e.target.value.replace(/\s/g, '').slice(0, 15);
@@ -8585,14 +8586,14 @@ function Students() {
                     }}
                   />
                   {mnVal && /\d/.test(mnVal) && (
-                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Enter a string not a number
                     </span>
                   )}
                 </label>
                 <label style={!isFull ? { gridColumn: '1 / -1' } : undefined}>
                   <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                    Last Name <span style={{ color: '#ef4444', fontWeight: 600 }}>*</span>
+                    Last Name <span style={{ color: '#d32f2f', fontWeight: 600 }}>*</span>
                   </span>
                   <input
                     required
@@ -8600,8 +8601,8 @@ function Students() {
                     maxLength={20}
                     value={lnVal || ''}
                     style={{
-                      borderColor: isLnInvalid ? '#ef4444' : undefined,
-                      boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
+                      borderColor: isLnInvalid ? '#d32f2f' : undefined,
+                      boxShadow: isLnInvalid ? '0 0 0 1px #d32f2f' : undefined
                     }}
                     onChange={e => {
                       const ln = e.target.value.replace(/\d/g, '').slice(0, 20);
@@ -8610,11 +8611,11 @@ function Students() {
                     }}
                   />
                   {lnVal && /\d/.test(lnVal) ? (
-                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Enter a string not a number
                     </span>
                   ) : lnVal && (lnVal.length < 2 || lnVal.length > 20) ? (
-                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Must be 2 to 20 characters
                     </span>
                   ) : null}
@@ -8622,18 +8623,18 @@ function Students() {
               </div>
 
               {/* Full Name — auto-computed, read-only */}
-              <label style={{ color: 'var(--text-secondary, #64748b)', fontSize: 12 }}>
+              <label style={{ color: 'var(--text-secondary, #696e79)', fontSize: 12 }}>
                 <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                  <span style={{ fontWeight: 600, color: 'var(--text, #334155)' }}>Full Name</span>
-                  <span style={{ color: '#10b981', fontSize: 11, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: '#10b981' }} />
+                  <span style={{ fontWeight: 600, color: 'var(--text, #3e4152)' }}>Full Name</span>
+                  <span style={{ color: '#03806a', fontSize: 11, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: '#03806a' }} />
                     Auto-generated
                   </span>
                 </span>
                 <input
                   readOnly
                   tabIndex={-1}
-                  style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)', fontWeight: 600 }}
+                  style={{ backgroundColor: 'var(--card-subtle, #f9f9fa)', color: 'var(--text, #3e4152)', cursor: 'default', border: '1px solid var(--border, #eaeaec)', fontWeight: 600 }}
                   value={(formatStudentFullName(fnVal, mnVal, lnVal) || f.name || '').toUpperCase()}
                   placeholder="Full name will appear here automatically"
                 />
@@ -8642,7 +8643,7 @@ function Students() {
               {/* Session Selection */}
               <label>
                 <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  Session <span style={{ color: '#ef4444' }}>*</span>
+                  Session <span style={{ color: '#d32f2f' }}>*</span>
                 </span>
                 <select
                   required
@@ -8663,7 +8664,7 @@ function Students() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <label>
                   <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    Roll Number <span style={{ color: '#ef4444' }}>*</span>
+                    Roll Number <span style={{ color: '#d32f2f' }}>*</span>
                   </span>
                   <input
                     required
@@ -8671,8 +8672,8 @@ function Students() {
                     placeholder="Roll Number (e.g. 101)"
                     value={f.rollNumber || ''}
                     style={{
-                      borderColor: isRollDuplicateInUi ? '#ef4444' : undefined,
-                      boxShadow: isRollDuplicateInUi ? '0 0 0 1px #ef4444' : undefined
+                      borderColor: isRollDuplicateInUi ? '#d32f2f' : undefined,
+                      boxShadow: isRollDuplicateInUi ? '0 0 0 1px #d32f2f' : undefined
                     }}
                     onChange={e => {
                       const val = e.target.value.replace(/\D/g, '');
@@ -8680,22 +8681,22 @@ function Students() {
                     }}
                   />
                   {isRollDuplicateInUi && (
-                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
                       Already exist
                     </span>
                   )}
                 </label>
                 <label>
                   <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    Admission Number <span style={{ color: '#ef4444' }}>*</span>
+                    Admission Number <span style={{ color: '#d32f2f' }}>*</span>
                   </span>
                   <input
                     required
                     placeholder="e.g. 1001 or ADM-101"
                     value={f.admissionNumber || ''}
                     style={{
-                      borderColor: isAdmDuplicateInUi ? '#ef4444' : undefined,
-                      boxShadow: isAdmDuplicateInUi ? '0 0 0 1px #ef4444' : undefined
+                      borderColor: isAdmDuplicateInUi ? '#d32f2f' : undefined,
+                      boxShadow: isAdmDuplicateInUi ? '0 0 0 1px #d32f2f' : undefined
                     }}
                     onChange={e => {
                       const val = e.target.value.trimStart();
@@ -8703,7 +8704,7 @@ function Students() {
                     }}
                   />
                   {isAdmDuplicateInUi && (
-                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
                       Already exist
                     </span>
                   )}
@@ -8713,7 +8714,7 @@ function Students() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <label>
                   <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    Admission Date <span style={{ color: '#ef4444' }}>*</span>
+                    Admission Date <span style={{ color: '#d32f2f' }}>*</span>
                   </span>
                   <input
                     type="date"
@@ -8722,8 +8723,8 @@ function Students() {
                     max="9999-12-31"
                     value={f.admissionDate || f.admission_date || ''}
                     style={{
-                      borderColor: isAdmDateYearInvalidInUi ? '#ef4444' : undefined,
-                      boxShadow: isAdmDateYearInvalidInUi ? '0 0 0 1px #ef4444' : undefined
+                      borderColor: isAdmDateYearInvalidInUi ? '#d32f2f' : undefined,
+                      boxShadow: isAdmDateYearInvalidInUi ? '0 0 0 1px #d32f2f' : undefined
                     }}
                     onChange={e => {
                       let val = e.target.value;
@@ -8738,14 +8739,14 @@ function Students() {
                     }}
                   />
                   {isAdmDateYearInvalidInUi && (
-                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Year cannot exceed 4 digits
                     </span>
                   )}
                 </label>
                 <label>
                   <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    Date of Birth <span style={{ color: '#ef4444' }}>*</span>
+                    Date of Birth <span style={{ color: '#d32f2f' }}>*</span>
                   </span>
                   <input
                     type="date"
@@ -8754,8 +8755,8 @@ function Students() {
                     max={new Date().toISOString().slice(0, 10)}
                     value={f.dob || ''}
                     style={{
-                      borderColor: isDobYearInvalidInUi ? '#ef4444' : undefined,
-                      boxShadow: isDobYearInvalidInUi ? '0 0 0 1px #ef4444' : undefined
+                      borderColor: isDobYearInvalidInUi ? '#d32f2f' : undefined,
+                      boxShadow: isDobYearInvalidInUi ? '0 0 0 1px #d32f2f' : undefined
                     }}
                     onChange={e => {
                       let val = e.target.value;
@@ -8770,7 +8771,7 @@ function Students() {
                     }}
                   />
                   {isDobYearInvalidInUi && (
-                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Year cannot exceed 4 digits
                     </span>
                   )}
@@ -8795,7 +8796,7 @@ function Students() {
               </div>
               <label>
                 <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  Class <span style={{ color: '#ef4444' }}>*</span>
+                  Class <span style={{ color: '#d32f2f' }}>*</span>
                 </span>
                 <select
                   required
@@ -8818,7 +8819,7 @@ function Students() {
               </label>
               <label>
                 <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  Section <span style={{ color: '#ef4444' }}>*</span>
+                  Section <span style={{ color: '#d32f2f' }}>*</span>
                 </span>
                 <select
                   required
@@ -8868,7 +8869,7 @@ function Students() {
 
               <label>
                 <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  Student Email Address <span style={{ color: '#ef4444' }}>*</span>
+                  Student Email Address <span style={{ color: '#d32f2f' }}>*</span>
                 </span>
                 <input
                   required
@@ -8876,17 +8877,17 @@ function Students() {
                   placeholder="student@school.edu"
                   value={f.studentEmail || f.email || ''}
                   style={{
-                    borderColor: (isStuEmailDuplicateInUi || isStuEmailInvalidInUi) ? '#ef4444' : undefined,
-                    boxShadow: (isStuEmailDuplicateInUi || isStuEmailInvalidInUi) ? '0 0 0 1px #ef4444' : undefined
+                    borderColor: (isStuEmailDuplicateInUi || isStuEmailInvalidInUi) ? '#d32f2f' : undefined,
+                    boxShadow: (isStuEmailDuplicateInUi || isStuEmailInvalidInUi) ? '0 0 0 1px #d32f2f' : undefined
                   }}
                   onChange={e => setF({ ...f, studentEmail: e.target.value.trim() })}
                 />
                 {isStuEmailDuplicateInUi ? (
-                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
+                  <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
                     Already exist
                   </span>
                 ) : isStuEmailInvalidInUi ? (
-                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                  <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                     Please enter a valid email address
                   </span>
                 ) : null}
@@ -8895,15 +8896,15 @@ function Students() {
               {/* Father's Information */}
               <div style={{
                 padding: '12px 14px',
-                background: 'var(--card-subtle, #f8fafc)',
-                borderRadius: 8,
-                border: '1px solid var(--border, #e2e8f0)',
+                background: 'var(--card-subtle, #f9f9fa)',
+                borderRadius: 4,
+                border: '1px solid var(--border, #eaeaec)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 10,
                 marginTop: 4
               }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main, #1e293b)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main, #282c3f)', display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span>Father's Details</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
@@ -8915,13 +8916,13 @@ function Students() {
                       placeholder="Father Name (Optional)"
                       value={f.fatherName || ''}
                       style={{
-                        borderColor: /\d/.test(f.fatherName || '') ? '#ef4444' : undefined,
-                        boxShadow: /\d/.test(f.fatherName || '') ? '0 0 0 1px #ef4444' : undefined
+                        borderColor: /\d/.test(f.fatherName || '') ? '#d32f2f' : undefined,
+                        boxShadow: /\d/.test(f.fatherName || '') ? '0 0 0 1px #d32f2f' : undefined
                       }}
                       onChange={e => setF({ ...f, fatherName: e.target.value })}
                     />
                     {/\d/.test(f.fatherName || '') && (
-                      <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                         Enter a string not a number
                       </span>
                     )}
@@ -8936,8 +8937,8 @@ function Students() {
                       inputMode="numeric"
                       value={f.fatherPhone || ''}
                       style={{
-                        borderColor: (f.fatherPhone && String(f.fatherPhone).replace(/\D/g, '').length < 10) ? '#ef4444' : undefined,
-                        boxShadow: (f.fatherPhone && String(f.fatherPhone).replace(/\D/g, '').length < 10) ? '0 0 0 1px #ef4444' : undefined
+                        borderColor: (f.fatherPhone && String(f.fatherPhone).replace(/\D/g, '').length < 10) ? '#d32f2f' : undefined,
+                        boxShadow: (f.fatherPhone && String(f.fatherPhone).replace(/\D/g, '').length < 10) ? '0 0 0 1px #d32f2f' : undefined
                       }}
                       onChange={e => {
                         const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
@@ -8945,7 +8946,7 @@ function Students() {
                       }}
                     />
                     {f.fatherPhone && String(f.fatherPhone).replace(/\D/g, '').length < 10 && (
-                      <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                         Must be 10 digits
                       </span>
                     )}
@@ -8966,14 +8967,14 @@ function Students() {
               {/* Mother's Information */}
               <div style={{
                 padding: '12px 14px',
-                background: 'var(--card-subtle, #f8fafc)',
-                borderRadius: 8,
-                border: '1px solid var(--border, #e2e8f0)',
+                background: 'var(--card-subtle, #f9f9fa)',
+                borderRadius: 4,
+                border: '1px solid var(--border, #eaeaec)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 10
               }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main, #1e293b)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main, #282c3f)', display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span>Mother's Details</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
@@ -8985,13 +8986,13 @@ function Students() {
                       placeholder="Mother Name (Optional)"
                       value={f.motherName || ''}
                       style={{
-                        borderColor: /\d/.test(f.motherName || '') ? '#ef4444' : undefined,
-                        boxShadow: /\d/.test(f.motherName || '') ? '0 0 0 1px #ef4444' : undefined
+                        borderColor: /\d/.test(f.motherName || '') ? '#d32f2f' : undefined,
+                        boxShadow: /\d/.test(f.motherName || '') ? '0 0 0 1px #d32f2f' : undefined
                       }}
                       onChange={e => setF({ ...f, motherName: e.target.value })}
                     />
                     {/\d/.test(f.motherName || '') && (
-                      <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                         Enter a string not a number
                       </span>
                     )}
@@ -9006,8 +9007,8 @@ function Students() {
                       inputMode="numeric"
                       value={f.motherPhone || ''}
                       style={{
-                        borderColor: (f.motherPhone && String(f.motherPhone).replace(/\D/g, '').length < 10) ? '#ef4444' : undefined,
-                        boxShadow: (f.motherPhone && String(f.motherPhone).replace(/\D/g, '').length < 10) ? '0 0 0 1px #ef4444' : undefined
+                        borderColor: (f.motherPhone && String(f.motherPhone).replace(/\D/g, '').length < 10) ? '#d32f2f' : undefined,
+                        boxShadow: (f.motherPhone && String(f.motherPhone).replace(/\D/g, '').length < 10) ? '0 0 0 1px #d32f2f' : undefined
                       }}
                       onChange={e => {
                         const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
@@ -9015,7 +9016,7 @@ function Students() {
                       }}
                     />
                     {f.motherPhone && String(f.motherPhone).replace(/\D/g, '').length < 10 && (
-                      <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                         Must be 10 digits
                       </span>
                     )}
@@ -9036,14 +9037,14 @@ function Students() {
               {/* Guardian's Information */}
               <div style={{
                 padding: '12px 14px',
-                background: 'var(--card-subtle, #f8fafc)',
-                borderRadius: 8,
-                border: '1px solid var(--border, #e2e8f0)',
+                background: 'var(--card-subtle, #f9f9fa)',
+                borderRadius: 4,
+                border: '1px solid var(--border, #eaeaec)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 10
               }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main, #1e293b)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main, #282c3f)', display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span>Guardian's Details</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
@@ -9055,13 +9056,13 @@ function Students() {
                       placeholder="Guardian Name (Optional)"
                       value={f.guardianName || f.guardian_name || ''}
                       style={{
-                        borderColor: /\d/.test(f.guardianName || f.guardian_name || '') ? '#ef4444' : undefined,
-                        boxShadow: /\d/.test(f.guardianName || f.guardian_name || '') ? '0 0 0 1px #ef4444' : undefined
+                        borderColor: /\d/.test(f.guardianName || f.guardian_name || '') ? '#d32f2f' : undefined,
+                        boxShadow: /\d/.test(f.guardianName || f.guardian_name || '') ? '0 0 0 1px #d32f2f' : undefined
                       }}
                       onChange={e => setF({ ...f, guardianName: e.target.value, guardian_name: e.target.value })}
                     />
                     {/\d/.test(f.guardianName || f.guardian_name || '') && (
-                      <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                         Enter a string not a number
                       </span>
                     )}
@@ -9072,7 +9073,7 @@ function Students() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <label>
                   <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    Parent WhatsApp No. <span style={{ color: '#ef4444' }}>*</span>
+                    Parent WhatsApp No. <span style={{ color: '#d32f2f' }}>*</span>
                   </span>
                   <input
                     required
@@ -9081,8 +9082,8 @@ function Students() {
                     inputMode="numeric"
                     value={f.parentWhatsappNo || f.parent_whatsapp_no || ''}
                     style={{
-                      borderColor: (f.parentWhatsappNo && String(f.parentWhatsappNo).replace(/\D/g, '').length < 10) ? '#ef4444' : undefined,
-                      boxShadow: (f.parentWhatsappNo && String(f.parentWhatsappNo).replace(/\D/g, '').length < 10) ? '0 0 0 1px #ef4444' : undefined
+                      borderColor: (f.parentWhatsappNo && String(f.parentWhatsappNo).replace(/\D/g, '').length < 10) ? '#d32f2f' : undefined,
+                      boxShadow: (f.parentWhatsappNo && String(f.parentWhatsappNo).replace(/\D/g, '').length < 10) ? '0 0 0 1px #d32f2f' : undefined
                     }}
                     onChange={e => {
                       const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
@@ -9090,14 +9091,14 @@ function Students() {
                     }}
                   />
                   {f.parentWhatsappNo && String(f.parentWhatsappNo).replace(/\D/g, '').length < 10 && (
-                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Must be 10 digits
                     </span>
                   )}
                 </label>
                 <label>
                   <span className="label-text">
-                    Parent Email Address (for Login / Absent <span style={{ whiteSpace: 'nowrap' }}>Alerts)&nbsp;<span style={{ color: '#ef4444' }}>*</span></span>
+                    Parent Email Address (for Login / Absent <span style={{ whiteSpace: 'nowrap' }}>Alerts)&nbsp;<span style={{ color: '#d32f2f' }}>*</span></span>
                   </span>
                   <input
                     required
@@ -9105,13 +9106,13 @@ function Students() {
                     placeholder="parent@example.com"
                     value={f.parentEmail || ''}
                     style={{
-                      borderColor: isParentEmailInvalidInUi ? '#ef4444' : undefined,
-                      boxShadow: isParentEmailInvalidInUi ? '0 0 0 1px #ef4444' : undefined
+                      borderColor: isParentEmailInvalidInUi ? '#d32f2f' : undefined,
+                      boxShadow: isParentEmailInvalidInUi ? '0 0 0 1px #d32f2f' : undefined
                     }}
                     onChange={e => setF({ ...f, parentEmail: e.target.value.trim() })}
                   />
                   {isParentEmailInvalidInUi && (
-                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Please enter a valid email address
                     </span>
                   )}
@@ -9123,7 +9124,7 @@ function Students() {
                   <select
                     value={f.is_active !== false ? 'ACTIVE' : 'INACTIVE'}
                     onChange={e => setF({ ...f, is_active: e.target.value === 'ACTIVE', status: e.target.value })}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', marginTop: 4 }}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid var(--border, #d4d5d9)', marginTop: 4 }}
                   >
                     <option value="ACTIVE">Active</option>
                     <option value="INACTIVE">Deactive (Inactive)</option>
@@ -9134,7 +9135,7 @@ function Students() {
               {/* Student Portal Password & Account Setup Box */}
               <div className="student-portal-box">
                 <div className="student-portal-box-title" style={{ marginBottom: 6 }}>
-                  <KeyRound size={14} style={{ color: '#2563eb' }} />
+                  <KeyRound size={14} style={{ color: '#e11d55' }} />
                   {editingStudent ? 'Update Portal Password (Optional)' : 'Portal Password & Setup'}
                 </div>
                 <label style={{ display: 'block', fontSize: 12, margin: '4px 0 10px 0' }} className="student-portal-box-desc">
@@ -9155,7 +9156,7 @@ function Students() {
                       onClick={() => setShowStudentPassword(s => !s)}
                       className="password-toggle-btn"
                       title={showStudentPassword ? "Hide password" : "Show password"}
-                      style={{ position: 'absolute', right: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary, #64748b)', display: 'flex', alignItems: 'center' }}
+                      style={{ position: 'absolute', right: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary, #696e79)', display: 'flex', alignItems: 'center' }}
                     >
                       {showStudentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -9166,7 +9167,7 @@ function Students() {
               {/* Student Portal Login Credentials Section */}
               <div className="student-portal-box">
                 <div className="student-portal-box-title">
-                  <KeyRound size={14} style={{ color: '#2563eb' }} />
+                  <KeyRound size={14} style={{ color: '#e11d55' }} />
                   Student Portal Login Email Option
                 </div>
                 <p className="student-portal-box-desc">
@@ -9249,22 +9250,22 @@ function Students() {
           {/* Last Registered Student Banner in Red */}
           {lastRegisteredStudentInfo && (
             <div style={{
-              color: '#ef4444',
+              color: '#d32f2f',
               fontSize: 12.5,
               fontWeight: 600,
               padding: '8px 14px',
-              backgroundColor: 'rgba(239, 68, 68, 0.12)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              borderRadius: 6,
+              backgroundColor: 'rgba(211, 47, 47, 0.12)',
+              border: '1px solid rgba(211, 47, 47, 0.3)',
+              borderRadius: 4,
               marginBottom: 14,
               display: 'flex',
               alignItems: 'center',
               gap: 6,
               flexShrink: 0
             }}>
-              <Info size={15} style={{ flexShrink: 0, color: '#ef4444' }} />
+              <Info size={15} style={{ flexShrink: 0, color: '#d32f2f' }} />
               <span>
-                Last registered student: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.rollNumber}</strong> | Admission Number: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.admissionNumber || '—'}</strong>
+                Last registered student: <strong style={{ color: '#d32f2f' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#d32f2f' }}>{lastRegisteredStudentInfo.rollNumber}</strong> | Admission Number: <strong style={{ color: '#d32f2f' }}>{lastRegisteredStudentInfo.admissionNumber || '—'}</strong>
               </span>
             </div>
           )}
@@ -9281,12 +9282,12 @@ function Students() {
                     <div style={{
                       width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: 12, fontWeight: 700, flexShrink: 0,
-                      background: done ? '#10b981' : active ? '#2563eb' : 'var(--border, #e2e8f0)',
-                      color: (done || active) ? '#fff' : 'var(--text-secondary, #94a3b8)'
+                      background: done ? '#03806a' : active ? '#e11d55' : 'var(--border, #eaeaec)',
+                      color: (done || active) ? '#fff' : 'var(--text-secondary, #94969f)'
                     }}>{done ? '✓' : step}</div>
-                    <span style={{ color: active ? 'var(--text, #1e293b)' : done ? '#10b981' : 'var(--text-secondary, #94a3b8)', fontWeight: active ? 700 : 500, whiteSpace: 'nowrap' }}>{label}</span>
+                    <span style={{ color: active ? 'var(--text, #282c3f)' : done ? '#03806a' : 'var(--text-secondary, #94969f)', fontWeight: active ? 700 : 500, whiteSpace: 'nowrap' }}>{label}</span>
                   </div>
-                  {step < 3 && <div style={{ height: 2, background: done ? '#10b981' : 'var(--border, #e2e8f0)', flex: 1, margin: '0 8px' }} />}
+                  {step < 3 && <div style={{ height: 2, background: done ? '#03806a' : 'var(--border, #eaeaec)', flex: 1, margin: '0 8px' }} />}
                 </div>
               );
             })}
@@ -9294,8 +9295,8 @@ function Students() {
 
           {/* ── STEP 1: Select Session ── */}
           {importStep === 1 && (
-            <div style={{ maxWidth: 640, width: '100%', margin: '20px auto', display: 'flex', flexDirection: 'column', gap: 16, background: 'var(--bg-card, #ffffff)', padding: '24px 28px', borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', boxShadow: 'var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.05))' }}>
-              <label style={{ fontSize: 13.5, fontWeight: 600 }}>Academic Session <span style={{ color: '#ef4444', fontSize: 11 }}>*</span>
+            <div style={{ maxWidth: 640, width: '100%', margin: '20px auto', display: 'flex', flexDirection: 'column', gap: 16, background: 'var(--bg-card, #ffffff)', padding: '24px 28px', borderRadius: 4, border: '1px solid var(--border, #eaeaec)', boxShadow: 'var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.05))' }}>
+              <label style={{ fontSize: 13.5, fontWeight: 600 }}>Academic Session <span style={{ color: '#d32f2f', fontSize: 11 }}>*</span>
                 <select value={importSession} onChange={e => setImportSession(e.target.value)} style={{ marginTop: 6, width: '100%', padding: '9px 12px', fontSize: 14 }}>
                   <option value="">Select Session</option>
                   {(sessions.length > 0 ? sessions : [
@@ -9319,19 +9320,19 @@ function Students() {
                   type="button"
                   disabled={!importSession}
                   onClick={() => setImportStep(2)}
-                  style={{ background: '#2563eb', color: '#fff', opacity: importSession ? 1 : 0.5, padding: '8px 20px', fontWeight: 600 }}
+                  style={{ background: '#e11d55', color: '#fff', opacity: importSession ? 1 : 0.5, padding: '8px 20px', fontWeight: 600 }}
                 >
                   Next: Upload File →
                 </button>
               </div>
-              {!importSession && <p style={{ color: '#ef4444', fontSize: 12, margin: 0 }}>Please select a session to continue.</p>}
+              {!importSession && <p style={{ color: '#d32f2f', fontSize: 12, margin: 0 }}>Please select a session to continue.</p>}
             </div>
           )}
 
           {/* ── STEP 2: Upload File ── */}
           {importStep === 2 && (
             <div style={{ maxWidth: 760, width: '100%', margin: '16px auto', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ marginBottom: 14, padding: '12px 18px', background: 'rgba(16, 185, 129, 0.12)', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.3)', fontSize: 13.5, color: '#10b981' }}>
+              <div style={{ marginBottom: 14, padding: '12px 18px', background: 'rgba(3, 128, 106, 0.12)', borderRadius: 4, border: '1px solid rgba(3, 128, 106, 0.3)', fontSize: 13.5, color: '#03806a' }}>
                 📋 Session: <b>{importSession}</b>
               </div>
               <label className="dropzone" style={{ padding: '36px 24px' }}>
@@ -9357,22 +9358,22 @@ function Students() {
           {/* ── STEP 3: Preview & Confirm ── */}
           {importStep === 3 && previewRows.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-              <div style={{ marginBottom: 10, padding: '10px 16px', background: 'rgba(16, 185, 129, 0.12)', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.3)', fontSize: 13, color: '#10b981', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ marginBottom: 10, padding: '10px 16px', background: 'rgba(3, 128, 106, 0.12)', borderRadius: 4, border: '1px solid rgba(3, 128, 106, 0.3)', fontSize: 13, color: '#03806a', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <span>✅ <b>{previewRows.length} students</b> parsed · Session: <b>{importSession}</b> · <b>{studentValidCount} valid</b></span>
-                <span style={{ fontSize: 12, color: '#10b981' }}>Review parsed records below before finalizing import</span>
+                <span style={{ fontSize: 12, color: '#03806a' }}>Review parsed records below before finalizing import</span>
               </div>
 
               {/* ── TOP TOOLBAR: Search, Filter Tabs, Page Size & Re-upload ── */}
               <div className="preview-toolbar">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <strong style={{ fontSize: 15 }}>Preview Data</strong>
-                  <span style={{ fontSize: 12, padding: '2px 8px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', borderRadius: 10, fontWeight: 600 }}>
+                  <span style={{ fontSize: 12, padding: '2px 8px', background: 'rgba(225, 29, 85, 0.12)', color: '#e11d55', borderRadius: 4, fontWeight: 600 }}>
                     {previewRows.length} records
                   </span>
 
                   {/* Filter tabs if validation errors exist */}
                   {studentErrorCount > 0 && (
-                    <div style={{ display: 'inline-flex', background: 'var(--card-subtle, #f1f5f9)', borderRadius: 6, padding: 2, fontSize: 12, marginLeft: 4 }}>
+                    <div style={{ display: 'inline-flex', background: 'var(--card-subtle, #f5f5f6)', borderRadius: 4, padding: 2, fontSize: 12, marginLeft: 4 }}>
                       <button
                         type="button"
                         onClick={() => { setImportPreviewErrorFilter('all'); setImportPreviewPage(1); }}
@@ -9382,7 +9383,7 @@ function Students() {
                           border: 'none',
                           cursor: 'pointer',
                           background: importPreviewErrorFilter === 'all' ? 'var(--bg-card, #ffffff)' : 'transparent',
-                          color: importPreviewErrorFilter === 'all' ? 'var(--text, #0f172a)' : 'var(--text-secondary, #64748b)',
+                          color: importPreviewErrorFilter === 'all' ? 'var(--text, #1c1f2e)' : 'var(--text-secondary, #696e79)',
                           boxShadow: importPreviewErrorFilter === 'all' ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
                           fontWeight: importPreviewErrorFilter === 'all' ? 600 : 400
                         }}
@@ -9398,7 +9399,7 @@ function Students() {
                           border: 'none',
                           cursor: 'pointer',
                           background: importPreviewErrorFilter === 'valid' ? 'var(--bg-card, #ffffff)' : 'transparent',
-                          color: importPreviewErrorFilter === 'valid' ? '#10b981' : 'var(--text-secondary, #64748b)',
+                          color: importPreviewErrorFilter === 'valid' ? '#03806a' : 'var(--text-secondary, #696e79)',
                           boxShadow: importPreviewErrorFilter === 'valid' ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
                           fontWeight: importPreviewErrorFilter === 'valid' ? 600 : 400
                         }}
@@ -9414,7 +9415,7 @@ function Students() {
                           border: 'none',
                           cursor: 'pointer',
                           background: importPreviewErrorFilter === 'errors' ? 'var(--bg-card, #ffffff)' : 'transparent',
-                          color: importPreviewErrorFilter === 'errors' ? '#ef4444' : 'var(--text-secondary, #64748b)',
+                          color: importPreviewErrorFilter === 'errors' ? '#d32f2f' : 'var(--text-secondary, #696e79)',
                           boxShadow: importPreviewErrorFilter === 'errors' ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
                           fontWeight: importPreviewErrorFilter === 'errors' ? 600 : 400
                         }}
@@ -9428,7 +9429,7 @@ function Students() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   {/* Search inside preview */}
                   <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <Search size={14} style={{ position: 'absolute', left: 8, color: '#94a3b8', pointerEvents: 'none' }} />
+                    <Search size={14} style={{ position: 'absolute', left: 8, color: '#94969f', pointerEvents: 'none' }} />
                     <input
                       type="text"
                       placeholder="Search preview..."
@@ -9437,11 +9438,11 @@ function Students() {
                       style={{
                         padding: '5px 26px 5px 28px',
                         fontSize: 12.5,
-                        border: '1px solid var(--border, #cbd5e1)',
-                        borderRadius: 6,
+                        border: '1px solid var(--border, #d4d5d9)',
+                        borderRadius: 4,
                         width: 180,
                         background: 'var(--card-bg, #ffffff)',
-                        color: 'var(--text, #0f172a)'
+                        color: 'var(--text, #1c1f2e)'
                       }}
                     />
                     {importPreviewSearch && (
@@ -9455,7 +9456,7 @@ function Students() {
                           border: 'none',
                           cursor: 'pointer',
                           padding: 2,
-                          color: '#94a3b8'
+                          color: '#94969f'
                         }}
                         title="Clear search"
                       >
@@ -9465,7 +9466,7 @@ function Students() {
                   </div>
 
                   {/* Rows per page selector */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-secondary, #475569)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-secondary, #535766)' }}>
                     <span>Rows per page:</span>
                     <select
                       value={importPreviewPageSize}
@@ -9473,10 +9474,10 @@ function Students() {
                       style={{
                         padding: '4px 8px',
                         fontSize: 12.5,
-                        borderRadius: 6,
-                        border: '1px solid var(--border, #cbd5e1)',
+                        borderRadius: 4,
+                        border: '1px solid var(--border, #d4d5d9)',
                         background: 'var(--card-bg, #ffffff)',
-                        color: 'var(--text, #1e293b)',
+                        color: 'var(--text, #282c3f)',
                         cursor: 'pointer'
                       }}
                     >
@@ -9528,7 +9529,7 @@ function Students() {
                   <tbody>
                     {displayedStudentPreviewRows.length === 0 ? (
                       <tr>
-                        <td colSpan={17} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
+                        <td colSpan={17} style={{ textAlign: 'center', padding: '36px 20px', color: '#696e79' }}>
                           No students match the current search or error filter.
                         </td>
                       </tr>
@@ -9536,45 +9537,45 @@ function Students() {
                       displayedStudentPreviewRows.map((r, i) => {
                         const rowNum = r._origRowIndex || (studentStartIdx + i + 1);
                         return (
-                          <tr key={studentStartIdx + i} className={r._errors?.length ? 'preview-row-error' : ''} style={{ background: r._errors?.length ? 'rgba(239, 68, 68, 0.12)' : undefined, outline: r._errors?.length ? '1px solid rgba(239, 68, 68, 0.35)' : undefined }}>
-                            <td style={{ color: r._errors?.length ? '#dc2626' : '#94a3b8', fontSize: 11, textAlign: 'center', fontWeight: r._errors?.length ? 700 : 500 }}>
+                          <tr key={studentStartIdx + i} className={r._errors?.length ? 'preview-row-error' : ''} style={{ background: r._errors?.length ? 'rgba(211, 47, 47, 0.12)' : undefined, outline: r._errors?.length ? '1px solid rgba(211, 47, 47, 0.35)' : undefined }}>
+                            <td style={{ color: r._errors?.length ? '#d32f2f' : '#94969f', fontSize: 11, textAlign: 'center', fontWeight: r._errors?.length ? 700 : 500 }}>
                               {r._errors?.length ? `⚠ ${rowNum}` : rowNum}
                             </td>
-                            <td style={{ color: r._errors?.some((e: any) => e.field === 'First Name') ? '#dc2626' : undefined }}>
+                            <td style={{ color: r._errors?.some((e: any) => e.field === 'First Name') ? '#d32f2f' : undefined }}>
                               {r.firstName || r.name?.split(' ')[0] || '—'}
                               {r._errors?.filter((e: any) => e.field === 'First Name').map((e: any, j: number) =>
-                                <div key={j} style={{ fontSize: 10, color: '#dc2626' }}>{e.message}</div>
+                                <div key={j} style={{ fontSize: 10, color: '#d32f2f' }}>{e.message}</div>
                               )}
                             </td>
                             <td>
                               {r.middleName || r.middle_name || '—'}
                             </td>
-                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Last Name') ? '#dc2626' : undefined }}>
+                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Last Name') ? '#d32f2f' : undefined }}>
                               {r.lastName || r.name?.split(' ').slice(1).join(' ') || '—'}
                               {r._errors?.filter((e: any) => e.field === 'Last Name').map((e: any, j: number) =>
-                                <div key={j} style={{ fontSize: 10, color: '#dc2626' }}>{e.message}</div>
+                                <div key={j} style={{ fontSize: 10, color: '#d32f2f' }}>{e.message}</div>
                               )}
                             </td>
                             <td><b>{r.name}</b></td>
-                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Admission Number') ? '#dc2626' : undefined }}>
+                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Admission Number') ? '#d32f2f' : undefined }}>
                               {r.admissionNumber || '—'}
                               {r._errors?.filter((e: any) => e.field === 'Admission Number').map((e: any, j: number) =>
-                                <div key={j} style={{ fontSize: 10, color: '#dc2626' }}>{e.message}</div>
+                                <div key={j} style={{ fontSize: 10, color: '#d32f2f' }}>{e.message}</div>
                               )}
                             </td>
                             <td style={{ fontSize: 12 }}>
                               {r.admissionDate || r.admission_date || '—'}
                             </td>
-                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Roll Number') ? '#dc2626' : undefined }}>
+                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Roll Number') ? '#d32f2f' : undefined }}>
                               <span className="roll">{r.rollNumber}</span>
                             </td>
-                            <td><span style={{ background: 'rgba(37, 99, 235, 0.12)', color: '#3b82f6', borderRadius: 4, padding: '2px 6px', fontSize: 11 }}>{r.session || importSession}</span></td>
+                            <td><span style={{ background: 'rgba(225, 29, 85, 0.12)', color: '#e11d55', borderRadius: 4, padding: '2px 6px', fontSize: 11 }}>{r.session || importSession}</span></td>
                             <td>{r.classLabel || r.classNumber}</td>
                             <td>{r.sectionName}</td>
-                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Date of Birth') ? '#dc2626' : undefined, fontSize: 12 }}>
+                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Date of Birth') ? '#d32f2f' : undefined, fontSize: 12 }}>
                               {r.dob ? toDdMmYyyy(r.dob) : '—'}
                               {r._errors?.filter((e: any) => e.field === 'Date of Birth').map((e: any, j: number) =>
-                                <div key={j} style={{ fontSize: 10, color: '#dc2626' }}>{e.message}</div>
+                                <div key={j} style={{ fontSize: 10, color: '#d32f2f' }}>{e.message}</div>
                               )}
                             </td>
                             <td>
@@ -9586,26 +9587,26 @@ function Students() {
                                   borderRadius: 999,
                                   fontSize: 11.5,
                                   fontWeight: 500,
-                                  background: formatGender(r.gender) === 'Female' ? 'rgba(236, 72, 153, 0.12)' : formatGender(r.gender) === 'Male' ? 'rgba(2, 132, 199, 0.12)' : 'var(--card-subtle)',
-                                  color: formatGender(r.gender) === 'Female' ? '#ec4899' : formatGender(r.gender) === 'Male' ? '#38bdf8' : 'var(--text-secondary, #64748b)',
-                                  border: `1px solid ${formatGender(r.gender) === 'Female' ? 'rgba(236, 72, 153, 0.25)' : formatGender(r.gender) === 'Male' ? 'rgba(2, 132, 199, 0.25)' : 'var(--border)'}`
+                                  background: formatGender(r.gender) === 'Female' ? 'rgba(225, 29, 85, 0.12)' : formatGender(r.gender) === 'Male' ? 'rgba(92, 107, 192, 0.12)' : 'var(--card-subtle)',
+                                  color: formatGender(r.gender) === 'Female' ? '#e11d55' : formatGender(r.gender) === 'Male' ? '#7f8ccd' : 'var(--text-secondary, #696e79)',
+                                  border: `1px solid ${formatGender(r.gender) === 'Female' ? 'rgba(225, 29, 85, 0.25)' : formatGender(r.gender) === 'Male' ? 'rgba(92, 107, 192, 0.25)' : 'var(--border)'}`
                                 }}>
                                   {formatGender(r.gender)}
                                 </span>
                               ) : '—'}
                             </td>
-                            <td style={{ fontSize: 12, color: r._errors?.some((e: any) => e.field === 'Father Contact No') ? '#dc2626' : undefined }}>
+                            <td style={{ fontSize: 12, color: r._errors?.some((e: any) => e.field === 'Father Contact No') ? '#d32f2f' : undefined }}>
                               <div><b>{r.fatherName || '—'}</b></div>
-                              <div style={{ fontSize: 11, color: '#64748b' }}>{r.fatherPhone || r.parentPhone || ''}</div>
-                              {r.fatherOccupation && <div style={{ fontSize: 10, color: '#94a3b8' }}>{r.fatherOccupation}</div>}
+                              <div style={{ fontSize: 11, color: '#696e79' }}>{r.fatherPhone || r.parentPhone || ''}</div>
+                              {r.fatherOccupation && <div style={{ fontSize: 10, color: '#94969f' }}>{r.fatherOccupation}</div>}
                               {r._errors?.filter((e: any) => e.field === 'Father Contact No').map((e: any, j: number) =>
-                                <div key={j} style={{ fontSize: 10, color: '#dc2626' }}>{e.message}</div>
+                                <div key={j} style={{ fontSize: 10, color: '#d32f2f' }}>{e.message}</div>
                               )}
                             </td>
                             <td style={{ fontSize: 12 }}>
                               <div><b>{r.motherName || '—'}</b></div>
-                              <div style={{ fontSize: 11, color: '#64748b' }}>{r.motherPhone || ''}</div>
-                              {r.motherOccupation && <div style={{ fontSize: 10, color: '#94a3b8' }}>{r.motherOccupation}</div>}
+                              <div style={{ fontSize: 11, color: '#696e79' }}>{r.motherPhone || ''}</div>
+                              {r.motherOccupation && <div style={{ fontSize: 10, color: '#94969f' }}>{r.motherOccupation}</div>}
                             </td>
                             <td style={{ fontSize: 12 }}>
                               <div><b>{r.guardianName || r.guardian_name || '—'}</b></div>
@@ -9621,7 +9622,7 @@ function Students() {
 
               {/* ── PAGINATION BAR ── */}
               <div className="preview-pagination-bar">
-                <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
+                <div style={{ color: 'var(--text-secondary, #535766)', fontSize: 12.5 }}>
                   {filteredStudentPreviewRows.length === 0 ? (
                     'Showing 0 records'
                   ) : (
@@ -9665,9 +9666,9 @@ function Students() {
                         padding: '3px 6px',
                         fontSize: 12,
                         borderRadius: 4,
-                        border: '1px solid var(--border, #cbd5e1)',
+                        border: '1px solid var(--border, #d4d5d9)',
                         background: 'var(--card-bg, #ffffff)',
-                        color: 'var(--text, #1e293b)',
+                        color: 'var(--text, #282c3f)',
                         cursor: 'pointer'
                       }}
                     >
@@ -9709,34 +9710,34 @@ function Students() {
                   marginTop: 12,
                   marginBottom: 6,
                   padding: '12px 16px',
-                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(59, 130, 246, 0.06))',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                  borderRadius: 10
+                  background: 'rgba(3, 128, 106, 0.08)',
+                  border: '1px solid rgba(3, 128, 106, 0.3)',
+                  borderRadius: 4
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: '#10b981' }} />
-                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #0f172a)' }}>
+                      <span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: '#03806a' }} />
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #1c1f2e)' }}>
                         Uploading & Processing Batch {importProgress.batch} of {importProgress.totalBatches} ({importProgress.current.toLocaleString()} / {importProgress.total.toLocaleString()} students)
                       </span>
                     </div>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#059669', fontFamily: 'monospace' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#03806a', fontFamily: 'monospace' }}>
                       {formatBytes(importProgress.uploadedBytes)} / {formatBytes(importProgress.totalBytes)} ({importProgress.percent}%)
                     </span>
                   </div>
                   {/* Progress bar track & filler */}
-                  <div style={{ width: '100%', height: 10, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
+                  <div style={{ width: '100%', height: 10, background: '#eaeaec', borderRadius: 999, overflow: 'hidden' }}>
                     <div
                       style={{
                         width: `${importProgress.percent}%`,
                         height: '100%',
-                        background: 'linear-gradient(90deg, #10b981, #059669)',
+                        background: '#03806a',
                         borderRadius: 999,
                         transition: 'width 0.3s ease'
                       }}
                     />
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5, fontSize: 11, color: '#64748b' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5, fontSize: 11, color: '#696e79' }}>
                     <span>File: {importFileMeta?.name || 'Bulk Student Import'}</span>
                     <span>{importProgress.percent}% Uploaded</span>
                   </div>
@@ -9744,7 +9745,7 @@ function Students() {
               )}
 
               {/* ── MODAL FOOTER ── */}
-              <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+              <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid var(--border, #eaeaec)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexShrink: 0 }}>
                 <button type="button" className="btn-secondary" disabled={importing} onClick={() => { setImportStep(2); setPreviewRows([]); setImportErrors([]); setImportPreviewPage(1); }}>← Back</button>
                 <div style={{ display: 'flex', gap: 12 }}>
                   <button type="button" className="btn-secondary" disabled={importing} onClick={() => { setImportOpen(false); setPreviewRows([]); setImportErrors([]); setImportPreviewPage(1); setImportStep(1); }}>Cancel</button>
@@ -9752,7 +9753,7 @@ function Students() {
                     type="button"
                     onClick={submitBulkImport}
                     disabled={importing}
-                    style={{ background: '#10b981', color: '#ffffff', fontWeight: 600, padding: '8px 20px', minWidth: 220 }}
+                    style={{ background: '#03806a', color: '#ffffff', fontWeight: 600, padding: '8px 20px', minWidth: 220 }}
                   >
                     {importing
                       ? (importProgress
@@ -9827,7 +9828,7 @@ function Students() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 6,
-                  background: prepareStudentExportData().length === 0 ? '#94a3b8' : '#10b981',
+                  background: prepareStudentExportData().length === 0 ? '#94969f' : '#03806a',
                   color: '#ffffff',
                   cursor: prepareStudentExportData().length === 0 ? 'not-allowed' : 'pointer'
                 }}
@@ -9902,7 +9903,7 @@ function Students() {
                 ))}
                 {prepareStudentExportData().length === 0 && (
                   <tr>
-                    <td colSpan={16} style={{ textAlign: 'center', padding: '24px 0', color: '#64748b' }}>
+                    <td colSpan={16} style={{ textAlign: 'center', padding: '24px 0', color: '#696e79' }}>
                       No student records match the selected filters or manual selection.
                     </td>
                   </tr>
@@ -11286,15 +11287,15 @@ function Teachers() {
             display: 'inline-flex',
             alignItems: 'center',
             gap: 6,
-            background: '#0284c7',
+            background: '#5c6bc0',
             color: '#ffffff',
-            border: '1px solid #0369a1',
+            border: '1px solid #48549a',
             padding: '7px 13px',
-            borderRadius: 'var(--radius-sm, 6px)',
+            borderRadius: 'var(--radius-sm, 4px)',
             fontSize: 13,
             cursor: 'pointer',
             fontWeight: 500,
-            boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+            boxShadow: 'none'
           }}
           title="Export faculty records as Excel spreadsheet or CSV"
           id="teachers-top-export-btn"
@@ -11303,7 +11304,7 @@ function Teachers() {
         </button>
         <button
           onClick={() => setImportOpen(true)}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#10b981', color: '#ffffff' }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#03806a', color: '#ffffff' }}
           title="Import teachers via Excel spreadsheet or CSV with interactive preview"
         >
           <FileSpreadsheet size={16} /> Import Excel / CSV
@@ -11354,7 +11355,7 @@ function Teachers() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 4,
-                color: '#1d4ed8',
+                color: '#c0174a',
                 fontWeight: 600,
                 textDecoration: 'underline',
                 marginLeft: 4
@@ -11381,16 +11382,16 @@ function Teachers() {
         <div style={{
           width: '100%',
           height: '4px',
-          background: 'rgba(37, 99, 235, 0.12)',
+          background: 'rgba(225, 29, 85, 0.12)',
           overflow: 'hidden',
           position: 'relative'
         }}>
           <div style={{
             height: '100%',
             width: `${loadProgress}%`,
-            background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)',
+            background: '#e11d55',
             transition: 'width 0.15s ease-out',
-            boxShadow: '0 0 8px rgba(59, 130, 246, 0.5)'
+            boxShadow: 'none'
           }} />
         </div>
       )}
@@ -11409,15 +11410,15 @@ function Teachers() {
             onChange={e => setGenderFilter(e.target.value)}
             style={{
               padding: '7px 12px',
-              borderRadius: 'var(--radius-sm, 6px)',
-              border: '1px solid var(--border, #cbd5e1)',
+              borderRadius: 'var(--radius-sm, 4px)',
+              border: '1px solid var(--border, #d4d5d9)',
               background: 'var(--card-bg, #ffffff)',
-              color: 'var(--text, #1e293b)',
+              color: 'var(--text, #282c3f)',
               fontSize: 13,
               cursor: 'pointer',
               minWidth: 115,
               flexShrink: 0,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+              boxShadow: 'none'
             }}
             aria-label="Filter teachers by gender"
             id="teacher-gender-filter"
@@ -11431,15 +11432,15 @@ function Teachers() {
             onChange={e => setDesignationFilter(e.target.value)}
             style={{
               padding: '7px 12px',
-              borderRadius: 'var(--radius-sm, 6px)',
-              border: '1px solid var(--border, #cbd5e1)',
+              borderRadius: 'var(--radius-sm, 4px)',
+              border: '1px solid var(--border, #d4d5d9)',
               background: 'var(--card-bg, #ffffff)',
-              color: 'var(--text, #1e293b)',
+              color: 'var(--text, #282c3f)',
               fontSize: 13,
               cursor: 'pointer',
               minWidth: 140,
               flexShrink: 0,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+              boxShadow: 'none'
             }}
             aria-label="Filter teachers by designation"
             id="teacher-designation-filter"
@@ -11475,11 +11476,11 @@ function Teachers() {
               alignItems: 'center',
               gap: 6,
               padding: '6px 12px',
-              background: loading ? 'var(--card-subtle, #1e293b)' : 'var(--card-bg, #ffffff)',
-              border: '1px solid var(--border, #cbd5e1)',
-              borderRadius: 'var(--radius-sm, 6px)',
+              background: loading ? 'var(--card-subtle, #282c3f)' : 'var(--card-bg, #ffffff)',
+              border: '1px solid var(--border, #d4d5d9)',
+              borderRadius: 'var(--radius-sm, 4px)',
               fontSize: 12.5,
-              color: loading ? 'var(--text-muted, #94a3b8)' : 'var(--text, #1e293b)',
+              color: loading ? 'var(--text-muted, #94969f)' : 'var(--text, #282c3f)',
               cursor: loading ? 'not-allowed' : 'pointer',
               fontWeight: 500,
               transition: 'all 0.15s ease'
@@ -11487,7 +11488,7 @@ function Teachers() {
             title="Refetch faculty records from database"
             id="teachers-directory-refresh-btn"
           >
-            <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
+            <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#e11d55' }} />
             <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
           </button>
           {/* Last Fetched Time Badge */}
@@ -11505,8 +11506,8 @@ function Teachers() {
                 marginLeft: 3,
                 padding: '1px 5px',
                 borderRadius: 4,
-                background: 'rgba(37, 99, 235, 0.16)',
-                color: '#3b82f6',
+                background: 'rgba(225, 29, 85, 0.16)',
+                color: '#e11d55',
                 fontWeight: 600,
                 fontSize: 11
               }}>
@@ -11516,7 +11517,7 @@ function Teachers() {
             )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #475569)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #535766)' }}>
             <span>Rows per page:</span>
             <select
               value={directoryPageSize}
@@ -11525,8 +11526,8 @@ function Teachers() {
               style={{
                 padding: '4px 8px',
                 fontSize: 12.5,
-                borderRadius: 6,
-                border: '1px solid var(--border, #cbd5e1)',
+                borderRadius: 4,
+                border: '1px solid var(--border, #d4d5d9)',
                 cursor: 'pointer'
               }}
             >
@@ -11563,15 +11564,15 @@ function Teachers() {
             left: 0,
             right: 0,
             zIndex: 20,
-            background: 'rgba(239, 246, 255, 0.95)',
+            background: 'rgba(255, 242, 244, 0.95)',
             backdropFilter: 'blur(4px)',
-            borderBottom: '1px solid #bfdbfe',
+            borderBottom: '1px solid #fcc3d1',
             padding: '6px 14px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             fontSize: 12,
-            color: '#1d4ed8',
+            color: '#c0174a',
             fontWeight: 500
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -11580,8 +11581,8 @@ function Teachers() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontWeight: 700 }}>{loadProgress}%</span>
-              <div style={{ width: 70, height: 5, background: '#bfdbfe', borderRadius: 999, overflow: 'hidden' }}>
-                <div style={{ width: `${loadProgress}%`, height: '100%', background: '#2563eb', transition: 'width 0.15s ease' }} />
+              <div style={{ width: 70, height: 5, background: '#fcc3d1', borderRadius: 999, overflow: 'hidden' }}>
+                <div style={{ width: `${loadProgress}%`, height: '100%', background: '#e11d55', transition: 'width 0.15s ease' }} />
               </div>
             </div>
           </div>
@@ -11619,15 +11620,15 @@ function Teachers() {
                 <td colSpan={11} style={{ textAlign: 'center', padding: '48px 24px' }}>
                   <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 12, maxWidth: 320, margin: '0 auto' }}>
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Loader2 size={38} style={{ color: '#2563eb', animation: 'spinAnim 0.8s linear infinite' }} />
-                      <span style={{ position: 'absolute', fontSize: 11, fontWeight: 700, color: '#1d4ed8' }}>{loadProgress}%</span>
+                      <Loader2 size={38} style={{ color: '#e11d55', animation: 'spinAnim 0.8s linear infinite' }} />
+                      <span style={{ position: 'absolute', fontSize: 11, fontWeight: 700, color: '#c0174a' }}>{loadProgress}%</span>
                     </div>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text, #1e293b)' }}>Loading Faculty Directory...</div>
-                      <div style={{ fontSize: 12.5, color: 'var(--text-muted, #64748b)', marginTop: 2 }}>Fetching faculty records and allocations from database ({loadProgress}%)</div>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text, #282c3f)' }}>Loading Faculty Directory...</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--text-muted, #696e79)', marginTop: 2 }}>Fetching faculty records and allocations from database ({loadProgress}%)</div>
                     </div>
-                    <div style={{ width: '100%', height: 6, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
-                      <div style={{ width: `${loadProgress}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)', transition: 'width 0.15s ease' }} />
+                    <div style={{ width: '100%', height: 6, background: '#eaeaec', borderRadius: 999, overflow: 'hidden' }}>
+                      <div style={{ width: `${loadProgress}%`, height: '100%', background: '#e11d55', transition: 'width 0.15s ease' }} />
                     </div>
                   </div>
                 </td>
@@ -11635,7 +11636,7 @@ function Teachers() {
             ) : displayedTeachers.length === 0 ? (
               <tr><td colSpan={11} style={{ textAlign: 'center', padding: 24 }} className="muted">No faculty members found. Click "Add Teacher" or "Import Excel / CSV" to onboard staff.</td></tr>
             ) : displayedTeachers.map(x => (
-              <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
+              <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(225, 29, 85, 0.06)' : 'transparent' }}>
                 <td style={{ textAlign: 'center', width: 36 }}>
                   <input
                     type="checkbox"
@@ -11649,7 +11650,7 @@ function Teachers() {
                     <b style={{ textTransform: 'uppercase' }}>{String(x.name || '').toUpperCase()}</b>
                   </TeacherProfileHoverCard>
                 </td>
-                <td style={{ whiteSpace: 'nowrap', fontSize: 12.5, color: 'var(--text-secondary, #475569)' }}>
+                <td style={{ whiteSpace: 'nowrap', fontSize: 12.5, color: 'var(--text-secondary, #535766)' }}>
                   {toDdMmYyyy(x.joining_date || x.joiningDate) || '—'}
                 </td>
                 <td>
@@ -11663,9 +11664,9 @@ function Teachers() {
                         borderRadius: 999,
                         fontSize: 11.5,
                         fontWeight: 500,
-                        background: formatGender(x.gender) === 'Female' ? '#fdf2f8' : formatGender(x.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
-                        color: formatGender(x.gender) === 'Female' ? '#db2777' : formatGender(x.gender) === 'Male' ? '#0284c7' : '#64748b',
-                        border: `1px solid ${formatGender(x.gender) === 'Female' ? '#fbcfe8' : formatGender(x.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
+                        background: formatGender(x.gender) === 'Female' ? '#fff2f4' : formatGender(x.gender) === 'Male' ? '#eef0f9' : '#f9f9fa',
+                        color: formatGender(x.gender) === 'Female' ? '#e11d55' : formatGender(x.gender) === 'Male' ? '#5c6bc0' : '#696e79',
+                        border: `1px solid ${formatGender(x.gender) === 'Female' ? '#fcc3d1' : formatGender(x.gender) === 'Male' ? '#c9cee9' : '#eaeaec'}`
                       }}
                     >
                       {formatGender(x.gender)}
@@ -11675,7 +11676,7 @@ function Teachers() {
                   )}
                 </td>
                 <td>
-                  <span className="teacher-designation" style={{ fontWeight: 500, color: 'var(--text-secondary, #cbd5e1)' }}>{x.designation || 'Teacher'}</span>
+                  <span className="teacher-designation" style={{ fontWeight: 500, color: 'var(--text-secondary, #d4d5d9)' }}>{x.designation || 'Teacher'}</span>
                 </td>
                 <td style={{ fontSize: 12, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   <span title={getTeacherAllocSummary(x)}>{getTeacherAllocSummary(x)}</span>
@@ -11690,7 +11691,7 @@ function Teachers() {
                     className="table-action-btn"
                     onClick={() => openAllocModal(x)}
                     title="Manage teaching allocations"
-                    style={{ marginRight: 4, color: '#7c3aed' }}
+                    style={{ marginRight: 4, color: '#5c6bc0' }}
                   >
                     <BookOpen size={14} />
                   </button>
@@ -11751,7 +11752,7 @@ function Teachers() {
                       setOpen(true);
                     }}
                     title="Edit teacher profile"
-                    style={{ marginRight: 4, color: '#0d9488' }}
+                    style={{ marginRight: 4, color: '#03806a' }}
                   >
                     <Pencil size={14} />
                   </button>
@@ -11759,7 +11760,7 @@ function Teachers() {
                     className="table-action-btn"
                     onClick={() => sendTeacherResetEmail(x)}
                     title="Send password setup / reset email"
-                    style={{ marginRight: 4, color: '#2563eb' }}
+                    style={{ marginRight: 4, color: '#e11d55' }}
                   >
                     <KeyRound size={14} />
                   </button>
@@ -11779,7 +11780,7 @@ function Teachers() {
 
       {/* Box Footer (Pagination Bar) */}
       <div className="directory-box-footer">
-        <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
+        <div style={{ color: 'var(--text-secondary, #535766)', fontSize: 12.5 }}>
           {filtered.length === 0 ? (
             'Showing 0 faculty members'
           ) : (
@@ -11824,7 +11825,7 @@ function Teachers() {
                 padding: '3px 6px',
                 fontSize: 12,
                 borderRadius: 4,
-                border: '1px solid var(--border, #cbd5e1)',
+                border: '1px solid var(--border, #d4d5d9)',
                 cursor: 'pointer'
               }}
             >
@@ -11924,21 +11925,21 @@ function Teachers() {
               {/* Last Registered Teacher Banner in Red */}
               {lastRegisteredTeacherInfo && (
                 <div style={{
-                  color: '#ef4444',
+                  color: '#d32f2f',
                   fontSize: 12.5,
                   fontWeight: 600,
                   padding: '8px 12px',
-                  backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                  borderRadius: 6,
+                  backgroundColor: 'rgba(211, 47, 47, 0.12)',
+                  border: '1px solid rgba(211, 47, 47, 0.3)',
+                  borderRadius: 4,
                   marginBottom: 12,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6
                 }}>
-                  <Info size={15} style={{ flexShrink: 0, color: '#ef4444' }} />
+                  <Info size={15} style={{ flexShrink: 0, color: '#d32f2f' }} />
                   <span>
-                    Last registered teacher: <strong style={{ color: '#ef4444' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#ef4444' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
+                    Last registered teacher: <strong style={{ color: '#d32f2f' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#d32f2f' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
                   </span>
                 </div>
               )}
@@ -11952,7 +11953,7 @@ function Teachers() {
               }}>
                 <label>
                   <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                    First Name <span style={{ color: '#ef4444', fontWeight: 600 }}>*</span>
+                    First Name <span style={{ color: '#d32f2f', fontWeight: 600 }}>*</span>
                   </span>
                   <input
                     required
@@ -11961,8 +11962,8 @@ function Teachers() {
                     value={fnVal || ''}
                     style={{
                       textTransform: 'uppercase',
-                      borderColor: isFnInvalid ? '#ef4444' : undefined,
-                      boxShadow: isFnInvalid ? '0 0 0 1px #ef4444' : undefined
+                      borderColor: isFnInvalid ? '#d32f2f' : undefined,
+                      boxShadow: isFnInvalid ? '0 0 0 1px #d32f2f' : undefined
                     }}
                     onChange={e => {
                       const fn = e.target.value.replace(/\s/g, '').slice(0, 15).toUpperCase();
@@ -11971,22 +11972,22 @@ function Teachers() {
                     }}
                   />
                   {fnVal && /\d/.test(fnVal) ? (
-                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Enter a string not a number
                     </span>
                   ) : fnVal && /\s/.test(fnVal) ? (
-                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Spaces are not allowed in First Name
                     </span>
                   ) : fnVal && fnVal.length < 3 ? (
-                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Must be 3 to 15 characters
                     </span>
                   ) : null}
                 </label>
                 <label>
                   <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                    Middle Name <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)', fontWeight: 'normal' }}>(Optional)</span>
+                    Middle Name <span style={{ fontSize: 11, color: 'var(--text-muted, #94969f)', fontWeight: 'normal' }}>(Optional)</span>
                   </span>
                   <input
                     placeholder="e.g. Kumar"
@@ -11994,8 +11995,8 @@ function Teachers() {
                     value={mnVal}
                     style={{
                       textTransform: 'uppercase',
-                      borderColor: isMnInvalid ? '#ef4444' : undefined,
-                      boxShadow: isMnInvalid ? '0 0 0 1px #ef4444' : undefined
+                      borderColor: isMnInvalid ? '#d32f2f' : undefined,
+                      boxShadow: isMnInvalid ? '0 0 0 1px #d32f2f' : undefined
                     }}
                     onChange={e => {
                       const mn = e.target.value.replace(/\s/g, '').slice(0, 15).toUpperCase();
@@ -12004,14 +12005,14 @@ function Teachers() {
                     }}
                   />
                   {mnVal && /\d/.test(mnVal) && (
-                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Enter a string not a number
                     </span>
                   )}
                 </label>
                 <label style={!isFull ? { gridColumn: '1 / -1' } : undefined}>
                   <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                    Last Name <span style={{ color: '#ef4444', fontWeight: 600 }}>*</span>
+                    Last Name <span style={{ color: '#d32f2f', fontWeight: 600 }}>*</span>
                   </span>
                   <input
                     required
@@ -12020,8 +12021,8 @@ function Teachers() {
                     value={lnVal || ''}
                     style={{
                       textTransform: 'uppercase',
-                      borderColor: isLnInvalid ? '#ef4444' : undefined,
-                      boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
+                      borderColor: isLnInvalid ? '#d32f2f' : undefined,
+                      boxShadow: isLnInvalid ? '0 0 0 1px #d32f2f' : undefined
                     }}
                     onChange={e => {
                       const ln = e.target.value.replace(/\d/g, '').slice(0, 20).toUpperCase();
@@ -12030,11 +12031,11 @@ function Teachers() {
                     }}
                   />
                   {lnVal && /\d/.test(lnVal) ? (
-                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Enter a string not a number
                     </span>
                   ) : lnVal && (lnVal.length < 2 || lnVal.length > 20) ? (
-                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Must be 2 to 20 characters
                     </span>
                   ) : null}
@@ -12042,18 +12043,18 @@ function Teachers() {
               </div>
 
               {/* Full Name — auto-computed, read-only */}
-              <label style={{ color: 'var(--text-secondary, #64748b)', fontSize: 12 }}>
+              <label style={{ color: 'var(--text-secondary, #696e79)', fontSize: 12 }}>
                 <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                  <span style={{ fontWeight: 600, color: 'var(--text, #334155)' }}>Full Name</span>
-                  <span style={{ color: '#10b981', fontSize: 11, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: '#10b981' }} />
+                  <span style={{ fontWeight: 600, color: 'var(--text, #3e4152)' }}>Full Name</span>
+                  <span style={{ color: '#03806a', fontSize: 11, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: '#03806a' }} />
                     Auto-generated
                   </span>
                 </span>
                 <input
                   readOnly
                   tabIndex={-1}
-                  style={{ textTransform: 'uppercase', backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)', fontWeight: 600 }}
+                  style={{ textTransform: 'uppercase', backgroundColor: 'var(--card-subtle, #f9f9fa)', color: 'var(--text, #3e4152)', cursor: 'default', border: '1px solid var(--border, #eaeaec)', fontWeight: 600 }}
                   value={(formatTeacherFullName(fnVal, mnVal, lnVal) || f.name || '').toUpperCase()}
                   placeholder="Full name will appear here automatically"
                 />
@@ -12061,7 +12062,7 @@ function Teachers() {
 
               <label>
                 <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  Email Address (for Faculty Portal Login) <span style={{ color: '#ef4444' }}>*</span>
+                  Email Address (for Faculty Portal Login) <span style={{ color: '#d32f2f' }}>*</span>
                 </span>
                 <input
                   required
@@ -12069,37 +12070,37 @@ function Teachers() {
                   placeholder="teacher@school.local"
                   value={f.email || ''}
                   style={{
-                    borderColor: (isEmailDuplicateInUi || isEmailInvalidInUi) ? '#ef4444' : undefined,
-                    boxShadow: (isEmailDuplicateInUi || isEmailInvalidInUi) ? '0 0 0 1px #ef4444' : undefined
+                    borderColor: (isEmailDuplicateInUi || isEmailInvalidInUi) ? '#d32f2f' : undefined,
+                    boxShadow: (isEmailDuplicateInUi || isEmailInvalidInUi) ? '0 0 0 1px #d32f2f' : undefined
                   }}
                   onChange={e => setF({ ...f, email: e.target.value.trim() })}
                 />
                 {isEmailDuplicateInUi ? (
-                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
+                  <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
                     Already exist
                   </span>
                 ) : isEmailInvalidInUi ? (
-                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                  <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                     Please enter a valid email address
                   </span>
                 ) : null}
               </label>
               <label>
                 <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  Employee ID / Savior_NO <span style={{ color: '#ef4444' }}>*</span>
+                  Employee ID / Savior_NO <span style={{ color: '#d32f2f' }}>*</span>
                 </span>
                 <input
                   required
                   placeholder="e.g. EMP001 or SAVIOR_101"
                   value={f.employeeId || f.saviorNo || ''}
                   style={{
-                    borderColor: isEmpIdDuplicateInUi ? '#ef4444' : undefined,
-                    boxShadow: isEmpIdDuplicateInUi ? '0 0 0 1px #ef4444' : undefined
+                    borderColor: isEmpIdDuplicateInUi ? '#d32f2f' : undefined,
+                    boxShadow: isEmpIdDuplicateInUi ? '0 0 0 1px #d32f2f' : undefined
                   }}
                   onChange={e => setF({ ...f, employeeId: e.target.value, saviorNo: e.target.value })}
                 />
                 {isEmpIdDuplicateInUi && (
-                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
+                  <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
                     Already existed
                   </span>
                 )}
@@ -12113,7 +12114,7 @@ function Teachers() {
                   <select
                     value={formatGender(f.gender) || ''}
                     onChange={e => setF({ ...f, gender: formatGender(e.target.value) })}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
                   >
                     <option value="">Select Gender</option>
                     <option value="Male">Male</option>
@@ -12123,7 +12124,7 @@ function Teachers() {
                 </label>
                 <label>
                   <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    Joining Date <span style={{ color: '#ef4444' }}>*</span> <span style={{ color: '#64748b', fontSize: 11, fontWeight: 400 }}>(DD-MM-YYYY)</span>
+                    Joining Date <span style={{ color: '#d32f2f' }}>*</span> <span style={{ color: '#696e79', fontSize: 11, fontWeight: 400 }}>(DD-MM-YYYY)</span>
                   </span>
                   <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginTop: 4 }}>
                     <input
@@ -12139,8 +12140,8 @@ function Teachers() {
                       style={{
                         width: '100%',
                         padding: '8px 34px 8px 10px',
-                        borderRadius: 6,
-                        border: `1px solid ${(f.joiningDate || f.joining_date) && !isValidDdMmYyyy(f.joiningDate || f.joining_date) ? '#ef4444' : 'var(--border)'}`,
+                        borderRadius: 4,
+                        border: `1px solid ${(f.joiningDate || f.joining_date) && !isValidDdMmYyyy(f.joiningDate || f.joining_date) ? '#d32f2f' : 'var(--border)'}`,
                         boxSizing: 'border-box'
                       }}
                     />
@@ -12175,13 +12176,13 @@ function Teachers() {
                       style={{
                         position: 'absolute',
                         right: 10,
-                        color: '#64748b',
+                        color: '#696e79',
                         pointerEvents: 'none'
                       }}
                     />
                   </div>
                   {(f.joiningDate || f.joining_date) && !isValidDdMmYyyy(f.joiningDate || f.joining_date) && (
-                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Strict format required: DD-MM-YYYY (e.g. 01-07-2022)
                     </span>
                   )}
@@ -12192,13 +12193,13 @@ function Teachers() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <label>
                   <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    Designation <span style={{ color: '#ef4444' }}>*</span>
+                    Designation <span style={{ color: '#d32f2f' }}>*</span>
                   </span>
                   <select
                     required
                     value={f.designation || ''}
                     onChange={e => setF({ ...f, designation: e.target.value })}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
                   >
                     <option value="">Select Designation</option>
                     {f.designation && !allocDesignations.some(d => (d.title || d.name) === f.designation) && (
@@ -12213,7 +12214,7 @@ function Teachers() {
                 </label>
                 <label>
                   <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    Mobile Number <span style={{ color: '#ef4444' }}>*</span>
+                    Mobile Number <span style={{ color: '#d32f2f' }}>*</span>
                   </span>
                   <input
                     required
@@ -12228,12 +12229,12 @@ function Teachers() {
                     style={{
                       width: '100%',
                       boxSizing: 'border-box',
-                      borderColor: (f.mobile && f.mobile.length < 10) ? '#ef4444' : undefined,
-                      boxShadow: (f.mobile && f.mobile.length < 10) ? '0 0 0 1px #ef4444' : undefined
+                      borderColor: (f.mobile && f.mobile.length < 10) ? '#d32f2f' : undefined,
+                      boxShadow: (f.mobile && f.mobile.length < 10) ? '0 0 0 1px #d32f2f' : undefined
                     }}
                   />
                   {f.mobile && f.mobile.length < 10 && (
-                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Must be a valid 10-digit mobile number
                     </span>
                   )}
@@ -12269,7 +12270,7 @@ function Teachers() {
                         section: ''
                       });
                     }}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
                   >
                     <option value="">Select Class (Optional)</option>
                     {allocClasses.length > 0 ? (
@@ -12309,7 +12310,7 @@ function Teachers() {
                         section: sName
                       });
                     }}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
                   >
                     <option value="">Select Section (Optional)</option>
                     {(() => {
@@ -12356,17 +12357,17 @@ function Teachers() {
                   <div style={{
                     marginTop: 8,
                     padding: '10px 14px',
-                    borderRadius: 8,
-                    background: 'rgba(239, 68, 68, 0.1)',
-                    border: '1px solid rgba(239, 68, 68, 0.35)',
-                    color: '#dc2626',
+                    borderRadius: 4,
+                    background: 'rgba(211, 47, 47, 0.1)',
+                    border: '1px solid rgba(211, 47, 47, 0.35)',
+                    color: '#d32f2f',
                     fontSize: 12.5,
                     fontWeight: 500,
                     display: 'flex',
                     alignItems: 'center',
                     gap: 10
                   }}>
-                    <AlertTriangle size={18} style={{ flexShrink: 0, color: '#dc2626' }} />
+                    <AlertTriangle size={18} style={{ flexShrink: 0, color: '#d32f2f' }} />
                     <div>
                       <strong>Assignment Conflict:</strong> {currentConflict.className} - Section {currentConflict.sectionName} is already assigned to mentor <strong>{currentConflict.mentorName}</strong>{currentConflict.employeeId ? ` [${currentConflict.employeeId}]` : ''}.
                       <div style={{ fontSize: 11.5, opacity: 0.9, marginTop: 2 }}>
@@ -12382,7 +12383,7 @@ function Teachers() {
                   <select
                     value={f.is_active !== false ? 'ACTIVE' : 'INACTIVE'}
                     onChange={e => setF({ ...f, is_active: e.target.value === 'ACTIVE' })}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4 }}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid var(--border)', marginTop: 4 }}
                   >
                     <option value="ACTIVE">ACTIVE</option>
                     <option value="INACTIVE">INACTIVE</option>
@@ -12393,7 +12394,7 @@ function Teachers() {
               {/* Password Setup & Activation Box */}
               <div className="student-portal-box">
                 <div className="student-portal-box-title" style={{ marginBottom: 6 }}>
-                  <KeyRound size={14} style={{ color: '#2563eb' }} />
+                  <KeyRound size={14} style={{ color: '#e11d55' }} />
                   {editingTeacher ? 'Update Password (Optional)' : 'Password Setup & Account Activation'}
                 </div>
                 {!editingTeacher && (
@@ -12422,7 +12423,7 @@ function Teachers() {
                       onClick={() => setShowTeacherPassword(s => !s)}
                       className="password-toggle-btn"
                       title={showTeacherPassword ? "Hide password" : "Show password"}
-                      style={{ position: 'absolute', right: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary, #64748b)', display: 'flex', alignItems: 'center' }}
+                      style={{ position: 'absolute', right: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary, #696e79)', display: 'flex', alignItems: 'center' }}
                     >
                       {showTeacherPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -12460,7 +12461,7 @@ function Teachers() {
               {/* Subject */}
               <label style={{ fontSize: 11, fontWeight: 600 }}>{idx === 0 ? 'Subject' : ''}
                 <select value={ar.subject_id || ''} onChange={e => updateAllocRow(idx, 'subject_id', e.target.value)}
-                  style={{ width: '100%', padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
+                  style={{ width: '100%', padding: '5px 6px', borderRadius: 4, border: '1px solid var(--border)', fontSize: 12 }}>
                   <option value="">Subject</option>
                   {allocSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
@@ -12468,7 +12469,7 @@ function Teachers() {
               {/* Class */}
               <label style={{ fontSize: 11, fontWeight: 600 }}>{idx === 0 ? 'Class' : ''}
                 <select value={ar.class_id || ''} onChange={e => updateAllocRow(idx, 'class_id', e.target.value)}
-                  style={{ width: '100%', padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
+                  style={{ width: '100%', padding: '5px 6px', borderRadius: 4, border: '1px solid var(--border)', fontSize: 12 }}>
                   <option value="">Class</option>
                   {allocClasses.map(c => <option key={c.id} value={c.id}>Class {c.class_number}</option>)}
                 </select>
@@ -12476,7 +12477,7 @@ function Teachers() {
               {/* Section */}
               <label style={{ fontSize: 11, fontWeight: 600 }}>{idx === 0 ? 'Section' : ''}
                 <select value={ar.section_id || ''} onChange={e => updateAllocRow(idx, 'section_id', e.target.value)}
-                  style={{ width: '100%', padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
+                  style={{ width: '100%', padding: '5px 6px', borderRadius: 4, border: '1px solid var(--border)', fontSize: 12 }}>
                   <option value="">Section</option>
                   {allocSections.filter(s => !ar.class_id || s.class_id === ar.class_id || String(s.class_number) === String(allocClasses.find(c => c.id === ar.class_id)?.class_number)).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
@@ -12484,7 +12485,7 @@ function Teachers() {
               {/* Session */}
               <label style={{ fontSize: 11, fontWeight: 600 }}>{idx === 0 ? 'Session' : ''}
                 <select value={ar.session_id || ''} onChange={e => updateAllocRow(idx, 'session_id', e.target.value)}
-                  style={{ width: '100%', padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
+                  style={{ width: '100%', padding: '5px 6px', borderRadius: 4, border: '1px solid var(--border)', fontSize: 12 }}>
                   <option value="">Session</option>
                   {allocSessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
@@ -12492,19 +12493,19 @@ function Teachers() {
               {/* Alt Faculty */}
               <label style={{ fontSize: 11, fontWeight: 600 }}>{idx === 0 ? 'Alt. Faculty' : ''}
                 <select value={ar.alt_teacher_id || ''} onChange={e => updateAllocRow(idx, 'alt_teacher_id', e.target.value)}
-                  style={{ width: '100%', padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
+                  style={{ width: '100%', padding: '5px 6px', borderRadius: 4, border: '1px solid var(--border)', fontSize: 12 }}>
                   <option value="">None</option>
                   {rows.filter(t => t.id !== allocTeacher.id).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </label>
-              <button type="button" onClick={() => removeAllocRow(idx)} title="Remove" style={{ padding: '5px 8px', background: 'transparent', border: '1px solid #fca5a5', color: '#ef4444', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>✕</button>
+              <button type="button" onClick={() => removeAllocRow(idx)} title="Remove" style={{ padding: '5px 8px', background: 'transparent', border: '1px solid #e88d8d', color: '#d32f2f', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>✕</button>
             </div>
           ))}
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <button type="button" onClick={addAllocRow} style={{ fontSize: 12, padding: '5px 12px', background: 'transparent', border: '1px dashed var(--border)', color: '#2563eb', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>+ Add Row</button>
+          <button type="button" onClick={addAllocRow} style={{ fontSize: 12, padding: '5px 12px', background: 'transparent', border: '1px dashed var(--border)', color: '#e11d55', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>+ Add Row</button>
           <button type="button" onClick={handleInitiateAllocSave} disabled={allocSaving}
-            style={{ background: '#2563eb', color: '#fff', padding: '8px 18px', borderRadius: 8, fontSize: 13 }}>
+            style={{ background: '#e11d55', color: '#fff', padding: '8px 18px', borderRadius: 4, fontSize: 13 }}>
             Review & Save Allocations
           </button>
         </div>
@@ -12522,22 +12523,22 @@ function Teachers() {
           {/* Last Registered Teacher Banner in Red */}
           {lastRegisteredTeacherInfo && (
             <div style={{
-              color: '#ef4444',
+              color: '#d32f2f',
               fontSize: 12.5,
               fontWeight: 600,
               padding: '8px 14px',
-              backgroundColor: 'rgba(239, 68, 68, 0.12)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              borderRadius: 6,
+              backgroundColor: 'rgba(211, 47, 47, 0.12)',
+              border: '1px solid rgba(211, 47, 47, 0.3)',
+              borderRadius: 4,
               marginBottom: 14,
               display: 'flex',
               alignItems: 'center',
               gap: 6,
               flexShrink: 0
             }}>
-              <Info size={15} style={{ flexShrink: 0, color: '#ef4444' }} />
+              <Info size={15} style={{ flexShrink: 0, color: '#d32f2f' }} />
               <span>
-                Last registered teacher: <strong style={{ color: '#ef4444' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#ef4444' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
+                Last registered teacher: <strong style={{ color: '#d32f2f' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#d32f2f' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
               </span>
             </div>
           )}
@@ -12575,7 +12576,7 @@ function Teachers() {
               <p className="muted" style={{ margin: 0, fontSize: 13 }}>
                 Review parsed faculty roster below before confirming import.
               </p>
-              <label className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12.5, padding: '5px 12px', borderRadius: 6 }}>
+              <label className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12.5, padding: '5px 12px', borderRadius: 4 }}>
                 <input
                   type="file"
                   accept=".xlsx, .xls, .csv"
@@ -12593,11 +12594,11 @@ function Teachers() {
               <div style={{
                 marginBottom: 10,
                 padding: '10px 16px',
-                background: teacherErrorCount > 0 ? 'rgba(245, 158, 11, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                borderRadius: 8,
-                border: `1px solid ${teacherErrorCount > 0 ? 'rgba(245, 158, 11, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
+                background: teacherErrorCount > 0 ? 'rgba(233, 162, 59, 0.12)' : 'rgba(3, 128, 106, 0.12)',
+                borderRadius: 4,
+                border: `1px solid ${teacherErrorCount > 0 ? 'rgba(233, 162, 59, 0.3)' : 'rgba(3, 128, 106, 0.3)'}`,
                 fontSize: 13,
-                color: teacherErrorCount > 0 ? '#f59e0b' : '#10b981',
+                color: teacherErrorCount > 0 ? '#e9a23b' : '#03806a',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -12606,10 +12607,10 @@ function Teachers() {
                 <span>
                   {teacherErrorCount > 0 ? '⚠️' : '✅'} <b>{previewRows.length} faculty</b> parsed · <b>{teacherValidCount} valid</b>
                   {teacherErrorCount > 0 && (
-                    <> · <b style={{ color: '#ef4444' }}>{teacherErrorCount} with validation errors</b></>
+                    <> · <b style={{ color: '#d32f2f' }}>{teacherErrorCount} with validation errors</b></>
                   )}
                 </span>
-                <span style={{ fontSize: 12, color: teacherErrorCount > 0 ? '#f59e0b' : '#10b981' }}>
+                <span style={{ fontSize: 12, color: teacherErrorCount > 0 ? '#e9a23b' : '#03806a' }}>
                   {teacherErrorCount > 0
                     ? 'Review and resolve highlighted errors below before importing'
                     : 'All records valid and ready for database import'}
@@ -12620,13 +12621,13 @@ function Teachers() {
               <div className="preview-toolbar">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <strong style={{ fontSize: 15 }}>Preview Data</strong>
-                  <span style={{ fontSize: 12, padding: '2px 8px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', borderRadius: 10, fontWeight: 600 }}>
+                  <span style={{ fontSize: 12, padding: '2px 8px', background: 'rgba(225, 29, 85, 0.12)', color: '#e11d55', borderRadius: 4, fontWeight: 600 }}>
                     {previewRows.length} records
                   </span>
 
                   {/* Filter tabs if validation errors exist */}
                   {teacherErrorCount > 0 && (
-                    <div style={{ display: 'inline-flex', background: 'var(--card-subtle, #f1f5f9)', borderRadius: 6, padding: 2, fontSize: 12, marginLeft: 4 }}>
+                    <div style={{ display: 'inline-flex', background: 'var(--card-subtle, #f5f5f6)', borderRadius: 4, padding: 2, fontSize: 12, marginLeft: 4 }}>
                       <button
                         type="button"
                         onClick={() => { setImportPreviewErrorFilter('all'); setImportPreviewPage(1); }}
@@ -12636,7 +12637,7 @@ function Teachers() {
                           border: 'none',
                           cursor: 'pointer',
                           background: importPreviewErrorFilter === 'all' ? 'var(--bg-card, #ffffff)' : 'transparent',
-                          color: importPreviewErrorFilter === 'all' ? 'var(--text, #0f172a)' : 'var(--text-secondary, #64748b)',
+                          color: importPreviewErrorFilter === 'all' ? 'var(--text, #1c1f2e)' : 'var(--text-secondary, #696e79)',
                           boxShadow: importPreviewErrorFilter === 'all' ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
                           fontWeight: importPreviewErrorFilter === 'all' ? 600 : 400
                         }}
@@ -12652,7 +12653,7 @@ function Teachers() {
                           border: 'none',
                           cursor: 'pointer',
                           background: importPreviewErrorFilter === 'valid' ? 'var(--bg-card, #ffffff)' : 'transparent',
-                          color: importPreviewErrorFilter === 'valid' ? '#10b981' : 'var(--text-secondary, #64748b)',
+                          color: importPreviewErrorFilter === 'valid' ? '#03806a' : 'var(--text-secondary, #696e79)',
                           boxShadow: importPreviewErrorFilter === 'valid' ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
                           fontWeight: importPreviewErrorFilter === 'valid' ? 600 : 400
                         }}
@@ -12668,7 +12669,7 @@ function Teachers() {
                           border: 'none',
                           cursor: 'pointer',
                           background: importPreviewErrorFilter === 'errors' ? 'var(--bg-card, #ffffff)' : 'transparent',
-                          color: importPreviewErrorFilter === 'errors' ? '#ef4444' : 'var(--text-secondary, #64748b)',
+                          color: importPreviewErrorFilter === 'errors' ? '#d32f2f' : 'var(--text-secondary, #696e79)',
                           boxShadow: importPreviewErrorFilter === 'errors' ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
                           fontWeight: importPreviewErrorFilter === 'errors' ? 600 : 400
                         }}
@@ -12682,7 +12683,7 @@ function Teachers() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   {/* Search inside preview */}
                   <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <Search size={14} style={{ position: 'absolute', left: 8, color: '#94a3b8', pointerEvents: 'none' }} />
+                    <Search size={14} style={{ position: 'absolute', left: 8, color: '#94969f', pointerEvents: 'none' }} />
                     <input
                       type="text"
                       placeholder="Search preview..."
@@ -12691,11 +12692,11 @@ function Teachers() {
                       style={{
                         padding: '5px 26px 5px 28px',
                         fontSize: 12.5,
-                        border: '1px solid var(--border, #cbd5e1)',
-                        borderRadius: 6,
+                        border: '1px solid var(--border, #d4d5d9)',
+                        borderRadius: 4,
                         width: 180,
                         background: 'var(--card-bg, #ffffff)',
-                        color: 'var(--text, #0f172a)'
+                        color: 'var(--text, #1c1f2e)'
                       }}
                     />
                     {importPreviewSearch && (
@@ -12709,7 +12710,7 @@ function Teachers() {
                           border: 'none',
                           cursor: 'pointer',
                           padding: 2,
-                          color: '#94a3b8'
+                          color: '#94969f'
                         }}
                         title="Clear search"
                       >
@@ -12719,7 +12720,7 @@ function Teachers() {
                   </div>
 
                   {/* Rows per page selector */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-secondary, #475569)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-secondary, #535766)' }}>
                     <span>Rows per page:</span>
                     <select
                       value={importPreviewPageSize}
@@ -12727,10 +12728,10 @@ function Teachers() {
                       style={{
                         padding: '4px 8px',
                         fontSize: 12.5,
-                        borderRadius: 6,
-                        border: '1px solid var(--border, #cbd5e1)',
+                        borderRadius: 4,
+                        border: '1px solid var(--border, #d4d5d9)',
                         background: 'var(--card-bg, #ffffff)',
-                        color: 'var(--text, #1e293b)',
+                        color: 'var(--text, #282c3f)',
                         cursor: 'pointer'
                       }}
                     >
@@ -12778,7 +12779,7 @@ function Teachers() {
                   <tbody>
                     {displayedTeacherPreviewRows.length === 0 ? (
                       <tr>
-                        <td colSpan={13} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
+                        <td colSpan={13} style={{ textAlign: 'center', padding: '36px 20px', color: '#696e79' }}>
                           No teachers match the current search or error filter.
                         </td>
                       </tr>
@@ -12787,29 +12788,29 @@ function Teachers() {
                         const rowNum = r._origRowIndex || (teacherStartIdx + i + 1);
                         const hasErr = Boolean(r._errors?.length);
                         return (
-                          <tr key={teacherStartIdx + i} className={hasErr ? 'preview-row-error' : ''} style={{ background: hasErr ? 'rgba(239, 68, 68, 0.12)' : undefined, outline: hasErr ? '1px solid rgba(239, 68, 68, 0.35)' : undefined }}>
-                            <td style={{ color: hasErr ? '#dc2626' : '#94a3b8', fontSize: 11, textAlign: 'center', fontWeight: hasErr ? 700 : 500 }}>
+                          <tr key={teacherStartIdx + i} className={hasErr ? 'preview-row-error' : ''} style={{ background: hasErr ? 'rgba(211, 47, 47, 0.12)' : undefined, outline: hasErr ? '1px solid rgba(211, 47, 47, 0.35)' : undefined }}>
+                            <td style={{ color: hasErr ? '#d32f2f' : '#94969f', fontSize: 11, textAlign: 'center', fontWeight: hasErr ? 700 : 500 }}>
                               {hasErr ? `⚠ ${rowNum}` : rowNum}
                             </td>
-                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Savior_No') ? '#dc2626' : undefined }}>
+                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Savior_No') ? '#d32f2f' : undefined }}>
                               <code>{r.saviorNo || r.employeeId}</code>
                               {r._errors?.filter((e: any) => e.field === 'Savior_No').map((e: any, j: number) => (
-                                <div key={j} style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
+                                <div key={j} style={{ fontSize: 10, color: '#d32f2f', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
                               ))}
                             </td>
                             <td>{r.firstName || '—'}</td>
                             <td>{r.middleName || r.middle_name || '—'}</td>
                             <td>{r.lastName || '—'}</td>
-                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Full Name' || e.field === 'First Name') ? '#dc2626' : undefined }}>
+                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Full Name' || e.field === 'First Name') ? '#d32f2f' : undefined }}>
                               <b>{r.name}</b>
                               {r._errors?.filter((e: any) => e.field === 'Full Name' || e.field === 'First Name').map((e: any, j: number) => (
-                                <div key={j} style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
+                                <div key={j} style={{ fontSize: 10, color: '#d32f2f', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
                               ))}
                             </td>
-                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Email_id' || e.field === 'Email ID') ? '#dc2626' : undefined }}>
+                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Email_id' || e.field === 'Email ID') ? '#d32f2f' : undefined }}>
                               {r.email}
                               {r._errors?.filter((e: any) => e.field === 'Email_id' || e.field === 'Email ID').map((e: any, j: number) => (
-                                <div key={j} style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
+                                <div key={j} style={{ fontSize: 10, color: '#d32f2f', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
                               ))}
                             </td>
                             <td>
@@ -12823,19 +12824,19 @@ function Teachers() {
                                     borderRadius: 999,
                                     fontSize: 11,
                                     fontWeight: 500,
-                                    background: /^f/i.test(r.gender) ? '#fdf2f8' : /^m/i.test(r.gender) ? '#f0f9ff' : '#f8fafc',
-                                    color: /^f/i.test(r.gender) ? '#db2777' : /^m/i.test(r.gender) ? '#0284c7' : '#64748b',
-                                    border: `1px solid ${/^f/i.test(r.gender) ? '#fbcfe8' : /^m/i.test(r.gender) ? '#bae6fd' : '#e2e8f0'}`
+                                    background: /^f/i.test(r.gender) ? '#fff2f4' : /^m/i.test(r.gender) ? '#eef0f9' : '#f9f9fa',
+                                    color: /^f/i.test(r.gender) ? '#e11d55' : /^m/i.test(r.gender) ? '#5c6bc0' : '#696e79',
+                                    border: `1px solid ${/^f/i.test(r.gender) ? '#fcc3d1' : /^m/i.test(r.gender) ? '#c9cee9' : '#eaeaec'}`
                                   }}
                                 >
                                   {r.gender}
                                 </span>
                               ) : '—'}
                             </td>
-                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Joining Date') ? '#dc2626' : undefined }}>
+                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Joining Date') ? '#d32f2f' : undefined }}>
                               {r.joiningDate || r.joining_date || '—'}
                               {r._errors?.filter((e: any) => e.field === 'Joining Date').map((e: any, j: number) => (
-                                <div key={j} style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
+                                <div key={j} style={{ fontSize: 10, color: '#d32f2f', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
                               ))}
                             </td>
                             <td>{r.designation || 'Teacher'}</td>
@@ -12852,7 +12853,7 @@ function Teachers() {
 
               {/* ── PAGINATION BAR ── */}
               <div className="preview-pagination-bar">
-                <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
+                <div style={{ color: 'var(--text-secondary, #535766)', fontSize: 12.5 }}>
                   {filteredTeacherPreviewRows.length === 0 ? (
                     'Showing 0 records'
                   ) : (
@@ -12896,9 +12897,9 @@ function Teachers() {
                         padding: '3px 6px',
                         fontSize: 12,
                         borderRadius: 4,
-                        border: '1px solid var(--border, #cbd5e1)',
+                        border: '1px solid var(--border, #d4d5d9)',
                         background: 'var(--card-bg, #ffffff)',
-                        color: 'var(--text, #1e293b)',
+                        color: 'var(--text, #282c3f)',
                         cursor: 'pointer'
                       }}
                     >
@@ -12935,7 +12936,7 @@ function Teachers() {
               </div>
 
               {/* ── MODAL FOOTER ── */}
-              <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'flex-end', gap: 12, flexShrink: 0 }}>
+              <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid var(--border, #eaeaec)', display: 'flex', justifyContent: 'flex-end', gap: 12, flexShrink: 0 }}>
                 <button
                   type="button"
                   className="btn-secondary"
@@ -12948,7 +12949,7 @@ function Teachers() {
                   onClick={submitBulkImport}
                   disabled={importing || previewRows.length === 0}
                   style={{
-                    background: teacherErrorCount > 0 ? '#ef4444' : '#10b981',
+                    background: teacherErrorCount > 0 ? '#d32f2f' : '#03806a',
                     color: '#ffffff',
                     fontWeight: 600,
                     padding: '8px 20px',
@@ -13041,7 +13042,7 @@ function Teachers() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                background: prepareExportData().length === 0 ? '#94a3b8' : '#10b981',
+                background: prepareExportData().length === 0 ? '#94969f' : '#03806a',
                 color: '#ffffff',
                 cursor: prepareExportData().length === 0 ? 'not-allowed' : 'pointer'
               }}
@@ -13108,7 +13109,7 @@ function Teachers() {
               ))}
               {prepareExportData().length === 0 && (
                 <tr>
-                  <td colSpan={13} style={{ textAlign: 'center', padding: '24px 0', color: '#64748b' }}>
+                  <td colSpan={13} style={{ textAlign: 'center', padding: '24px 0', color: '#696e79' }}>
                     No faculty records match the selected filters or manual selection.
                   </td>
                 </tr>
@@ -13616,7 +13617,7 @@ function Classes() {
   const displayedClasses = isSearching ? c.filter(doesClassMatch) : c;
 
   return <Layout>
-    <div style={{ '--text-muted': dark ? '#94a3b8' : 'var(--text-secondary, #475569)' } as React.CSSProperties}>
+    <div style={{ '--text-muted': dark ? '#94969f' : 'var(--text-secondary, #535766)' } as React.CSSProperties}>
       <PageHead title="Classes, Sections & Teachers" sub="Manage school classes, sections, and class teacher assignments." />
     </div>
 
@@ -13630,9 +13631,9 @@ function Classes() {
           nav('/classes', { replace: true });
         }}
         style={{
-          color: activeTab === 'CLASSES' ? '#ffffff' : (dark ? '#cbd5e1' : '#475569'),
-          backgroundColor: activeTab === 'CLASSES' ? '#2563eb' : (dark ? '#1e293b' : '#f1f5f9'),
-          borderColor: activeTab === 'CLASSES' ? '#2563eb' : (dark ? '#334155' : '#e2e8f0'),
+          color: activeTab === 'CLASSES' ? '#ffffff' : (dark ? '#d4d5d9' : '#535766'),
+          backgroundColor: activeTab === 'CLASSES' ? '#e11d55' : (dark ? '#282c3f' : '#f5f5f6'),
+          borderColor: activeTab === 'CLASSES' ? '#e11d55' : (dark ? '#3e4152' : '#eaeaec'),
           fontWeight: 600,
         }}
       >
@@ -13646,9 +13647,9 @@ function Classes() {
           nav('/classes?tab=temporary', { replace: true });
         }}
         style={{
-          color: activeTab === 'TEMPORARY' ? '#ffffff' : (dark ? '#cbd5e1' : '#475569'),
-          backgroundColor: activeTab === 'TEMPORARY' ? '#2563eb' : (dark ? '#1e293b' : '#f1f5f9'),
-          borderColor: activeTab === 'TEMPORARY' ? '#2563eb' : (dark ? '#334155' : '#e2e8f0'),
+          color: activeTab === 'TEMPORARY' ? '#ffffff' : (dark ? '#d4d5d9' : '#535766'),
+          backgroundColor: activeTab === 'TEMPORARY' ? '#e11d55' : (dark ? '#282c3f' : '#f5f5f6'),
+          borderColor: activeTab === 'TEMPORARY' ? '#e11d55' : (dark ? '#3e4152' : '#eaeaec'),
           fontWeight: 600,
         }}
       >
@@ -13666,14 +13667,14 @@ function Classes() {
             <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: 'var(--text)' }}>{combinedMentors.length}</h2>
           </div>
           <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: dark ? '#10b981' : '#047857', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Teachers Assigned</span>
-            <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: dark ? '#10b981' : '#047857' }}>{assignedCount}</h2>
+            <span style={{ fontSize: 12, fontWeight: 600, color: dark ? '#03806a' : '#02604f', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Teachers Assigned</span>
+            <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: dark ? '#03806a' : '#02604f' }}>{assignedCount}</h2>
           </div>
-          <div className="panel" style={{ padding: '16px 20px', margin: 0, borderLeft: unassignedCount > 0 ? (dark ? '4px solid #f59e0b' : '4px solid #d97706') : undefined }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: unassignedCount > 0 ? (dark ? '#f59e0b' : '#b45309') : 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          <div className="panel" style={{ padding: '16px 20px', margin: 0, borderLeft: unassignedCount > 0 ? (dark ? '4px solid #e9a23b' : '4px solid #b8781c') : undefined }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: unassignedCount > 0 ? (dark ? '#e9a23b' : '#8f5c12') : 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Unassigned Sections
             </span>
-            <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: unassignedCount > 0 ? (dark ? '#f59e0b' : '#b45309') : 'var(--text)' }}>
+            <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: unassignedCount > 0 ? (dark ? '#e9a23b' : '#8f5c12') : 'var(--text)' }}>
               {unassignedCount}
             </h2>
           </div>
@@ -13689,7 +13690,7 @@ function Classes() {
                 placeholder="Search by class, section, teacher name, or employee ID..."
                 value={mentorSearch}
                 onChange={e => setMentorSearch(e.target.value)}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-card)', color: 'var(--text)' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 4, border: '1px solid var(--border-strong)', background: 'var(--bg-card)', color: 'var(--text)' }}
               />
               {mentorSearch && (
                 <button
@@ -13747,9 +13748,9 @@ function Classes() {
                     fontWeight: 600,
                     padding: '4px 10px',
                     borderRadius: 9999,
-                    background: dark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(37, 99, 235, 0.08)',
-                    color: dark ? '#818cf8' : '#2563eb',
-                    border: dark ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid rgba(37, 99, 235, 0.2)'
+                    background: dark ? 'rgba(225, 29, 85, 0.15)' : 'rgba(225, 29, 85, 0.08)',
+                    color: dark ? '#ef5a85' : '#e11d55',
+                    border: dark ? '1px solid rgba(225, 29, 85, 0.3)' : '1px solid rgba(225, 29, 85, 0.2)'
                   }}
                 >
                   {c.length} Classes · {s.length} Total Sections
@@ -13818,7 +13819,7 @@ function Classes() {
                               justifyContent: 'center',
                               width: 24,
                               height: 24,
-                              borderRadius: 6,
+                              borderRadius: 4,
                               background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
                               color: 'var(--text-secondary)',
                               transition: 'transform 0.2s ease',
@@ -13839,11 +13840,11 @@ function Classes() {
                               padding: '2px 8px',
                               borderRadius: 9999,
                               background: classSections.length > 0
-                                ? (dark ? 'rgba(148, 163, 184, 0.15)' : '#e2e8f0')
-                                : (dark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)'),
+                                ? (dark ? 'rgba(148, 150, 159, 0.15)' : '#eaeaec')
+                                : (dark ? 'rgba(211, 47, 47, 0.15)' : 'rgba(211, 47, 47, 0.1)'),
                               color: classSections.length > 0
-                                ? (dark ? '#cbd5e1' : '#475569')
-                                : (dark ? '#f87171' : '#dc2626')
+                                ? (dark ? '#d4d5d9' : '#535766')
+                                : (dark ? '#dd5c5c' : '#d32f2f')
                             }}
                           >
                             {classSections.length} {classSections.length === 1 ? 'section' : 'sections'}
@@ -13868,7 +13869,7 @@ function Classes() {
                               padding: '6px 14px',
                               fontSize: 12.5,
                               fontWeight: 600,
-                              borderRadius: 6
+                              borderRadius: 4
                             }}
                           >
                             {isAdding ? (
@@ -13902,12 +13903,12 @@ function Classes() {
                               padding: '6px 12px',
                               fontSize: 12.5,
                               fontWeight: 600,
-                              borderRadius: 6,
+                              borderRadius: 4,
                               cursor: isRemoveDisabled ? 'not-allowed' : 'pointer',
                               opacity: isRemoveDisabled ? 0.45 : 1,
-                              background: dark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.06)',
-                              color: dark ? '#f87171' : '#dc2626',
-                              border: dark ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(239, 68, 68, 0.2)'
+                              background: dark ? 'rgba(211, 47, 47, 0.1)' : 'rgba(211, 47, 47, 0.06)',
+                              color: dark ? '#dd5c5c' : '#d32f2f',
+                              border: dark ? '1px solid rgba(211, 47, 47, 0.25)' : '1px solid rgba(211, 47, 47, 0.2)'
                             }}
                           >
                             <Trash2 size={13} />
@@ -13947,11 +13948,11 @@ function Classes() {
                                       flexWrap: 'wrap',
                                       gap: 14,
                                       padding: '10px 16px',
-                                      borderRadius: 8,
-                                      background: dark ? 'rgba(30, 41, 59, 0.7)' : 'var(--bg-card, #ffffff)',
+                                      borderRadius: 4,
+                                      background: dark ? 'rgba(40, 44, 63, 0.7)' : 'var(--bg-card, #ffffff)',
                                       border: isAssigned
-                                        ? (dark ? '1px solid rgba(59, 130, 246, 0.25)' : '1px solid #e2e8f0')
-                                        : (dark ? '1px dashed rgba(245, 158, 11, 0.35)' : '1px dashed #cbd5e1')
+                                        ? (dark ? '1px solid rgba(225, 29, 85, 0.25)' : '1px solid #eaeaec')
+                                        : (dark ? '1px dashed rgba(233, 162, 59, 0.35)' : '1px dashed #d4d5d9')
                                     }}
                                   >
                                     {/* Left: Section Identity */}
@@ -13965,11 +13966,11 @@ function Classes() {
                                           height: 28,
                                           borderRadius: '50%',
                                           background: isAssigned
-                                            ? (dark ? 'rgba(37, 99, 235, 0.25)' : 'rgba(37, 99, 235, 0.1)')
-                                            : (dark ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.12)'),
+                                            ? (dark ? 'rgba(225, 29, 85, 0.25)' : 'rgba(225, 29, 85, 0.1)')
+                                            : (dark ? 'rgba(233, 162, 59, 0.2)' : 'rgba(233, 162, 59, 0.12)'),
                                           color: isAssigned
-                                            ? (dark ? '#60a5fa' : '#2563eb')
-                                            : (dark ? '#fbbf24' : '#d97706'),
+                                            ? (dark ? '#ef5a85' : '#e11d55')
+                                            : (dark ? '#edb35f' : '#b8781c'),
                                           fontWeight: 700,
                                           fontSize: 13,
                                           flexShrink: 0
@@ -13985,11 +13986,11 @@ function Classes() {
                                     {/* Status Badge */}
                                     <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                                       {isAssigned ? (
-                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 9999, fontSize: 11.5, fontWeight: 600, background: 'rgba(16, 185, 129, 0.12)', color: dark ? '#34d399' : '#047857', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 9999, fontSize: 11.5, fontWeight: 600, background: 'rgba(3, 128, 106, 0.12)', color: dark ? '#339988' : '#02604f', border: '1px solid rgba(3, 128, 106, 0.3)' }}>
                                           <Check size={12} /> Assigned
                                         </span>
                                       ) : (
-                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 9999, fontSize: 11.5, fontWeight: 600, background: 'rgba(245, 158, 11, 0.12)', color: dark ? '#fbbf24' : '#b45309', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 9999, fontSize: 11.5, fontWeight: 600, background: 'rgba(233, 162, 59, 0.12)', color: dark ? '#edb35f' : '#8f5c12', border: '1px solid rgba(233, 162, 59, 0.3)' }}>
                                           <AlertTriangle size={12} /> Unassigned
                                         </span>
                                       )}
@@ -14012,7 +14013,7 @@ function Classes() {
                                           )}
                                         </div>
                                       ) : (
-                                        <span style={{ fontSize: 13, color: dark ? '#fbbf24' : '#b45309', fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                        <span style={{ fontSize: 13, color: dark ? '#edb35f' : '#8f5c12', fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                                           <AlertTriangle size={13} style={{ flexShrink: 0 }} /> No Teacher Assigned
                                         </span>
                                       )}
@@ -14044,7 +14045,7 @@ function Classes() {
                                               padding: '5px 12px',
                                               fontSize: 12,
                                               fontWeight: 600,
-                                              borderRadius: 6
+                                              borderRadius: 4
                                             }}
                                           >
                                             <UserCheck size={13} />
@@ -14070,10 +14071,10 @@ function Classes() {
                                               padding: '5px 10px',
                                               fontSize: 12,
                                               fontWeight: 600,
-                                              borderRadius: 6,
-                                              background: dark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.08)',
-                                              color: dark ? '#f87171' : '#dc2626',
-                                              border: dark ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(239, 68, 68, 0.2)',
+                                              borderRadius: 4,
+                                              background: dark ? 'rgba(211, 47, 47, 0.12)' : 'rgba(211, 47, 47, 0.08)',
+                                              color: dark ? '#dd5c5c' : '#d32f2f',
+                                              border: dark ? '1px solid rgba(211, 47, 47, 0.25)' : '1px solid rgba(211, 47, 47, 0.2)',
                                               cursor: 'pointer'
                                             }}
                                           >
@@ -14104,7 +14105,7 @@ function Classes() {
                                             padding: '5px 14px',
                                             fontSize: 12,
                                             fontWeight: 600,
-                                            borderRadius: 6
+                                            borderRadius: 4
                                           }}
                                         >
                                           <UserPlus size={13} />
@@ -14146,7 +14147,7 @@ function Classes() {
     {/* Assign / Change Mentor Modal */}
     {assignModal && (
       <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <div style={{ width: '100%', maxWidth: 460, background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 12, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)', padding: 24 }}>
+        <div style={{ width: '100%', maxWidth: 460, background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 4, boxShadow: 'none', padding: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
               {assignModal.is_change ? 'Change Class Teacher' : 'Assign Class Teacher'}
@@ -14157,18 +14158,18 @@ function Classes() {
           </div>
 
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
-            Target Section: <strong style={{ color: dark ? '#38bdf8' : 'var(--primary-600, #2563eb)' }}>{formatClassTitle(assignModal.class_number)} — Section {assignModal.section_name}</strong>
+            Target Section: <strong style={{ color: dark ? '#7f8ccd' : 'var(--primary-600, #e11d55)' }}>{formatClassTitle(assignModal.class_number)} — Section {assignModal.section_name}</strong>
           </p>
 
           <form onSubmit={submitMentorAssign}>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                Select Active Faculty Member <span style={{ color: '#f43f5e' }}>*</span>
+                Select Active Faculty Member <span style={{ color: '#d32f2f' }}>*</span>
               </label>
               <select
                 value={selectedTeacherId}
                 onChange={e => setSelectedTeacherId(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13.5 }}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 4, border: '1px solid var(--border-strong)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13.5 }}
                 required
               >
                 <option value="">-- Choose Faculty Member --</option>
@@ -14191,7 +14192,7 @@ function Classes() {
               const otherMentored = combinedMentors.filter(m => m.teacher_id === selectedTeacherId && m.section_id !== assignModal.section_id);
               if (otherMentored.length > 0) {
                 return (
-                  <div style={{ display: 'flex', gap: 8, padding: '10px 12px', borderRadius: 6, background: dark ? 'rgba(56, 189, 248, 0.1)' : 'rgba(2, 132, 199, 0.08)', border: dark ? '1px solid rgba(56, 189, 248, 0.25)' : '1px solid rgba(2, 132, 199, 0.2)', color: dark ? '#38bdf8' : '#0369a1', fontSize: 12, marginBottom: 20 }}>
+                  <div style={{ display: 'flex', gap: 8, padding: '10px 12px', borderRadius: 4, background: dark ? 'rgba(127, 140, 205, 0.1)' : 'rgba(92, 107, 192, 0.08)', border: dark ? '1px solid rgba(127, 140, 205, 0.25)' : '1px solid rgba(92, 107, 192, 0.2)', color: dark ? '#7f8ccd' : '#48549a', fontSize: 12, marginBottom: 20 }}>
                     <Info size={16} style={{ flexShrink: 0, marginTop: 1 }} />
                     <span>
                       This teacher currently mentors <strong>{otherMentored.map(om => `Class ${om.class_number}-${om.section_name}`).join(', ')}</strong>. Multi-section mentorship is enabled.
@@ -14218,9 +14219,9 @@ function Classes() {
     {/* Remove Teacher Confirmation Modal */}
     {removeModal && (
       <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <div style={{ width: '100%', maxWidth: 440, background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 12, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)', padding: 24 }}>
+        <div style={{ width: '100%', maxWidth: 440, background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 4, boxShadow: 'none', padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', flexShrink: 0 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(211, 47, 47, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d32f2f', flexShrink: 0 }}>
               <AlertTriangle size={20} />
             </div>
             <div>
@@ -14237,7 +14238,7 @@ function Classes() {
             <button type="button" className="btn-secondary" onClick={() => setRemoveModal(null)} disabled={removing}>
               Cancel
             </button>
-            <button type="submit" style={{ padding: '8px 16px', background: '#ef4444', color: '#ffffff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: 'pointer' }} disabled={removing}>
+            <button type="submit" style={{ padding: '8px 16px', background: '#d32f2f', color: '#ffffff', border: 'none', borderRadius: 4, fontWeight: 600, fontSize: 13, cursor: 'pointer' }} disabled={removing}>
               {removing ? 'Removing...' : 'Confirm Removal'}
             </button>
           </form>
@@ -14248,9 +14249,9 @@ function Classes() {
     {/* Remove Section Confirmation Modal */}
     {confirmRemoveSectionModal && (
       <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <div style={{ width: '100%', maxWidth: 460, background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 12, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)', padding: 24 }}>
+        <div style={{ width: '100%', maxWidth: 460, background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 4, boxShadow: 'none', padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-            <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', flexShrink: 0 }}>
+            <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(211, 47, 47, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d32f2f', flexShrink: 0 }}>
               <AlertTriangle size={22} />
             </div>
             <div>
@@ -14265,7 +14266,7 @@ function Classes() {
             Are you sure you want to remove <strong>Section {confirmRemoveSectionModal.sectionLabel}</strong> from <strong>{confirmRemoveSectionModal.classTitle}</strong>?
           </p>
 
-          <div style={{ display: 'flex', gap: 8, padding: '10px 12px', borderRadius: 6, background: dark ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.08)', border: dark ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(245, 158, 11, 0.25)', color: dark ? '#fbbf24' : '#b45309', fontSize: 12, marginBottom: 20 }}>
+          <div style={{ display: 'flex', gap: 8, padding: '10px 12px', borderRadius: 4, background: dark ? 'rgba(233, 162, 59, 0.1)' : 'rgba(233, 162, 59, 0.08)', border: dark ? '1px solid rgba(233, 162, 59, 0.3)' : '1px solid rgba(233, 162, 59, 0.25)', color: dark ? '#edb35f' : '#8f5c12', fontSize: 12, marginBottom: 20 }}>
             <Info size={16} style={{ flexShrink: 0, marginTop: 1 }} />
             <span>
               If students, attendance records, or timetable schedules depend on this section, deletion will be rejected to protect academic data integrity.
@@ -14290,10 +14291,10 @@ function Classes() {
                 alignItems: 'center',
                 gap: 6,
                 padding: '8px 16px',
-                background: '#ef4444',
+                background: '#d32f2f',
                 color: '#ffffff',
                 border: 'none',
-                borderRadius: 6,
+                borderRadius: 4,
                 fontWeight: 600,
                 fontSize: 13,
                 cursor: removingSection ? 'not-allowed' : 'pointer',
@@ -14472,13 +14473,13 @@ function Subjects() {
                 alignItems: 'center',
                 gap: 6,
                 padding: '6px 12px',
-                borderRadius: 6,
+                borderRadius: 4,
                 cursor: 'pointer',
                 fontWeight: 600,
                 fontSize: 12.5,
-                border: '1px solid var(--border, #cbd5e1)',
+                border: '1px solid var(--border, #d4d5d9)',
                 background: 'var(--bg-card, #ffffff)',
-                color: '#2563eb'
+                color: '#e11d55'
               }}
             >
               <Pencil size={13} />
@@ -14494,7 +14495,7 @@ function Subjects() {
                 alignItems: 'center',
                 gap: 6,
                 padding: '6px 12px',
-                borderRadius: 6,
+                borderRadius: 4,
                 cursor: 'pointer',
                 fontWeight: 600,
                 fontSize: 12.5
@@ -14561,7 +14562,7 @@ function Subjects() {
         style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(15, 23, 42, 0.45)',
+          background: 'rgba(28, 31, 46, 0.45)',
           backdropFilter: 'blur(3px)',
           display: 'flex',
           alignItems: 'center',
@@ -14577,21 +14578,21 @@ function Subjects() {
             maxWidth: 440,
             width: '100%',
             padding: 24,
-            borderRadius: 12,
+            borderRadius: 4,
             background: 'var(--bg-card, #ffffff)',
-            border: '1px solid var(--border, #e2e8f0)',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+            border: '1px solid var(--border, #eaeaec)',
+            boxShadow: 'none'
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text, #1e293b)' }}>
-              <Pencil size={18} color="#2563eb" /> Edit Subject
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text, #282c3f)' }}>
+              <Pencil size={18} color="#e11d55" /> Edit Subject
             </h3>
             <button
               type="button"
               onClick={() => setEditSubjectDialog(prev => ({ ...prev, isOpen: false }))}
               disabled={editSubjectDialog.loading}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: 4 }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#696e79', padding: 4 }}
             >
               <X size={18} />
             </button>
@@ -14599,8 +14600,8 @@ function Subjects() {
 
           <form onSubmit={executeConfirmEditSubject}>
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: 'var(--text, #334155)' }}>
-                Subject Name <span style={{ color: '#ef4444' }}>*</span>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: 'var(--text, #3e4152)' }}>
+                Subject Name <span style={{ color: '#d32f2f' }}>*</span>
               </label>
               <input
                 type="text"
@@ -14611,14 +14612,14 @@ function Subjects() {
                 style={{
                   width: '100%',
                   padding: '9px 12px',
-                  borderRadius: 6,
-                  border: '1px solid var(--border, #cbd5e1)',
+                  borderRadius: 4,
+                  border: '1px solid var(--border, #d4d5d9)',
                   fontSize: 14,
                   boxSizing: 'border-box',
                   outline: 'none'
                 }}
               />
-              <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-muted, #696e79)' }}>
                 Updating the subject name will automatically reflect across all class routines and schedules.
               </p>
             </div>
@@ -14627,10 +14628,10 @@ function Subjects() {
               <div style={{
                 marginBottom: 16,
                 padding: '8px 12px',
-                borderRadius: 6,
-                background: '#fef2f2',
-                border: '1px solid #fecaca',
-                color: '#dc2626',
+                borderRadius: 4,
+                background: '#fbeaea',
+                border: '1px solid #f2c0c0',
+                color: '#d32f2f',
                 fontSize: 12.5
               }}>
                 {editSubjectDialog.error}
@@ -14647,9 +14648,9 @@ function Subjects() {
                   padding: '8px 16px',
                   fontSize: 13,
                   fontWeight: 600,
-                  borderRadius: 6,
+                  borderRadius: 4,
                   cursor: 'pointer',
-                  border: '1px solid var(--border, #cbd5e1)',
+                  border: '1px solid var(--border, #d4d5d9)',
                   background: 'transparent'
                 }}
               >
@@ -14663,9 +14664,9 @@ function Subjects() {
                   padding: '8px 18px',
                   fontSize: 13,
                   fontWeight: 600,
-                  borderRadius: 6,
+                  borderRadius: 4,
                   cursor: (editSubjectDialog.loading || !editSubjectDialog.newName?.trim()) ? 'not-allowed' : 'pointer',
-                  background: '#2563eb',
+                  background: '#e11d55',
                   color: '#ffffff',
                   border: 'none',
                   display: 'inline-flex',
@@ -15716,7 +15717,7 @@ function Attendance() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 18 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: existingSession ? '#10b981' : '#f59e0b' }}></span>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: existingSession ? '#03806a' : '#e9a23b' }}></span>
             <p className="eyebrow" style={{ margin: 0 }}>ATTENDANCE CONTROL & RE-ATTENDANCE STATION</p>
           </div>
           <h1 style={{ margin: 0, fontSize: 24 }}>Daily Class Attendance</h1>
@@ -15739,9 +15740,9 @@ function Attendance() {
       {/* Cross-Teacher Live Session Banner (When attendance has already been taken) */}
       {existingSession && (
         <div style={{
-          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(37, 99, 235, 0.06) 100%)',
-          border: '1px solid rgba(16, 185, 129, 0.3)',
-          borderRadius: 12,
+          background: 'rgba(3, 128, 106, 0.08)',
+          border: '1px solid rgba(3, 128, 106, 0.3)',
+          borderRadius: 4,
           padding: '16px 20px',
           marginBottom: 16,
           display: 'flex',
@@ -15752,16 +15753,16 @@ function Attendance() {
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span className="badge" style={{ background: '#10b981', color: '#ffffff', fontWeight: 700, padding: '3px 8px', fontSize: 11 }}>
+              <span className="badge" style={{ background: '#03806a', color: '#ffffff', fontWeight: 700, padding: '3px 8px', fontSize: 11 }}>
                 ✓ ATTENDANCE RECORDED FOR TODAY
               </span>
               {existingSession.is_reattendance && (
-                <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', fontWeight: 700, padding: '3px 8px', fontSize: 11 }}>
+                <span className="badge" style={{ background: 'rgba(233, 162, 59, 0.15)', color: '#b8781c', fontWeight: 700, padding: '3px 8px', fontSize: 11 }}>
                   🔄 RE-ATTENDANCE LOGGED ({existingSession.reattendance_count || 1}x)
                 </span>
               )}
               <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>
-                Taken by: <strong style={{ color: '#2563eb' }}>{existingSession.teacher_name || 'Faculty Member'}</strong>
+                Taken by: <strong style={{ color: '#e11d55' }}>{existingSession.teacher_name || 'Faculty Member'}</strong>
               </span>
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                 ({fmt(existingSession.start_time)} – {fmt(existingSession.end_time)})
@@ -15780,7 +15781,7 @@ function Attendance() {
               <button
                 type="button"
                 onClick={() => setIsEditingAttendance(true)}
-                style={{ fontSize: 12.5, padding: '6px 14px', background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: 8, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                style={{ fontSize: 12.5, padding: '6px 14px', background: '#e11d55', color: '#ffffff', border: 'none', borderRadius: 4, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
               >
                 <PenLine size={14} /> Edit Attendance
               </button>
@@ -15792,7 +15793,7 @@ function Attendance() {
                   setIsEditingAttendance(false);
                   checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
                 }}
-                style={{ fontSize: 12.5, padding: '6px 14px', background: 'var(--bg-subtle, #f1f5f9)', color: 'var(--text, #334155)', border: '1px solid var(--border)', borderRadius: 8, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                style={{ fontSize: 12.5, padding: '6px 14px', background: 'var(--bg-subtle, #f5f5f6)', color: 'var(--text, #3e4152)', border: '1px solid var(--border)', borderRadius: 4, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
               >
                 Cancel Edit
               </button>
@@ -15812,7 +15813,7 @@ function Attendance() {
       {reattendanceSuccessMsg && (
         <div className="admin-alert-banner success" style={{ marginBottom: 16 }}>
           <div className="alert-left">
-            <CheckCircle2 size={20} color="#059669" />
+            <CheckCircle2 size={20} color="#03806a" />
             <strong style={{ fontSize: 13.5 }}>{reattendanceSuccessMsg}</strong>
           </div>
           <button className="secondary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => setReattendanceSuccessMsg('')}>✕</button>
@@ -15822,9 +15823,9 @@ function Attendance() {
       {/* Sunday / Gazetted Holiday Attendance Guard Banner (TC-ATT-010) */}
       {calendarGuard && !calendarGuard.isInstructional && (
         <div style={{
-          background: 'rgba(239, 68, 68, 0.08)',
-          border: '1px solid rgba(239, 68, 68, 0.3)',
-          borderRadius: 10,
+          background: 'rgba(211, 47, 47, 0.08)',
+          border: '1px solid rgba(211, 47, 47, 0.3)',
+          borderRadius: 4,
           padding: '14px 18px',
           marginBottom: 16,
           display: 'flex',
@@ -15834,9 +15835,9 @@ function Attendance() {
           gap: 12
         }} id="non-instructional-guard-banner">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <AlertTriangle size={22} style={{ color: '#dc2626', flexShrink: 0 }} />
+            <AlertTriangle size={22} style={{ color: '#d32f2f', flexShrink: 0 }} />
             <div>
-              <b style={{ color: '#b91c1c', fontSize: 13.5 }}>
+              <b style={{ color: '#a82424', fontSize: 13.5 }}>
                 Selected date is a declared non-instructional day ({calendarGuard.reason || 'Holiday / Sunday'})
               </b>
               <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--text-muted)' }}>
@@ -15868,12 +15869,12 @@ function Attendance() {
                   height: 32,
                   boxSizing: 'border-box',
                   padding: '4px 12px',
-                  borderRadius: 6,
-                  background: 'var(--bg-subtle, #f1f5f9)',
-                  border: '1px solid var(--border, #cbd5e1)',
+                  borderRadius: 4,
+                  background: 'var(--bg-subtle, #f5f5f6)',
+                  border: '1px solid var(--border, #d4d5d9)',
                   fontWeight: 700,
                   fontSize: 13,
-                  color: 'var(--text, #0f172a)'
+                  color: 'var(--text, #1c1f2e)'
                 }}>
                   {currentClass
                     ? (currentClass.class_number === -1 || currentClass.class_number === '-1' ? 'Class L KG' :
@@ -15891,12 +15892,12 @@ function Attendance() {
                   height: 32,
                   boxSizing: 'border-box',
                   padding: '4px 12px',
-                  borderRadius: 6,
-                  background: 'var(--bg-subtle, #f1f5f9)',
-                  border: '1px solid var(--border, #cbd5e1)',
+                  borderRadius: 4,
+                  background: 'var(--bg-subtle, #f5f5f6)',
+                  border: '1px solid var(--border, #d4d5d9)',
                   fontWeight: 700,
                   fontSize: 13,
-                  color: 'var(--text, #0f172a)'
+                  color: 'var(--text, #1c1f2e)'
                 }}>
                   Section {currentSection?.name || currentSection?.sectionName || (authorizedSections[0] ? authorizedSections[0].sectionName : 'A')}
                 </span>
@@ -15923,11 +15924,11 @@ function Attendance() {
                     height: 32,
                     boxSizing: 'border-box',
                     padding: '4px 10px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border, #cbd5e1)',
+                    borderRadius: 4,
+                    border: '1px solid var(--border, #d4d5d9)',
                     fontSize: 13,
                     fontWeight: 600,
-                    color: 'var(--text, #0f172a)',
+                    color: 'var(--text, #1c1f2e)',
                     background: 'var(--bg-card, #ffffff)'
                   }}
                 >
@@ -15963,11 +15964,11 @@ function Attendance() {
                     height: 32,
                     boxSizing: 'border-box',
                     padding: '4px 10px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border, #cbd5e1)',
+                    borderRadius: 4,
+                    border: '1px solid var(--border, #d4d5d9)',
                     fontSize: 13,
                     fontWeight: 600,
-                    color: 'var(--text, #0f172a)',
+                    color: 'var(--text, #1c1f2e)',
                     background: 'var(--bg-card, #ffffff)'
                   }}
                 >
@@ -16000,11 +16001,11 @@ function Attendance() {
                 height: 32,
                 boxSizing: 'border-box',
                 padding: '4px 10px',
-                borderRadius: 6,
-                border: '1px solid var(--border, #cbd5e1)',
+                borderRadius: 4,
+                border: '1px solid var(--border, #d4d5d9)',
                 fontSize: 13,
                 fontWeight: 600,
-                color: 'var(--text, #0f172a)',
+                color: 'var(--text, #1c1f2e)',
                 background: 'var(--bg-card, #ffffff)',
                 outline: 'none'
               }}
@@ -16039,7 +16040,7 @@ function Attendance() {
       {done && (
         <div className="admin-alert-banner success" style={{ marginBottom: 20 }}>
           <div className="alert-left">
-            <CheckCircle2 size={24} color="#059669" />
+            <CheckCircle2 size={24} color="#03806a" />
             <div>
               <strong>Daily Attendance Confirmed for Class {currentClass?.class_number || ''}-{currentSection?.name || ''}</strong>
               <p>
@@ -16049,7 +16050,7 @@ function Attendance() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="alert-action-btn" style={{ background: '#059669' }} onClick={() => nav('/dashboard')}>
+            <button className="alert-action-btn" style={{ background: '#03806a' }} onClick={() => nav('/dashboard')}>
               Go to Dashboard →
             </button>
             <button className="secondary" onClick={() => setActiveModal('AUDIT_LOGS')}>
@@ -16063,21 +16064,21 @@ function Attendance() {
       {done && (
         <div style={{
           background: 'var(--bg-card, #ffffff)',
-          border: '1px solid #cbd5e1',
-          borderRadius: 12,
+          border: '1px solid #d4d5d9',
+          borderRadius: 4,
           padding: '20px 24px',
           marginBottom: 24,
-          boxShadow: '0 4px 12px rgba(15, 23, 42, 0.05)'
+          boxShadow: 'none'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Mail size={20} color="#2563eb" />
-                <h3 style={{ margin: 0, fontSize: 16.5, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                <Mail size={20} color="#e11d55" />
+                <h3 style={{ margin: 0, fontSize: 16.5, fontWeight: 700, color: 'var(--text, #1c1f2e)' }}>
                   Dispatch Institutional Email Alerts
                 </h3>
               </div>
-              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted, #696e79)' }}>
                 Send professional, branded notification emails to parents and students for this confirmed attendance session.
               </p>
             </div>
@@ -16085,10 +16086,10 @@ function Attendance() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              background: 'rgba(37, 99, 235, 0.12)',
-              border: '1px solid rgba(59, 130, 246, 0.25)',
-              color: 'var(--primary-600, #3b82f6)',
-              borderRadius: 20,
+              background: 'rgba(225, 29, 85, 0.12)',
+              border: '1px solid rgba(225, 29, 85, 0.25)',
+              color: 'var(--primary-600, #e11d55)',
+              borderRadius: 4,
               padding: '4px 12px',
               fontSize: 12.5,
               fontWeight: 600
@@ -16099,8 +16100,8 @@ function Attendance() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 18 }}>
             {/* Filter Target */}
-            <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted, #64748b)', marginBottom: 8 }}>
+            <div style={{ background: 'var(--card-subtle, #f9f9fa)', padding: 12, borderRadius: 4, border: '1px solid var(--border, #eaeaec)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted, #696e79)', marginBottom: 8 }}>
                 Target Attendance Group
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -16138,8 +16139,8 @@ function Attendance() {
             </div>
 
             {/* Recipient Contacts */}
-            <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted, #64748b)', marginBottom: 8 }}>
+            <div style={{ background: 'var(--card-subtle, #f9f9fa)', padding: 12, borderRadius: 4, border: '1px solid var(--border, #eaeaec)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted, #696e79)', marginBottom: 8 }}>
                 Recipient Contact Addresses
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -16165,7 +16166,7 @@ function Attendance() {
 
           {/* Action Row */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <div style={{ fontSize: 12.5, color: 'var(--text-muted, #64748b)' }}>
+            <div style={{ fontSize: 12.5, color: 'var(--text-muted, #696e79)' }}>
               ℹ️ Individual MIME emails are delivered separately. Contact privacy is strictly preserved.
             </div>
             <button
@@ -16175,11 +16176,11 @@ function Attendance() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
-                background: '#2563eb',
+                background: '#e11d55',
                 color: '#ffffff',
                 fontWeight: 600,
                 padding: '9px 18px',
-                borderRadius: 8,
+                borderRadius: 4,
                 border: 'none',
                 cursor: emailSending || estimatedEmails === 0 ? 'not-allowed' : 'pointer',
                 opacity: emailSending || estimatedEmails === 0 ? 0.6 : 1
@@ -16195,14 +16196,14 @@ function Attendance() {
             <div style={{
               marginTop: 14,
               padding: '12px 16px',
-              borderRadius: 8,
+              borderRadius: 4,
               fontSize: 13,
               display: 'flex',
               alignItems: 'center',
               gap: 10,
-              background: emailResult.success ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-              border: emailResult.success ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
-              color: emailResult.success ? '#10b981' : '#ef4444'
+              background: emailResult.success ? 'rgba(3, 128, 106, 0.12)' : 'rgba(211, 47, 47, 0.12)',
+              border: emailResult.success ? '1px solid rgba(3, 128, 106, 0.3)' : '1px solid rgba(211, 47, 47, 0.3)',
+              color: emailResult.success ? '#03806a' : '#d32f2f'
             }}>
               {emailResult.success ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
               <span>{emailResult.message}</span>
@@ -16249,11 +16250,11 @@ function Attendance() {
               gap: 6,
               background: 'var(--bg)',
               border: '1px solid var(--border)',
-              borderRadius: 8,
+              borderRadius: 4,
               padding: '4px 10px'
             }}
           >
-            <ArrowUpDown size={14} style={{ color: '#2563eb' }} />
+            <ArrowUpDown size={14} style={{ color: '#e11d55' }} />
             <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
               Sort by:
             </span>
@@ -16287,7 +16288,7 @@ function Attendance() {
               style={{
                 width: '100%',
                 padding: '6px 12px',
-                borderRadius: 8,
+                borderRadius: 4,
                 border: '1px solid var(--border)',
                 background: 'var(--bg)',
                 color: 'var(--text)',
@@ -16316,12 +16317,12 @@ function Attendance() {
       <div
         ref={rosterTopRef}
         style={{
-          border: '1px solid var(--border, #cbd5e1)',
-          borderRadius: 12,
+          border: '1px solid var(--border, #d4d5d9)',
+          borderRadius: 4,
           overflow: 'hidden',
           background: 'var(--bg-card, #ffffff)',
           marginBottom: 16,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+          boxShadow: 'none',
           width: '100%',
           boxSizing: 'border-box'
         }}
@@ -16373,28 +16374,28 @@ function Attendance() {
                     key={s.id}
                     style={{
                       background: isLeftEarly
-                        ? 'rgba(245, 158, 11, 0.05)'
+                        ? 'rgba(233, 162, 59, 0.05)'
                         : isLate
-                          ? 'rgba(37, 99, 235, 0.05)'
+                          ? 'rgba(225, 29, 85, 0.05)'
                           : isPresent
                             ? 'var(--bg-card)'
                             : isAbsent
-                              ? 'rgba(239, 68, 68, 0.04)'
+                              ? 'rgba(211, 47, 47, 0.04)'
                               : 'var(--bg-card)',
                       borderColor: isLeftEarly
-                        ? 'rgba(245, 158, 11, 0.4)'
+                        ? 'rgba(233, 162, 59, 0.4)'
                         : isLate
-                          ? 'rgba(37, 99, 235, 0.3)'
+                          ? 'rgba(225, 29, 85, 0.3)'
                           : isPresent
                             ? 'var(--border)'
                             : isAbsent
-                              ? 'rgba(239, 68, 68, 0.3)'
+                              ? 'rgba(211, 47, 47, 0.3)'
                               : 'var(--border)',
                       padding: '12px 16px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      borderRadius: 10,
+                      borderRadius: 4,
                       marginBottom: 8,
                       gap: 12,
                       flexWrap: 'wrap',
@@ -16407,8 +16408,8 @@ function Attendance() {
                       <span
                         className="roll"
                         style={{
-                          background: isLeftEarly ? '#fef3c7' : isLate ? '#dbeafe' : isPresent ? '#eff6ff' : isAbsent ? '#fee2e2' : 'var(--bg-subtle)',
-                          color: isLeftEarly ? '#b45309' : isLate ? '#1d4ed8' : isPresent ? '#2563eb' : isAbsent ? '#dc2626' : 'var(--text-muted)',
+                          background: isLeftEarly ? '#fbecd3' : isLate ? '#ffe1e8' : isPresent ? '#fff2f4' : isAbsent ? '#f7d5d5' : 'var(--bg-subtle)',
+                          color: isLeftEarly ? '#8f5c12' : isLate ? '#c0174a' : isPresent ? '#e11d55' : isAbsent ? '#d32f2f' : 'var(--text-muted)',
                           fontWeight: 700,
                           minWidth: 32,
                           textAlign: 'center'
@@ -16425,9 +16426,9 @@ function Attendance() {
                               borderRadius: 4,
                               fontSize: 10.5,
                               fontWeight: 600,
-                              background: formatGender(s.gender) === 'Female' ? '#fdf2f8' : formatGender(s.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
-                              color: formatGender(s.gender) === 'Female' ? '#db2777' : formatGender(s.gender) === 'Male' ? '#0284c7' : '#64748b',
-                              border: `1px solid ${formatGender(s.gender) === 'Female' ? '#fbcfe8' : formatGender(s.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
+                              background: formatGender(s.gender) === 'Female' ? '#fff2f4' : formatGender(s.gender) === 'Male' ? '#eef0f9' : '#f9f9fa',
+                              color: formatGender(s.gender) === 'Female' ? '#e11d55' : formatGender(s.gender) === 'Male' ? '#5c6bc0' : '#696e79',
+                              border: `1px solid ${formatGender(s.gender) === 'Female' ? '#fcc3d1' : formatGender(s.gender) === 'Male' ? '#c9cee9' : '#eaeaec'}`
                             }}>
                               {formatGender(s.gender)}
                             </span>
@@ -16436,13 +16437,13 @@ function Attendance() {
                         </div>
                         {/* Status Annotations for Re-attendance */}
                         {isLeftEarly && (
-                          <div style={{ fontSize: 11.5, color: '#b45309', marginTop: 3, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <div style={{ fontSize: 11.5, color: '#8f5c12', marginTop: 3, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
                             <DoorOpen size={13} />
                             <span>Left early {stObj.departurePeriod ? `(${stObj.departurePeriod})` : ''} at {stObj.departureTime || '—'}{stObj.remarks ? `: ${stObj.remarks}` : ''}</span>
                           </div>
                         )}
                         {isLate && (
-                          <div style={{ fontSize: 11.5, color: '#1d4ed8', marginTop: 3, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <div style={{ fontSize: 11.5, color: '#c0174a', marginTop: 3, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
                             <Clock size={13} />
                             <span>Late arrival {stObj.arrivalPeriod ? `(${stObj.arrivalPeriod})` : ''} at {stObj.arrivalTime || '—'}{stObj.remarks ? `: ${stObj.remarks}` : ''}</span>
                           </div>
@@ -16463,15 +16464,15 @@ function Attendance() {
                           alignItems: 'center',
                           gap: 4,
                           background: isLeftEarly
-                            ? 'rgba(245, 158, 11, 0.15)'
+                            ? 'rgba(233, 162, 59, 0.15)'
                             : isLate
-                              ? 'rgba(37, 99, 235, 0.12)'
+                              ? 'rgba(225, 29, 85, 0.12)'
                               : isPresent
-                                ? 'rgba(16, 185, 129, 0.12)'
+                                ? 'rgba(3, 128, 106, 0.12)'
                                 : isAbsent
-                                  ? 'rgba(239, 68, 68, 0.12)'
-                                  : 'rgba(100, 116, 139, 0.12)',
-                          color: isLeftEarly ? '#b45309' : isLate ? '#2563eb' : isPresent ? '#059669' : isAbsent ? '#dc2626' : 'var(--text-muted)'
+                                  ? 'rgba(211, 47, 47, 0.12)'
+                                  : 'rgba(105, 110, 121, 0.12)',
+                          color: isLeftEarly ? '#8f5c12' : isLate ? '#e11d55' : isPresent ? '#03806a' : isAbsent ? '#d32f2f' : 'var(--text-muted)'
                         }}
                       >
                         {isLeftEarly ? '🚪 LEFT EARLY' : isLate ? '⏰ LATE' : isPresent ? '✓ PRESENT' : isAbsent ? '✕ ABSENT' : '⚪ UNMARKED'}
@@ -16480,7 +16481,7 @@ function Attendance() {
                       {/* Attendance Action Buttons */}
                       {isAlreadyEdited ? (
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                          <span style={{ fontSize: 11.5, color: '#059669', fontWeight: 600, padding: '4px 6px' }}>
+                          <span style={{ fontSize: 11.5, color: '#03806a', fontWeight: 600, padding: '4px 6px' }}>
                             (Finalized)
                           </span>
                           <button
@@ -16489,10 +16490,10 @@ function Attendance() {
                             style={{
                               fontSize: 11,
                               padding: '3px 8px',
-                              borderRadius: 5,
+                              borderRadius: 4,
                               border: '1px solid var(--border)',
-                              background: 'var(--bg-subtle, #f1f5f9)',
-                              color: 'var(--text-muted, #94a3b8)',
+                              background: 'var(--bg-subtle, #f5f5f6)',
+                              color: 'var(--text-muted, #94969f)',
                               cursor: 'not-allowed',
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -16516,10 +16517,10 @@ function Attendance() {
                             style={{
                               fontSize: 11,
                               padding: '3px 8px',
-                              borderRadius: 5,
+                              borderRadius: 4,
                               border: '1px solid var(--border)',
                               background: 'var(--card)',
-                              color: '#2563eb',
+                              color: '#e11d55',
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -16541,9 +16542,9 @@ function Attendance() {
                             style={{
                               fontSize: 11.5,
                               padding: '5px 12px',
-                              borderRadius: 6,
-                              border: isPresent ? '1px solid #10b981' : '1px solid var(--border)',
-                              background: isPresent ? '#10b981' : 'var(--bg-subtle)',
+                              borderRadius: 4,
+                              border: isPresent ? '1px solid #03806a' : '1px solid var(--border)',
+                              background: isPresent ? '#03806a' : 'var(--bg-subtle)',
                               color: isPresent ? '#ffffff' : 'var(--text)',
                               cursor: 'pointer',
                               display: 'inline-flex',
@@ -16564,9 +16565,9 @@ function Attendance() {
                             style={{
                               fontSize: 11.5,
                               padding: '5px 12px',
-                              borderRadius: 6,
-                              border: isLeftEarly ? '1px solid #f59e0b' : '1px solid var(--border)',
-                              background: isLeftEarly ? '#f59e0b' : 'var(--bg-subtle)',
+                              borderRadius: 4,
+                              border: isLeftEarly ? '1px solid #e9a23b' : '1px solid var(--border)',
+                              background: isLeftEarly ? '#e9a23b' : 'var(--bg-subtle)',
                               color: isLeftEarly ? '#ffffff' : 'var(--text)',
                               cursor: 'pointer',
                               display: 'inline-flex',
@@ -16588,9 +16589,9 @@ function Attendance() {
                             style={{
                               fontSize: 11.5,
                               padding: '5px 12px',
-                              borderRadius: 6,
-                              border: isAbsent ? '1px solid #ef4444' : '1px solid var(--border)',
-                              background: isAbsent ? '#ef4444' : 'var(--bg-subtle)',
+                              borderRadius: 4,
+                              border: isAbsent ? '1px solid #d32f2f' : '1px solid var(--border)',
+                              background: isAbsent ? '#d32f2f' : 'var(--bg-subtle)',
                               color: isAbsent ? '#ffffff' : 'var(--text)',
                               cursor: 'pointer',
                               display: 'inline-flex',
@@ -16651,7 +16652,7 @@ function Attendance() {
                 <button
                   type="button"
                   disabled={true}
-                  style={{ minWidth: 190, opacity: 0.9, cursor: 'default', background: '#059669', color: '#ffffff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 600, fontSize: 13 }}
+                  style={{ minWidth: 190, opacity: 0.9, cursor: 'default', background: '#03806a', color: '#ffffff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 600, fontSize: 13 }}
                 >
                   <CheckCircle2 size={15} /> {isAlreadyEdited ? 'Attendance Finalized' : 'Attendance Submitted'}
                 </button>
@@ -16659,7 +16660,7 @@ function Attendance() {
                   <button
                     type="button"
                     onClick={() => setIsEditingAttendance(true)}
-                    style={{ minWidth: 150, background: '#2563eb', color: '#ffffff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 600, fontSize: 13, border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer' }}
+                    style={{ minWidth: 150, background: '#e11d55', color: '#ffffff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 600, fontSize: 13, border: 'none', borderRadius: 4, padding: '8px 16px', cursor: 'pointer' }}
                   >
                     <PenLine size={14} /> Edit Attendance
                   </button>
@@ -16689,7 +16690,7 @@ function Attendance() {
                       initiateAttendancePreview(false);
                     }
                   }}
-                  style={{ minWidth: 180, background: existingSession ? '#2563eb' : undefined }}
+                  style={{ minWidth: 180, background: existingSession ? '#e11d55' : undefined }}
                 >
                   {busy ? 'Saving…' : existingSession ? '✓ Submit Updated Attendance' : 'Review & Submit Attendance'}
                 </button>
@@ -16704,7 +16705,7 @@ function Attendance() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(15, 23, 42, 0.7)',
+          background: 'rgba(28, 31, 46, 0.7)',
           backdropFilter: 'blur(6px)',
           zIndex: 9999,
           display: 'flex',
@@ -16715,15 +16716,15 @@ function Attendance() {
           <div style={{
             background: 'var(--bg-card, #ffffff)',
             border: '1px solid var(--border)',
-            borderRadius: 16,
+            borderRadius: 4,
             width: '100%',
             maxWidth: 520,
             padding: 24,
-            boxShadow: '0 20px 40px rgba(0,0,0,0.25)'
+            boxShadow: 'none'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ background: '#fef3c7', color: '#b45309', padding: 8, borderRadius: 10, display: 'inline-flex' }}>
+                <span style={{ background: '#fbecd3', color: '#8f5c12', padding: 8, borderRadius: 4, display: 'inline-flex' }}>
                   <DoorOpen size={20} />
                 </span>
                 <div>
@@ -16731,11 +16732,11 @@ function Attendance() {
                   <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>Official re-attendance departure adjustment</p>
                 </div>
               </div>
-              <button className="secondary" onClick={() => setActiveModal(null)} style={{ padding: '4px 8px', borderRadius: 6 }}>✕</button>
+              <button className="secondary" onClick={() => setActiveModal(null)} style={{ padding: '4px 8px', borderRadius: 4 }}>✕</button>
             </div>
 
             {/* Student Card Summary */}
-            <div style={{ background: 'var(--bg-subtle, #f8fafc)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', marginBottom: 18 }}>
+            <div style={{ background: 'var(--bg-subtle, #f9f9fa)', padding: '10px 14px', borderRadius: 4, border: '1px solid var(--border)', marginBottom: 18 }}>
               <div style={{ fontWeight: 700, fontSize: 14 }}>{selectedStudent.name}</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                 Roll: {selectedStudent.roll_number || '—'} · Parent: {selectedStudent.parent_name || 'Parent'} ({selectedStudent.parent_sms_number || 'Mobile on record'})
@@ -16751,7 +16752,7 @@ function Attendance() {
                 <select
                   value={depPeriod}
                   onChange={(e) => setDepPeriod(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
                 >
                   <option value="After 1st Period">After 1st Period (Attended 1st Period Only)</option>
                   <option value="During 1st Period">During 1st Period (Emergency dismissal)</option>
@@ -16772,7 +16773,7 @@ function Attendance() {
                   type="time"
                   value={depTime}
                   onChange={(e) => setDepTime(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 600 }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 600 }}
                   required
                 />
               </div>
@@ -16785,7 +16786,7 @@ function Attendance() {
                 <select
                   value={depReason}
                   onChange={(e) => setDepReason(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
                 >
                   <option value="Parent Picked Up Early">Parent Picked Up Early</option>
                   <option value="Medical Emergency / Illness (Sick Bay)">Medical Emergency / Illness (Sick Bay)</option>
@@ -16807,7 +16808,7 @@ function Attendance() {
                   value={depRemarks}
                   onChange={(e) => setDepRemarks(e.target.value)}
                   placeholder="e.g. Gate pass GP-104 issued. Parent Mrs. Sen collected student."
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
                 />
               </div>
 
@@ -16829,7 +16830,7 @@ function Attendance() {
               <button
                 onClick={submitEarlyDeparture}
                 disabled={savingAction}
-                style={{ background: '#d97706', color: '#ffffff', border: 'none', padding: '9px 18px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
+                style={{ background: '#b8781c', color: '#ffffff', border: 'none', padding: '9px 18px', borderRadius: 4, fontWeight: 600, cursor: 'pointer' }}
               >
                 {savingAction ? 'Recording Departure…' : '✓ Confirm Early Departure'}
               </button>
@@ -16843,7 +16844,7 @@ function Attendance() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(15, 23, 42, 0.7)',
+          background: 'rgba(28, 31, 46, 0.7)',
           backdropFilter: 'blur(6px)',
           zIndex: 9999,
           display: 'flex',
@@ -16854,15 +16855,15 @@ function Attendance() {
           <div style={{
             background: 'var(--bg-card, #ffffff)',
             border: '1px solid var(--border)',
-            borderRadius: 16,
+            borderRadius: 4,
             width: '100%',
             maxWidth: 520,
             padding: 24,
-            boxShadow: '0 20px 40px rgba(0,0,0,0.25)'
+            boxShadow: 'none'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ background: '#dbeafe', color: '#1d4ed8', padding: 8, borderRadius: 10, display: 'inline-flex' }}>
+                <span style={{ background: '#ffe1e8', color: '#c0174a', padding: 8, borderRadius: 4, display: 'inline-flex' }}>
                   <Clock size={20} />
                 </span>
                 <div>
@@ -16870,10 +16871,10 @@ function Attendance() {
                   <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>Convert absent record to late arrival</p>
                 </div>
               </div>
-              <button className="secondary" onClick={() => setActiveModal(null)} style={{ padding: '4px 8px', borderRadius: 6 }}>✕</button>
+              <button className="secondary" onClick={() => setActiveModal(null)} style={{ padding: '4px 8px', borderRadius: 4 }}>✕</button>
             </div>
 
-            <div style={{ background: 'var(--bg-subtle, #f8fafc)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', marginBottom: 18 }}>
+            <div style={{ background: 'var(--bg-subtle, #f9f9fa)', padding: '10px 14px', borderRadius: 4, border: '1px solid var(--border)', marginBottom: 18 }}>
               <div style={{ fontWeight: 700, fontSize: 14 }}>{selectedStudent.name}</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                 Roll: {selectedStudent.roll_number || '—'} · Parent: {selectedStudent.parent_name || 'Parent'}
@@ -16888,7 +16889,7 @@ function Attendance() {
                 <select
                   value={arrPeriod}
                   onChange={(e) => setArrPeriod(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
                 >
                   <option value="Period 2">Period 2 (Arrived during 2nd period)</option>
                   <option value="Period 3">Period 3</option>
@@ -16906,7 +16907,7 @@ function Attendance() {
                   type="time"
                   value={arrTime}
                   onChange={(e) => setArrTime(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 600 }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 600 }}
                   required
                 />
               </div>
@@ -16918,7 +16919,7 @@ function Attendance() {
                 <select
                   value={arrReason}
                   onChange={(e) => setArrReason(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
                 >
                   <option value="Traffic / Commute Delay">Traffic / Commute Delay</option>
                   <option value="Doctor / Dental Appointment">Doctor / Dental Appointment</option>
@@ -16937,7 +16938,7 @@ function Attendance() {
                   value={arrRemarks}
                   onChange={(e) => setArrRemarks(e.target.value)}
                   placeholder="Optional explanatory notes..."
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
                 />
               </div>
 
@@ -16958,7 +16959,7 @@ function Attendance() {
               <button
                 onClick={submitLateArrival}
                 disabled={savingAction}
-                style={{ background: '#2563eb', color: '#ffffff', border: 'none', padding: '9px 18px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
+                style={{ background: '#e11d55', color: '#ffffff', border: 'none', padding: '9px 18px', borderRadius: 4, fontWeight: 600, cursor: 'pointer' }}
               >
                 {savingAction ? 'Saving Late Arrival…' : '✓ Confirm Late Arrival'}
               </button>
@@ -16990,7 +16991,7 @@ function Attendance() {
           <div style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.7)',
+            background: 'rgba(28, 31, 46, 0.7)',
             backdropFilter: 'blur(6px)',
             zIndex: 9999,
             display: 'flex',
@@ -17001,30 +17002,30 @@ function Attendance() {
             <div style={{
               background: 'var(--bg-card, #ffffff)',
               border: '1px solid var(--border)',
-              borderRadius: 16,
+              borderRadius: 4,
               width: '100%',
               maxWidth: 750,
               maxHeight: '85vh',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
+              boxShadow: 'none',
               overflow: 'hidden'
             }}>
               <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <HistoryIcon size={20} color="#2563eb" />
+                  <HistoryIcon size={20} color="#e11d55" />
                   <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
                     Session Re-attendance Audit Trail
                   </h3>
                 </div>
-                <button className="secondary" onClick={() => setActiveModal(null)} style={{ padding: '4px 8px', borderRadius: 6 }}>✕</button>
+                <button className="secondary" onClick={() => setActiveModal(null)} style={{ padding: '4px 8px', borderRadius: 4 }}>✕</button>
               </div>
 
               {/* Filter & Export Toolbar */}
               <div style={{
                 padding: '12px 24px',
                 borderBottom: '1px solid var(--border)',
-                background: 'var(--bg-subtle, #f8fafc)',
+                background: 'var(--bg-subtle, #f9f9fa)',
                 display: 'flex',
                 flexWrap: 'wrap',
                 gap: 10,
@@ -17043,7 +17044,7 @@ function Attendance() {
                         width: '100%',
                         padding: '6px 10px 6px 30px',
                         fontSize: 12.5,
-                        borderRadius: 6,
+                        borderRadius: 4,
                         border: '1px solid var(--border)',
                         background: 'var(--bg-card)'
                       }}
@@ -17061,7 +17062,7 @@ function Attendance() {
                     style={{
                       padding: '6px 10px',
                       fontSize: 12.5,
-                      borderRadius: 6,
+                      borderRadius: 4,
                       border: '1px solid var(--border)',
                       background: 'var(--bg-card)'
                     }}
@@ -17091,7 +17092,7 @@ function Attendance() {
                       onClick={() => handleExportAudit('xlsx')}
                       disabled={exportingAudit || !existingSession?.id}
                       title="Export filtered audit logs as styled Excel spreadsheet (.xlsx)"
-                      style={{ fontSize: 12, padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(16, 185, 129, 0.08)', color: '#059669', borderColor: '#10b981' }}
+                      style={{ fontSize: 12, padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(3, 128, 106, 0.08)', color: '#03806a', borderColor: '#03806a' }}
                     >
                       <FileSpreadsheet size={13} />
                       {exportingAudit ? 'Exporting...' : 'Export Excel (.xlsx)'}
@@ -17125,9 +17126,9 @@ function Attendance() {
                         <div
                           key={log.id || idx}
                           style={{
-                            background: 'var(--bg-subtle, #f8fafc)',
+                            background: 'var(--bg-subtle, #f9f9fa)',
                             border: '1px solid var(--border)',
-                            borderRadius: 8,
+                            borderRadius: 4,
                             padding: '12px 14px'
                           }}
                         >
@@ -17140,11 +17141,11 @@ function Attendance() {
                             </span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, marginBottom: 4 }}>
-                            <span className="badge" style={{ background: 'rgba(100,116,139,0.1)', color: 'var(--text-muted)' }}>{prevSt}</span>
+                            <span className="badge" style={{ background: 'rgba(105, 110, 121,0.1)', color: 'var(--text-muted)' }}>{prevSt}</span>
                             <span>➔</span>
                             <span className="badge" style={{
-                              background: newSt === 'LEFT_EARLY' ? '#fef3c7' : newSt === 'LATE' ? '#dbeafe' : newSt === 'PRESENT' ? '#dcfce7' : '#fee2e2',
-                              color: newSt === 'LEFT_EARLY' ? '#b45309' : newSt === 'LATE' ? '#1d4ed8' : newSt === 'PRESENT' ? '#15803d' : '#b91c1c',
+                              background: newSt === 'LEFT_EARLY' ? '#fbecd3' : newSt === 'LATE' ? '#ffe1e8' : newSt === 'PRESENT' ? '#cce6e1' : '#f7d5d5',
+                              color: newSt === 'LEFT_EARLY' ? '#8f5c12' : newSt === 'LATE' ? '#c0174a' : newSt === 'PRESENT' ? '#02604f' : '#a82424',
                               fontWeight: 700
                             }}>
                               {newSt}
@@ -17154,7 +17155,7 @@ function Attendance() {
                             </span>
                           </div>
                           {log.reason && (
-                            <div style={{ fontSize: 12, color: 'var(--text)', background: 'var(--bg-card)', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 6 }}>
+                            <div style={{ fontSize: 12, color: 'var(--text)', background: 'var(--bg-card)', padding: '6px 10px', borderRadius: 4, border: '1px solid var(--border)', marginTop: 6 }}>
                               Reason: {log.reason}
                             </div>
                           )}
@@ -17315,7 +17316,7 @@ function History() {
             Permanent institutional record of all roll-call sessions and cross-teacher re-attendance logs.
           </p>
         </div>
-        <a href="#/take-attendance" className="primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+        <a href="#/take-attendance" className="primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none', padding: '8px 16px', borderRadius: 4, fontSize: 13, fontWeight: 600 }}>
           Take New Attendance →
         </a>
       </div>
@@ -17332,11 +17333,11 @@ function History() {
         </div>
         <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
           <span className="muted" style={{ fontSize: 12, fontWeight: 600 }}>PRESENT COUNT</span>
-          <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4, color: '#10b981' }}>{totalPresent}</div>
+          <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4, color: '#03806a' }}>{totalPresent}</div>
         </div>
         <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
           <span className="muted" style={{ fontSize: 12, fontWeight: 600 }}>ATTENDANCE RATE</span>
-          <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4, color: overallRate >= 75 ? '#2563eb' : '#ea580c' }}>
+          <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4, color: overallRate >= 75 ? '#e11d55' : '#b8781c' }}>
             {overallRate}%
           </div>
         </div>
@@ -17380,13 +17381,13 @@ function History() {
                   return (
                     <tr key={x.id}>
                       <td><b>{dateStr}</b></td>
-                      <td><span className="badge" style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb', fontWeight: 600 }}>{formatHistoryClassLabel(x.class_number)}-{x.section_name}</span></td>
+                      <td><span className="badge" style={{ background: 'rgba(225, 29, 85,0.1)', color: '#e11d55', fontWeight: 600 }}>{formatHistoryClassLabel(x.class_number)}-{x.section_name}</span></td>
                       <td><b>{x.subject_name || 'General'}</b></td>
                       <td>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontWeight: 600, color: 'var(--text)' }}>{x.teacher_name || 'Faculty Member'}</span>
                           {x.is_reattendance && (
-                            <span style={{ fontSize: 11, color: '#b45309', display: 'inline-flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
+                            <span style={{ fontSize: 11, color: '#8f5c12', display: 'inline-flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
                               <RefreshCw size={10} /> Re-attended ({x.reattendance_count || 1}x)
                             </span>
                           )}
@@ -17397,21 +17398,21 @@ function History() {
                           {x.total || 0}
                         </span>
                       </td>
-                      <td><span style={{ color: '#10b981', fontWeight: 600 }}>{x.present}</span></td>
+                      <td><span style={{ color: '#03806a', fontWeight: 600 }}>{x.present}</span></td>
                       <td>
                         {leftEarlyCount > 0 ? (
-                          <span className="badge" style={{ background: '#fef3c7', color: '#b45309', fontWeight: 700 }}>
+                          <span className="badge" style={{ background: '#fbecd3', color: '#8f5c12', fontWeight: 700 }}>
                             {leftEarlyCount}
                           </span>
                         ) : (
                           <span className="muted">0</span>
                         )}
                       </td>
-                      <td><span style={{ color: absentCount > 0 ? '#dc2626' : 'var(--text-muted)', fontWeight: 600 }}>{absentCount}</span></td>
+                      <td><span style={{ color: absentCount > 0 ? '#d32f2f' : 'var(--text-muted)', fontWeight: 600 }}>{absentCount}</span></td>
                       <td>
                         <span className="badge" style={{
-                          background: rate >= 85 ? 'rgba(16,185,129,0.12)' : rate >= 70 ? 'rgba(37,99,235,0.12)' : 'rgba(239,68,68,0.12)',
-                          color: rate >= 85 ? '#059669' : rate >= 70 ? '#2563eb' : '#dc2626',
+                          background: rate >= 85 ? 'rgba(3, 128, 106,0.12)' : rate >= 70 ? 'rgba(225, 29, 85,0.12)' : 'rgba(211, 47, 47,0.12)',
+                          color: rate >= 85 ? '#03806a' : rate >= 70 ? '#e11d55' : '#d32f2f',
                           fontWeight: 700
                         }}>
                           {rate}% Present
@@ -17429,7 +17430,7 @@ function History() {
                           <a
                             href={`#/take-attendance?classId=${x.class_id}&sectionId=${x.section_id}&date=${(x.attendance_date ? String(x.attendance_date).slice(0, 10) : '')}`}
                             className="primary"
-                            style={{ fontSize: 11.5, padding: '4px 8px', textDecoration: 'none', borderRadius: 6, fontWeight: 600, whiteSpace: 'nowrap' }}
+                            style={{ fontSize: 11.5, padding: '4px 8px', textDecoration: 'none', borderRadius: 4, fontWeight: 600, whiteSpace: 'nowrap' }}
                           >
                             Re-attend →
                           </a>
@@ -17449,7 +17450,7 @@ function History() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(15, 23, 42, 0.7)',
+          background: 'rgba(28, 31, 46, 0.7)',
           backdropFilter: 'blur(6px)',
           zIndex: 9999,
           display: 'flex',
@@ -17460,20 +17461,20 @@ function History() {
           <div style={{
             background: 'var(--bg-card, #ffffff)',
             border: '1px solid var(--border)',
-            borderRadius: 16,
+            borderRadius: 4,
             width: '100%',
             maxWidth: 750,
             maxHeight: '88vh',
             display: 'flex',
             flexDirection: 'column',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
+            boxShadow: 'none',
             overflow: 'hidden'
           }}>
             {/* Header */}
             <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className="badge" style={{ background: '#2563eb', color: '#ffffff', fontWeight: 700 }}>
+                  <span className="badge" style={{ background: '#e11d55', color: '#ffffff', fontWeight: 700 }}>
                     {formatHistoryClassLabel(inspectedSession.class_number)}-{inspectedSession.section_name}
                   </span>
                   <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
@@ -17485,19 +17486,19 @@ function History() {
                   {inspectedSession.is_reattendance && ` · Re-attendance modified by ${inspectedSession.last_modified_name || 'Faculty'}`}
                 </div>
               </div>
-              <button className="secondary" onClick={() => setInspectedSession(null)} style={{ padding: '4px 8px', borderRadius: 6 }}>✕</button>
+              <button className="secondary" onClick={() => setInspectedSession(null)} style={{ padding: '4px 8px', borderRadius: 4 }}>✕</button>
             </div>
 
             {/* Tab switch */}
-            <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle, #f8fafc)' }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle, #f9f9fa)' }}>
               <button
                 onClick={() => setActiveTab('ROSTER')}
                 style={{
                   padding: '10px 20px',
                   background: 'none',
                   border: 'none',
-                  borderBottom: activeTab === 'ROSTER' ? '2px solid #2563eb' : 'none',
-                  color: activeTab === 'ROSTER' ? '#2563eb' : 'var(--text-muted)',
+                  borderBottom: activeTab === 'ROSTER' ? '2px solid #e11d55' : 'none',
+                  color: activeTab === 'ROSTER' ? '#e11d55' : 'var(--text-muted)',
                   fontWeight: activeTab === 'ROSTER' ? 700 : 500,
                   fontSize: 13,
                   cursor: 'pointer'
@@ -17511,8 +17512,8 @@ function History() {
                   padding: '10px 20px',
                   background: 'none',
                   border: 'none',
-                  borderBottom: activeTab === 'AUDIT' ? '2px solid #2563eb' : 'none',
-                  color: activeTab === 'AUDIT' ? '#2563eb' : 'var(--text-muted)',
+                  borderBottom: activeTab === 'AUDIT' ? '2px solid #e11d55' : 'none',
+                  color: activeTab === 'AUDIT' ? '#e11d55' : 'var(--text-muted)',
                   fontWeight: activeTab === 'AUDIT' ? 700 : 500,
                   fontSize: 13,
                   cursor: 'pointer'
@@ -17553,8 +17554,8 @@ function History() {
                               <td><b>{r.studentName || r.student_name}</b></td>
                               <td>
                                 <span className="badge" style={{
-                                  background: isLeftEarly ? '#fef3c7' : isLate ? '#dbeafe' : isPres ? '#dcfce7' : '#fee2e2',
-                                  color: isLeftEarly ? '#b45309' : isLate ? '#1d4ed8' : isPres ? '#15803d' : '#b91c1c',
+                                  background: isLeftEarly ? '#fbecd3' : isLate ? '#ffe1e8' : isPres ? '#cce6e1' : '#f7d5d5',
+                                  color: isLeftEarly ? '#8f5c12' : isLate ? '#c0174a' : isPres ? '#02604f' : '#a82424',
                                   fontWeight: 700
                                 }}>
                                   {isLeftEarly ? 'LEFT EARLY' : isLate ? 'LATE' : isPres ? 'PRESENT' : 'ABSENT'}
@@ -17591,7 +17592,7 @@ function History() {
                         <button
                           className="secondary"
                           onClick={() => handleExportInspectedAudit('xlsx')}
-                          style={{ fontSize: 12, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(16, 185, 129, 0.08)', color: '#059669', borderColor: '#10b981' }}
+                          style={{ fontSize: 12, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(3, 128, 106, 0.08)', color: '#03806a', borderColor: '#03806a' }}
                         >
                           <FileSpreadsheet size={13} /> Export Excel
                         </button>
@@ -17608,7 +17609,7 @@ function History() {
                       {inspectedAuditLogs.map((log: any, idx: number) => {
                         const timeStr = log.created_at || log.createdAt ? new Date(log.created_at || log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
                         return (
-                          <div key={log.id || idx} style={{ background: 'var(--bg-subtle, #f8fafc)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px' }}>
+                          <div key={log.id || idx} style={{ background: 'var(--bg-subtle, #f9f9fa)', border: '1px solid var(--border)', borderRadius: 4, padding: '10px 14px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                               <strong style={{ fontSize: 13 }}>{log.student_name || log.studentName}</strong>
                               <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{timeStr}</span>
@@ -17638,7 +17639,7 @@ function History() {
               <a
                 href={`#/take-attendance?classId=${inspectedSession.class_id}&sectionId=${inspectedSession.section_id}&date=${(inspectedSession.attendance_date ? String(inspectedSession.attendance_date).slice(0, 10) : '')}`}
                 className="primary"
-                style={{ padding: '8px 16px', borderRadius: 8, textDecoration: 'none', fontWeight: 600, fontSize: 13 }}
+                style={{ padding: '8px 16px', borderRadius: 4, textDecoration: 'none', fontWeight: 600, fontSize: 13 }}
               >
                 Open in Attendance Station for Live Re-attendance →
               </a>
@@ -17886,7 +17887,7 @@ function NotificationCenter() {
               </label>
             </div>
             <div>
-              <label>SMTP Username / Login Email <span style={{ fontSize: 11, color: '#4f46e5', fontWeight: 700 }}>(e.g. notifications@school.edu)</span>
+              <label>SMTP Username / Login Email <span style={{ fontSize: 11, color: '#e11d55', fontWeight: 700 }}>(e.g. notifications@school.edu)</span>
                 <input
                   placeholder="e.g. notifications@school.edu"
                   value={smtp.username || ''}
@@ -17895,7 +17896,7 @@ function NotificationCenter() {
               </label>
             </div>
             <div style={{ position: 'relative' }}>
-              <label>SMTP Password / App Password <span style={{ fontSize: 11, color: '#4f46e5', fontWeight: 700 }}>(Google App Password)</span>
+              <label>SMTP Password / App Password <span style={{ fontSize: 11, color: '#e11d55', fontWeight: 700 }}>(Google App Password)</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <input
                     type={showPass ? 'text' : 'password'}
@@ -17969,11 +17970,11 @@ function NotificationCenter() {
     {tab === 'templates' && (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {/* Email Template Previewer Card */}
-        <div className="panel" style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid #cbd5e1', borderRadius: 12, padding: '20px 24px' }}>
+        <div className="panel" style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid #d4d5d9', borderRadius: 4, padding: '20px 24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Mail size={22} color="#2563eb" />
+                <Mail size={22} color="#e11d55" />
                 <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Institutional Responsive Email Templates</h3>
               </div>
               <p className="muted" style={{ margin: '4px 0 0', fontSize: 13.5 }}>
@@ -17988,11 +17989,11 @@ function NotificationCenter() {
                 onChange={e => setSelectedPreviewTpl(e.target.value)}
                 style={{
                   padding: '7px 12px',
-                  borderRadius: 8,
-                  border: '1px solid #cbd5e1',
+                  borderRadius: 4,
+                  border: '1px solid #d4d5d9',
                   fontSize: 13,
                   fontWeight: 600,
-                  background: 'var(--bg, #f8fafc)'
+                  background: 'var(--bg, #f9f9fa)'
                 }}
               >
                 <option value="ATTENDANCE_ABSENT">Absent Notification (Alert)</option>
@@ -18005,7 +18006,7 @@ function NotificationCenter() {
               </select>
 
               {/* Viewport Device Toggle */}
-              <div style={{ display: 'inline-flex', borderRadius: 8, border: '1px solid #cbd5e1', overflow: 'hidden' }}>
+              <div style={{ display: 'inline-flex', borderRadius: 4, border: '1px solid #d4d5d9', overflow: 'hidden' }}>
                 <button
                   type="button"
                   onClick={() => setPreviewDevice('desktop')}
@@ -18014,8 +18015,8 @@ function NotificationCenter() {
                     fontSize: 12.5,
                     border: 'none',
                     borderRadius: 0,
-                    background: previewDevice === 'desktop' ? '#2563eb' : 'var(--bg, #f8fafc)',
-                    color: previewDevice === 'desktop' ? '#ffffff' : 'var(--text, #334155)',
+                    background: previewDevice === 'desktop' ? '#e11d55' : 'var(--bg, #f9f9fa)',
+                    color: previewDevice === 'desktop' ? '#ffffff' : 'var(--text, #3e4152)',
                     fontWeight: 600,
                     cursor: 'pointer'
                   }}
@@ -18030,8 +18031,8 @@ function NotificationCenter() {
                     fontSize: 12.5,
                     border: 'none',
                     borderRadius: 0,
-                    background: previewDevice === 'mobile' ? '#2563eb' : 'var(--bg, #f8fafc)',
-                    color: previewDevice === 'mobile' ? '#ffffff' : 'var(--text, #334155)',
+                    background: previewDevice === 'mobile' ? '#e11d55' : 'var(--bg, #f9f9fa)',
+                    color: previewDevice === 'mobile' ? '#ffffff' : 'var(--text, #3e4152)',
                     fontWeight: 600,
                     cursor: 'pointer'
                   }}
@@ -18041,7 +18042,7 @@ function NotificationCenter() {
               </div>
 
               {/* Format Toggle */}
-              <div style={{ display: 'inline-flex', borderRadius: 8, border: '1px solid #cbd5e1', overflow: 'hidden' }}>
+              <div style={{ display: 'inline-flex', borderRadius: 4, border: '1px solid #d4d5d9', overflow: 'hidden' }}>
                 <button
                   type="button"
                   onClick={() => setViewFormat('html')}
@@ -18050,8 +18051,8 @@ function NotificationCenter() {
                     fontSize: 12.5,
                     border: 'none',
                     borderRadius: 0,
-                    background: viewFormat === 'html' ? '#0f172a' : 'var(--bg, #f8fafc)',
-                    color: viewFormat === 'html' ? '#ffffff' : 'var(--text, #334155)',
+                    background: viewFormat === 'html' ? '#1c1f2e' : 'var(--bg, #f9f9fa)',
+                    color: viewFormat === 'html' ? '#ffffff' : 'var(--text, #3e4152)',
                     fontWeight: 600,
                     cursor: 'pointer'
                   }}
@@ -18066,8 +18067,8 @@ function NotificationCenter() {
                     fontSize: 12.5,
                     border: 'none',
                     borderRadius: 0,
-                    background: viewFormat === 'text' ? '#0f172a' : 'var(--bg, #f8fafc)',
-                    color: viewFormat === 'text' ? '#ffffff' : 'var(--text, #334155)',
+                    background: viewFormat === 'text' ? '#1c1f2e' : 'var(--bg, #f9f9fa)',
+                    color: viewFormat === 'text' ? '#ffffff' : 'var(--text, #3e4152)',
                     fontWeight: 600,
                     cursor: 'pointer'
                   }}
@@ -18089,9 +18090,9 @@ function NotificationCenter() {
 
           {/* Subject Bar */}
           <div style={{
-            background: '#f1f5f9',
-            border: '1px solid #e2e8f0',
-            borderRadius: 8,
+            background: '#f5f5f6',
+            border: '1px solid #eaeaec',
+            borderRadius: 4,
             padding: '10px 14px',
             marginBottom: 16,
             fontSize: 13.5,
@@ -18099,22 +18100,22 @@ function NotificationCenter() {
             alignItems: 'center',
             gap: 10
           }}>
-            <span style={{ fontWeight: 700, color: 'var(--text-secondary, #475569)' }}>Subject:</span>
-            <span style={{ fontWeight: 600, color: 'var(--text, #0f172a)' }}>{previewData?.subject || 'Loading preview...'}</span>
+            <span style={{ fontWeight: 700, color: 'var(--text-secondary, #535766)' }}>Subject:</span>
+            <span style={{ fontWeight: 600, color: 'var(--text, #1c1f2e)' }}>{previewData?.subject || 'Loading preview...'}</span>
           </div>
 
           {/* Preview Viewport Container */}
           <div style={{
             display: 'flex',
             justifyContent: 'center',
-            background: 'var(--bg-muted, #e2e8f0)',
+            background: 'var(--bg-muted, #eaeaec)',
             padding: '24px 16px',
-            borderRadius: 10,
+            borderRadius: 4,
             overflowX: 'auto',
             minHeight: 460
           }}>
             {previewLoading ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 400, color: 'var(--text-muted, #64748b)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 400, color: 'var(--text-muted, #696e79)' }}>
                 <Loader2 size={24} className="spin" style={{ marginRight: 8 }} /> Loading rendered preview...
               </div>
             ) : viewFormat === 'html' ? (
@@ -18126,9 +18127,9 @@ function NotificationCenter() {
                   width: previewDevice === 'desktop' ? '650px' : '375px',
                   height: '580px',
                   background: '#ffffff',
-                  border: '1px solid var(--border, #cbd5e1)',
+                  border: '1px solid var(--border, #d4d5d9)',
                   borderRadius: previewDevice === 'mobile' ? 24 : 8,
-                  boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                  boxShadow: 'none',
                   transition: 'width 0.25s ease'
                 }}
               />
@@ -18136,15 +18137,15 @@ function NotificationCenter() {
               <div style={{
                 width: previewDevice === 'desktop' ? '650px' : '375px',
                 background: 'var(--bg-card, #ffffff)',
-                border: '1px solid var(--border, #cbd5e1)',
-                borderRadius: 8,
+                border: '1px solid var(--border, #d4d5d9)',
+                borderRadius: 4,
                 padding: 20,
                 fontFamily: 'monospace',
                 fontSize: 13,
                 lineHeight: 1.6,
                 whiteSpace: 'pre-wrap',
-                color: 'var(--text, #1e293b)',
-                boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                color: 'var(--text, #282c3f)',
+                boxShadow: 'none',
                 transition: 'width 0.25s ease'
               }}>
                 {previewData?.text || 'No plain-text version available.'}
@@ -18154,40 +18155,40 @@ function NotificationCenter() {
         </div>
 
         {/* Deliverability & Email Authentication Guide */}
-        <div className="panel" style={{ background: 'var(--card-subtle, #f8fafc)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 12, padding: '18px 22px' }}>
+        <div className="panel" style={{ background: 'var(--card-subtle, #f9f9fa)', border: '1px solid var(--border, #eaeaec)', borderRadius: 4, padding: '18px 22px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <ShieldCheck size={20} color="#059669" />
-            <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+            <ShieldCheck size={20} color="#03806a" />
+            <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text, #1c1f2e)' }}>
               Institutional Email Deliverability &amp; DNS Authentication Guide
             </h4>
           </div>
-          <p style={{ margin: '0 0 14px 0', fontSize: 13, color: 'var(--text-secondary, #475569)', lineHeight: 1.5 }}>
+          <p style={{ margin: '0 0 14px 0', fontSize: 13, color: 'var(--text-secondary, #535766)', lineHeight: 1.5 }}>
             To protect your institution's domain reputation and achieve optimal inbox placement with Gmail, Microsoft 365, and institutional spam filters, configure your school domain DNS records:
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
-            <div style={{ background: 'var(--bg-card, #ffffff)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', marginBottom: 4 }}>1. SPF Record (Sender Policy)</div>
-              <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)', marginBottom: 4 }}>TXT record at domain root:</div>
-              <code style={{ fontSize: 11, background: 'var(--card-subtle, #f1f5f9)', color: 'var(--text, #0f172a)', padding: '4px 6px', borderRadius: 4, display: 'block', wordBreak: 'break-all' }}>
+            <div style={{ background: 'var(--bg-card, #ffffff)', padding: 12, borderRadius: 4, border: '1px solid var(--border, #eaeaec)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#e11d55', marginBottom: 4 }}>1. SPF Record (Sender Policy)</div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-muted, #696e79)', marginBottom: 4 }}>TXT record at domain root:</div>
+              <code style={{ fontSize: 11, background: 'var(--card-subtle, #f5f5f6)', color: 'var(--text, #1c1f2e)', padding: '4px 6px', borderRadius: 4, display: 'block', wordBreak: 'break-all' }}>
                 v=spf1 include:_spf.google.com ~all
               </code>
             </div>
-            <div style={{ background: 'var(--bg-card, #ffffff)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', marginBottom: 4 }}>2. DKIM Signature (DomainKeys)</div>
-              <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)', marginBottom: 4 }}>2048-bit cryptographic key published at:</div>
-              <code style={{ fontSize: 11, background: 'var(--card-subtle, #f1f5f9)', color: 'var(--text, #0f172a)', padding: '4px 6px', borderRadius: 4, display: 'block' }}>
+            <div style={{ background: 'var(--bg-card, #ffffff)', padding: 12, borderRadius: 4, border: '1px solid var(--border, #eaeaec)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#e11d55', marginBottom: 4 }}>2. DKIM Signature (DomainKeys)</div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-muted, #696e79)', marginBottom: 4 }}>2048-bit cryptographic key published at:</div>
+              <code style={{ fontSize: 11, background: 'var(--card-subtle, #f5f5f6)', color: 'var(--text, #1c1f2e)', padding: '4px 6px', borderRadius: 4, display: 'block' }}>
                 google._domainkey.yourschool.edu
               </code>
             </div>
-            <div style={{ background: '#ffffff', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', marginBottom: 4 }}>3. DMARC Policy (Domain Message Auth)</div>
-              <div style={{ fontSize: 11.5, color: '#64748b', marginBottom: 4 }}>TXT record at _dmarc:</div>
-              <code style={{ fontSize: 11, background: '#f1f5f9', padding: '4px 6px', borderRadius: 4, display: 'block', wordBreak: 'break-all' }}>
+            <div style={{ background: '#ffffff', padding: 12, borderRadius: 4, border: '1px solid #eaeaec' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#e11d55', marginBottom: 4 }}>3. DMARC Policy (Domain Message Auth)</div>
+              <div style={{ fontSize: 11.5, color: '#696e79', marginBottom: 4 }}>TXT record at _dmarc:</div>
+              <code style={{ fontSize: 11, background: '#f5f5f6', padding: '4px 6px', borderRadius: 4, display: 'block', wordBreak: 'break-all' }}>
                 v=DMARC1; p=quarantine; pct=100;
               </code>
             </div>
           </div>
-          <div style={{ marginTop: 12, fontSize: 12, color: '#64748b', fontStyle: 'italic', borderTop: '1px solid #e2e8f0', paddingTop: 8 }}>
+          <div style={{ marginTop: 12, fontSize: 12, color: '#696e79', fontStyle: 'italic', borderTop: '1px solid #eaeaec', paddingTop: 8 }}>
             Note: All AttendoSchool transactional emails include compliant multipart MIME, institutional identification headers, and TLS transmission. Recipient mail servers evaluate sender domain reputation, authentication (SPF/DKIM/DMARC), and user interaction history to determine final mailbox placement.
           </div>
         </div>
@@ -18256,11 +18257,11 @@ function NotificationCenter() {
               <tr key={x.id}>
                 <td>
                   {x.admission_number ? (
-                    <code style={{ fontSize: 12, fontWeight: 700, padding: '2px 6px', background: 'var(--bg, #f1f5f9)', borderRadius: 4 }}>
+                    <code style={{ fontSize: 12, fontWeight: 700, padding: '2px 6px', background: 'var(--bg, #f5f5f6)', borderRadius: 4 }}>
                       {x.admission_number}
                     </code>
                   ) : (
-                    <span style={{ color: 'var(--muted, #94a3b8)' }}>—</span>
+                    <span style={{ color: 'var(--muted, #94969f)' }}>—</span>
                   )}
                 </td>
                 <td><b>{x.recipient_name || x.student_name || '—'}</b></td>
@@ -18293,7 +18294,7 @@ function NotificationCenter() {
 
         {reviewNotifs.length === 0 ? (
           <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            <CheckCircle2 size={32} style={{ color: '#10B981', margin: '0 auto 8px', display: 'block' }} />
+            <CheckCircle2 size={32} style={{ color: '#03806a', margin: '0 auto 8px', display: 'block' }} />
             <p style={{ margin: 0, fontWeight: 600 }}>All review queues are clear!</p>
             <span style={{ fontSize: 12.5, opacity: 0.8 }}>No pending student photo submissions or leave requests.</span>
           </div>
@@ -18309,7 +18310,7 @@ function NotificationCenter() {
                   padding: '14px 16px',
                   background: 'var(--surface)',
                   border: '1px solid var(--border)',
-                  borderRadius: 10
+                  borderRadius: 4
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -18317,17 +18318,17 @@ function NotificationCenter() {
                     <img
                       src={item.avatar}
                       alt={item.applicantName}
-                      style={{ width: 46, height: 46, borderRadius: 8, objectFit: 'cover', border: '1px solid #bfdbfe' }}
+                      style={{ width: 46, height: 46, borderRadius: 4, objectFit: 'cover', border: '1px solid #fcc3d1' }}
                     />
                   ) : (
-                    <div style={{ width: 46, height: 46, borderRadius: 8, background: '#EFF6FF', display: 'grid', placeItems: 'center', color: '#2563EB' }}>
+                    <div style={{ width: 46, height: 46, borderRadius: 4, background: '#fff2f4', display: 'grid', placeItems: 'center', color: '#e11d55' }}>
                       {item.type === 'PHOTO_APPROVAL' ? <Camera size={20} /> : <Calendar size={20} />}
                     </div>
                   )}
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <strong style={{ fontSize: 14 }}>{item.applicantName}</strong>
-                      <span className="badge" style={{ fontSize: 11, background: item.type === 'PHOTO_APPROVAL' ? '#EFF6FF' : '#FEF3C7', color: item.type === 'PHOTO_APPROVAL' ? '#1D4ED8' : '#92400E' }}>
+                      <span className="badge" style={{ fontSize: 11, background: item.type === 'PHOTO_APPROVAL' ? '#fff2f4' : '#fbecd3', color: item.type === 'PHOTO_APPROVAL' ? '#c0174a' : '#6b450e' }}>
                         {item.type === 'PHOTO_APPROVAL' ? 'Photo Submission' : 'Leave Request'}
                       </span>
                     </div>
@@ -18344,8 +18345,8 @@ function NotificationCenter() {
                   href={`#${item.link}`}
                   style={{
                     padding: '8px 16px',
-                    borderRadius: 8,
-                    background: '#2563EB',
+                    borderRadius: 4,
+                    background: '#e11d55',
                     color: '#FFF',
                     textDecoration: 'none',
                     fontSize: 13,
@@ -18457,9 +18458,9 @@ function SubscriptionPage() {
           <div className="list-row"><b>Student limit</b><span>{s?.max_students ?? '—'}</span></div>
           <div className="list-row"><b>Monthly plan</b><span>₹{Number(s?.price_monthly || 0).toLocaleString('en-IN')}</span></div>
           {s?.discount_percentage > 0 && (
-            <div className="list-row" style={{ background: '#ecfdf5', padding: '6px 10px', borderRadius: '6px', margin: '4px 0' }}>
-              <b style={{ color: '#047857' }}>Active Discount</b>
-              <span style={{ fontWeight: '700', color: '#047857', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div className="list-row" style={{ background: '#e6f2f0', padding: '6px 10px', borderRadius: '4px', margin: '4px 0' }}>
+              <b style={{ color: '#02604f' }}>Active Discount</b>
+              <span style={{ fontWeight: '700', color: '#02604f', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 🏷️ {s.discount_percentage}% OFF Applied
               </span>
             </div>
@@ -18496,32 +18497,32 @@ function SubscriptionPage() {
             const hasDiscount = p.discount_percentage && p.discount_percentage > 0;
             const discountedMonthly = hasDiscount ? Math.round(p.price_monthly * (1 - p.discount_percentage / 100)) : p.price_monthly;
             return (
-              <div key={p.id} style={{ border: isCurrent ? '2px solid #2563eb' : '1px solid var(--border, #e2e8f0)', borderRadius: '10px', padding: '16px', background: isCurrent ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-card, #ffffff)', position: 'relative' }}>
+              <div key={p.id} style={{ border: isCurrent ? '2px solid #e11d55' : '1px solid var(--border, #eaeaec)', borderRadius: '4px', padding: '16px', background: isCurrent ? 'rgba(225, 29, 85, 0.08)' : 'var(--bg-card, #ffffff)', position: 'relative' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                  <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: 'var(--text, #0f172a)' }}>{p.name}</h4>
+                  <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: 'var(--text, #1c1f2e)' }}>{p.name}</h4>
                   <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     {isCurrent && <span className="badge active" style={{ fontSize: '11px' }}>Current</span>}
                     {hasDiscount && (
-                      <span style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: '700' }}>
+                      <span style={{ background: '#e6f2f0', color: '#02604f', border: '1px solid #99ccc3', padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: '700' }}>
                         {p.discount_percentage}% OFF
                       </span>
                     )}
                   </div>
                 </div>
-                <p style={{ fontSize: '12px', color: '#64748b', minHeight: '34px', margin: '4px 0 12px' }}>{p.description || `Capacity for up to ${p.max_students} students with full SIS features.`}</p>
+                <p style={{ fontSize: '12px', color: '#696e79', minHeight: '34px', margin: '4px 0 12px' }}>{p.description || `Capacity for up to ${p.max_students} students with full SIS features.`}</p>
                 <div style={{ margin: '8px 0 12px' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                    <span style={{ fontSize: '22px', fontWeight: '800', color: 'var(--text, #0f172a)' }}>₹{Number(discountedMonthly).toLocaleString('en-IN')}</span>
+                    <span style={{ fontSize: '22px', fontWeight: '800', color: 'var(--text, #1c1f2e)' }}>₹{Number(discountedMonthly).toLocaleString('en-IN')}</span>
                     {hasDiscount && (
-                      <span style={{ fontSize: '14px', textDecoration: 'line-through', color: '#94a3b8' }}>₹{Number(p.price_monthly).toLocaleString('en-IN')}</span>
+                      <span style={{ fontSize: '14px', textDecoration: 'line-through', color: '#94969f' }}>₹{Number(p.price_monthly).toLocaleString('en-IN')}</span>
                     )}
-                    <span style={{ fontSize: '12px', color: '#64748b' }}>/ month</span>
+                    <span style={{ fontSize: '12px', color: '#696e79' }}>/ month</span>
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                  <div style={{ fontSize: '12px', color: '#696e79', marginTop: '2px' }}>
                     ₹{Number(p.price_yearly || p.price_monthly * 12).toLocaleString('en-IN')} / year
                   </div>
                 </div>
-                <div style={{ borderTop: '1px solid var(--border, #f1f5f9)', paddingTop: '10px', fontSize: '12px', color: 'var(--text-secondary, #334155)' }}>
+                <div style={{ borderTop: '1px solid var(--border, #f5f5f6)', paddingTop: '10px', fontSize: '12px', color: 'var(--text-secondary, #3e4152)' }}>
                   <div>👥 <strong>Up to {Number(p.max_students).toLocaleString()} students</strong></div>
                 </div>
               </div>
@@ -19069,9 +19070,9 @@ function SchoolProfile() {
                     height: 92,
                     borderRadius: '50%',
                     border: '3.5px solid #ffffff',
-                    boxShadow: '0 8px 24px -4px rgba(37, 99, 235, 0.3), 0 2px 6px rgba(0, 0, 0, 0.08)',
-                    backgroundColor: '#2563eb',
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 55%, #1d4ed8 100%)',
+                    boxShadow: 'none',
+                    backgroundColor: '#e11d55',
+                    background: '#e11d55',
                     overflow: 'hidden',
                     flexShrink: 0,
                     display: 'flex',
@@ -19102,7 +19103,7 @@ function SchoolProfile() {
                     style={{
                       position: 'absolute',
                       inset: 0,
-                      backgroundColor: 'rgba(15, 23, 42, 0.45)',
+                      backgroundColor: 'rgba(28, 31, 46, 0.45)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -19120,7 +19121,7 @@ function SchoolProfile() {
                 {/* Title & Info */}
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 750, color: 'var(--text, #0f172a)' }}>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 750, color: 'var(--text, #1c1f2e)' }}>
                       {adminName}
                     </h3>
                     <span className="badge active" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
@@ -19150,10 +19151,10 @@ function SchoolProfile() {
                         gap: 6,
                         fontSize: 13,
                         padding: '7px 14px',
-                        backgroundColor: '#2563eb',
+                        backgroundColor: '#e11d55',
                         color: '#ffffff',
                         border: 'none',
-                        borderRadius: 8,
+                        borderRadius: 4,
                         fontWeight: 600,
                         cursor: 'pointer'
                       }}
@@ -19173,10 +19174,10 @@ function SchoolProfile() {
                           gap: 5,
                           fontSize: 13,
                           padding: '7px 12px',
-                          backgroundColor: '#fee2e2',
-                          color: '#b91c1c',
-                          border: '1px solid #fca5a5',
-                          borderRadius: 8,
+                          backgroundColor: '#f7d5d5',
+                          color: '#a82424',
+                          border: '1px solid #e88d8d',
+                          borderRadius: 4,
                           fontWeight: 600,
                           cursor: 'pointer'
                         }}
@@ -19186,7 +19187,7 @@ function SchoolProfile() {
                         Remove Picture
                       </button>
                     )}
-                    <span style={{ fontSize: 12, color: 'var(--muted, #64748b)' }}>
+                    <span style={{ fontSize: 12, color: 'var(--muted, #696e79)' }}>
                       PNG, JPG, WebP up to 5MB
                     </span>
                   </div>
@@ -19275,14 +19276,14 @@ function SchoolProfile() {
                         }
                       }
                     }}
-                    style={contactNumberError ? { borderColor: '#ef4444' } : {}}
+                    style={contactNumberError ? { borderColor: '#d32f2f' } : {}}
                   />
                   {contactNumberError && (
-                    <span style={{ color: '#ef4444', fontSize: 12, marginTop: 4, display: 'block' }}>
+                    <span style={{ color: '#d32f2f', fontSize: 12, marginTop: 4, display: 'block' }}>
                       {contactNumberError}
                     </span>
                   )}
-                  <span style={{ fontSize: 11.5, color: '#64748b', marginTop: 3, display: 'block' }}>
+                  <span style={{ fontSize: 11.5, color: '#696e79', marginTop: 3, display: 'block' }}>
                     Format: <code>0343-2563500</code> (11 digits: 4-digit code + 7 digits). 10-digit numbers automatically prefix 0.
                   </span>
                 </label>
@@ -19296,14 +19297,14 @@ function SchoolProfile() {
                       setForm({ ...form, website: e.target.value });
                       if (websiteError) setWebsiteError('');
                     }}
-                    style={websiteError ? { borderColor: '#ef4444' } : {}}
+                    style={websiteError ? { borderColor: '#d32f2f' } : {}}
                   />
                   {websiteError && (
-                    <span style={{ color: '#ef4444', fontSize: 12, marginTop: 4, display: 'block' }}>
+                    <span style={{ color: '#d32f2f', fontSize: 12, marginTop: 4, display: 'block' }}>
                       {websiteError}
                     </span>
                   )}
-                  <span style={{ fontSize: 11.5, color: '#64748b', marginTop: 3, display: 'block' }}>
+                  <span style={{ fontSize: 11.5, color: '#696e79', marginTop: 3, display: 'block' }}>
                     Must be a valid web link (e.g. <code>https://davmodeldurgapur.org</code> or <code>davmodeldurgapur.org</code>). Arbitrary plain words are not allowed.
                   </span>
                 </label>
@@ -19323,22 +19324,22 @@ function SchoolProfile() {
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 'var(--radius-sm, 6px)',
-                      border: '1px solid var(--border-strong, #cbd5e1)',
+                      borderRadius: 'var(--radius-sm, 4px)',
+                      border: '1px solid var(--border-strong, #d4d5d9)',
                       background: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #0f172a)',
+                      color: 'var(--text, #1c1f2e)',
                       fontSize: 13.5,
                       lineHeight: 1.5,
                       resize: 'none',
-                      ...(addressError ? { borderColor: '#ef4444' } : {})
+                      ...(addressError ? { borderColor: '#d32f2f' } : {})
                     }}
                   />
                   {addressError && (
-                    <span style={{ color: '#ef4444', fontSize: 12, marginTop: 4, display: 'block' }}>
+                    <span style={{ color: '#d32f2f', fontSize: 12, marginTop: 4, display: 'block' }}>
                       {addressError}
                     </span>
                   )}
-                  <span style={{ fontSize: 11.5, color: '#64748b', marginTop: 3, display: 'block' }}>
+                  <span style={{ fontSize: 11.5, color: '#696e79', marginTop: 3, display: 'block' }}>
                     Word limit: 50 to 1000 words.
                   </span>
                 </label>
@@ -19354,7 +19355,7 @@ function SchoolProfile() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Lock size={18} style={{ color: '#2563eb' }} />
+                  <Lock size={18} style={{ color: '#e11d55' }} />
                   Email &amp; Password
                 </h3>
                 <p className="muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
@@ -19374,9 +19375,9 @@ function SchoolProfile() {
 
             <div className="two-col" style={{ gap: 20 }}>
               {/* Associated School Identity & Login Credentials */}
-              <div style={{ background: 'var(--card-bg, #f8fafc)', padding: 20, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
+              <div style={{ background: 'var(--card-bg, #f9f9fa)', padding: 20, borderRadius: 4, border: '1px solid var(--border, #eaeaec)' }}>
                 <h4 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <School size={15} style={{ color: '#2563eb' }} />
+                  <School size={15} style={{ color: '#e11d55' }} />
                   Associated School Identity
                 </h4>
 
@@ -19389,8 +19390,8 @@ function SchoolProfile() {
                       disabled
                       value={loading ? 'Loading school...' : (profile?.schoolName || profile?.name || user?.schoolName || '—')}
                       style={{
-                        backgroundColor: 'var(--input-disabled-bg, #f1f5f9)',
-                        color: 'var(--text, #0f172a)',
+                        backgroundColor: 'var(--input-disabled-bg, #f5f5f6)',
+                        color: 'var(--text, #1c1f2e)',
                         cursor: 'not-allowed',
                         fontWeight: 600
                       }}
@@ -19407,8 +19408,8 @@ function SchoolProfile() {
                       disabled
                       value={user?.email || profile?.adminEmail || profile?.email || '—'}
                       style={{
-                        backgroundColor: 'var(--input-disabled-bg, #f1f5f9)',
-                        color: 'var(--text, #0f172a)',
+                        backgroundColor: 'var(--input-disabled-bg, #f5f5f6)',
+                        color: 'var(--text, #1c1f2e)',
                         cursor: 'not-allowed'
                       }}
                       id="admin-email-input"
@@ -19417,7 +19418,7 @@ function SchoolProfile() {
                   </label>
 
                   <div className="list" style={{ marginTop: 6 }}>
-                    <div className="list-row" style={{ padding: '8px 0', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
+                    <div className="list-row" style={{ padding: '8px 0', borderBottom: '1px solid var(--border, #eaeaec)' }}>
                       <b>Affiliated School Code</b>
                       <span><code>{profile?.code || (user as any)?.schoolCode || 'SCH'}</code></span>
                     </div>
@@ -19430,9 +19431,9 @@ function SchoolProfile() {
               </div>
 
               {/* Change Password Form */}
-              <div style={{ background: 'var(--card-bg, #f8fafc)', padding: 20, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
+              <div style={{ background: 'var(--card-bg, #f9f9fa)', padding: 20, borderRadius: 4, border: '1px solid var(--border, #eaeaec)' }}>
                 <h4 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <KeyRound size={15} style={{ color: '#2563eb' }} />
+                  <KeyRound size={15} style={{ color: '#e11d55' }} />
                   Change School Admin Password
                 </h4>
 
@@ -19481,7 +19482,7 @@ function SchoolProfile() {
                         {showNewPw ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
-                    <span style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 4, display: 'block' }}>
+                    <span style={{ fontSize: 11.5, color: 'var(--text-secondary, #696e79)', marginTop: 4, display: 'block' }}>
                       Must be at least 8 characters, with 1 Capital letter, 1 small letter, 1 number, and 1 special character.
                     </span>
                   </label>
@@ -19579,12 +19580,12 @@ function RouteFallbackLoader() {
       <div style={{
         width: 40,
         height: 40,
-        border: '3px solid rgba(59, 130, 246, 0.18)',
-        borderTopColor: '#2563eb',
+        border: '3px solid rgba(225, 29, 85, 0.18)',
+        borderTopColor: '#e11d55',
         borderRadius: '50%',
         animation: 'spin 0.75s linear infinite'
       }} />
-      <span style={{ fontSize: 13, color: 'var(--muted-text, #64748b)', fontWeight: 500, letterSpacing: '0.01em' }}>
+      <span style={{ fontSize: 13, color: 'var(--muted-text, #696e79)', fontWeight: 500, letterSpacing: '0.01em' }}>
         Loading module...
       </span>
     </div>

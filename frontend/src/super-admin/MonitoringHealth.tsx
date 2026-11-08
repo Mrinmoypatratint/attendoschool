@@ -138,7 +138,7 @@ export const MonitoringHealth: React.FC = () => {
       </div>
 
       {actionNotice && (
-        <div className="p-3 px-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs md:text-sm flex items-center gap-2 my-3.5" style={{ margin: '14px 0', padding: '12px 16px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="p-3 px-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs md:text-sm flex items-center gap-2 my-3.5" style={{ margin: '14px 0', padding: '12px 16px', borderRadius: '4px', background: 'rgba(3, 128, 106, 0.1)', color: '#03806a', border: '1px solid rgba(3, 128, 106, 0.2)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="20 6 9 17 4 12" />
           </svg>
@@ -152,12 +152,12 @@ export const MonitoringHealth: React.FC = () => {
         <div className="card rounded-xl border border-slate-200 bg-white p-5 shadow-sm" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
-              <span style={{ fontWeight: '700', color: '#0f172a' }}>REST API Core</span>
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#03806a', boxShadow: 'none' }} />
+              <span style={{ fontWeight: '700', color: '#1c1f2e' }}>REST API Core</span>
             </div>
             <span className="badge badge-active">HEALTHY</span>
           </div>
-          <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.6 }}>
+          <div style={{ fontSize: '12px', color: '#696e79', lineHeight: 1.6 }}>
             <div>Target: <code>http://localhost:5000/api</code></div>
             <div>Response Latency: <strong>{probeApi.latency}ms</strong></div>
             <div>Uptime: <strong>99.98%</strong></div>
@@ -168,12 +168,12 @@ export const MonitoringHealth: React.FC = () => {
         <div className="card rounded-xl border border-slate-200 bg-white p-5 shadow-sm" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
-              <span style={{ fontWeight: '700', color: '#0f172a' }}>Firestore Engine</span>
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#03806a', boxShadow: 'none' }} />
+              <span style={{ fontWeight: '700', color: '#1c1f2e' }}>Firestore Engine</span>
             </div>
             <span className="badge badge-active">CONNECTED</span>
           </div>
-          <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.6 }}>
+          <div style={{ fontSize: '12px', color: '#696e79', lineHeight: 1.6 }}>
             <div>Instance: <strong>attendoschool</strong></div>
             <div>Host: <code>Google Cloud Firestore (Live)</code></div>
             <div>Active Sync: <strong>Enabled & Verified</strong></div>
@@ -184,12 +184,12 @@ export const MonitoringHealth: React.FC = () => {
         <div className="card" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
-              <span style={{ fontWeight: '700', color: '#0f172a' }}>Background Workers</span>
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#03806a', boxShadow: 'none' }} />
+              <span style={{ fontWeight: '700', color: '#1c1f2e' }}>Background Workers</span>
             </div>
             <span className="badge badge-active">ACTIVE</span>
           </div>
-          <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.6 }}>
+          <div style={{ fontSize: '12px', color: '#696e79', lineHeight: 1.6 }}>
             <div>SMS Worker: <strong>Online (Poll: 10s)</strong></div>
             <div>Subscription Cron: <strong>Active (Midnight)</strong></div>
             <div>Notification Worker: <strong>Listening</strong></div>
@@ -200,14 +200,14 @@ export const MonitoringHealth: React.FC = () => {
         <div className="card" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#6366f1' }} />
-              <span style={{ fontWeight: '700', color: '#0f172a' }}>Telemetry Sync</span>
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#e11d55' }} />
+              <span style={{ fontWeight: '700', color: '#1c1f2e' }}>Telemetry Sync</span>
             </div>
-            <span className="badge" style={{ background: '#f1f5f9', color: '#475569' }}>
+            <span className="badge" style={{ background: '#f5f5f6', color: '#535766' }}>
               Auto 30s
             </span>
           </div>
-          <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.6 }}>
+          <div style={{ fontSize: '12px', color: '#696e79', lineHeight: 1.6 }}>
             <div>Last Polled: <strong>{lastCheck.toLocaleTimeString()}</strong></div>
             <div>Memory Footprint: <strong>142 MB RSS</strong></div>
             <div>Cluster Mode: <strong>Standalone Worker</strong></div>
@@ -219,56 +219,56 @@ export const MonitoringHealth: React.FC = () => {
       <div className="card" style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div>
-            <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: 0 }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#1c1f2e', margin: 0 }}>
               Platform Attendance Throughput (Today)
             </h3>
-            <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0' }}>
+            <p style={{ fontSize: '12px', color: '#696e79', margin: '2px 0 0 0' }}>
               Aggregated live attendance check-ins from all registered school classrooms.
             </p>
           </div>
-          <span style={{ fontSize: '13px', fontWeight: '700', color: '#10b981' }}>
+          <span style={{ fontSize: '13px', fontWeight: '700', color: '#03806a' }}>
             {attendanceRate}% Present Rate
           </span>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
-          <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '8px' }}>
-            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>Active Sessions Today</div>
-            <div style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', marginTop: '4px' }}>
+          <div style={{ background: '#f9f9fa', padding: '14px', borderRadius: '4px' }}>
+            <div style={{ fontSize: '12px', color: '#696e79', fontWeight: '600' }}>Active Sessions Today</div>
+            <div style={{ fontSize: '24px', fontWeight: '800', color: '#1c1f2e', marginTop: '4px' }}>
               {metrics?.today_sessions || 0}
             </div>
-            <div style={{ fontSize: '11px', color: '#64748b' }}>Class periods tracked</div>
+            <div style={{ fontSize: '11px', color: '#696e79' }}>Class periods tracked</div>
           </div>
 
-          <div style={{ background: '#f0fdf4', padding: '14px', borderRadius: '8px' }}>
-            <div style={{ fontSize: '12px', color: '#15803d', fontWeight: '600' }}>Students Present</div>
-            <div style={{ fontSize: '24px', fontWeight: '800', color: '#15803d', marginTop: '4px' }}>
+          <div style={{ background: '#e6f2f0', padding: '14px', borderRadius: '4px' }}>
+            <div style={{ fontSize: '12px', color: '#02604f', fontWeight: '600' }}>Students Present</div>
+            <div style={{ fontSize: '24px', fontWeight: '800', color: '#02604f', marginTop: '4px' }}>
               {present}
             </div>
-            <div style={{ fontSize: '11px', color: '#15803d' }}>Confirmed in class</div>
+            <div style={{ fontSize: '11px', color: '#02604f' }}>Confirmed in class</div>
           </div>
 
-          <div style={{ background: '#fef2f2', padding: '14px', borderRadius: '8px' }}>
-            <div style={{ fontSize: '12px', color: '#b91c1c', fontWeight: '600' }}>Students Absent</div>
-            <div style={{ fontSize: '24px', fontWeight: '800', color: '#b91c1c', marginTop: '4px' }}>
+          <div style={{ background: '#fbeaea', padding: '14px', borderRadius: '4px' }}>
+            <div style={{ fontSize: '12px', color: '#a82424', fontWeight: '600' }}>Students Absent</div>
+            <div style={{ fontSize: '24px', fontWeight: '800', color: '#a82424', marginTop: '4px' }}>
               {absent}
             </div>
-            <div style={{ fontSize: '11px', color: '#b91c1c' }}>Alert notifications queued</div>
+            <div style={{ fontSize: '11px', color: '#a82424' }}>Alert notifications queued</div>
           </div>
 
-          <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '8px' }}>
-            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>Registered Teachers</div>
-            <div style={{ fontSize: '24px', fontWeight: '800', color: '#4f46e5', marginTop: '4px' }}>
+          <div style={{ background: '#f9f9fa', padding: '14px', borderRadius: '4px' }}>
+            <div style={{ fontSize: '12px', color: '#696e79', fontWeight: '600' }}>Registered Teachers</div>
+            <div style={{ fontSize: '24px', fontWeight: '800', color: '#e11d55', marginTop: '4px' }}>
               {metrics?.total_teachers || 0}
             </div>
-            <div style={{ fontSize: '11px', color: '#64748b' }}>Authorized to mark rolls</div>
+            <div style={{ fontSize: '11px', color: '#696e79' }}>Authorized to mark rolls</div>
           </div>
         </div>
 
         {/* Visual Progress Bar */}
-        <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden', display: 'flex' }}>
-          <div style={{ width: `${attendanceRate}%`, background: '#10b981', height: '100%' }} />
-          <div style={{ width: `${100 - attendanceRate}%`, background: '#ef4444', height: '100%' }} />
+        <div style={{ height: '8px', background: '#eaeaec', borderRadius: '4px', overflow: 'hidden', display: 'flex' }}>
+          <div style={{ width: `${attendanceRate}%`, background: '#03806a', height: '100%' }} />
+          <div style={{ width: `${100 - attendanceRate}%`, background: '#d32f2f', height: '100%' }} />
         </div>
       </div>
 
@@ -276,10 +276,10 @@ export const MonitoringHealth: React.FC = () => {
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div>
-            <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: 0 }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#1c1f2e', margin: 0 }}>
               Subscriptions Expiring Within 7 Days
             </h3>
-            <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0' }}>
+            <p style={{ fontSize: '12px', color: '#696e79', margin: '2px 0 0 0' }}>
               Schools requiring license renewal to avoid service interruption.
             </p>
           </div>
@@ -299,17 +299,17 @@ export const MonitoringHealth: React.FC = () => {
             <tbody>
               {expiringSchools.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: '#696e79' }}>
                     &check; All institutional subscriptions are in good standing. No licenses expiring within 7 days.
                   </td>
                 </tr>
               ) : (
                 expiringSchools.map((s) => (
                   <tr key={s.id}>
-                    <td style={{ fontWeight: '600', color: '#0f172a' }}>{s.name}</td>
+                    <td style={{ fontWeight: '600', color: '#1c1f2e' }}>{s.name}</td>
                     <td><code>{s.code}</code></td>
-                    <td><span style={{ color: '#4f46e5', fontWeight: '600' }}>{s.plan_name}</span></td>
-                    <td style={{ color: '#ef4444', fontWeight: '600' }}>{s.end_date}</td>
+                    <td><span style={{ color: '#e11d55', fontWeight: '600' }}>{s.plan_name}</span></td>
+                    <td style={{ color: '#d32f2f', fontWeight: '600' }}>{s.end_date}</td>
                     <td>
                       <span className="badge badge-suspended">Action Required</span>
                     </td>

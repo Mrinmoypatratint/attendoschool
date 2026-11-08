@@ -191,9 +191,9 @@ export default function TeacherLeaveRequest() {
         code: p.code,
         name: p.name,
         label: `${label} — ${p.days_count} Days / ${cycle}`,
-        color: p.accrual_cycle === 'YEARLY' ? '#3b82f6' : '#8b5cf6',
-        bg: p.accrual_cycle === 'YEARLY' ? 'rgba(59, 130, 246, 0.12)' : 'rgba(139, 92, 246, 0.12)',
-        border: p.accrual_cycle === 'YEARLY' ? 'rgba(59, 130, 246, 0.25)' : 'rgba(139, 92, 246, 0.25)'
+        color: p.accrual_cycle === 'YEARLY' ? '#e11d55' : '#5c6bc0',
+        bg: p.accrual_cycle === 'YEARLY' ? 'rgba(225, 29, 85, 0.12)' : 'rgba(92, 107, 192, 0.12)',
+        border: p.accrual_cycle === 'YEARLY' ? 'rgba(225, 29, 85, 0.25)' : 'rgba(92, 107, 192, 0.25)'
       };
     });
   }, [configuredPolicies]);
@@ -369,9 +369,9 @@ export default function TeacherLeaveRequest() {
     return {
       value: norm || 'LEAVE',
       label: cleanLabel || 'Leave',
-      color: '#4B5563',
-      bg: '#F3F4F6',
-      border: '#E5E7EB'
+      color: '#535766',
+      bg: '#f5f5f6',
+      border: '#eaeaec'
     };
   };
 
@@ -451,30 +451,30 @@ export default function TeacherLeaveRequest() {
         <div
           style={{
             background: 'var(--surface, #FFF)',
-            border: '1px solid var(--border, #E2E8F0)',
-            borderRadius: 14,
+            border: '1px solid var(--border, #eaeaec)',
+            borderRadius: 4,
             padding: '18px 20px',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
             minHeight: 116,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+            boxShadow: 'none'
           }}
         >
-          <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-secondary, #475569)', letterSpacing: '-0.01em' }}>
+          <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-secondary, #535766)', letterSpacing: '-0.01em' }}>
             Total Requests
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
-            <div style={{ fontSize: 34, fontWeight: 800, color: 'var(--text, #0F172A)', lineHeight: 1 }}>
+            <div style={{ fontSize: 34, fontWeight: 800, color: 'var(--text, #1c1f2e)', lineHeight: 1 }}>
               {counts.all}
             </div>
             <div
               style={{
                 width: 44,
                 height: 44,
-                borderRadius: 11,
-                background: 'rgba(37, 99, 235, 0.12)',
-                color: '#3b82f6',
+                borderRadius: 4,
+                background: 'rgba(225, 29, 85, 0.12)',
+                color: '#e11d55',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -489,30 +489,30 @@ export default function TeacherLeaveRequest() {
         <div
           style={{
             background: 'var(--surface, #FFF)',
-            border: '1px solid var(--border, #E2E8F0)',
-            borderRadius: 14,
+            border: '1px solid var(--border, #eaeaec)',
+            borderRadius: 4,
             padding: '18px 20px',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
             minHeight: 116,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+            boxShadow: 'none'
           }}
         >
-          <div style={{ fontSize: 17, fontWeight: 700, color: '#f59e0b', letterSpacing: '-0.01em' }}>
+          <div style={{ fontSize: 17, fontWeight: 700, color: '#e9a23b', letterSpacing: '-0.01em' }}>
             Pending Review
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
-            <div style={{ fontSize: 34, fontWeight: 800, color: '#d97706', lineHeight: 1 }}>
+            <div style={{ fontSize: 34, fontWeight: 800, color: '#b8781c', lineHeight: 1 }}>
               {counts.pending}
             </div>
             <div
               style={{
                 width: 44,
                 height: 44,
-                borderRadius: 11,
-                background: 'rgba(245, 158, 11, 0.15)',
-                color: '#f59e0b',
+                borderRadius: 4,
+                background: 'rgba(233, 162, 59, 0.15)',
+                color: '#e9a23b',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -527,30 +527,30 @@ export default function TeacherLeaveRequest() {
         <div
           style={{
             background: 'var(--surface, #FFF)',
-            border: '1px solid var(--border, #E2E8F0)',
-            borderRadius: 14,
+            border: '1px solid var(--border, #eaeaec)',
+            borderRadius: 4,
             padding: '18px 20px',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
             minHeight: 116,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+            boxShadow: 'none'
           }}
         >
-          <div style={{ fontSize: 17, fontWeight: 700, color: '#10b981', letterSpacing: '-0.01em' }}>
+          <div style={{ fontSize: 17, fontWeight: 700, color: '#03806a', letterSpacing: '-0.01em' }}>
             Approved
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
-            <div style={{ fontSize: 34, fontWeight: 800, color: '#059669', lineHeight: 1 }}>
+            <div style={{ fontSize: 34, fontWeight: 800, color: '#03806a', lineHeight: 1 }}>
               {counts.approved}
             </div>
             <div
               style={{
                 width: 44,
                 height: 44,
-                borderRadius: 11,
-                background: 'rgba(16, 185, 129, 0.15)',
-                color: '#10b981',
+                borderRadius: 4,
+                background: 'rgba(3, 128, 106, 0.15)',
+                color: '#03806a',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -565,30 +565,30 @@ export default function TeacherLeaveRequest() {
         <div
           style={{
             background: 'var(--surface, #FFF)',
-            border: '1px solid var(--border, #E2E8F0)',
-            borderRadius: 14,
+            border: '1px solid var(--border, #eaeaec)',
+            borderRadius: 4,
             padding: '18px 20px',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
             minHeight: 116,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+            boxShadow: 'none'
           }}
         >
-          <div style={{ fontSize: 17, fontWeight: 700, color: '#ef4444', letterSpacing: '-0.01em' }}>
+          <div style={{ fontSize: 17, fontWeight: 700, color: '#d32f2f', letterSpacing: '-0.01em' }}>
             Rejected
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
-            <div style={{ fontSize: 34, fontWeight: 800, color: '#dc2626', lineHeight: 1 }}>
+            <div style={{ fontSize: 34, fontWeight: 800, color: '#d32f2f', lineHeight: 1 }}>
               {counts.rejected}
             </div>
             <div
               style={{
                 width: 44,
                 height: 44,
-                borderRadius: 11,
-                background: 'rgba(239, 68, 68, 0.15)',
-                color: '#ef4444',
+                borderRadius: 4,
+                background: 'rgba(211, 47, 47, 0.15)',
+                color: '#d32f2f',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -604,21 +604,21 @@ export default function TeacherLeaveRequest() {
         <div
           style={{
             background: 'var(--surface, #FFF)',
-            border: '1px solid var(--border, #E2E8F0)',
-            borderRadius: 12,
+            border: '1px solid var(--border, #eaeaec)',
+            borderRadius: 4,
             padding: '16px 20px',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+            boxShadow: 'none'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#7C3AED', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#5c6bc0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Pending Leave
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary, #64748B)', marginTop: 2 }}>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary, #696e79)', marginTop: 2 }}>
                 Entitlement & Usage
               </div>
             </div>
@@ -626,9 +626,9 @@ export default function TeacherLeaveRequest() {
               style={{
                 width: 40,
                 height: 40,
-                borderRadius: 10,
-                background: 'rgba(124, 58, 237, 0.12)',
-                color: '#7C3AED',
+                borderRadius: 4,
+                background: 'rgba(92, 107, 192, 0.12)',
+                color: '#5c6bc0',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -659,11 +659,11 @@ export default function TeacherLeaveRequest() {
                 }}
                 title={`${item.name}: ${item.approvedDays} approved out of ${item.allowedDays} allowed days`}
               >
-                <span style={{ textTransform: 'lowercase', color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>
+                <span style={{ textTransform: 'lowercase', color: 'var(--text-secondary, #535766)', fontWeight: 600 }}>
                   {item.code.toLowerCase()}
                 </span>
-                <span style={{ color: 'var(--text-secondary, #94A3B8)', margin: '0 6px' }}>-</span>
-                <span style={{ color: item.approvedDays > 0 ? '#15803D' : 'var(--text, #0F172A)', fontWeight: 800 }}>
+                <span style={{ color: 'var(--text-secondary, #94969f)', margin: '0 6px' }}>-</span>
+                <span style={{ color: item.approvedDays > 0 ? '#02604f' : 'var(--text, #1c1f2e)', fontWeight: 800 }}>
                   {item.approvedDays}/{item.allowedDays}
                 </span>
               </div>
@@ -677,7 +677,7 @@ export default function TeacherLeaveRequest() {
         style={{
           display: 'flex',
           gap: 12,
-          borderBottom: '2px solid var(--border, #e2e8f0)',
+          borderBottom: '2px solid var(--border, #eaeaec)',
           marginBottom: 16,
           overflowX: 'auto',
           overflowY: 'hidden',
@@ -693,8 +693,8 @@ export default function TeacherLeaveRequest() {
             padding: '12px 20px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'ALL' ? '3px solid #4f46e5' : '3px solid transparent',
-            color: activeTab === 'ALL' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            borderBottom: activeTab === 'ALL' ? '3px solid #e11d55' : '3px solid transparent',
+            color: activeTab === 'ALL' ? '#e11d55' : 'var(--text-secondary, #696e79)',
             fontWeight: activeTab === 'ALL' ? 700 : 500,
             fontSize: 15,
             cursor: 'pointer',
@@ -712,9 +712,9 @@ export default function TeacherLeaveRequest() {
           <span
             style={{
               padding: '2px 8px',
-              borderRadius: 12,
-              background: activeTab === 'ALL' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
-              color: activeTab === 'ALL' ? '#4338ca' : '#64748b',
+              borderRadius: 4,
+              background: activeTab === 'ALL' ? '#ffe1e8' : 'var(--card-subtle, #f5f5f6)',
+              color: activeTab === 'ALL' ? '#c0174a' : '#696e79',
               fontSize: 12,
               fontWeight: 700
             }}
@@ -730,8 +730,8 @@ export default function TeacherLeaveRequest() {
             padding: '12px 20px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'PENDING' ? '3px solid #4f46e5' : '3px solid transparent',
-            color: activeTab === 'PENDING' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            borderBottom: activeTab === 'PENDING' ? '3px solid #e11d55' : '3px solid transparent',
+            color: activeTab === 'PENDING' ? '#e11d55' : 'var(--text-secondary, #696e79)',
             fontWeight: activeTab === 'PENDING' ? 700 : 500,
             fontSize: 15,
             cursor: 'pointer',
@@ -749,9 +749,9 @@ export default function TeacherLeaveRequest() {
           <span
             style={{
               padding: '2px 8px',
-              borderRadius: 12,
-              background: activeTab === 'PENDING' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
-              color: activeTab === 'PENDING' ? '#4338ca' : '#64748b',
+              borderRadius: 4,
+              background: activeTab === 'PENDING' ? '#ffe1e8' : 'var(--card-subtle, #f5f5f6)',
+              color: activeTab === 'PENDING' ? '#c0174a' : '#696e79',
               fontSize: 12,
               fontWeight: 700
             }}
@@ -767,8 +767,8 @@ export default function TeacherLeaveRequest() {
             padding: '12px 20px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'APPROVED' ? '3px solid #4f46e5' : '3px solid transparent',
-            color: activeTab === 'APPROVED' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            borderBottom: activeTab === 'APPROVED' ? '3px solid #e11d55' : '3px solid transparent',
+            color: activeTab === 'APPROVED' ? '#e11d55' : 'var(--text-secondary, #696e79)',
             fontWeight: activeTab === 'APPROVED' ? 700 : 500,
             fontSize: 15,
             cursor: 'pointer',
@@ -786,9 +786,9 @@ export default function TeacherLeaveRequest() {
           <span
             style={{
               padding: '2px 8px',
-              borderRadius: 12,
-              background: activeTab === 'APPROVED' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
-              color: activeTab === 'APPROVED' ? '#4338ca' : '#64748b',
+              borderRadius: 4,
+              background: activeTab === 'APPROVED' ? '#ffe1e8' : 'var(--card-subtle, #f5f5f6)',
+              color: activeTab === 'APPROVED' ? '#c0174a' : '#696e79',
               fontSize: 12,
               fontWeight: 700
             }}
@@ -804,8 +804,8 @@ export default function TeacherLeaveRequest() {
             padding: '12px 20px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'REJECTED' ? '3px solid #4f46e5' : '3px solid transparent',
-            color: activeTab === 'REJECTED' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            borderBottom: activeTab === 'REJECTED' ? '3px solid #e11d55' : '3px solid transparent',
+            color: activeTab === 'REJECTED' ? '#e11d55' : 'var(--text-secondary, #696e79)',
             fontWeight: activeTab === 'REJECTED' ? 700 : 500,
             fontSize: 15,
             cursor: 'pointer',
@@ -823,9 +823,9 @@ export default function TeacherLeaveRequest() {
           <span
             style={{
               padding: '2px 8px',
-              borderRadius: 12,
-              background: activeTab === 'REJECTED' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
-              color: activeTab === 'REJECTED' ? '#4338ca' : '#64748b',
+              borderRadius: 4,
+              background: activeTab === 'REJECTED' ? '#ffe1e8' : 'var(--card-subtle, #f5f5f6)',
+              color: activeTab === 'REJECTED' ? '#c0174a' : '#696e79',
               fontSize: 12,
               fontWeight: 700
             }}
