@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AttendoSchool</string>
+    <string name="title_activity_main">AttendoSchool</string>
+    <string name="package_name">online.attendoschool.app</string>
+    <string name="custom_url_scheme">online.attendoschool.app</string>
+</resources>

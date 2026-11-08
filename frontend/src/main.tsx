@@ -7,6 +7,7 @@ import { AccessProvider } from './rbac/AccessProvider';
 import { PopupProvider } from './components/PopupModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import App from './App';
+import { Capacitor } from '@capacitor/core';
 import './styles.css';
 import './super-admin/super-admin.css';
 import './components/student/student-portal.css';
@@ -14,6 +15,14 @@ import './components/student/student-portal.css';
 import './theme/tokens.css';
 import './theme/components.css';
 import './theme/auth.css';
+
+if (Capacitor.isNativePlatform()) {
+  document.documentElement.classList.add('native-app');
+  if (!window.location.hash || window.location.hash === '#/' || window.location.hash === '#') {
+    window.location.hash = '/login';
+  }
+  void import('./platform/native').then(({ initializeNativeApp }) => initializeNativeApp()).catch(console.error);
+}
 
 // Automatically redirect direct pathname visits for reset-password into HashRouter route
 if (typeof window !== 'undefined' && window.location.pathname && window.location.pathname.includes('reset-password')) {

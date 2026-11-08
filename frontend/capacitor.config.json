@@ -1,0 +1,20 @@
+{
+  "appId": "online.attendoschool.app",
+  "appName": "AttendoSchool",
+  "webDir": "dist",
+  "backgroundColor": "#ffffff",
+  "loggingBehavior": "debug",
+  "server": {
+    "hostname": "localhost",
+    "androidScheme": "https",
+    "iosScheme": "capacitor",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "preferredContentMode": "mobile"
+  }
+}

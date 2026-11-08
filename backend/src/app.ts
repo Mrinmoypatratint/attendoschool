@@ -62,6 +62,8 @@ app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
 const allowedOriginsList = [
+  // Bundled iOS WebView; Android uses https://localhost, already allowed below.
+  'capacitor://localhost',
   'http://localhost:5173',
   'http://localhost:3000',
   'http://localhost:5000',
