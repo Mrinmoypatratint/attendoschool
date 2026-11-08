@@ -316,6 +316,7 @@ table tbody tr[aria-selected="true"] > td, table tbody tr.selected > td { backgr
   background: var(--card) !important;
   box-shadow: none !important;
   flex-shrink: 0;
+  flex-wrap: nowrap !important;
 }
 .app-topbar .header-search,
 .student-topbar .student-search-bar,
@@ -411,3 +412,48 @@ table tbody tr[aria-selected="true"] > td, table tbody tr.selected > td { backgr
 .badge.failed, .badge.rejected, .badge.overdue, .badge.absent, .badge.suspended { background: var(--secondary); color: var(--destructive); }
 .badge.leave, .badge.holiday { background: var(--secondary); color: var(--info); }
 .badge.inactive, .badge.archived { background: var(--secondary); color: var(--muted-foreground); }
+
+/* Role screenshot audit: remove inherited canvas insets and dark blue surfaces. */
+.app-shell > main { padding: 0 0 32px !important; }
+.app-shell > main > :not(.app-topbar):not([role="dialog"]):not([class*="overlay"]):not([class*="modal"]):not([class*="palette"]) {
+  margin-left: 24px;
+  margin-right: 24px;
+  max-width: calc(100% - 48px) !important;
+}
+.sa-main-wrap, .sa-main-content { background: var(--app-bg) !important; }
+.sa-hero-card, .sa-card, .sa-plan-card, .sa-plan-row {
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+.sa-sidebar-brand, .sa-sidebar-footer,
+.sa-hero-telemetry-badge, .sa-hero-actions .sa-btn-secondary {
+  background: var(--secondary) !important;
+  border-color: var(--border) !important;
+  color: var(--foreground) !important;
+  box-shadow: none !important;
+}
+.sa-table th { background: var(--secondary) !important; border-color: var(--border) !important; }
+.app-topbar, .student-topbar, .sa-topbar { flex-wrap: nowrap !important; }
+.app-topbar > :first-child, .student-topbar-left, .sa-topbar-left { min-width: 0; }
+.app-topbar > :first-child { flex: 1 1 auto; }
+.app-topbar > .header-right { flex: 0 0 auto; }
+.app-topbar .header-icon-btn, .student-topbar .student-topbar-icon-btn, .sa-topbar button {
+  background-color: var(--secondary) !important;
+  color: var(--foreground);
+}
+.app-shell .kpi-card .kpi-icon-wrap,
+.student-main-wrapper .student-kpi-card .student-kpi-icon-wrap {
+  background: transparent !important;
+  color: var(--muted-foreground) !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+@media (max-width: 767px) {
+  .app-shell > main > :not(.app-topbar):not([role="dialog"]):not([class*="overlay"]):not([class*="modal"]):not([class*="palette"]) {
+    margin-left: 12px;
+    margin-right: 12px;
+    max-width: calc(100% - 24px) !important;
+  }
+}
