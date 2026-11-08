@@ -127,7 +127,9 @@ jobs:
           username: ${{ secrets.HOSTINGER_VPS_USER }}
           key: ${{ secrets.HOSTINGER_VPS_SSH_KEY }}
           port: ${{ secrets.HOSTINGER_VPS_PORT || 22 }}
-          script_stop: true
+          # Bash set -e below handles required command failures. The SSH
+          # action's per-line guards break if/else error handling.
+          script_stop: false
           script: |
             set -e
             echo "===================================================================="
