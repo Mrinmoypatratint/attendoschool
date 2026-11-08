@@ -10,6 +10,10 @@ import App from './App';
 import './styles.css';
 import './super-admin/super-admin.css';
 import './components/student/student-portal.css';
+// UI reskin: design tokens + component layer (must load after the existing stylesheets)
+import './theme/tokens.css';
+import './theme/components.css';
+import './theme/auth.css';
 
 // Automatically redirect direct pathname visits for reset-password into HashRouter route
 if (typeof window !== 'undefined' && window.location.pathname && window.location.pathname.includes('reset-password')) {

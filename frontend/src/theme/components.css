@@ -1,0 +1,298 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   AttendoSchool component layer (UI_RESKIN_PLAN.md) — loaded after styles.css
+   and tokens.css. Restyles existing primitives IN PLACE (same class names,
+   same markup). Visual only.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Base ── */
+html, body, #root { font-family: var(--font); }
+body { background: var(--app-bg); color: var(--foreground); }
+button:not(:disabled), [role="button"], summary, label[for] { cursor: pointer; }
+:where(input, select, textarea, button, a, [tabindex]):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.tabular-nums, .stat strong, .metric-num, td.num, td.amount { font-variant-numeric: tabular-nums; }
+
+/* ── Hard bans: no glass, no gradients, no glow ── */
+*, *::before, *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+[class*="bg-gradient-to-"] { background-image: none !important; }
+.as-ambient-orb, .as-robotic-bottom-right, .as-robotic-bottom-left { display: none !important; }
+
+/* ── Buttons ── */
+button { border-radius: 4px; font-weight: 700; box-shadow: none; transition: background-color .15s, border-color .15s, color .15s, opacity .15s; }
+button:hover { background: var(--primary-600); opacity: .92; }
+button:active { background: var(--primary-700); }
+button:disabled { opacity: .5; }
+button[type="submit"], .btn, .btn-primary, .btn-secondary, button.secondary, .small-btn {
+  text-transform: uppercase;
+  letter-spacing: .025em;
+  font-size: 14px;
+}
+.small-btn { font-size: 12px; }
+button.secondary, button.btn-secondary, .btn-secondary {
+  background: var(--background);
+  color: var(--foreground);
+  border: 1px solid var(--input);
+  box-shadow: none;
+}
+button.secondary:hover, button.btn-secondary:hover, .btn-secondary:hover {
+  background: var(--background);
+  border-color: var(--foreground);
+  color: var(--foreground);
+  opacity: 1;
+}
+.btn-danger, button.danger, button.destructive { background: var(--destructive); color: #fff; }
+
+/* ── Form controls ── */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+select, textarea {
+  border: 1px solid var(--input);
+  border-radius: 4px;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-size: 14px;
+  box-shadow: none;
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+select { min-height: 40px; }
+input:hover:not(:disabled), select:hover:not(:disabled), textarea:hover:not(:disabled) { border-color: var(--foreground); }
+input:focus, select:focus, textarea:focus {
+  border-color: var(--foreground);
+  box-shadow: 0 0 0 1px var(--foreground);
+}
+input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--destructive); }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); }
+label { color: var(--foreground); }
+
+/* ── Panels / cards ── */
+.panel, .card, .summary-card, .student-card, .routine-card, .modal-form .card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: none;
+}
+.panel:hover, .card:hover, .summary-card:hover, .student-card:hover, .routine-card:hover { box-shadow: none; transform: none; }
+.panel h3, .panel > header h3, .panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .025em;
+  color: var(--foreground);
+}
+
+/* ── Stat tiles (flat; no colour bars, no lift) ── */
+.stat { background: var(--card); border: 1px solid var(--border); border-radius: 4px; box-shadow: none; padding: 20px; }
+.stat::before { display: none !important; }
+.stat:hover { transform: none; box-shadow: none; }
+.stat span { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted-foreground); }
+.stat strong { font-size: 30px; font-weight: 700; color: var(--foreground); }
+.tile-icon, .kpi-icon-wrap, .td-card-icon { background: transparent !important; box-shadow: none !important; color: var(--muted-foreground) !important; }
+.stat-trend { display: none; } /* trend arrows are not computed by the app */
+
+/* ── Page header ── */
+.page-head h1, .feature-page h1 { font-size: 24px; font-weight: 700; color: var(--foreground); letter-spacing: 0; }
+.page-head .eyebrow { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted-foreground); }
+.page-head .muted, .muted { color: var(--muted-foreground); }
+@media (max-width: 767px) { .page-head h1, .feature-page h1 { font-size: 20px; } }
+
+/* ── Tables ── */
+.table-wrap, .preview-table-container, .period-slots-table-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: none;
+  overflow-x: auto;
+}
+table th {
+  background: var(--secondary);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  height: 40px;
+  border-bottom: 1px solid var(--border);
+}
+table td { font-size: 14px; border-bottom: 1px solid var(--border); color: var(--foreground); }
+table tbody tr:hover > td { background: color-mix(in srgb, var(--muted) 50%, transparent); }
+table tbody tr[aria-selected="true"] > td, table tbody tr.selected > td { background: var(--accent); }
+.table-action-btn {
+  background: transparent;
+  color: var(--foreground);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  min-width: 32px;
+  min-height: 32px;
+}
+.table-action-btn:hover { background: var(--secondary); opacity: 1; }
+
+/* ── Status badges ── */
+.badge, .td-status-pill, .roster-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 8px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+/* ── Tabs (underline) ── */
+.tabs { border-bottom: 1px solid var(--border); gap: 4px; background: transparent; box-shadow: none; }
+.tabs button, .tabs [role="tab"] {
+  background: transparent;
+  color: var(--muted-foreground);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: none;
+}
+.tabs button:hover, .tabs [role="tab"]:hover { background: transparent; color: var(--foreground); opacity: 1; }
+.tabs button.active, .tabs [role="tab"][aria-selected="true"], .tabs button[aria-selected="true"] {
+  color: var(--foreground);
+  border-bottom-color: var(--primary);
+  background: transparent;
+}
+
+/* ── Dialogs / overlays / toasts ── */
+.overlay, .modal-overlay, .sidebar-backdrop { background: rgba(0, 0, 0, .4) !important; }
+.modal, .modal-fullwindow, [role="dialog"] > div {
+  border-radius: 4px;
+  box-shadow: var(--shadow-float);
+}
+.modal { background: var(--background); border: 1px solid var(--border); }
+.toast { border-radius: 4px; box-shadow: var(--shadow-float); border: 1px solid var(--border); }
+
+/* ── Alert line (flat) ── */
+.admin-alert-banner {
+  background: var(--background) !important;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  box-shadow: none;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* ═══ Application shell — School Admin / Teacher / Parent (App.tsx Layout) ═══ */
+.app-shell { background: var(--app-bg); }
+.app-shell > aside { background: var(--sidebar); border-right: 1px solid var(--border); box-shadow: none; }
+@media (min-width: 1024px) {
+  .app-shell > aside:not(.sidebar-collapsed) { width: 256px; }
+}
+.app-shell > aside .sidebar-header { min-height: 64px; padding: 0 16px; border-bottom: 1px solid var(--border); }
+.app-shell > aside .school-crest { border-radius: 4px; box-shadow: none; border: 1px solid var(--border); }
+.app-shell > aside .school-name { color: var(--foreground); font-weight: 700; letter-spacing: 0; }
+.app-shell > aside .school-meta { color: var(--muted-foreground); }
+.role-tag {
+  display: inline-block;
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--primary);
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.app-shell > aside .sidebar-collapsed .role-tag, .app-shell > aside.sidebar-collapsed .role-tag { display: none; }
+.app-shell > aside .sidebar-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--muted-foreground);
+  opacity: .6;
+}
+.app-shell > aside nav button,
+.app-shell > aside .sidebar-group-btn {
+  background: transparent;
+  color: var(--text-sidebar);
+  border: 0;
+  border-left: 4px solid transparent;
+  border-radius: 0 4px 4px 0;
+  box-shadow: none;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  gap: 12px;
+  margin-bottom: 2px;
+}
+.app-shell > aside nav button:hover,
+.app-shell > aside .sidebar-group-btn:hover { background: var(--bg-sidebar-hover); color: var(--foreground); opacity: 1; }
+.app-shell > aside nav button.nav-active,
+.app-shell > aside nav button[aria-current="page"],
+.app-shell > aside .sidebar-group-btn.nav-active-parent {
+  border-left-color: var(--primary);
+  background: var(--accent);
+  color: var(--foreground);
+}
+.app-shell > aside nav button.nav-active svg { color: var(--primary); }
+.app-shell > aside .sidebar-promo-card { background: var(--secondary) !important; border: 1px solid var(--border); border-radius: 4px; box-shadow: none; }
+.app-shell > aside .sidebar-promo-badge { background: transparent !important; box-shadow: none !important; }
+
+.app-shell > main { background: var(--app-bg); }
+.app-shell > main > .app-topbar {
+  background: var(--background);
+  border-bottom: 1px solid var(--border);
+  box-shadow: none;
+  min-height: 64px;
+}
+.header-icon-btn {
+  background: transparent;
+  color: var(--foreground);
+  border: 0;
+  border-radius: 4px;
+  min-width: 40px;
+  min-height: 40px;
+  box-shadow: none;
+}
+.header-icon-btn:hover { background: var(--secondary); opacity: 1; }
+
+/* ═══ Super Admin shell ═══ */
+.sa-sidebar { background: var(--sidebar) !important; border-right: 1px solid var(--border) !important; box-shadow: none !important; }
+.sa-topbar { background: var(--background) !important; border-bottom: 1px solid var(--border) !important; box-shadow: none !important; }
+.sa-main-wrap { background: var(--app-bg); }
+
+/* ═══ Student shell ═══ */
+.student-sidebar { background: var(--sidebar) !important; border-right: 1px solid var(--border) !important; box-shadow: none !important; }
+.student-topbar { background: var(--background) !important; border-bottom: 1px solid var(--border) !important; box-shadow: none !important; }
+.student-main-wrapper { background: var(--app-bg); }
+
+/* ── Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+
+/* ── Print ── */
+@media print {
+  .app-shell > aside, .app-topbar, .sa-sidebar, .sa-topbar, .student-sidebar, .student-topbar,
+  .sidebar-backdrop, .toast, button { display: none !important; }
+  .app-shell, .app-shell > main, .sa-main-wrap, .student-main-wrapper { height: auto !important; overflow: visible !important; background: #fff !important; }
+  body { background: #fff !important; color: #000 !important; }
+  .panel, .card, .table-wrap { border: 1px solid #000 !important; }
+  table th, table td { border: 1px solid #000 !important; color: #000 !important; background: #fff !important; }
+}
+
+/* ═══ Dashboards — flat welcome headers (no illustration, no tinted hero) ═══ */
+.td-welcome-banner, .admin-hero, .hero {
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+.td-welcome-illustration { display: none !important; }
+.td-welcome-title { color: var(--foreground) !important; font-size: 24px !important; font-weight: 700 !important; }
+.td-welcome-subtitle { color: var(--muted-foreground) !important; }
+.td-quote-box { background: var(--secondary) !important; border-left: 3px solid var(--primary) !important; border-radius: 4px !important; box-shadow: none !important; }
+.td-clock-card { background: var(--card) !important; border: 1px solid var(--border) !important; border-radius: 4px !important; box-shadow: none !important; }
+.td-clock-time, .td-clock-time * { font-family: var(--font) !important; font-variant-numeric: tabular-nums; color: var(--foreground) !important; text-shadow: none !important; }
+@media (max-width: 767px) { .td-welcome-title { font-size: 20px !important; } }

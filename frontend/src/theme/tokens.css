@@ -1,0 +1,211 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   AttendoSchool design tokens — flat "school office" system (UI_RESKIN_PLAN.md)
+   Loaded AFTER styles.css: re-points every existing variable so all existing
+   CSS and inline var(...) usage adopts the new palette. Components use tokens only.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root,
+html[data-theme="light"],
+[data-theme="light"] {
+  /* ── New semantic tokens ── */
+  --background: #ffffff;
+  --app-bg: #f5f5f6;
+  --foreground: #282c3f;
+  --card: #ffffff;
+  --primary: #e11d55;
+  --primary-foreground: #ffffff;
+  --accent: #fff2f4;
+  --secondary: #f5f5f6;
+  --muted: #f5f5f6;
+  --muted-foreground: #696e79;
+  --input: #d4d5d9;
+  --ring: #282c3f;
+  --success: #03806a;
+  --warning: #e9a23b;
+  --destructive: #d32f2f;
+  --info: #5c6bc0;
+  --brand-coral: #ff3f6c;
+  --brand-navy: #14233f;
+  --sidebar: #ffffff;
+  --shadow-float: 0 4px 12px rgba(40, 44, 63, 0.08);
+  --chart-1: #e11d55;
+  --chart-2: #282c3f;
+  --chart-3: #03806a;
+  --chart-4: #f2a33a;
+  --chart-5: #5c6bc0;
+
+  /* ── Legacy palette re-pointed (styles.css / inline var() consumers) ── */
+  --primary-50: #fff2f4;
+  --primary-100: #ffe1e8;
+  --primary-200: #fcc3d1;
+  --primary-300: #f896b0;
+  --primary-400: #ef5a85;
+  --primary-500: #e11d55;
+  --primary-600: #e11d55;
+  --primary-700: #c0174a;
+  --primary-800: #9a133c;
+  --primary-900: #7a1031;
+
+  --gray-50: #f9f9fa;
+  --gray-100: #f5f5f6;
+  --gray-200: #eaeaec;
+  --gray-300: #d4d5d9;
+  --gray-400: #94969f;
+  --gray-500: #696e79;
+  --gray-600: #535766;
+  --gray-700: #3e4152;
+  --gray-800: #282c3f;
+  --gray-900: #1c1f2e;
+
+  --emerald-50: #e6f2f0;
+  --emerald-500: #03806a;
+  --emerald-600: #03806a;
+  --emerald-700: #02604f;
+  --emerald-border: #b3d9d2;
+  --amber-50: #fdf5e9;
+  --amber-500: #e9a23b;
+  --amber-600: #b8781c;
+  --amber-700: #8f5c12;
+  --amber-border: #f6dcb2;
+  --rose-50: #fbeaea;
+  --rose-500: #d32f2f;
+  --rose-600: #d32f2f;
+  --rose-700: #a82424;
+  --rose-border: #f2c0c0;
+  --purple-50: #eef0f9;
+  --purple-500: #5c6bc0;
+  --purple-600: #5c6bc0;
+  --purple-border: #c9cee9;
+
+  --bg: #f5f5f6;
+  --bg-card: #ffffff;
+  --card-bg: #ffffff;
+  --card-subtle: #f9f9fa;
+  --panel: #ffffff;
+  --surface: #ffffff;
+  --surface-hover: #f5f5f6;
+  --surface-subtle: #f9f9fa;
+  --table-header: #f5f5f6;
+  --modal-header: #ffffff;
+  --bg-main: #f5f5f6;
+  --bg-muted: #f5f5f6;
+  --bg-subtle: #f9f9fa;
+  --bg-hover: #f5f5f6;
+  --edu-border: #eaeaec;
+  --edu-card-bg: #ffffff;
+  --bg-sidebar: #ffffff;
+  --bg-sidebar-hover: rgba(255, 242, 244, 0.6);
+  --bg-sidebar-active: #fff2f4;
+  --sidebar-accent: #e11d55;
+
+  --text: #282c3f;
+  --text-main: #282c3f;
+  --text-color: #282c3f;
+  --text-primary: #282c3f;
+  --text-secondary: #535766;
+  --text-muted: #696e79;
+  --text-sidebar: #3e4152;
+  --text-sidebar-active: #282c3f;
+  --input-disabled-bg: #f5f5f6;
+
+  --border: #eaeaec;
+  --border-strong: #d4d5d9;
+  --border-focus: #282c3f;
+
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: var(--shadow-float);
+  --shadow-xl: var(--shadow-float);
+
+  --radius-xs: 4px;
+  --radius-sm: 4px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
+  --radius-pill: 9999px;
+
+  --font: 'Assistant', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ── Dark (the app already supports dark mode) — neutral greys only ── */
+[data-theme="dark"],
+.dark,
+html[data-theme="dark"],
+[data-theme="dark"] :root {
+  --background: #121212;
+  --app-bg: #121212;
+  --foreground: #f5f5f6;
+  --card: #1c1c1c;
+  --primary: #e11d55;
+  --primary-foreground: #ffffff;
+  --accent: #2a1a1f;
+  --secondary: #262626;
+  --muted: #262626;
+  --muted-foreground: #a9abb3;
+  --input: #3a3a3a;
+  --ring: #f5f5f6;
+  --success: #26a69a;
+  --warning: #e9a23b;
+  --destructive: #ef5350;
+  --info: #7986cb;
+  --sidebar: #181818;
+  --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+  --primary-50: #2a1a1f;
+  --primary-100: #3a1d27;
+  --primary-200: #5a2236;
+  --primary-300: #a3204a;
+  --primary-400: #e11d55;
+  --primary-500: #e11d55;
+  --primary-600: #e11d55;
+  --primary-700: #ef5a85;
+  --primary-800: #f896b0;
+  --primary-900: #fcc3d1;
+
+  --gray-50: #1c1c1c;
+  --gray-100: #262626;
+  --gray-200: #2e2e2e;
+  --gray-300: #3a3a3a;
+  --gray-400: #7a7c84;
+  --gray-500: #a9abb3;
+  --gray-600: #c4c6cc;
+  --gray-700: #dcdde1;
+  --gray-800: #f0f0f2;
+  --gray-900: #f5f5f6;
+
+  --bg: #121212;
+  --bg-card: #1c1c1c;
+  --card-bg: #1c1c1c;
+  --card-subtle: #181818;
+  --panel: #1c1c1c;
+  --surface: #1c1c1c;
+  --surface-hover: #262626;
+  --surface-subtle: #181818;
+  --table-header: #262626;
+  --modal-header: #1c1c1c;
+  --bg-main: #121212;
+  --bg-muted: #262626;
+  --bg-subtle: #181818;
+  --bg-hover: #262626;
+  --edu-border: #2e2e2e;
+  --edu-card-bg: #1c1c1c;
+  --bg-sidebar: #181818;
+  --bg-sidebar-hover: rgba(42, 26, 31, 0.6);
+  --bg-sidebar-active: #2a1a1f;
+  --sidebar-accent: #e11d55;
+
+  --text: #f5f5f6;
+  --text-main: #f5f5f6;
+  --text-color: #f5f5f6;
+  --text-primary: #f5f5f6;
+  --text-secondary: #c4c6cc;
+  --text-muted: #a9abb3;
+  --text-sidebar: #c4c6cc;
+  --text-sidebar-active: #f5f5f6;
+  --input-disabled-bg: #262626;
+
+  --border: #2e2e2e;
+  --border-strong: #3a3a3a;
+  --border-focus: #f5f5f6;
+}

@@ -1,0 +1,106 @@
+/* ═══ Login / auth (UI reskin §9) — split layout over the EXISTING login DOM ═══
+   Left 40%: navy brand panel (logo, name, one line). Right: white centred form.
+   Decorative layers (3D photo slideshow, particles, handwriting quote) are hidden. */
+.as-simple-page {
+  display: grid !important;
+  grid-template-columns: 40% 1fr;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+  padding: 0 !important;
+  background: var(--background) !important;
+  color: var(--foreground);
+  font-family: var(--font) !important;
+}
+.as-simple-page .as-3d-backdrop-container,
+.as-simple-page .as-3d-vignette-overlay,
+.as-simple-page .as-duo-left-pane .as-handwriting-container { display: none !important; }
+.as-simple-page .as-simple-main,
+.as-simple-page .as-duo-login-container { display: contents !important; }
+.as-simple-page .as-top-left-brand {
+  grid-column: 1; grid-row: 1;
+  position: static !important;
+  display: flex; align-items: center; gap: 12px;
+  padding: 40px 40px 0 !important;
+  background: var(--brand-navy) !important;
+  margin: 0 !important;
+  border: 0 !important; box-shadow: none !important;
+}
+.as-simple-page .as-duo-left-pane {
+  grid-column: 1; grid-row: 2;
+  background: var(--brand-navy) !important;
+  border: 0 !important; border-radius: 0 !important; box-shadow: none !important;
+  margin: 0 !important; padding: 0 !important;
+}
+.as-simple-page .as-simple-logo-img { width: 48px; height: 48px; border-radius: 4px !important; background: #fff; padding: 4px; box-shadow: none !important; }
+.as-simple-page .as-simple-brand-title { color: #fff !important; font-size: 24px !important; font-weight: 700 !important; margin: 0; text-shadow: none !important; }
+.as-simple-page .as-simple-brand-tagline { color: rgba(255, 255, 255, .85) !important; font-size: 14px !important; margin: 4px 0 0; text-shadow: none !important; }
+.as-simple-page .as-duo-right-pane {
+  grid-column: 2; grid-row: 1 / span 2;
+  align-self: center; justify-self: center;
+  width: min(400px, calc(100% - 32px));
+  margin: 48px 0 !important;
+  padding: 0 !important;
+  background: var(--background) !important;
+  border: 0 !important; box-shadow: none !important; border-radius: 0 !important;
+  color: var(--foreground) !important;
+}
+.as-simple-page .as-form-title { color: var(--foreground) !important; font-size: 24px !important; font-weight: 700 !important; }
+.as-simple-page .as-form-subtitle,
+.as-simple-page .as-simple-prompt-text,
+.as-simple-page .as-simple-role-sub,
+.as-simple-page .as-simple-help-tag { color: var(--muted-foreground) !important; }
+.as-simple-page .as-simple-label { color: var(--foreground) !important; font-size: 14px !important; font-weight: 600 !important; }
+.as-simple-page .as-simple-role-grid { gap: 12px !important; }
+.as-simple-page .as-simple-role-card {
+  background: var(--background) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+  color: var(--foreground) !important;
+  text-transform: none !important;
+}
+.as-simple-page .as-simple-role-card:hover { border-color: var(--foreground) !important; background: var(--background) !important; transform: none !important; opacity: 1; }
+.as-simple-page .as-simple-role-title { color: var(--foreground) !important; font-weight: 700 !important; }
+.as-simple-page .as-simple-role-icon { background: transparent !important; color: var(--primary) !important; box-shadow: none !important; border: 0 !important; }
+.as-simple-page input:not([type="checkbox"]):not([type="radio"]) {
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+  border: 1px solid var(--input) !important;
+  border-radius: 4px !important;
+  min-height: 44px;
+}
+.as-simple-page input:focus { border-color: var(--foreground) !important; box-shadow: 0 0 0 1px var(--foreground) !important; }
+.as-simple-page .as-simple-submit-btn {
+  width: 100%; min-height: 44px;
+  background: var(--primary) !important; color: var(--primary-foreground) !important;
+  border-radius: 4px !important; box-shadow: none !important;
+  text-transform: uppercase; letter-spacing: .025em; font-weight: 700;
+}
+.as-simple-page .as-simple-back-btn, .as-simple-page .as-simple-eye-btn {
+  background: transparent !important; color: var(--foreground) !important; box-shadow: none !important; border-radius: 4px !important;
+}
+.as-simple-page .as-simple-forgot-link { color: var(--primary) !important; }
+.as-simple-page .as-simple-active-tag, .as-simple-page .as-simple-role-bar {
+  background: var(--secondary) !important; color: var(--foreground) !important; border: 1px solid var(--border) !important; border-radius: 4px !important; box-shadow: none !important;
+}
+.as-simple-page .as-error-banner {
+  background: var(--background) !important; color: var(--destructive) !important;
+  border: 1px solid var(--destructive) !important; border-radius: 4px !important;
+  font-size: 14px; font-weight: 600; box-shadow: none !important;
+}
+.as-simple-page [class*="sparkle"], .as-simple-page [class*="particle"], .as-simple-page canvas { display: none !important; }
+
+/* Mobile / tablet: form only, logo on top */
+@media (max-width: 1023px) {
+  .as-simple-page { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .as-simple-page .as-top-left-brand { grid-column: 1; grid-row: 1; background: var(--background) !important; padding: 24px 16px 0 !important; justify-content: center; }
+  .as-simple-page .as-simple-brand-title { color: var(--foreground) !important; font-size: 20px !important; }
+  .as-simple-page .as-simple-brand-tagline { display: none; }
+  .as-simple-page .as-duo-left-pane { display: none !important; }
+  .as-simple-page .as-duo-right-pane { grid-column: 1; grid-row: 2; align-self: start; justify-self: stretch; width: auto !important; max-width: 400px; margin: 24px 16px !important; }
+  @media (min-width: 432px) { .as-simple-page .as-duo-right-pane { justify-self: center; width: 400px !important; } }
+}
+
+/* Contrast: links in primary, required markers in destructive (WCAG ≥ 4.5:1) */
+.as-simple-page a, .as-simple-page .as-simple-meta-row a, .as-simple-page [class*="help"] a, .as-simple-page [class*="help"] button { color: var(--primary) !important; }
+.as-simple-page .as-simple-label span, .as-simple-page label span[style*="color"] { color: var(--destructive) !important; }
