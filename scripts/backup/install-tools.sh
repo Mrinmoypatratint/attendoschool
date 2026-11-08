@@ -4,7 +4,7 @@
 set -euo pipefail
 umask 077
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
-tool_home="${BACKUP_TOOL_HOME:-/home/attendoschool/backups/tools}"
+tool_home="${BACKUP_TOOL_HOME:-/home/attendoschool/.attendoschool-backup-state/tools}"
 if [[ -f "$tool_home/runtime.env" ]]; then
   # shellcheck disable=SC1090
   source "$tool_home/runtime.env"

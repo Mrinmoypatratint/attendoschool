@@ -1,6 +1,6 @@
 # AttendoSchool backup and emergency recovery
 
-Backups are not enabled just by adding this code. Complete the setup below, take a backup, and test restoring it. The owner has now approved completing setup while deferring age key creation. The private backup repo has been created. Deployment now prepares private server folders, tools, a dedicated worker and a schedule that stays explicitly paused until a public recipient and repo-scoped token are configured. No laptop/USB is needed for running daily jobs; the offline identity is for decrypting/restoring later. No private age key is generated on the server.
+Backups are not enabled just by adding this code. Complete the setup below, take a backup, and test restoring it. The owner has approved completing setup while deferring both age key creation and the repo-scoped token. The private backup repo has been created. Deployment prepares private server folders, tools, a dedicated worker and a schedule that stays explicitly paused until those two settings are configured. No laptop/USB is needed for running daily jobs; the offline identity is for decrypting/restoring later. No private age key is generated on the server.
 
 ## Quick answers
 
@@ -25,7 +25,7 @@ Never commit dumps, keys, secrets, `.env` files or encrypted backup archives. A 
 
 ## What the code actually stores
 
-This is a source-code inventory, not a claim about the current production account. Live engine, plan, PostgreSQL major version, storage usage and external services remain **[TO CONFIRM]**. The owner does not yet know whether legacy Firebase contains unique live data.
+This inventory began from source inspection. A subsequent read-only VPS inspection confirmed Supabase PostgreSQL 17 and configured legacy Firebase credentials. Provider plan, unique Firebase data, storage usage and restore compatibility remain **[TO CONFIRM]**. The owner does not yet know whether legacy Firebase contains unique live data.
 
 | Data / evidence | Classification | How it is protected or rebuilt |
 | --- | --- | --- |
@@ -107,16 +107,16 @@ These commands are instructions for the owner. Running them changes the VPS/acco
 6. **Create the private backup config**, as the same Unix user that runs the backend:
 
    ```bash
-   install -d -m 700 /home/attendoschool/.config
-   touch /home/attendoschool/.config/attendoschool-backup.env
-   chmod 600 /home/attendoschool/.config/attendoschool-backup.env
-   nano /home/attendoschool/.config/attendoschool-backup.env
+   install -d -m 700 /home/attendoschool/.attendoschool-backup-state
+   touch /home/attendoschool/.attendoschool-backup-state/backup.env
+   chmod 600 /home/attendoschool/.attendoschool-backup-state/backup.env
+   nano /home/attendoschool/.attendoschool-backup-state/backup.env
    ```
 
    Fill it with trusted Bash assignments. Quote values containing shell characters. Never paste this file into chat:
 
    ```bash
-   BACKUP_DIR=/home/attendoschool/backups/private
+   BACKUP_DIR=/home/attendoschool/.attendoschool-backup-state/private
    BACKUP_AGE_RECIPIENT='age1_REPLACE_WITH_YOUR_PUBLIC_RECIPIENT'
    BACKUP_GITHUB_REPO='Mrinmoypatratint/attendoschool-private-backups'
    BACKUP_GH_TOKEN='REPLACE_WITH_BACKUP_REPO_ONLY_TOKEN'
@@ -152,7 +152,7 @@ These commands are instructions for the owner. Running them changes the VPS/acco
 9. **Run once manually** and wait for success:
 
    ```bash
-   BACKUP_CONFIG_FILE=/home/attendoschool/.config/attendoschool-backup.env \
+   BACKUP_CONFIG_FILE=/home/attendoschool/.attendoschool-backup-state/backup.env \
      bash scripts/backup.sh
    ```
 
@@ -160,7 +160,7 @@ These commands are instructions for the owner. Running them changes the VPS/acco
 10. **Schedule daily**, using `crontab -e` for that user:
 
     ```cron
-    17 2 * * * BACKUP_CONFIG_FILE=/home/attendoschool/.config/attendoschool-backup.env /bin/bash /home/attendoschool/htdocs/attendoschool.online/scripts/backup.sh >> /home/attendoschool/backup-cron.log 2>&1
+    17 2 * * * BACKUP_CONFIG_FILE=/home/attendoschool/.attendoschool-backup-state/backup.env /bin/bash /home/attendoschool/htdocs/attendoschool.online/scripts/backup/scheduled.sh >> /home/attendoschool/.attendoschool-backup-state/cron.log 2>&1 # attendoschool-backup-managed
     ```
 
     This is 02:17 in the VPS cron timezone; check `date` first. Release tags and logs use UTC. Make the log owner-only and rotate it. The worker must stay running. Cron waits for that worker's success. A missing worker eventually fails the queued record instead of pretending a backup exists.
@@ -458,7 +458,7 @@ The production deployment runs `scripts/backup/install-tools.sh` and `provision.
 
 `scheduled.sh` logs PAUSED without creating a fake successful backup while either the public recipient or repo token is missing. Manual offline backups remain subject to the same real store-coverage checks. No broad GitHub CLI credential is copied to the VPS.
 
-[Backup operations](https://github.com/Mrinmoypatratint/attendoschool/actions/workflows/backup-operations.yml) supports `inspect`, `prepare`, and `monitor`. It uses the existing GitHub Actions VPS credentials; your laptop does not need an SSH key. A daily 03:47 UTC monitor checks the last encrypted release recorded outside the database. Once enabled, a missing/expired/incomplete release fails the workflow; verify your [GitHub Actions notification settings](https://github.com/settings/notifications/actions) for failure emails. The monitor reports PAUSED while credentials are deferred. GitHub scheduled-workflow delay/inactivity limits still apply; the optional independent heartbeat remains useful.
+[Backup operations](https://github.com/Mrinmoypatratint/attendoschool/actions/workflows/backup-operations.yml) supports `inspect`, `prepare`, `monitor`, and `daily`. It uses the existing GitHub Actions VPS credentials; your laptop does not need an SSH key. The daily 03:47 UTC run checks the last encrypted release and, when host cron is unavailable, queues the nightly backup over SSH. Once enabled, a missing/expired/incomplete release fails the workflow; verify your [GitHub Actions notification settings](https://github.com/settings/notifications/actions) for failure emails. The monitor reports PAUSED while credentials are deferred. GitHub scheduled-workflow delay/inactivity limits still apply; the optional independent heartbeat remains useful.
 
 When ready later, create your offline age identity and add only its public recipient as the code repo's `BACKUP_AGE_RECIPIENT` Actions secret. GitHub requires the account owner to create a fine-grained token; the available tools cannot mint it for you. Use [this prefilled token form](https://github.com/settings/personal-access-tokens/new?name=AttendoSchool-backups&target_name=Mrinmoypatratint&expires_in=90&contents=write), select **only** `attendoschool-private-backups`, and set its value as the `BACKUP_GH_TOKEN` [Actions secret](https://github.com/Mrinmoypatratint/attendoschool/settings/secrets/actions/new). Do not paste either the private identity or token into chat. See [GitHub's token documentation](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#pre-filling-fine-grained-personal-access-token-details-using-url-parameters).
 
@@ -503,7 +503,7 @@ Frontend TypeScript + Vite production build: PASS (bundle-size warning remains)
 
 The real database drill created and removed a new PostgreSQL 18 cluster on a private local Unix socket in Ubuntu/WSL. It did not connect to the app database. Linux queue tests include six simultaneous reservations after a vanished job, so the recovery/claim lock is exercised across separate control processes. Windows additionally passed the portable tests; its Linux-specific OS-lock test is skipped there and passed on Linux. The phone test caught an off-screen dropdown; the fix and the full four-test UI suite passed afterward.
 
-**Not verified on production:** live engine/major, legacy Firebase contents, actual Supabase Storage coverage/restore compatibility, private repo/token permissions, Docker image build, configured cron/heartbeat, and a restore of real customer data. No accounts, server settings or production data were changed. No commit, push, or deployment was performed for this backup task. Separate concurrent login/UI changes in the workspace are outside this task.
+At the time of the initial local checks, no production changes or deployment had been performed. The owner subsequently approved server preparation and deferred the public key and token. The private repo is now created; Supabase PostgreSQL 17 and the attachment table are confirmed; age, gh and matching PostgreSQL 17 client binaries have been downloaded privately on the VPS. Legacy Firebase contents, real customer-data restore compatibility and Docker image builds remain **[TO CONFIRM]**. No customer database data has been changed or uploaded. Separate concurrent login/mobile changes are outside this task.
 
 ### Command cheat sheet and glossary
 
