@@ -25,7 +25,33 @@ env:
   MOBILE_BUILD_NUMBER: ${{ github.run_number }}
 
 jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+      - run: npm ci
+      - run: npm --prefix frontend ci
+      - run: npx playwright install --with-deps chromium
+      - name: Verify login and shared API routing
+        env:
+          VITE_API_URL: /api
+        run: |
+          npm --prefix frontend run dev -- --port 5173 --strictPort > /tmp/mobile-web.log 2>&1 &
+          WEB_PID=$!
+          trap 'kill "$WEB_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do curl -fsS http://localhost:5173 > /dev/null && break || sleep 1; done
+          npx playwright test tests/e2e/login.spec.ts tests/e2e/mobile.spec.ts
+
   android:
+    needs: verify
     if: inputs.platform != 'ios'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -87,6 +113,7 @@ jobs:
           echo 'The release AAB can be uploaded to Play Console only when built with signed_release=true. No store upload occurs in this workflow.' >> "$GITHUB_STEP_SUMMARY"
 
   ios:
+    needs: verify
     if: inputs.platform != 'android'
     runs-on: macos-26
     timeout-minutes: 45
@@ -110,6 +137,15 @@ jobs:
             -derivedDataPath ios/DerivedData CODE_SIGNING_ALLOWED=NO build
           mkdir -p ios/output
           ditto -c -k --keepParent ios/DerivedData/Build/Products/Debug-iphonesimulator/App.app ios/output/AttendoSchool-simulator.zip
+      - name: Launch the app in an iPhone simulator
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; print(next(d['udid'] for ds in json.load(sys.stdin)['devices'].values() for d in ds if 'iPhone' in d['name']))")
+          xcrun simctl boot "$DEVICE_ID"
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+          xcrun simctl install "$DEVICE_ID" ios/DerivedData/Build/Products/Debug-iphonesimulator/App.app
+          xcrun simctl launch "$DEVICE_ID" online.attendoschool.app
+          sleep 5
+          xcrun simctl io "$DEVICE_ID" screenshot ios/output/AttendoSchool-ios-login.png
       - name: Import distribution signing when requested
         if: inputs.signed_release
         env:
@@ -142,6 +178,7 @@ jobs:
           name: ios-${{ inputs.signed_release && 'signed' || 'simulator-and-unsigned' }}-${{ github.run_number }}
           path: |
             frontend/ios/output/*.zip
+            frontend/ios/output/*.png
             frontend/ios/output/store/*.ipa
           if-no-files-found: error
           retention-days: 14
