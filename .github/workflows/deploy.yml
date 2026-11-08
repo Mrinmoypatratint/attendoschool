@@ -148,7 +148,7 @@ jobs:
               if bash scripts/backup/install-tools.sh && node scripts/backup/provision.cjs prepare; then
                 BACKUP_SETUP_READY=true
               else
-                echo "::warning::Backup setup is incomplete. Continuing the web/API deployment without starting or restarting backup workers. Existing backup configuration is unchanged."
+                echo "::warning::Backup setup is incomplete. Continuing the web/API deployment without starting or restarting backup workers. Review backup setup separately before relying on off-server backups."
               fi
             fi
             echo "📦 Installing Dependencies on VPS..."
