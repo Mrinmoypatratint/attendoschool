@@ -435,6 +435,9 @@ table tbody tr[aria-selected="true"] > td, table tbody tr.selected > td { backgr
   box-shadow: none !important;
 }
 .sa-table th { background: var(--secondary) !important; border-color: var(--border) !important; }
+[data-theme="dark"] .panel,
+[data-theme="dark"] .td-calendar-strip,
+[data-theme="dark"] .td-next-class-box { background: var(--card) !important; border-color: var(--border) !important; }
 .app-topbar, .student-topbar, .sa-topbar { flex-wrap: nowrap !important; }
 .app-topbar > :first-child, .student-topbar-left, .sa-topbar-left { min-width: 0; }
 .app-topbar > :first-child { flex: 1 1 auto; }
@@ -443,6 +446,7 @@ table tbody tr[aria-selected="true"] > td, table tbody tr.selected > td { backgr
   background-color: var(--secondary) !important;
   color: var(--foreground);
 }
+.sa-main-wrap .sa-topbar button { background-color: var(--secondary) !important; }
 .app-shell .kpi-card .kpi-icon-wrap,
 .student-main-wrapper .student-kpi-card .student-kpi-icon-wrap {
   background: transparent !important;
@@ -451,6 +455,13 @@ table tbody tr[aria-selected="true"] > td, table tbody tr.selected > td { backgr
   box-shadow: none !important;
 }
 @media (max-width: 767px) {
+  .sa-hero-card { flex-direction: column; align-items: stretch; padding: 16px; }
+  .sa-hero-content, .sa-hero-telemetry-badge { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
+  .sa-hero-telemetry-badge { overflow-wrap: anywhere; }
+  .student-topbar .profile-pill .profile-info { display: none; }
+  .student-topbar .profile-pill { padding: 2px !important; }
+  .student-topbar-left { overflow: hidden; }
+  .student-topbar-left > div { flex-shrink: 1 !important; min-width: 0; }
   .app-shell > main > :not(.app-topbar):not([role="dialog"]):not([class*="overlay"]):not([class*="modal"]):not([class*="palette"]) {
     margin-left: 12px;
     margin-right: 12px;
