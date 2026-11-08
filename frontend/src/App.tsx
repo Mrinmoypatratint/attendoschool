@@ -427,7 +427,6 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
 function Login() {
   const nav = useNavigate();
   const { login, user } = useAuth();
-  const { dark, toggle } = useTheme();
 
   useEffect(() => {
     if (user) {
@@ -455,17 +454,13 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [videoError, setVideoError] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
-  const [showLang, setShowLang] = useState(false);
-  const [selectedLang, setSelectedLang] = useState('English');
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotNotice, setForgotNotice] = useState<{ type: 'success' | 'error'; message: string; resetUrl?: string } | null>(null);
 
   const lookupAbortRef = useRef<AbortController | null>(null);
-  const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const currentConfig = LOGIN_ROLES[loginRole];
 
@@ -513,6 +508,8 @@ function Login() {
       lookupAbortRef.current = controller;
       setLookupLoading(true);
       setLookupNotFound(false);
+      setInstituteId('');
+      setDetectedInstitute(null);
 
       const timer = setTimeout(async () => {
         try {
@@ -550,7 +547,7 @@ function Login() {
             setLookupNotFound(true);
           }
         } finally {
-          setLookupLoading(false);
+          if (!controller.signal.aborted) setLookupLoading(false);
         }
       }, 250);
 
@@ -597,15 +594,6 @@ function Login() {
         try {
           localStorage.setItem('attendoschool_cached_institutes', JSON.stringify(cleanList));
         } catch { }
-
-        // Automatically match the institute only if an identifier is already entered
-        if (email.trim()) {
-          const match = detectInstituteFromEmail(email, cleanList);
-          if (match) {
-            setInstituteId(match.id);
-            setDetectedInstitute(match);
-          }
-        }
       }
     } catch (err) {
       console.warn('Institute fetch failed:', err);
@@ -616,7 +604,7 @@ function Login() {
     } finally {
       setInstitutesLoading(false);
     }
-  }, [email]);
+  }, []);
 
   useEffect(() => {
     try {
@@ -631,27 +619,22 @@ function Login() {
     setSelectedRole(role);
     setLoginRole(role);
     setError('');
-    const cfg = LOGIN_ROLES[role];
-    if (cfg.needsSchool) {
-      setEmail('');
-      setPassword('');
-      setInstituteId('');
-      setDetectedInstitute(null);
-      setLookupNotFound(false);
-      setLookupLoading(false);
-    } else {
-      setEmail(cfg.defaultEmail || '');
-      setPassword('ChangeMe123!');
-      setInstituteId('');
-      setDetectedInstitute(null);
-      setLookupNotFound(false);
-      setLookupLoading(false);
-    }
+    setEmail('');
+    setPassword('');
+    setInstituteId('');
+    setDetectedInstitute(null);
+    setLookupNotFound(false);
+    setLookupLoading(false);
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+
+    if (!selectedRole) {
+      setError('Please choose your login role.');
+      return;
+    }
 
     if (currentConfig.needsSchool && !instituteId) {
       setError(
@@ -713,408 +696,72 @@ function Login() {
 
   return (
     <div className="as-simple-page">
-      {/* 3D Educational Dynamic Animated Background */}
-      <ThreeDBackground dark={true} />
-
-      {/* Floating Top-Left Brand Logo */}
-      <div className="as-top-left-brand">
-        <img
-          src="/attendo-school-logo.png"
-          alt="AttendoSchool Logo"
-          className="as-simple-logo-img"
-        />
-        <div className="as-brand-text-block">
-          <h1 className="as-simple-brand-title">AttendoSchool</h1>
-          <p className="as-simple-brand-tagline">Attendance Today — Brighter Tomorrow</p>
-        </div>
-      </div>
-
-      {/* Centered Main Login Content: Left Handwriting Quote & Right Form */}
-      <main className="as-simple-main">
-        <div className="as-duo-login-container animate-fade-in">
-          {/* LEFT SIDE: Dynamic Handwriting Typewriter Quote */}
-          <div className="as-duo-left-pane">
-            <HandwritingQuoteTyping />
+      <main className="login-card">
+        <div className="login-art" role="img" aria-label="AttendoSchool - Smart Attendance System">
+          <div className="login-brand">
+            <svg className="login-brand-mark" viewBox="0 0 180 140" aria-hidden="true">
+              <path d="M12 35 90 2l78 33-78 32z" fill="white" />
+              <path d="M155 36v36" stroke="white" strokeWidth="4" /><path d="m155 65-6 13h12z" fill="white" />
+              <path d="m55 119 25-78h25l30 78h-26l-6-19H78l-6 19zm30-39h12l-6-23z" fill="white" stroke="#241521" strokeWidth="3" />
+              <ellipse cx="88" cy="105" rx="65" ry="20" transform="rotate(-19 88 105)" fill="none" stroke="#00a7ec" strokeWidth="7" />
+              <path d="m74 91 14 14 37-38 12 6-49 49-24-24z" fill="#48d51b" stroke="#241521" strokeWidth="4" strokeLinejoin="round" />
+            </svg>
+            <div className="login-wordmark">Attendo<span>School</span></div>
+            <div className="login-tagline"><span />SMART ATTENDANCE SYSTEM<span /></div>
           </div>
-
-          {/* RIGHT SIDE: Interactive Role Selection & Authentication Card */}
-          <div className="as-duo-right-pane">
-            <div className="as-duo-form-header">
-              <h2 className="as-form-title">
-                {selectedRole ? LOGIN_ROLES[selectedRole].title : 'Portal Sign In'}
-              </h2>
-              <p className="as-form-subtitle">
-                {selectedRole
-                  ? 'Enter credentials to access your secure portal'
-                  : 'Select your educational role to begin'}
-              </p>
+        </div>
+        <section className="login-form-panel">
+          <button className="login-back" type="button" aria-label="Back to home" onClick={() => nav('/')}><ArrowLeft size={26} /></button>
+          <header className="login-heading"><h1>Log In</h1><p>Access your school portal</p><span /></header>
+          <form className="login-form" onSubmit={submit}>
+            <div className="login-field">
+              <label htmlFor="login-role">Choose Your Role</label>
+              <div className="login-control login-role-control">
+                <Users aria-hidden="true" />
+                <select id="login-role" required value={selectedRole || ''} onChange={e => handleSelectRole(e.target.value as LoginOption)} disabled={loading}>
+                  <option value="" disabled>Select Your Role</option>
+                  <option value="ADMIN">Administrator</option>
+                  <option value="SCHOOL_ADMIN">School Admin</option>
+                  <option value="TEACHER">Teacher</option>
+                  <option value="STUDENT">Student</option>
+                </select>
+                <ChevronDown className="login-select-chevron" aria-hidden="true" />
+              </div>
             </div>
-
-            {/* Validation Error Banner */}
-            {error && (
-              <div className="as-error-banner" role="alert" style={{ marginBottom: 16 }}>
-                <AlertTriangle size={15} style={{ flexShrink: 0 }} />
-                <span>{error}</span>
+            <div className="login-field">
+              <label htmlFor="identifier-input">{selectedRole ? currentConfig.emailLabel : 'Email Address'}</label>
+              <div className="login-control">
+                <Mail aria-hidden="true" />
+                <input id="identifier-input" name="username" autoComplete="username" required type="text" placeholder={selectedRole === 'STUDENT' ? 'Enter your admission number or email' : selectedRole === 'TEACHER' ? 'Enter your email or employee ID' : 'Enter your email address'} value={email} onChange={e => setEmail(e.target.value)} disabled={loading} />
+              </div>
+            </div>
+            <div className="login-field">
+              <label htmlFor="password-input">Password</label>
+              <div className="login-control">
+                <Lock aria-hidden="true" />
+                <input id="password-input" name="password" autoComplete="current-password" required type={showPassword ? 'text' : 'password'} placeholder="Enter your password" value={password} onChange={e => setPassword(e.target.value)} disabled={loading} />
+                <button className="login-eye" type="button" onClick={() => setShowPassword(v => !v)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}>{showPassword ? <Eye size={24} /> : <EyeOff size={24} />}</button>
+              </div>
+            </div>
+            {selectedRole && currentConfig.needsSchool && email.trim().length >= 3 && (
+              <div className="login-school-status" role="status" aria-live="polite">
+                {lookupLoading ? <span id="detecting-institute-placeholder">Detecting your school...</span> : selectedInstitute ? <span id="detected-institute-display"><School size={16} /> {selectedInstitute.name}</span> : lookupNotFound ? <div id="not-found-institute-placeholder">
+                  <label htmlFor="login-school">Choose your school</label>
+                  <select id="login-school" value={instituteId} onChange={e => { setInstituteId(e.target.value); setDetectedInstitute(institutes.find(i => i.id === e.target.value) || null); }}>
+                    <option value="">Select your school...</option>
+                    {institutes.map(inst => <option key={inst.id} value={inst.id}>{inst.name} ({inst.code})</option>)}
+                  </select>
+                  {institutesError && <button type="button" onClick={() => fetchInstitutes(true)} disabled={institutesLoading}>Retry loading schools</button>}
+                </div> : null}
               </div>
             )}
-
-            {/* STEP 1: ONLY SHOW LOGIN TYPE (Administrator, School Admin, Teacher, Student) */}
-            {selectedRole === null ? (
-              <div className="as-simple-step1 animate-fade-in">
-                <p className="as-simple-prompt-text">Select your login role to continue</p>
-
-                <div className="as-simple-role-grid">
-                  {/* 1. Administrator */}
-                  <button
-                    type="button"
-                    className="as-simple-role-card"
-                    onClick={() => handleSelectRole('ADMIN')}
-                    id="role-select-admin"
-                  >
-                    <div className="as-simple-role-icon role-admin">
-                      <Building2 size={24} />
-                    </div>
-                    <div className="as-simple-role-info">
-                      <span className="as-simple-role-title">Administrator</span>
-                      <span className="as-simple-role-sub">Central Platform Admin</span>
-                    </div>
-                  </button>
-
-                  {/* 2. School Admin */}
-                  <button
-                    type="button"
-                    className="as-simple-role-card"
-                    onClick={() => handleSelectRole('SCHOOL_ADMIN')}
-                    id="role-select-school-admin"
-                  >
-                    <div className="as-simple-role-icon role-school-admin">
-                      <School size={24} />
-                    </div>
-                    <div className="as-simple-role-info">
-                      <span className="as-simple-role-title">School Admin</span>
-                      <span className="as-simple-role-sub">Principal & Administration</span>
-                    </div>
-                  </button>
-
-                  {/* 3. Teacher */}
-                  <button
-                    type="button"
-                    className="as-simple-role-card"
-                    onClick={() => handleSelectRole('TEACHER')}
-                    id="role-select-teacher"
-                  >
-                    <div className="as-simple-role-icon role-teacher">
-                      <GraduationCap size={24} />
-                    </div>
-                    <div className="as-simple-role-info">
-                      <span className="as-simple-role-title">Teacher</span>
-                      <span className="as-simple-role-sub">Faculty & Routine</span>
-                    </div>
-                  </button>
-
-                  {/* 4. Student */}
-                  <button
-                    type="button"
-                    className="as-simple-role-card"
-                    onClick={() => handleSelectRole('STUDENT')}
-                    id="role-select-student"
-                  >
-                    <div className="as-simple-role-icon role-student">
-                      <BookOpen size={24} />
-                    </div>
-                    <div className="as-simple-role-info">
-                      <span className="as-simple-role-title">Student</span>
-                      <span className="as-simple-role-sub">Student & Parent Portal</span>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              /* STEP 2: REQUIRED FIELDS SHOWN AFTER CHOOSING ROLE */
-              <form className="as-simple-step2-form animate-fade-in" onSubmit={submit}>
-                {/* Active Role Bar with Change Role Button */}
-                <div className="as-simple-role-bar">
-                  <button
-                    type="button"
-                    className="as-simple-back-btn"
-                    onClick={() => {
-                      setSelectedRole(null);
-                      setError('');
-                    }}
-                    title="Choose a different role"
-                  >
-                    <ArrowLeft size={14} />
-                    <span>Change Role</span>
-                  </button>
-
-                  <div className="as-simple-active-tag">
-                    {loginRole === 'STUDENT' ? <BookOpen size={13} /> :
-                      loginRole === 'TEACHER' ? <GraduationCap size={13} /> :
-                        loginRole === 'SCHOOL_ADMIN' ? <School size={13} /> :
-                          <Building2 size={13} />}
-                    <span>{currentConfig.roleName}</span>
-                  </div>
-                </div>
-
-
-                {/* Affiliated School / Institute (Auto-detected from Login ID) */}
-                {currentConfig.needsSchool && (
-                  <div className="as-simple-field" style={{ position: 'relative' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <label className="as-simple-label" style={{ margin: 0 }}>
-                        School / Institute <span style={{ color: '#edb35f' }}>*</span>
-                      </label>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        {selectedInstitute && (
-                          <span style={{
-                            fontSize: 10.5,
-                            color: '#339988',
-                            background: 'rgba(3, 128, 106, 0.12)',
-                            border: '1px solid rgba(3, 128, 106, 0.3)',
-                            padding: '2px 8px',
-                            borderRadius: 9999,
-                            fontWeight: 600,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4
-                          }}>
-                            <Check size={11} strokeWidth={3} /> Auto-detected
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {selectedInstitute ? (
-                      <div
-                        id="detected-institute-display"
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: 12,
-                          padding: '10px 14px',
-                          borderRadius: 4,
-                          background: 'rgba(225, 29, 85, 0.08)',
-                          border: '1px solid rgba(127, 140, 205, 0.35)',
-                          boxShadow: 'none'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
-                          <div style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: 4,
-                            background: 'rgba(127, 140, 205,0.2)',
-                            border: '1px solid rgba(127, 140, 205, 0.3)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
-                          }}>
-                            <School size={18} style={{ color: '#7f8ccd' }} />
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                            <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-main, #f9f9fa)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {selectedInstitute.name}
-                            </span>
-                            <span style={{ fontSize: 11, color: '#94969f', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              Code: <strong style={{ color: '#7f8ccd' }}>{selectedInstitute.code || 'SCH'}</strong> · {selectedInstitute.address || 'Active Institution'}
-                            </span>
-                          </div>
-                        </div>
-                        <span
-                          style={{
-                            padding: '3px 8px',
-                            borderRadius: 4,
-                            background: 'rgba(127, 140, 205, 0.15)',
-                            border: '1px solid rgba(127, 140, 205, 0.25)',
-                            color: '#7f8ccd',
-                            fontSize: 11,
-                            fontWeight: 700,
-                            letterSpacing: '0.04em',
-                            flexShrink: 0
-                          }}
-                        >
-                          {selectedInstitute.code || 'ACTIVE'}
-                        </span>
-                      </div>
-                    ) : lookupLoading ? (
-                      <div
-                        id="detecting-institute-placeholder"
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 10,
-                          padding: '11px 14px',
-                          borderRadius: 4,
-                          background: 'rgba(127, 140, 205, 0.04)',
-                          border: '1px solid rgba(127, 140, 205, 0.25)',
-                          color: '#7f8ccd',
-                          fontSize: 12.5,
-                          minHeight: 46
-                        }}
-                      >
-                        <RefreshCw size={14} className="spin" style={{ flexShrink: 0 }} />
-                        <span>Detecting affiliated school from Login ID...</span>
-                      </div>
-                    ) : lookupNotFound && email.trim().length >= 3 ? (
-                      <div
-                        id="not-found-institute-placeholder"
-                        style={{
-                          padding: '11px 14px',
-                          borderRadius: 4,
-                          background: 'rgba(211, 47, 47, 0.05)',
-                          border: '1px dashed rgba(211, 47, 47, 0.35)',
-                          color: '#dd5c5c',
-                          fontSize: 12
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <AlertTriangle size={15} style={{ flexShrink: 0 }} />
-                            <span>No school auto-detected.</span>
-                          </div>
-                          <select
-                            value={instituteId}
-                            onChange={e => {
-                              const val = e.target.value;
-                              setInstituteId(val);
-                              const matched = institutes.find(i => i.id === val);
-                              setDetectedInstitute(matched || null);
-                              if (val) setLookupNotFound(false);
-                            }}
-                            style={{
-                              padding: '4px 10px',
-                              borderRadius: 4,
-                              border: '1px solid rgba(255, 255, 255, 0.2)',
-                              background: '#1c1f2e',
-                              color: '#f9f9fa',
-                              fontSize: 12,
-                              cursor: 'pointer'
-                            }}
-                          >
-                            <option value="">Select your school manually...</option>
-                            {institutes.map(inst => (
-                              <option key={inst.id} value={inst.id}>
-                                {inst.name} ({inst.code})
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    ) : (
-                      <div
-                        id="empty-institute-placeholder"
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '11px 14px',
-                          borderRadius: 4,
-                          background: 'rgba(255, 255, 255, 0.02)',
-                          border: '1px dashed rgba(255, 255, 255, 0.14)',
-                          color: '#94969f',
-                          fontSize: 12.5,
-                          minHeight: 46
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <School size={16} style={{ opacity: 0.45, flexShrink: 0 }} />
-                          <span style={{ opacity: 0.75 }}>
-                            {loginRole === 'STUDENT'
-                              ? 'School will appear automatically when you enter your Admission No.'
-                              : 'School will appear automatically when you enter your Login ID / Email'}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Identifier Input (Admission No. for Student, Email for Faculty/Admin) */}
-                <div className="as-simple-field">
-                  <label className="as-simple-label">
-                    {currentConfig.emailLabel} <span style={{ color: '#edb35f' }}>*</span>
-                  </label>
-                  <div className="as-simple-input-wrap">
-                    <input
-                      required
-                      type="text"
-                      placeholder={currentConfig.emailPlaceholder}
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      id="identifier-input"
-                      className="as-simple-input"
-                    />
-                  </div>
-                </div>
-
-                {/* Password Input */}
-                <div className="as-simple-field">
-                  <label className="as-simple-label">
-                    Password <span style={{ color: '#edb35f' }}>*</span>
-                  </label>
-                  <div className="as-simple-input-wrap">
-                    <input
-                      required
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="••••••••••••"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      id="password-input"
-                      className="as-simple-input"
-                    />
-                    <button
-                      type="button"
-                      className="as-simple-eye-btn"
-                      onClick={() => setShowPassword(s => !s)}
-                      title={showPassword ? "Hide password" : "Show password"}
-                    >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Forgot password? */}
-                <div className="as-simple-meta-row" style={{ justifyContent: 'flex-end' }}>
-                  <a
-                    href="#forgot"
-                    className="as-simple-forgot-link"
-                    onClick={e => {
-                      e.preventDefault();
-                      setForgotEmail(email && email.includes('@') ? email : '');
-                      setForgotNotice(null);
-                      setForgotOpen(true);
-                    }}
-                  >
-                    Forgot password?
-                  </a>
-                </div>
-
-                {/* Sign In CTA Button */}
-                <button
-                  type="submit"
-                  className="as-simple-submit-btn"
-                  disabled={loading}
-                  id="submit-auth-btn"
-                >
-                  {loading ? (
-                    <span>Signing in…</span>
-                  ) : (
-                    <>
-                      <span>Sign In</span>
-                      <ArrowRight size={16} />
-                    </>
-                  )}
-                </button>
-                {/* Bottom Help Link */}
-                <div className="as-simple-help-tag">
-                  Need account assistance? <a href="#help" onClick={(e) => { e.preventDefault(); setShowHelp(true); }}>Get Help & Support</a>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
+            <div className="login-forgot-row"><a href="#forgot" onClick={e => { e.preventDefault(); setForgotEmail(email.includes('@') ? email : ''); setForgotNotice(null); setForgotOpen(true); }}>Forgot Password?</a></div>
+            {error && <div className="login-error" role="alert"><AlertTriangle size={18} /><span>{error}</span></div>}
+            <button id="submit-auth-btn" className="login-submit" type="submit" disabled={loading || lookupLoading}>
+              {loading ? <><Loader2 className="spin" size={24} /><span>Signing in...</span></> : <><span>Log In</span><ArrowRight size={32} /></>}
+            </button>
+          </form>
+        </section>
       </main>
 
       {/* Help Modal */}
