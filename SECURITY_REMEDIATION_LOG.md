@@ -23,6 +23,11 @@
 | **SEC-10** | `backend/src/routes/parentOnboarding.ts` | Added router-level `requireAuth, requireRoles('SUPER_ADMIN', 'SCHOOL_ADMIN')`. | Verified router protection |
 | **SEC-11** | `backend/src/routes/finalIntegration.ts` | Protected internal verification routes with `requireAuth, requireRoles('SUPER_ADMIN')`. | Verified diagnostic protection |
 | **SEC-12** | `backend/src/routes/auth.ts` | Implemented Firestore user document password hash sync in `POST /reset-password` alongside PostgreSQL update. | Code inspection & regression test |
+| **SEC-13** | `backend/src/routes/reviews.ts` | Teacher-leave approve/reject restricted to `requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN')` (was reachable by any authenticated role). (2026-11-08) | `backend/tests/rbac-security-fixes.test.ts` (fails before, passes after) |
+| **SEC-14** | `backend/src/routes/parentOnboarding.ts`, `services/parentOnboardingService.ts` | Parent list/create/link scoped to the caller's canonical school; foreign parent or student → 404; existing users of other schools are never overwritten. (2026-11-08) | `backend/tests/rbac-security-fixes.test.ts` |
+| **SEC-15** | `backend/src/routes/production.ts` | `GET /api/production/jobs` now `requireAuth + requireRoles('SUPER_ADMIN')` (mount was unauthenticated). (2026-11-08) | `backend/tests/rbac-security-fixes.test.ts` |
+| **SEC-16** | `backend/src/routes/auth.ts` | Demo login fallback: in production only a demo account's exact stored password is accepted and no accounts are synthesised (previously any password ≥ 4 chars produced a token, incl. SUPER_ADMIN). Owner decision: demo accounts with exact passwords stay enabled in production. (2026-11-08) | `backend/tests/auth-demo-fallback.test.ts` (4 checks fail before, pass after) |
+| **SEC-17** | `backend/src/rbac/*`, `routes/access.ts`, `routes/superAdminFeatures.ts` | RBAC & feature control: plan/school/global feature switches, school role and per-person permissions, per-person login disable, audit log; restrict-only, `RBAC_ENFORCEMENT=off|shadow|enforce`. (2026-11-08) | `backend/tests/rbac-*.test.ts`, `tests/e2e/rbac-access.spec.ts`; see `docs/rbac/ROLLOUT.md` |
 
 ---
 

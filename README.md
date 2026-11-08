@@ -134,6 +134,12 @@ All administrative and portal accounts share the default credential password: **
 > **Scope Boundary: Unified Student Portal Only**
 > There is **no separate Parent Portal** in AttendoSchool. Guardians who need access to their child's academic tracking are configured during student enrollment using **"Use Parent Email for Student Portal Login"**, which creates a Student Portal user account (`role = 'STUDENT'`). All guardian and student tracking is centralized within the **Student Portal** (`/student/dashboard`).
 
+> [!WARNING]
+> **Production login (2026-11-08):** demo accounts accept only their exact password in production, and unknown identifiers are no longer auto-created. Development keeps the demo conveniences.
+
+> [!NOTE]
+> **Permissions & feature control:** School Admins manage role and per-person access at `/#/permissions`; Super Admins manage plan/school/global features at `/#/super-admin/permissions`. See `docs/rbac/ROLLOUT.md` and `docs/rbac/route-permission-map.md`.
+
 > [!TIP]
 > On the login page, select **Greenwood International School** and click any of the **Quick Demo Switcher** buttons (`Super Admin`, `School Admin`, `Teacher`, `Student`) to auto-populate credentials instantly.
 
@@ -228,6 +234,9 @@ COMPANY_NAME="AttendoSchool Technologies Inc."
 COMPANY_GSTIN="19AAACB1234P1Z5"
 COMPANY_ADDRESS="Campus 4, Tech Park Boulevard, Bengaluru, Karnataka"
 COMPANY_PHONE="+91 90000 00000"
+
+# RBAC enforcement: off | shadow (default, log only) | enforce — see docs/rbac/ROLLOUT.md
+RBAC_ENFORCEMENT=shadow
 COMPANY_GST_RATE=18
 ```
 

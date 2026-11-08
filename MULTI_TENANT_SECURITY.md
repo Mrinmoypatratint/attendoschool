@@ -43,6 +43,10 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
 | **Broadcast Notice** | Broadcast All | Own Tenant | Own Assigned Classes | Read & Reply Only |
 | **Threaded Reply** | Read All | Own Tenant (Read) | Own Tenant (Read) | Create Own Reply |
 
+### Configurable RBAC layer (2026-11-08)
+
+On top of the fixed matrix above, `backend/src/rbac/` adds restrict-only, tenant-scoped controls: Super Admin feature switches (per plan, per school, global), School Admin role toggles and per-person Allow/Deny plus login disable. Every RBAC read/write uses the caller's canonical school id (`utils/tenant.ts`); a School Admin cannot read or change another school, a Super Admin, or (unless owner) another School Admin. The existing role and tenant checks remain the hard ceiling — RBAC can only remove access. Route bindings: `docs/rbac/route-permission-map.md`; rollout: `docs/rbac/ROLLOUT.md`.
+
 ---
 
 ## 3. Database Layer Isolation
