@@ -403,7 +403,7 @@ const toggleSelectLeave = (id: string) => {
         style={{
           display: 'flex',
           gap: 12,
-          borderBottom: '2px solid var(--border, #eaeaec)',
+          borderBottom: "2px solid var(--border, var(--border))",
           marginBottom: 16,
           overflowX: 'auto',
           overflowY: 'hidden',
@@ -419,8 +419,8 @@ const toggleSelectLeave = (id: string) => {
             padding: '12px 20px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'ALL' ? '3px solid #e11d55' : '3px solid transparent',
-            color: activeTab === 'ALL' ? '#e11d55' : 'var(--text-secondary, #696e79)',
+            borderBottom: activeTab === 'ALL' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'ALL' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
             fontWeight: activeTab === 'ALL' ? 700 : 500,
             fontSize: 15,
             cursor: 'pointer',
@@ -439,8 +439,8 @@ const toggleSelectLeave = (id: string) => {
             style={{
               padding: '2px 8px',
               borderRadius: 4,
-              background: activeTab === 'ALL' ? '#ffe1e8' : 'var(--card-subtle, #f5f5f6)',
-              color: activeTab === 'ALL' ? '#c0174a' : '#696e79',
+              background: activeTab === 'ALL' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'ALL' ? "var(--primary)" : "var(--muted-foreground)",
               fontSize: 12,
               fontWeight: 700
             }}
@@ -456,8 +456,8 @@ const toggleSelectLeave = (id: string) => {
             padding: '12px 20px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'PENDING' ? '3px solid #e11d55' : '3px solid transparent',
-            color: activeTab === 'PENDING' ? '#e11d55' : 'var(--text-secondary, #696e79)',
+            borderBottom: activeTab === 'PENDING' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'PENDING' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
             fontWeight: activeTab === 'PENDING' ? 700 : 500,
             fontSize: 15,
             cursor: 'pointer',
@@ -476,8 +476,8 @@ const toggleSelectLeave = (id: string) => {
             style={{
               padding: '2px 8px',
               borderRadius: 4,
-              background: activeTab === 'PENDING' ? '#ffe1e8' : 'var(--card-subtle, #f5f5f6)',
-              color: activeTab === 'PENDING' ? '#c0174a' : '#696e79',
+              background: activeTab === 'PENDING' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'PENDING' ? "var(--primary)" : "var(--muted-foreground)",
               fontSize: 12,
               fontWeight: 700
             }}
@@ -493,8 +493,8 @@ const toggleSelectLeave = (id: string) => {
             padding: '12px 20px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'SEEN' ? '3px solid #e11d55' : '3px solid transparent',
-            color: activeTab === 'SEEN' ? '#e11d55' : 'var(--text-secondary, #696e79)',
+            borderBottom: activeTab === 'SEEN' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'SEEN' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
             fontWeight: activeTab === 'SEEN' ? 700 : 500,
             fontSize: 15,
             cursor: 'pointer',
@@ -513,8 +513,8 @@ const toggleSelectLeave = (id: string) => {
             style={{
               padding: '2px 8px',
               borderRadius: 4,
-              background: activeTab === 'SEEN' ? '#ffe1e8' : 'var(--card-subtle, #f5f5f6)',
-              color: activeTab === 'SEEN' ? '#c0174a' : '#696e79',
+              background: activeTab === 'SEEN' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'SEEN' ? "var(--primary)" : "var(--muted-foreground)",
               fontSize: 12,
               fontWeight: 700
             }}
@@ -531,8 +531,8 @@ const toggleSelectLeave = (id: string) => {
               padding: '12px 20px',
               background: 'none',
               border: 'none',
-              borderBottom: activeTab === 'APPROVED' ? '3px solid #e11d55' : '3px solid transparent',
-              color: activeTab === 'APPROVED' ? '#e11d55' : 'var(--text-secondary, #696e79)',
+              borderBottom: activeTab === 'APPROVED' ? "3px solid var(--border)" : '3px solid transparent',
+              color: activeTab === 'APPROVED' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
               fontWeight: activeTab === 'APPROVED' ? 700 : 500,
               fontSize: 15,
               cursor: 'pointer',
@@ -551,8 +551,8 @@ const toggleSelectLeave = (id: string) => {
               style={{
                 padding: '2px 8px',
                 borderRadius: 4,
-                background: activeTab === 'APPROVED' ? '#ffe1e8' : 'var(--card-subtle, #f5f5f6)',
-                color: activeTab === 'APPROVED' ? '#c0174a' : '#696e79',
+                background: activeTab === 'APPROVED' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+                color: activeTab === 'APPROVED' ? "var(--primary)" : "var(--muted-foreground)",
                 fontSize: 12,
                 fontWeight: 700
               }}
@@ -636,12 +636,12 @@ const toggleSelectLeave = (id: string) => {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '10px 16px',
-                background: 'rgba(225, 29, 85, 0.12)',
-                border: '1px solid rgba(225, 29, 85, 0.3)',
+                background: "var(--accent)",
+                border: "1px solid var(--border)",
                 borderRadius: 4,
                 marginBottom: 14,
                 fontSize: 13,
-                color: '#e11d55'
+                color: "var(--primary)"
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -656,8 +656,8 @@ const toggleSelectLeave = (id: string) => {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
-                    background: '#e11d55',
-                    color: '#FFF',
+                    background: "var(--primary)",
+                    color: "var(--background)",
                     border: 'none',
                     padding: '6px 14px',
                     borderRadius: 4,
@@ -677,8 +677,8 @@ const toggleSelectLeave = (id: string) => {
                     alignItems: 'center',
                     gap: 4,
                     background: 'transparent',
-                    color: 'var(--text-secondary, #94969f)',
-                    border: '1px solid var(--border, #3e4152)',
+                    color: "var(--text-secondary, var(--muted-foreground))",
+                    border: "1px solid var(--border, var(--border))",
                     padding: '5px 12px',
                     borderRadius: 4,
                     fontSize: 12.5,
@@ -692,11 +692,11 @@ const toggleSelectLeave = (id: string) => {
             </div>
           )}
 
-          <div className="student-table-wrap" style={{ width: '100%', overflowX: 'auto', background: 'var(--surface, #282c3f)', borderRadius: 4, border: '1px solid var(--border, #3e4152)', boxShadow: 'none' }}>
+          <div className="student-table-wrap" style={{ width: '100%', overflowX: 'auto', background: "var(--surface, var(--card))", borderRadius: 4, border: "1px solid var(--border, var(--border))", boxShadow: 'none' }}>
           <table className="student-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'auto' }}>
             <thead>
-              <tr style={{ background: 'var(--table-header, rgba(255, 255, 255, 0.03))', borderBottom: '1px solid var(--border, #3e4152)' }}>
-                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #94969f)', textTransform: 'uppercase', minWidth: 180 }}>
+              <tr style={{ background: "var(--table-header, var(--card))", borderBottom: "1px solid var(--border, var(--border))" }}>
+                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, var(--muted-foreground))", textTransform: 'uppercase', minWidth: 180 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <input
                       type="checkbox"
@@ -711,31 +711,31 @@ const toggleSelectLeave = (id: string) => {
                     <span>STUDENT NAME</span>
                   </div>
                 </th>
-                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #94969f)', textTransform: 'uppercase', minWidth: 90 }}>
+                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, var(--muted-foreground))", textTransform: 'uppercase', minWidth: 90 }}>
                   CLASS
                 </th>
-                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #94969f)', textTransform: 'uppercase', minWidth: 80 }}>
+                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, var(--muted-foreground))", textTransform: 'uppercase', minWidth: 80 }}>
                   SECTION
                 </th>
-                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #94969f)', textTransform: 'uppercase', minWidth: 90 }}>
+                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, var(--muted-foreground))", textTransform: 'uppercase', minWidth: 90 }}>
                   ROLL NO
                 </th>
-                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #94969f)', textTransform: 'uppercase', minWidth: 100 }}>
+                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, var(--muted-foreground))", textTransform: 'uppercase', minWidth: 100 }}>
                   ADM NO
                 </th>
-                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #94969f)', textTransform: 'uppercase', minWidth: 140 }}>
+                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, var(--muted-foreground))", textTransform: 'uppercase', minWidth: 140 }}>
                   DURATION
                 </th>
-                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #94969f)', textTransform: 'uppercase', minWidth: 110 }}>
+                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, var(--muted-foreground))", textTransform: 'uppercase', minWidth: 110 }}>
                   LEAVE COUNT
                 </th>
-                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #94969f)', textTransform: 'uppercase', minWidth: 160 }}>
+                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, var(--muted-foreground))", textTransform: 'uppercase', minWidth: 160 }}>
                   LEAVE REASON
                 </th>
-                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #94969f)', textTransform: 'uppercase', minWidth: 90 }}>
+                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, var(--muted-foreground))", textTransform: 'uppercase', minWidth: 90 }}>
                   STATUS
                 </th>
-                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #94969f)', textTransform: 'uppercase', textAlign: 'right', minWidth: 90 }}>
+                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, var(--muted-foreground))", textTransform: 'uppercase', textAlign: 'right', minWidth: 90 }}>
                   ACTIONS
                 </th>
               </tr>
@@ -755,8 +755,8 @@ const toggleSelectLeave = (id: string) => {
                   <tr
                     key={leave.id}
                     style={{
-                      background: selectedLeaveIds.has(leave.id) ? 'rgba(225, 29, 85, 0.08)' : undefined,
-                      borderBottom: '1px solid var(--border, #3e4152)',
+                      background: selectedLeaveIds.has(leave.id) ? "var(--accent)" : undefined,
+                      borderBottom: "1px solid var(--border, var(--border))",
                       transition: 'background 0.15s'
                     }}
                   >
@@ -774,7 +774,7 @@ const toggleSelectLeave = (id: string) => {
                           <img
                             src={leave.photo_url}
                             alt={leave.applicant_name}
-                            style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '1px solid #fcc3d1', flexShrink: 0 }}
+                            style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: "1px solid var(--border)", flexShrink: 0 }}
                           />
                         ) : (
                           <div
@@ -782,26 +782,26 @@ const toggleSelectLeave = (id: string) => {
                               width: 34,
                               height: 34,
                               borderRadius: '50%',
-                              background: selectedLeaveIds.has(leave.id) ? '#ffe1e8' : 'rgba(225, 29, 85, 0.12)',
-                              color: '#e11d55',
+                              background: selectedLeaveIds.has(leave.id) ? "var(--card)" : "var(--accent)",
+                              color: "var(--primary)",
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               fontWeight: 700,
                               fontSize: 13,
                               flexShrink: 0,
-                              border: selectedLeaveIds.has(leave.id) ? '1px solid #e11d55' : '1px solid rgba(225, 29, 85, 0.25)'
+                              border: selectedLeaveIds.has(leave.id) ? "1px solid var(--border)" : "1px solid var(--border)"
                             }}
                           >
                             {(leave.applicant_name || 'ST').slice(0, 2).toUpperCase()}
                           </div>
                         )}
                         <div>
-                          <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--text, #1c1f2e)' }}>
+                          <div style={{ fontWeight: 700, fontSize: 13.5, color: "var(--text, var(--foreground))" }}>
                             <PersonProfileLink kind="student" id={leave.applicant_id} name={leave.applicant_name} person={leave as any} />
                           </div>
                           {leave.identifier && (
-                            <div style={{ fontSize: 11, color: 'var(--text-secondary, #696e79)' }}>
+                            <div style={{ fontSize: 11, color: "var(--text-secondary, var(--muted-foreground))" }}>
                               ID: {leave.identifier}
                             </div>
                           )}
@@ -811,7 +811,7 @@ const toggleSelectLeave = (id: string) => {
 
                     {/* Class */}
                     <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
-                      <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text, #1c1f2e)' }}>
+                      <span style={{ fontWeight: 600, fontSize: 13, color: "var(--text, var(--foreground))" }}>
                         {className}
                       </span>
                     </td>
@@ -824,9 +824,9 @@ const toggleSelectLeave = (id: string) => {
                           fontSize: 11.5,
                           padding: '2px 8px',
                           borderRadius: 4,
-                          background: 'rgba(225, 29, 85, 0.1)',
-                          color: '#e11d55',
-                          border: '1px solid rgba(225, 29, 85, 0.25)',
+                          background: "var(--accent)",
+                          color: "var(--primary)",
+                          border: "1px solid var(--border)",
                           display: 'inline-block'
                         }}
                       >
@@ -836,24 +836,24 @@ const toggleSelectLeave = (id: string) => {
 
                     {/* Roll No */}
                     <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
-                      <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text, #1c1f2e)' }}>
+                      <span style={{ fontWeight: 600, fontSize: 13, color: "var(--text, var(--foreground))" }}>
                         {rollNo}
                       </span>
                     </td>
 
                     {/* Adm No */}
                     <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
-                      <span style={{ fontSize: 12.5, color: 'var(--text-secondary, #696e79)' }}>
+                      <span style={{ fontSize: 12.5, color: "var(--text-secondary, var(--muted-foreground))" }}>
                         {admNo}
                       </span>
                     </td>
 
                     {/* Duration */}
                     <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
-                      <div style={{ fontWeight: 600, fontSize: 12.5, color: 'var(--text, #1c1f2e)' }}>
+                      <div style={{ fontWeight: 600, fontSize: 12.5, color: "var(--text, var(--foreground))" }}>
                         {formatDate(leave.start_date)} → {formatDate(leave.end_date)}
                       </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-secondary, #696e79)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div style={{ fontSize: 11, color: "var(--text-secondary, var(--muted-foreground))", marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Calendar size={11} />
                         <span>{days} {days === 1 ? 'Day' : 'Days'}</span>
                       </div>
@@ -865,9 +865,9 @@ const toggleSelectLeave = (id: string) => {
                         style={{
                           fontSize: 11,
                           fontWeight: 700,
-                          color: countLeaves > 1 ? '#e11d55' : 'var(--text-secondary, #696e79)',
-                          background: countLeaves > 1 ? 'rgba(225, 29, 85, 0.1)' : 'var(--surface-muted, #f5f5f6)',
-                          border: `1px solid ${countLeaves > 1 ? 'rgba(225, 29, 85, 0.25)' : 'var(--border, #eaeaec)'}`,
+                          color: countLeaves > 1 ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+                          background: countLeaves > 1 ? "var(--accent)" : "var(--surface-muted, var(--secondary))",
+                          border: `1px solid ${countLeaves > 1 ? "var(--border)" : "var(--border, var(--border))"}`,
                           padding: '3px 8px',
                           borderRadius: 4,
                           display: 'inline-flex',
@@ -884,11 +884,11 @@ const toggleSelectLeave = (id: string) => {
                     {/* Leave Reason */}
                     <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
                       <div style={{ maxWidth: 220 }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text, #1c1f2e)', lineHeight: 1.35, wordBreak: 'break-word' }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 500, color: "var(--text, var(--foreground))", lineHeight: 1.35, wordBreak: 'break-word' }}>
                           {leave.reason || '—'}
                         </div>
                         {leave.created_at && (
-                          <div style={{ fontSize: 11, color: 'var(--text-secondary, #696e79)', marginTop: 2 }}>
+                          <div style={{ fontSize: 11, color: "var(--text-secondary, var(--muted-foreground))", marginTop: 2 }}>
                             Applied: {formatDate(leave.created_at)}
                           </div>
                         )}
@@ -898,19 +898,19 @@ const toggleSelectLeave = (id: string) => {
                     {/* Status */}
                     <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
                       {leave.status === 'PENDING' ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(233, 162, 59, 0.15)', color: '#e9a23b', padding: '3px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: "var(--secondary)", color: "var(--warning)", padding: '3px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700 }}>
                           <Clock size={11} /> Pending
                         </span>
                       ) : (leave.status === 'SEEN' || isTeacher) ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(225, 29, 85, 0.15)', color: '#ef5a85', padding: '3px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: "var(--accent)", color: "var(--primary)", padding: '3px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700 }}>
                           <Eye size={11} /> Seen
                         </span>
                       ) : leave.status === 'APPROVED' ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(3, 128, 106, 0.15)', color: '#03806a', padding: '3px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: "var(--secondary)", color: "var(--success)", padding: '3px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700 }}>
                           <CheckCircle2 size={11} /> Approved
                         </span>
                       ) : (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(211, 47, 47, 0.15)', color: '#d32f2f', padding: '3px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: "var(--secondary)", color: "var(--destructive)", padding: '3px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700 }}>
                           <XCircle size={11} /> Rejected
                         </span>
                       )}
@@ -925,9 +925,9 @@ const toggleSelectLeave = (id: string) => {
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 5,
-                          background: 'rgba(225, 29, 85, 0.12)',
-                          color: '#e11d55',
-                          border: '1px solid rgba(225, 29, 85, 0.3)',
+                          background: "var(--accent)",
+                          color: "var(--primary)",
+                          border: "1px solid var(--border)",
                           borderRadius: 4,
                           padding: '5px 12px',
                           fontSize: 12,

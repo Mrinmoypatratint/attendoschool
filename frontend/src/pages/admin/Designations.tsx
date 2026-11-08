@@ -724,11 +724,11 @@ export default function Designations() {
               width: 44,
               height: 44,
               borderRadius: 4,
-              background: 'rgba(3, 128, 106, 0.1)',
+              background: "var(--secondary)",
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#03806a'
+              color: "var(--success)"
             }}
           >
             <GraduationCap size={22} />
@@ -760,11 +760,11 @@ export default function Designations() {
               width: 44,
               height: 44,
               borderRadius: 4,
-              background: 'rgba(233, 162, 59, 0.1)',
+              background: "var(--secondary)",
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#e9a23b'
+              color: "var(--warning)"
             }}
           >
             <Users size={22} />
@@ -801,7 +801,7 @@ export default function Designations() {
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              background: 'var(--bg, var(--bg-subtle, #f9f9fa))',
+              background: "var(--bg, var(--bg-subtle, var(--card)))",
               border: '1px solid var(--border)',
               borderRadius: 4,
               padding: '8px 12px',
@@ -845,9 +845,9 @@ export default function Designations() {
                   fontSize: 12.5,
                   fontWeight: 600,
                   cursor: 'pointer',
-                  border: isActive ? '1px solid var(--sidebar-accent, #e11d55)' : '1px solid var(--border)',
-                  background: isActive ? 'var(--sidebar-accent, #e11d55)' : 'var(--bg-card)',
-                  color: isActive ? '#ffffff' : 'var(--text-secondary)',
+                  border: isActive ? "1px solid var(--sidebar-accent, var(--border))" : '1px solid var(--border)',
+                  background: isActive ? "var(--sidebar-accent, var(--primary))" : 'var(--bg-card)',
+                  color: isActive ? "var(--background)" : 'var(--text-secondary)',
                   transition: 'all 0.15s ease'
                 }}
               >
@@ -892,7 +892,7 @@ export default function Designations() {
             <thead>
               <tr
                 style={{
-                  background: 'var(--table-header, var(--bg-subtle, #181818))',
+                  background: "var(--table-header, var(--bg-subtle, var(--card)))",
                   borderBottom: '1px solid var(--border)',
                   color: 'var(--text-secondary)',
                   fontWeight: 600,
@@ -957,7 +957,7 @@ export default function Designations() {
                               fontSize: 12,
                               padding: '2px 8px',
                               borderRadius: 4,
-                              background: 'rgba(148, 150, 159, 0.12)',
+                              background: "var(--secondary)",
                               color: 'var(--text)',
                               border: '1px solid var(--border)'
                             }}
@@ -1004,9 +1004,9 @@ export default function Designations() {
                                 borderRadius: 4,
                                 fontSize: 12,
                                 fontWeight: 600,
-                                background: (item.teacher_count || 0) > 0 ? 'rgba(225, 29, 85, 0.08)' : 'var(--bg-card)',
-                                color: (item.teacher_count || 0) > 0 ? '#e11d55' : 'var(--text-muted)',
-                                border: (item.teacher_count || 0) > 0 ? '1px solid rgba(225, 29, 85, 0.2)' : '1px solid var(--border)',
+                                background: (item.teacher_count || 0) > 0 ? "var(--accent)" : 'var(--bg-card)',
+                                color: (item.teacher_count || 0) > 0 ? "var(--primary)" : 'var(--text-muted)',
+                                border: (item.teacher_count || 0) > 0 ? "1px solid var(--border)" : '1px solid var(--border)',
                                 cursor: 'pointer',
                                 transition: 'all 0.15s ease'
                               }}
@@ -1028,8 +1028,8 @@ export default function Designations() {
                               {promotedCount > 0 && (
                                 <span style={{
                                   marginLeft: 2,
-                                  background: '#03806a',
-                                  color: '#ffffff',
+                                  background: "var(--success)",
+                                  color: "var(--background)",
                                   fontSize: 10,
                                   padding: '1px 5px',
                                   borderRadius: 4,
@@ -1057,9 +1057,9 @@ export default function Designations() {
                             fontSize: 11.5,
                             fontWeight: 600,
                             cursor: 'pointer',
-                            border: isItemActive ? '1px solid rgba(3, 128, 106, 0.3)' : '1px solid var(--border)',
-                            background: isItemActive ? 'rgba(3, 128, 106, 0.12)' : 'rgba(148, 150, 159, 0.12)',
-                            color: isItemActive ? '#03806a' : 'var(--text-muted)'
+                            border: isItemActive ? "1px solid var(--border)" : '1px solid var(--border)',
+                            background: isItemActive ? "var(--secondary)" : "var(--secondary)",
+                            color: isItemActive ? "var(--success)" : 'var(--text-muted)'
                           }}
                         >
                           <span
@@ -1067,7 +1067,7 @@ export default function Designations() {
                               width: 6,
                               height: 6,
                               borderRadius: '50%',
-                              background: isItemActive ? '#03806a' : '#94969f'
+                              background: isItemActive ? "var(--success)" : "var(--secondary)"
                             }}
                           />
                           <span>{isItemActive ? 'Active' : 'Inactive'}</span>
@@ -1104,9 +1104,9 @@ export default function Designations() {
                             style={{
                               padding: '6px 10px',
                               borderRadius: 4,
-                              border: '1px solid rgba(211, 47, 47, 0.3)',
-                              background: 'rgba(211, 47, 47, 0.12)',
-                              color: '#d32f2f',
+                              border: "1px solid var(--border)",
+                              background: "var(--secondary)",
+                              color: "var(--destructive)",
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -1134,7 +1134,7 @@ export default function Designations() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.5)',
+            background: "var(--card)",
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1168,7 +1168,7 @@ export default function Designations() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                background: 'var(--modal-header, var(--bg-subtle, #181818))'
+                background: "var(--modal-header, var(--bg-subtle, var(--card)))"
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1225,7 +1225,7 @@ export default function Designations() {
                 {/* Title */}
                 <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    Designation <span style={{ color: '#d32f2f' }}>*</span>
+                    Designation <span style={{ color: "var(--destructive)" }}>*</span>
                   </span>
                   <input
                     type="text"
@@ -1358,8 +1358,8 @@ export default function Designations() {
                     padding: '8px 20px',
                     borderRadius: 4,
                     border: 'none',
-                    background: 'var(--sidebar-accent, #e11d55)',
-                    color: '#ffffff',
+                    background: "var(--sidebar-accent, var(--primary))",
+                    color: "var(--background)",
                     fontSize: 13.5,
                     fontWeight: 600,
                     cursor: saving ? 'not-allowed' : 'pointer',
@@ -1389,7 +1389,7 @@ export default function Designations() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.5)',
+            background: "var(--card)",
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1416,11 +1416,11 @@ export default function Designations() {
                   width: 40,
                   height: 40,
                   borderRadius: '50%',
-                  background: 'rgba(211, 47, 47, 0.12)',
+                  background: "var(--secondary)",
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#d32f2f'
+                  color: "var(--destructive)"
                 }}
               >
                 <AlertCircle size={22} />
@@ -1444,9 +1444,9 @@ export default function Designations() {
                 style={{
                   padding: 12,
                   borderRadius: 4,
-                  background: 'rgba(233, 162, 59, 0.12)',
-                  border: '1px solid rgba(233, 162, 59, 0.3)',
-                  color: '#edb35f',
+                  background: "var(--secondary)",
+                  border: "1px solid var(--border)",
+                  color: "var(--warning)",
                   fontSize: 12.5,
                   marginBottom: 16
                 }}
@@ -1481,8 +1481,8 @@ export default function Designations() {
                   padding: '8px 18px',
                   borderRadius: 4,
                   border: 'none',
-                  background: '#d32f2f',
-                  color: '#ffffff',
+                  background: "var(--destructive)",
+                  color: "var(--background)",
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: deleting ? 'not-allowed' : 'pointer',
@@ -1510,7 +1510,7 @@ export default function Designations() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(28, 31, 46, 0.65)',
+            background: "var(--card)",
             backdropFilter: 'blur(3px)',
             zIndex: 1050,
             display: 'flex',
@@ -1540,7 +1540,7 @@ export default function Designations() {
                 justifyContent: 'space-between',
                 padding: '16px 20px',
                 borderBottom: '1px solid var(--border)',
-                background: 'var(--modal-header, var(--bg-subtle, #181818))'
+                background: "var(--modal-header, var(--bg-subtle, var(--card)))"
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1549,11 +1549,11 @@ export default function Designations() {
                     width: 36,
                     height: 36,
                     borderRadius: 4,
-                    background: 'rgba(3, 128, 106, 0.12)',
+                    background: "var(--secondary)",
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#03806a'
+                    color: "var(--success)"
                   }}
                 >
                   <TrendingUp size={18} />
@@ -1581,7 +1581,7 @@ export default function Designations() {
                 {/* Select Teacher */}
                 <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    Select Faculty Member <span style={{ color: '#d32f2f' }}>*</span>
+                    Select Faculty Member <span style={{ color: "var(--destructive)" }}>*</span>
                   </span>
                   <select
                     value={promoteTeacherId}
@@ -1619,7 +1619,7 @@ export default function Designations() {
                     gap: 12,
                     padding: '14px',
                     borderRadius: 4,
-                    background: 'var(--modal-header, var(--bg-subtle, #181818))',
+                    background: "var(--modal-header, var(--bg-subtle, var(--card)))",
                     border: '1px solid var(--border)'
                   }}
                 >
@@ -1636,9 +1636,9 @@ export default function Designations() {
                         width: '100%',
                         padding: '8px 10px',
                         borderRadius: 4,
-                        border: '1px solid rgba(211, 47, 47, 0.3)',
-                        background: 'rgba(211, 47, 47, 0.12)',
-                        color: '#dd5c5c',
+                        border: "1px solid var(--border)",
+                        background: "var(--secondary)",
+                        color: "var(--destructive)",
                         fontWeight: 700,
                         fontSize: 13,
                         cursor: 'pointer'
@@ -1655,14 +1655,14 @@ export default function Designations() {
                   </div>
 
                   {/* Arrow */}
-                  <div style={{ display: 'flex', justifyContent: 'center', color: '#03806a', paddingTop: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', color: "var(--success)", paddingTop: 14 }}>
                     <ArrowRight size={20} />
                   </div>
 
                   {/* New Position Dropdown (Excludes Previous Position) */}
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      Promoted To <span style={{ color: '#d32f2f' }}>*</span>
+                      Promoted To <span style={{ color: "var(--destructive)" }}>*</span>
                     </div>
                     {(() => {
                       const availableDesigs = allAvailableDesignationTitles.filter(
@@ -1675,9 +1675,9 @@ export default function Designations() {
                             style={{
                               padding: '8px 10px',
                               borderRadius: 4,
-                              border: '1px dashed rgba(211, 47, 47, 0.35)',
-                              background: 'rgba(211, 47, 47, 0.1)',
-                              color: '#dd5c5c',
+                              border: "1px dashed var(--border)",
+                              background: "var(--secondary)",
+                              color: "var(--destructive)",
                               fontSize: 12,
                               fontWeight: 600
                             }}
@@ -1696,9 +1696,9 @@ export default function Designations() {
                             width: '100%',
                             padding: '8px 10px',
                             borderRadius: 4,
-                            border: '1px solid rgba(3, 128, 106, 0.3)',
-                            background: 'rgba(3, 128, 106, 0.12)',
-                            color: '#03806a',
+                            border: "1px solid var(--border)",
+                            background: "var(--secondary)",
+                            color: "var(--success)",
                             fontWeight: 700,
                             fontSize: 13,
                             cursor: 'pointer'
@@ -1723,11 +1723,11 @@ export default function Designations() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 6,
-                      color: '#dd5c5c',
+                      color: "var(--destructive)",
                       fontSize: 12,
                       fontWeight: 500,
-                      background: 'rgba(211, 47, 47, 0.12)',
-                      border: '1px solid rgba(211, 47, 47, 0.3)',
+                      background: "var(--secondary)",
+                      border: "1px solid var(--border)",
                       padding: '8px 12px',
                       borderRadius: 4
                     }}
@@ -1741,7 +1741,7 @@ export default function Designations() {
                 <div>
                   <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', display: 'block' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      Effective Promotion Date <span style={{ color: '#d32f2f' }}>*</span>
+                      Effective Promotion Date <span style={{ color: "var(--destructive)" }}>*</span>
                     </span>
                     <input
                       type="date"
@@ -1846,8 +1846,8 @@ export default function Designations() {
                     padding: '8px 20px',
                     borderRadius: 4,
                     border: 'none',
-                    background: '#03806a',
-                    color: '#ffffff',
+                    background: "var(--success)",
+                    color: "var(--background)",
                     fontSize: 13,
                     fontWeight: 600,
                     cursor: (
@@ -1899,7 +1899,7 @@ export default function Designations() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(28, 31, 46, 0.65)',
+            background: "var(--card)",
             backdropFilter: 'blur(3px)',
             zIndex: 1040,
             display: 'flex',
@@ -1933,7 +1933,7 @@ export default function Designations() {
                 justifyContent: 'space-between',
                 padding: '16px 20px',
                 borderBottom: '1px solid var(--border)',
-                background: 'var(--modal-header, var(--bg-subtle, #181818))'
+                background: "var(--modal-header, var(--bg-subtle, var(--card)))"
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1942,11 +1942,11 @@ export default function Designations() {
                     width: 36,
                     height: 36,
                     borderRadius: 4,
-                    background: 'rgba(225, 29, 85, 0.12)',
+                    background: "var(--accent)",
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#e11d55'
+                    color: "var(--primary)"
                   }}
                 >
                   <Users size={18} />
@@ -1976,9 +1976,9 @@ export default function Designations() {
                         gap: 6,
                         padding: '6px 12px',
                         borderRadius: 4,
-                        border: '1px solid #5c6bc0',
-                        background: '#5c6bc0',
-                        color: '#ffffff',
+                        border: "1px solid var(--border)",
+                        background: "var(--info)",
+                        color: "var(--background)",
                         fontSize: 12.5,
                         fontWeight: 600,
                         cursor: facultyInDesig.length === 0 ? 'not-allowed' : 'pointer'
@@ -2024,8 +2024,8 @@ export default function Designations() {
                           padding: '7px 14px',
                           borderRadius: 4,
                           border: 'none',
-                          background: '#03806a',
-                          color: '#ffffff',
+                          background: "var(--success)",
+                          color: "var(--background)",
                           fontSize: 12.5,
                           fontWeight: 600,
                           cursor: 'pointer'
@@ -2040,7 +2040,7 @@ export default function Designations() {
                 return (
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
                     <thead>
-                      <tr style={{ background: 'var(--table-header, var(--bg-subtle, #181818))', borderBottom: '1px solid var(--border)' }}>
+                      <tr style={{ background: "var(--table-header, var(--bg-subtle, var(--card)))", borderBottom: '1px solid var(--border)' }}>
                         <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Employee ID</th>
                         <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Teacher Name (Click for Details)</th>
                         <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Contact / Email</th>
@@ -2069,7 +2069,7 @@ export default function Designations() {
                                   border: 'none',
                                   padding: 0,
                                   cursor: 'pointer',
-                                  color: '#e11d55',
+                                  color: "var(--primary)",
                                   fontWeight: 600,
                                   fontSize: 13.5,
                                   textAlign: 'left',
@@ -2097,9 +2097,9 @@ export default function Designations() {
                                     borderRadius: 4,
                                     fontSize: 11.5,
                                     fontWeight: 600,
-                                    background: 'rgba(3, 128, 106, 0.12)',
-                                    color: '#03806a',
-                                    border: '1px solid rgba(3, 128, 106, 0.3)',
+                                    background: "var(--secondary)",
+                                    color: "var(--success)",
+                                    border: "1px solid var(--border)",
                                     cursor: 'pointer'
                                   }}
                                   title="Click to view position timeline"
@@ -2126,9 +2126,9 @@ export default function Designations() {
                                   gap: 4,
                                   padding: '4px 9px',
                                   borderRadius: 4,
-                                  border: '1px solid #03806a',
-                                  background: 'rgba(3, 128, 106, 0.12)',
-                                  color: '#03806a',
+                                  border: "1px solid var(--border)",
+                                  background: "var(--secondary)",
+                                  color: "var(--success)",
                                   fontSize: 11.5,
                                   fontWeight: 600,
                                   cursor: 'pointer'
@@ -2156,7 +2156,7 @@ export default function Designations() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(28, 31, 46, 0.65)',
+            background: "var(--card)",
             backdropFilter: 'blur(3px)',
             zIndex: 1060,
             display: 'flex',
@@ -2187,7 +2187,7 @@ export default function Designations() {
                 justifyContent: 'space-between',
                 padding: '16px 20px',
                 borderBottom: '1px solid var(--border)',
-                background: 'rgba(225, 29, 85,0.06)'
+                background: "var(--accent)"
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -2196,11 +2196,11 @@ export default function Designations() {
                     width: 42,
                     height: 42,
                     borderRadius: 4,
-                    background: '#e11d55',
+                    background: "var(--primary)",
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#ffffff',
+                    color: "var(--background)",
                     fontWeight: 700,
                     fontSize: 16
                   }}
@@ -2235,7 +2235,7 @@ export default function Designations() {
                   gap: 12,
                   padding: '16px',
                   borderRadius: 4,
-                  background: 'var(--modal-header, var(--bg-subtle, #181818))',
+                  background: "var(--modal-header, var(--bg-subtle, var(--card)))",
                   border: '1px solid var(--border)',
                   marginBottom: 16
                 }}
@@ -2250,9 +2250,9 @@ export default function Designations() {
                       marginTop: 6,
                       padding: '8px 12px',
                       borderRadius: 4,
-                      background: 'rgba(211, 47, 47, 0.12)',
-                      border: '1px solid rgba(211, 47, 47, 0.3)',
-                      color: '#dd5c5c',
+                      background: "var(--secondary)",
+                      border: "1px solid var(--border)",
+                      color: "var(--destructive)",
                       fontWeight: 800,
                       fontSize: 15
                     }}
@@ -2262,14 +2262,14 @@ export default function Designations() {
                 </div>
 
                 {/* Arrow */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: '#03806a' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: "var(--success)" }}>
                   <TrendingUp size={20} />
                   <ArrowRight size={20} />
                 </div>
 
                 {/* Current Position */}
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#03806a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--success)", textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Current Position
                   </div>
                   <div
@@ -2277,9 +2277,9 @@ export default function Designations() {
                       marginTop: 6,
                       padding: '8px 12px',
                       borderRadius: 4,
-                      background: 'rgba(3, 128, 106, 0.12)',
-                      border: '1px solid rgba(3, 128, 106, 0.3)',
-                      color: '#03806a',
+                      background: "var(--secondary)",
+                      border: "1px solid var(--border)",
+                      color: "var(--success)",
                       fontWeight: 800,
                       fontSize: 15,
                       boxShadow: 'none'
@@ -2305,7 +2305,7 @@ export default function Designations() {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Calendar size={14} style={{ color: '#e11d55' }} />
+                    <Calendar size={14} style={{ color: "var(--primary)" }} />
                     <span>Promotion Date:</span>
                   </span>
                   <span style={{ fontWeight: 700, color: 'var(--text)' }}>
@@ -2315,7 +2315,7 @@ export default function Designations() {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <UserCheck size={14} style={{ color: '#03806a' }} />
+                    <UserCheck size={14} style={{ color: "var(--success)" }} />
                     <span>Promoted By:</span>
                   </span>
                   <span style={{ fontWeight: 600, color: 'var(--text)' }}>
@@ -2379,8 +2379,8 @@ export default function Designations() {
                     padding: '8px 18px',
                     borderRadius: 4,
                     border: 'none',
-                    background: '#5c6bc0',
-                    color: '#ffffff',
+                    background: "var(--info)",
+                    color: "var(--background)",
                     fontSize: 13,
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -2402,7 +2402,7 @@ export default function Designations() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(28, 31, 46, 0.65)',
+            background: "var(--card)",
             backdropFilter: 'blur(3px)',
             zIndex: 1040,
             display: 'flex',
@@ -2436,7 +2436,7 @@ export default function Designations() {
                 justifyContent: 'space-between',
                 padding: '16px 20px',
                 borderBottom: '1px solid var(--border)',
-                background: 'var(--modal-header, var(--bg-subtle, #181818))'
+                background: "var(--modal-header, var(--bg-subtle, var(--card)))"
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -2445,11 +2445,11 @@ export default function Designations() {
                     width: 36,
                     height: 36,
                     borderRadius: 4,
-                    background: 'rgba(92, 107, 192, 0.12)',
+                    background: "var(--secondary)",
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#5c6bc0'
+                    color: "var(--info)"
                   }}
                 >
                   <History size={18} />
@@ -2475,9 +2475,9 @@ export default function Designations() {
                     gap: 6,
                     padding: '6px 12px',
                     borderRadius: 4,
-                    border: '1px solid #5c6bc0',
-                    background: '#5c6bc0',
-                    color: '#ffffff',
+                    border: "1px solid var(--border)",
+                    background: "var(--info)",
+                    color: "var(--background)",
                     fontSize: 12.5,
                     fontWeight: 600,
                     cursor: promotions.length === 0 ? 'not-allowed' : 'pointer'
@@ -2557,8 +2557,8 @@ export default function Designations() {
                           padding: '7px 14px',
                           borderRadius: 4,
                           border: 'none',
-                          background: '#03806a',
-                          color: '#ffffff',
+                          background: "var(--success)",
+                          color: "var(--background)",
                           fontSize: 12.5,
                           fontWeight: 600,
                           cursor: 'pointer'
@@ -2573,7 +2573,7 @@ export default function Designations() {
                 return (
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
                     <thead>
-                      <tr style={{ background: 'var(--table-header, var(--bg-subtle, #181818))', borderBottom: '1px solid var(--border)' }}>
+                      <tr style={{ background: "var(--table-header, var(--bg-subtle, var(--card)))", borderBottom: '1px solid var(--border)' }}>
                         <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Sl</th>
                         <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Teacher Name (Click for Details)</th>
                         <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Employee ID</th>
@@ -2596,7 +2596,7 @@ export default function Designations() {
                                 border: 'none',
                                 padding: 0,
                                 cursor: 'pointer',
-                                color: '#e11d55',
+                                color: "var(--primary)",
                                 fontWeight: 600,
                                 fontSize: 13.5,
                                 textAlign: 'left',
@@ -2616,9 +2616,9 @@ export default function Designations() {
                                 display: 'inline-block',
                                 padding: '2px 8px',
                                 borderRadius: 4,
-                                background: 'rgba(211, 47, 47, 0.12)',
-                                color: '#dd5c5c',
-                                border: '1px solid rgba(211, 47, 47, 0.3)',
+                                background: "var(--secondary)",
+                                color: "var(--destructive)",
+                                border: "1px solid var(--border)",
                                 fontWeight: 700,
                                 fontSize: 11.5
                               }}
@@ -2632,9 +2632,9 @@ export default function Designations() {
                                 display: 'inline-block',
                                 padding: '2px 8px',
                                 borderRadius: 4,
-                                background: 'rgba(3, 128, 106, 0.12)',
-                                color: '#03806a',
-                                border: '1px solid rgba(3, 128, 106, 0.3)',
+                                background: "var(--secondary)",
+                                color: "var(--success)",
+                                border: "1px solid var(--border)",
                                 fontWeight: 700,
                                 fontSize: 11.5
                               }}

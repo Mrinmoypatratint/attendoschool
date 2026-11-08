@@ -768,9 +768,9 @@ export default function Timetable() {
           onClick={() => setSelDay(d.num)}
           style={{
             padding: '8px 18px', borderRadius: 4, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13,
-            background: selDay === d.num ? '#e11d55' : 'var(--bg-card, #ffffff)',
-            color: selDay === d.num ? '#fff' : 'var(--text)',
-            boxShadow: selDay === d.num ? '0 2px 8px rgba(225, 29, 85,0.3)' : '0 1px 4px rgba(0,0,0,0.06)',
+            background: selDay === d.num ? "var(--primary)" : "var(--bg-card, var(--card))",
+            color: selDay === d.num ? "var(--background)" : 'var(--text)',
+            boxShadow: selDay === d.num ? "none" : "none",
             transition: 'all 0.15s ease'
           }}
         >{d.name}</button>
@@ -796,8 +796,8 @@ export default function Timetable() {
       </div>
 
       {periods.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '36px 20px', background: 'var(--bg-card, #ffffff)', borderRadius: 4, border: '1px dashed var(--border)', margin: '10px 0' }}>
-          <Clock size={40} style={{ color: '#e11d55', marginBottom: 12, opacity: 0.9 }} />
+        <div style={{ textAlign: 'center', padding: '36px 20px', background: "var(--bg-card, var(--card))", borderRadius: 4, border: '1px dashed var(--border)', margin: '10px 0' }}>
+          <Clock size={40} style={{ color: "var(--primary)", marginBottom: 12, opacity: 0.9 }} />
           <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700 }}>No Period Slots Configured</h3>
           <p className="muted" style={{ margin: '0 auto 20px', maxWidth: 500, fontSize: 13, lineHeight: 1.6 }}>
             {isSchoolAdmin
@@ -807,11 +807,11 @@ export default function Timetable() {
           {isSchoolAdmin && (
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button onClick={() => { setPeriodForm({ name: 'Period 1', periodNumber: 1, startTime: '09:00', endTime: '09:45', isBreak: false }); setPeriodOpen(true); }}
-                style={{ background: '#e11d55', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 4, fontWeight: 600, fontSize: 13 }}>
+                style={{ background: "var(--primary)", color: "var(--background)", display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 4, fontWeight: 600, fontSize: 13 }}>
                 <Plus size={16} /> Add First Period Slot
               </button>
               <button onClick={loadTemplatePeriods}
-                style={{ background: 'var(--bg-card, #ffffff)', color: 'var(--text)', border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 4, fontWeight: 600, fontSize: 13 }}>
+                style={{ background: "var(--bg-card, var(--card))", color: 'var(--text)', border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 4, fontWeight: 600, fontSize: 13 }}>
                 ⚡ Load Standard 6-Period Template (Optional)
               </button>
             </div>
@@ -863,15 +863,15 @@ export default function Timetable() {
                     <tr
                       key={p.id}
                       style={{
-                        background: isAlternate ? 'rgba(233, 162, 59, 0.05)' : 'rgba(3, 128, 106, 0.05)',
-                        borderLeft: isAlternate ? '3px solid #b8781c' : '3px solid #03806a'
+                        background: isAlternate ? "var(--secondary)" : "var(--secondary)",
+                        borderLeft: isAlternate ? "3px solid var(--border)" : "3px solid var(--border)"
                       }}
                     >
                       <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
                       <td><b>{pName}</b></td>
                       <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pStart} – {pEnd}</td>
                       <td>
-                        <span className="badge" style={{ background: 'rgba(225, 29, 85,0.1)', color: '#e11d55', fontWeight: 700 }}>
+                        <span className="badge" style={{ background: "var(--accent)", color: "var(--primary)", fontWeight: 700 }}>
                           {formatEntryClassSection(entry)}
                         </span>
                       </td>
@@ -882,7 +882,7 @@ export default function Timetable() {
                             <span style={{ fontWeight: isPrimary ? 700 : 500 }}>{entry.teacher_name || entry.teacherName || '—'}</span>
                           </PersonProfileLink>
                           {isPrimary && (
-                            <span className="badge" style={{ background: '#cce6e1', color: '#024035', fontSize: 10, padding: '2px 6px', fontWeight: 700 }}>
+                            <span className="badge" style={{ background: "var(--secondary)", color: "var(--success)", fontSize: 10, padding: '2px 6px', fontWeight: 700 }}>
                               You
                             </span>
                           )}
@@ -895,7 +895,7 @@ export default function Timetable() {
                               <span style={{ fontWeight: isAlternate ? 700 : 500 }}>{altName}</span>
                             </PersonProfileLink>
                             {isAlternate && (
-                              <span className="badge" style={{ background: '#fbecd3', color: '#8f5c12', fontSize: 10, padding: '2px 6px', fontWeight: 700 }}>
+                              <span className="badge" style={{ background: "var(--secondary)", color: "var(--warning)", fontSize: 10, padding: '2px 6px', fontWeight: 700 }}>
                                 You
                               </span>
                             )}
@@ -910,9 +910,9 @@ export default function Timetable() {
                           <span
                             className="badge"
                             style={{
-                              background: '#fbecd3',
-                              color: '#8f5c12',
-                              border: '1px solid #b8781c',
+                              background: "var(--secondary)",
+                              color: "var(--warning)",
+                              border: "1px solid var(--border)",
                               fontSize: 11,
                               fontWeight: 700
                             }}
@@ -923,9 +923,9 @@ export default function Timetable() {
                           <span
                             className="badge"
                             style={{
-                              background: '#cce6e1',
-                              color: '#024035',
-                              border: '1px solid #03806a',
+                              background: "var(--secondary)",
+                              color: "var(--success)",
+                              border: "1px solid var(--border)",
                               fontSize: 11,
                               fontWeight: 700
                             }}
@@ -943,8 +943,8 @@ export default function Timetable() {
                             gap: 4,
                             padding: '4px 10px',
                             borderRadius: 4,
-                            background: isAlternate ? '#b8781c' : '#03806a',
-                            color: '#fff',
+                            background: isAlternate ? "var(--warning)" : "var(--success)",
+                            color: "var(--background)",
                             textDecoration: 'none',
                             fontSize: 12,
                             fontWeight: 600
@@ -1012,25 +1012,25 @@ export default function Timetable() {
                   const isAlternate = isAlternateTeacher(entry) && !isPrimary;
                   const altName = entry.substitute_teacher_name || entry.altTeacherName || '';
                   return <tr key={p.id} style={{
-                    background: isPrimary ? 'rgba(3, 128, 106, 0.05)' : isAlternate ? 'rgba(233, 162, 59, 0.05)' : undefined,
-                    borderLeft: isPrimary ? '3px solid #03806a' : isAlternate ? '3px solid #b8781c' : undefined
+                    background: isPrimary ? "var(--secondary)" : isAlternate ? "var(--secondary)" : undefined,
+                    borderLeft: isPrimary ? "3px solid var(--border)" : isAlternate ? "3px solid var(--border)" : undefined
                   }}>
                     <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
                     <td><b>{pName}</b></td>
                     <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pStart} – {pEnd}</td>
-                    <td><span className="badge" style={{ background: 'rgba(225, 29, 85,0.12)', color: '#e11d55', fontWeight: 600 }}>{entry.subject_name || '—'}</span></td>
+                    <td><span className="badge" style={{ background: "var(--accent)", color: "var(--primary)", fontWeight: 600 }}>{entry.subject_name || '—'}</span></td>
                     <td>
                       <PersonProfileLink kind="teacher" id={entry.teacher_id || entry.teacherId} name={entry.teacher_name || entry.teacherName || '—'} person={entry as any}><span style={{ fontWeight: isPrimary ? 700 : 500 }}>{entry.teacher_name || entry.teacherName || '—'}</span></PersonProfileLink>
-                      {isPrimary && <span className="badge" style={{ background: '#cce6e1', color: '#024035', fontSize: 10, fontWeight: 700, marginLeft: 6 }}>Your Period</span>}
+                      {isPrimary && <span className="badge" style={{ background: "var(--secondary)", color: "var(--success)", fontSize: 10, fontWeight: 700, marginLeft: 6 }}>Your Period</span>}
                     </td>
                     <td>
                       {isAlternate ? (
                         <span
                           className="badge"
                           style={{
-                            background: 'rgba(233, 162, 59, 0.18)',
-                            color: '#b8781c',
-                            border: '1px solid #b8781c',
+                            background: "var(--secondary)",
+                            color: "var(--warning)",
+                            border: "1px solid var(--border)",
                             fontSize: 11,
                             fontWeight: 700
                           }}
@@ -1038,7 +1038,7 @@ export default function Timetable() {
                           Alt (You){altName ? `: ${altName}` : ''}
                         </span>
                       ) : altName ? (
-                        <span className="badge" style={{ background: 'rgba(233, 162, 59,0.12)', color: '#b8781c', fontSize: 11 }}>
+                        <span className="badge" style={{ background: "var(--secondary)", color: "var(--warning)", fontSize: 11 }}>
                           Alt: {altName}
                         </span>
                       ) : (
@@ -1063,7 +1063,7 @@ export default function Timetable() {
                   <td colSpan={4} style={{ textAlign: 'center' }}>
                     {isSchoolAdmin ? (
                       <button onClick={() => openAddEntry(p.id)}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '5px 14px', borderRadius: 4, border: '1px dashed #e11d55', background: 'rgba(225, 29, 85,0.06)', cursor: 'pointer', color: '#e11d55', fontWeight: 600 }}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '5px 14px', borderRadius: 4, border: "1px dashed var(--border)", background: "var(--accent)", cursor: 'pointer', color: "var(--primary)", fontWeight: 600 }}
                       >
                         <Plus size={13} /> Assign Faculty & Subject
                       </button>
@@ -1085,7 +1085,7 @@ export default function Timetable() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <h3 style={{ margin: 0, fontSize: 16 }}>All Timetable Entries ({displayClassLabel}-{selSectionName})</h3>
         {isSchoolAdmin && entries.length > 0 && (
-          <button onClick={clearAllEntries} style={{ background: 'none', border: '1px solid #f2c0c0', color: '#d32f2f', fontSize: 12, padding: '4px 10px', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <button onClick={clearAllEntries} style={{ background: 'none', border: "1px solid var(--border)", color: "var(--destructive)", fontSize: 12, padding: '4px 10px', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <Trash2 size={12} /> Clear All Entries
           </button>
         )}
@@ -1118,8 +1118,8 @@ export default function Timetable() {
                             gap: 4,
                             padding: '4px 10px',
                             borderRadius: 4,
-                            background: isAlternateTeacher(e) && !isPrimaryTeacher(e) ? '#b8781c' : '#03806a',
-                            color: '#fff',
+                            background: isAlternateTeacher(e) && !isPrimaryTeacher(e) ? "var(--warning)" : "var(--success)",
+                            color: "var(--background)",
                             textDecoration: 'none',
                             fontSize: 12,
                             fontWeight: 600
@@ -1161,11 +1161,11 @@ export default function Timetable() {
         </div>
         <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {teachingPeriods.length === 0 ? (
-            <div style={{ padding: '14px 16px', borderRadius: 4, background: 'rgba(233, 162, 59, 0.12)', border: '1px solid rgba(233, 162, 59, 0.25)', color: '#e9a23b', fontSize: 13 }}>
+            <div style={{ padding: '14px 16px', borderRadius: 4, background: "var(--secondary)", border: "1px solid var(--border)", color: "var(--warning)", fontSize: 13 }}>
               <strong>⚠️ No period slots configured</strong>
               <p style={{ margin: '6px 0 10px', fontSize: 12, lineHeight: 1.5 }}>You must define period time slots before assigning faculty and subjects.</p>
               <button onClick={() => { setAddOpen(false); setPeriodOpen(true); }}
-                style={{ fontSize: 12, padding: '6px 12px', background: '#b8781c', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
+                style={{ fontSize: 12, padding: '6px 12px', background: "var(--warning)", color: "var(--background)", border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
                 Configure Period Slots Now →
               </button>
             </div>
@@ -1298,8 +1298,8 @@ export default function Timetable() {
 
               {/* Conflict warnings */}
               {conflicts.length > 0 && (
-                <div style={{ padding: 10, borderRadius: 4, background: 'rgba(211, 47, 47, 0.12)', border: '1px solid rgba(211, 47, 47, 0.25)', color: '#d32f2f', fontSize: 12 }}>
-                  <AlertTriangle size={14} style={{ color: '#d32f2f', marginRight: 4 }} />
+                <div style={{ padding: 10, borderRadius: 4, background: "var(--secondary)", border: "1px solid var(--border)", color: "var(--destructive)", fontSize: 12 }}>
+                  <AlertTriangle size={14} style={{ color: "var(--destructive)", marginRight: 4 }} />
                   <b>Scheduling Conflicts:</b>
                   <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
                     {conflicts.map((c, i) => <li key={i}>{c.details || c.conflict_type}</li>)}
@@ -1308,9 +1308,9 @@ export default function Timetable() {
               )}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 6 }}>
-                <button onClick={() => { setAddOpen(false); setEditingEntry(null); }} style={{ background: 'var(--bg-card, #ffffff)', color: 'var(--text)', border: '1px solid var(--border)' }}>Cancel</button>
+                <button onClick={() => { setAddOpen(false); setEditingEntry(null); }} style={{ background: "var(--bg-card, var(--card))", color: 'var(--text)', border: '1px solid var(--border)' }}>Cancel</button>
                 <button onClick={saveEntry} disabled={saving}
-                  style={{ background: '#e11d55', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  style={{ background: "var(--primary)", color: "var(--background)", display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   {saving ? <><RefreshCw size={14} className="spin" /> Saving...</> : <><Check size={14} /> {editingEntry ? 'Save Changes' : 'Create Entry'}</>}
                 </button>
               </div>
@@ -1378,7 +1378,7 @@ export default function Timetable() {
 
           {periods.length > 0 && (
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
-              <button onClick={clearAllPeriods} style={{ fontSize: 12, color: '#d32f2f', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <button onClick={clearAllPeriods} style={{ fontSize: 12, color: "var(--destructive)", background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <Trash2 size={12} /> Clear All Period Slots
               </button>
             </div>
@@ -1397,7 +1397,7 @@ export default function Timetable() {
               <input type="checkbox" checked={periodForm.isBreak} onChange={e => setPeriodForm({ ...periodForm, isBreak: e.target.checked })} /> Break
             </label>
           </div>
-          <button onClick={addPeriod} style={{ width: '100%', background: '#e11d55', color: '#fff' }}>Add Period Slot</button>
+          <button onClick={addPeriod} style={{ width: '100%', background: "var(--primary)", color: "var(--background)" }}>Add Period Slot</button>
         </div>
       </div>
     </div>}

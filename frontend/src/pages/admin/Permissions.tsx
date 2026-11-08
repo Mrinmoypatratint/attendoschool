@@ -499,8 +499,8 @@ export default function Permissions() {
               padding: '9px 18px',
               borderRadius: 4,
               border: 'none',
-              background: activeTab === 'roles' ? 'rgba(225, 29, 85, 0.12)' : 'transparent',
-              color: activeTab === 'roles' ? 'var(--sidebar-accent, #e11d55)' : 'var(--text-secondary)',
+              background: activeTab === 'roles' ? "var(--accent)" : 'transparent',
+              color: activeTab === 'roles' ? "var(--sidebar-accent, var(--primary))" : 'var(--text-secondary)',
               fontSize: 13.5,
               fontWeight: activeTab === 'roles' ? 700 : 500,
               cursor: 'pointer',
@@ -517,8 +517,8 @@ export default function Permissions() {
                 fontSize: 11.5,
                 padding: '2px 7px',
                 borderRadius: 4,
-                background: activeTab === 'roles' ? 'var(--sidebar-accent, #e11d55)' : 'rgba(148, 150, 159, 0.15)',
-                color: activeTab === 'roles' ? '#ffffff' : 'var(--text-secondary)'
+                background: activeTab === 'roles' ? "var(--sidebar-accent, var(--primary))" : "var(--secondary)",
+                color: activeTab === 'roles' ? "var(--background)" : 'var(--text-secondary)'
               }}
             >
               {roles.length}
@@ -532,8 +532,8 @@ export default function Permissions() {
               padding: '9px 18px',
               borderRadius: 4,
               border: 'none',
-              background: activeTab === 'matrix' ? 'rgba(225, 29, 85, 0.12)' : 'transparent',
-              color: activeTab === 'matrix' ? 'var(--sidebar-accent, #e11d55)' : 'var(--text-secondary)',
+              background: activeTab === 'matrix' ? "var(--accent)" : 'transparent',
+              color: activeTab === 'matrix' ? "var(--sidebar-accent, var(--primary))" : 'var(--text-secondary)',
               fontSize: 13.5,
               fontWeight: activeTab === 'matrix' ? 700 : 500,
               cursor: 'pointer',
@@ -554,8 +554,8 @@ export default function Permissions() {
               padding: '9px 18px',
               borderRadius: 4,
               border: 'none',
-              background: activeTab === 'permissions' ? 'rgba(225, 29, 85, 0.12)' : 'transparent',
-              color: activeTab === 'permissions' ? 'var(--sidebar-accent, #e11d55)' : 'var(--text-secondary)',
+              background: activeTab === 'permissions' ? "var(--accent)" : 'transparent',
+              color: activeTab === 'permissions' ? "var(--sidebar-accent, var(--primary))" : 'var(--text-secondary)',
               fontSize: 13.5,
               fontWeight: activeTab === 'permissions' ? 700 : 500,
               cursor: 'pointer',
@@ -572,8 +572,8 @@ export default function Permissions() {
                 fontSize: 11.5,
                 padding: '2px 7px',
                 borderRadius: 4,
-                background: activeTab === 'permissions' ? 'var(--sidebar-accent, #e11d55)' : 'rgba(148, 150, 159, 0.15)',
-                color: activeTab === 'permissions' ? '#ffffff' : 'var(--text-secondary)'
+                background: activeTab === 'permissions' ? "var(--sidebar-accent, var(--primary))" : "var(--secondary)",
+                color: activeTab === 'permissions' ? "var(--background)" : 'var(--text-secondary)'
               }}
             >
               {permissions.length}
@@ -642,7 +642,7 @@ export default function Permissions() {
                 color: 'var(--text-secondary)'
               }}
             >
-              <RefreshCw size={28} className="animate-spin" style={{ margin: '0 auto 12px', color: 'var(--sidebar-accent, #e11d55)' }} />
+              <RefreshCw size={28} className="animate-spin" style={{ margin: '0 auto 12px', color: "var(--sidebar-accent, var(--primary))" }} />
               <div style={{ fontSize: 15, fontWeight: 600 }}>Loading institutional roles & rights...</div>
             </div>
           ) : filteredRoles.length === 0 ? (
@@ -671,8 +671,8 @@ export default function Permissions() {
                   style={{
                     padding: '8px 16px',
                     borderRadius: 4,
-                    background: 'var(--sidebar-accent, #e11d55)',
-                    color: '#ffffff',
+                    background: "var(--sidebar-accent, var(--primary))",
+                    color: "var(--background)",
                     border: 'none',
                     fontWeight: 600,
                     cursor: 'pointer'
@@ -689,7 +689,7 @@ export default function Permissions() {
                 border: '1px solid var(--border)',
                 borderRadius: 4,
                 overflow: 'hidden',
-                boxShadow: 'var(--shadow-sm)'
+                boxShadow: "none"
               }}
             >
               <div style={{ overflowX: 'auto' }}>
@@ -697,7 +697,7 @@ export default function Permissions() {
                   <thead>
                     <tr
                       style={{
-                        background: 'var(--table-header, rgba(255, 255, 255, 0.03))',
+                        background: "var(--table-header, var(--card))",
                         borderBottom: '1px solid var(--border)'
                       }}
                     >
@@ -723,7 +723,7 @@ export default function Permissions() {
                       >
                         <td style={{ padding: '16px 18px', verticalAlign: 'top' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <ShieldCheck size={16} style={{ color: 'var(--sidebar-accent, #e11d55)', flexShrink: 0 }} />
+                            <ShieldCheck size={16} style={{ color: "var(--sidebar-accent, var(--primary))", flexShrink: 0 }} />
                             <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
                               {role.name}
                             </span>
@@ -737,9 +737,9 @@ export default function Permissions() {
                                 borderRadius: 4,
                                 fontSize: 10.5,
                                 fontWeight: 700,
-                                background: 'rgba(225, 29, 85, 0.1)',
-                                color: 'var(--sidebar-accent, #e11d55)',
-                                border: '1px solid rgba(225, 29, 85, 0.2)'
+                                background: "var(--accent)",
+                                color: "var(--sidebar-accent, var(--primary))",
+                                border: "1px solid var(--border)"
                               }}
                             >
                               SYSTEM ROLE
@@ -801,7 +801,7 @@ export default function Permissions() {
             border: '1px solid var(--border)',
             borderRadius: 4,
             overflow: 'hidden',
-            boxShadow: 'var(--shadow-sm)'
+            boxShadow: "none"
           }}
         >
           <div style={{ overflowX: 'auto' }}>
@@ -809,7 +809,7 @@ export default function Permissions() {
               <thead>
                 <tr
                   style={{
-                    background: 'var(--table-header, rgba(255, 255, 255, 0.03))',
+                    background: "var(--table-header, var(--card))",
                     borderBottom: '1px solid var(--border)'
                   }}
                 >
@@ -852,35 +852,35 @@ export default function Permissions() {
                     </td>
                     <td style={{ textAlign: 'center', padding: '14px 18px' }}>
                       {row.superAdmin ? (
-                        <span style={{ color: '#03806a', fontWeight: 'bold', fontSize: 16 }}>&check;</span>
+                        <span style={{ color: "var(--success)", fontWeight: 'bold', fontSize: 16 }}>&check;</span>
                       ) : (
                         <span style={{ color: 'var(--text-muted)', opacity: 0.4 }}>&mdash;</span>
                       )}
                     </td>
                     <td style={{ textAlign: 'center', padding: '14px 18px' }}>
                       {row.schoolAdmin ? (
-                        <span style={{ color: '#03806a', fontWeight: 'bold', fontSize: 16 }}>&check;</span>
+                        <span style={{ color: "var(--success)", fontWeight: 'bold', fontSize: 16 }}>&check;</span>
                       ) : (
                         <span style={{ color: 'var(--text-muted)', opacity: 0.4 }}>&mdash;</span>
                       )}
                     </td>
                     <td style={{ textAlign: 'center', padding: '14px 18px' }}>
                       {row.teacher ? (
-                        <span style={{ color: '#03806a', fontWeight: 'bold', fontSize: 16 }}>&check;</span>
+                        <span style={{ color: "var(--success)", fontWeight: 'bold', fontSize: 16 }}>&check;</span>
                       ) : (
                         <span style={{ color: 'var(--text-muted)', opacity: 0.4 }}>&mdash;</span>
                       )}
                     </td>
                     <td style={{ textAlign: 'center', padding: '14px 18px' }}>
                       {row.student ? (
-                        <span style={{ color: '#03806a', fontWeight: 'bold', fontSize: 16 }}>&check;</span>
+                        <span style={{ color: "var(--success)", fontWeight: 'bold', fontSize: 16 }}>&check;</span>
                       ) : (
                         <span style={{ color: 'var(--text-muted)', opacity: 0.4 }}>&mdash;</span>
                       )}
                     </td>
                     <td style={{ textAlign: 'center', padding: '14px 18px' }}>
                       {row.parent ? (
-                        <span style={{ color: '#03806a', fontWeight: 'bold', fontSize: 16 }}>&check;</span>
+                        <span style={{ color: "var(--success)", fontWeight: 'bold', fontSize: 16 }}>&check;</span>
                       ) : (
                         <span style={{ color: 'var(--text-muted)', opacity: 0.4 }}>&mdash;</span>
                       )}
@@ -901,7 +901,7 @@ export default function Permissions() {
             border: '1px solid var(--border)',
             borderRadius: 4,
             padding: 24,
-            boxShadow: 'var(--shadow-sm)'
+            boxShadow: "none"
           }}
         >
           <div style={{ marginBottom: 18 }}>
@@ -928,7 +928,7 @@ export default function Permissions() {
                   style={{
                     padding: '14px 16px',
                     borderRadius: 4,
-                    background: 'var(--surface-subtle, rgba(255, 255, 255, 0.02))',
+                    background: "var(--surface-subtle, var(--card))",
                     border: '1px solid var(--border)',
                     display: 'flex',
                     flexDirection: 'column',

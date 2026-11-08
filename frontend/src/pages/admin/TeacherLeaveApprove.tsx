@@ -1164,7 +1164,7 @@ export default function TeacherLeaveApprove() {
         }}
       >
         <div style={{ position: 'relative', minWidth: 260, flex: 1, maxWidth: 400 }}>
-          <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary, #696e79)' }} />
+          <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: "var(--text-secondary, var(--muted-foreground))" }} />
           <input
             type="text"
             placeholder="Search teacher, email, or reason..."
@@ -1174,8 +1174,8 @@ export default function TeacherLeaveApprove() {
               width: '100%',
               padding: '8px 12px 8px 34px',
               borderRadius: 4,
-              border: '1px solid var(--border, #eaeaec)',
-              background: 'var(--surface, #FFF)',
+              border: "1px solid var(--border, var(--border))",
+              background: "var(--surface, var(--card))",
               fontSize: 13,
               outline: 'none',
               boxSizing: 'border-box'
@@ -1187,7 +1187,7 @@ export default function TeacherLeaveApprove() {
 
           {/* Type Filter */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #696e79)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: "var(--text-secondary, var(--muted-foreground))" }}>
               <Filter size={14} />
               <span>Type:</span>
             </div>
@@ -1197,10 +1197,10 @@ export default function TeacherLeaveApprove() {
               style={{
                 padding: '7px 12px',
                 borderRadius: 4,
-                border: '1px solid var(--border, #eaeaec)',
-                background: 'var(--surface, #FFF)',
+                border: "1px solid var(--border, var(--border))",
+                background: "var(--surface, var(--card))",
                 fontSize: 13,
-                color: 'var(--text, #1c1f2e)',
+                color: "var(--text, var(--foreground))",
                 outline: 'none',
                 cursor: 'pointer'
               }}
@@ -1219,27 +1219,27 @@ export default function TeacherLeaveApprove() {
       <div
         className="student-card"
         style={{
-          background: 'var(--surface, #FFF)',
-          border: '1px solid var(--border, #eaeaec)',
+          background: "var(--surface, var(--card))",
+          border: "1px solid var(--border, var(--border))",
           borderRadius: 4,
           overflow: 'hidden',
           boxShadow: 'none'
         }}
       >
         {loading ? (
-          <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-secondary, #696e79)' }}>
+          <div style={{ padding: '60px 20px', textAlign: 'center', color: "var(--text-secondary, var(--muted-foreground))" }}>
             <RefreshCw size={24} className="spin" style={{ margin: '0 auto 12px', display: 'block' }} />
             <p style={{ margin: 0, fontSize: 14 }}>Loading leave applications...</p>
           </div>
         ) : filteredLeaves.length === 0 ? (
-          <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-secondary, #696e79)' }}>
+          <div style={{ padding: '60px 20px', textAlign: 'center', color: "var(--text-secondary, var(--muted-foreground))" }}>
             <div
               style={{
                 width: 52,
                 height: 52,
                 borderRadius: '50%',
-                background: '#e6f2f0',
-                color: '#03806a',
+                background: "var(--secondary)",
+                color: "var(--success)",
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1248,7 +1248,7 @@ export default function TeacherLeaveApprove() {
             >
               <CheckCircle2 size={26} />
             </div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text, #1c1f2e)', margin: '0 0 6px' }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text, var(--foreground))", margin: '0 0 6px' }}>
               No Leave Requests Found
             </h3>
             <p style={{ fontSize: 13.5, margin: 0 }}>
@@ -1267,8 +1267,8 @@ export default function TeacherLeaveApprove() {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '10px 16px',
-                  background: '#fff2f4',
-                  border: '1px solid #fcc3d1',
+                  background: "var(--card)",
+                  border: "1px solid var(--border)",
                   borderRadius: 4,
                   marginBottom: 12,
                   gap: 12,
@@ -1276,11 +1276,11 @@ export default function TeacherLeaveApprove() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <CheckCircle2 size={16} style={{ color: '#e11d55' }} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#9a133c' }}>
+                  <CheckCircle2 size={16} style={{ color: "var(--primary)" }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--primary)" }}>
                     {selectedTeacherKeys.size} faculty member{selectedTeacherKeys.size === 1 ? '' : 's'} selected for export
                   </span>
-                  <span style={{ fontSize: 12, color: '#696e79' }}>
+                  <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
                     &bull; Clicking &ldquo;Export Excel&rdquo; will export data only for these selected teachers
                   </span>
                 </div>
@@ -1295,8 +1295,8 @@ export default function TeacherLeaveApprove() {
                       gap: 6,
                       padding: '6px 14px',
                       borderRadius: 4,
-                      background: '#03806a',
-                      color: '#FFFFFF',
+                      background: "var(--success)",
+                      color: "var(--background)",
                       border: 'none',
                       fontWeight: 700,
                       fontSize: 12.5,
@@ -1315,9 +1315,9 @@ export default function TeacherLeaveApprove() {
                       gap: 4,
                       padding: '6px 12px',
                       borderRadius: 4,
-                      background: '#FFFFFF',
-                      color: '#535766',
-                      border: '1px solid #d4d5d9',
+                      background: "var(--card)",
+                      color: "var(--muted-foreground)",
+                      border: "1px solid var(--border)",
                       fontSize: 12,
                       fontWeight: 600,
                       cursor: 'pointer'
@@ -1332,8 +1332,8 @@ export default function TeacherLeaveApprove() {
             <div className="student-table-wrap" style={{ width: '100%', overflowX: 'auto' }}>
             <table className="student-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'auto' }}>
               <thead>
-                <tr style={{ background: 'var(--table-header, #f9f9fa)', borderBottom: '1px solid var(--border, #eaeaec)' }}>
-                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #696e79)', textTransform: 'uppercase', minWidth: 160 }}>
+                <tr style={{ background: "var(--table-header, var(--card))", borderBottom: "1px solid var(--border, var(--border))" }}>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, var(--muted-foreground))", textTransform: 'uppercase', minWidth: 160 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <input
                         type="checkbox"
@@ -1348,22 +1348,22 @@ export default function TeacherLeaveApprove() {
                       <span>FACULTY MEMBER</span>
                     </div>
                   </th>
-                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #696e79)', textTransform: 'uppercase', minWidth: 155 }}>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, var(--muted-foreground))", textTransform: 'uppercase', minWidth: 155 }}>
                     APPROVED LEAVES (BY TYPE)
                   </th>
-                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #696e79)', textTransform: 'uppercase', minWidth: 95 }}>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, var(--muted-foreground))", textTransform: 'uppercase', minWidth: 95 }}>
                     LEAVE TYPE
                   </th>
-                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #696e79)', textTransform: 'uppercase', minWidth: 110 }}>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, var(--muted-foreground))", textTransform: 'uppercase', minWidth: 110 }}>
                     DURATION & PERIOD
                   </th>
-                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #696e79)', textTransform: 'uppercase', minWidth: 110 }}>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, var(--muted-foreground))", textTransform: 'uppercase', minWidth: 110 }}>
                     REASON / DETAILS
                   </th>
-                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #696e79)', textTransform: 'uppercase', minWidth: 85 }}>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, var(--muted-foreground))", textTransform: 'uppercase', minWidth: 85 }}>
                     STATUS
                   </th>
-                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #696e79)', textTransform: 'uppercase', textAlign: 'right', minWidth: 140 }}>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, var(--muted-foreground))", textTransform: 'uppercase', textAlign: 'right', minWidth: 140 }}>
                     ACTIONS
                   </th>
                 </tr>
@@ -1386,8 +1386,8 @@ export default function TeacherLeaveApprove() {
                     <tr
                       key={l.id}
                       style={{
-                        background: selectedTeacherKeys.has(getTeacherKey(l)) ? 'rgba(255, 242, 244, 0.65)' : undefined,
-                        borderBottom: '1px solid var(--border, #eaeaec)',
+                        background: selectedTeacherKeys.has(getTeacherKey(l)) ? "var(--card)" : undefined,
+                        borderBottom: "1px solid var(--border, var(--border))",
                         transition: 'background 0.15s'
                       }}
                     >
@@ -1405,7 +1405,7 @@ export default function TeacherLeaveApprove() {
                             <img
                               src={l.photo_url}
                               alt={l.applicant_name}
-                              style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '1px solid #fcc3d1', flexShrink: 0 }}
+                              style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: "1px solid var(--border)", flexShrink: 0 }}
                             />
                           ) : (
                             <div
@@ -1413,25 +1413,25 @@ export default function TeacherLeaveApprove() {
                                 width: 32,
                                 height: 32,
                                 borderRadius: '50%',
-                                background: selectedTeacherKeys.has(getTeacherKey(l)) ? '#ffe1e8' : '#fff2f4',
-                                color: '#e11d55',
+                                background: selectedTeacherKeys.has(getTeacherKey(l)) ? "var(--card)" : "var(--card)",
+                                color: "var(--primary)",
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 fontWeight: 700,
                                 fontSize: 12,
                                 flexShrink: 0,
-                                border: selectedTeacherKeys.has(getTeacherKey(l)) ? '1px solid #e11d55' : 'none'
+                                border: selectedTeacherKeys.has(getTeacherKey(l)) ? "1px solid var(--border)" : 'none'
                               }}
                             >
                               {initials}
                             </div>
                           )}
                           <div>
-                            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text, #1c1f2e)' }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text, var(--foreground))" }}>
                               <PersonProfileLink kind="teacher" id={l.applicant_id} name={l.applicant_name} person={l as any} />
                             </div>
-                            <div style={{ fontSize: 11, color: 'var(--text-secondary, #696e79)' }}>
+                            <div style={{ fontSize: 11, color: "var(--text-secondary, var(--muted-foreground))" }}>
                               {l.teacher_email || l.identifier || 'Faculty Member'}
                             </div>
                           </div>
@@ -1446,9 +1446,9 @@ export default function TeacherLeaveApprove() {
                               style={{
                                 fontSize: 11,
                                 fontWeight: 700,
-                                color: teacherStats.totalApprovedDays > 0 ? '#02604f' : '#696e79',
-                                background: teacherStats.totalApprovedDays > 0 ? '#cce6e1' : '#f5f5f6',
-                                border: `1px solid ${teacherStats.totalApprovedDays > 0 ? '#66b3a6' : '#eaeaec'}`,
+                                color: teacherStats.totalApprovedDays > 0 ? "var(--success)" : "var(--muted-foreground)",
+                                background: teacherStats.totalApprovedDays > 0 ? "var(--secondary)" : "var(--secondary)",
+                                border: `1px solid ${teacherStats.totalApprovedDays > 0 ? "var(--border)" : "var(--border)"}`,
                                 padding: '2px 6px',
                                 borderRadius: 4,
                                 display: 'inline-flex',
@@ -1479,9 +1479,9 @@ export default function TeacherLeaveApprove() {
                                   style={{
                                     fontSize: 10,
                                     fontWeight: isTaken ? 700 : 500,
-                                    color: isTaken ? '#9a133c' : '#696e79',
-                                    background: isTaken ? '#fff2f4' : '#f9f9fa',
-                                    border: `1px solid ${isTaken ? '#fcc3d1' : '#eaeaec'}`,
+                                    color: isTaken ? "var(--primary)" : "var(--muted-foreground)",
+                                    background: isTaken ? "var(--card)" : "var(--card)",
+                                    border: `1px solid ${isTaken ? "var(--border)" : "var(--border)"}`,
                                     padding: '1px 5px',
                                     borderRadius: 3,
                                     display: 'inline-flex',
@@ -1526,7 +1526,7 @@ export default function TeacherLeaveApprove() {
                                   fontWeight: 800,
                                   padding: '1px 4px',
                                   borderRadius: 3,
-                                  background: 'rgba(255, 255, 255, 0.8)',
+                                  background: "var(--card)",
                                   border: `1px solid ${typeObj.border}`
                                 }}
                                 title={`Current application: ${days} day(s)${currentLeaveQuota > 0 ? ` out of ${currentLeaveQuota} allowed ${currentLeavePolicy?.name || ''} days` : ''}`}
@@ -1540,10 +1540,10 @@ export default function TeacherLeaveApprove() {
 
                       {/* Duration & Period */}
                       <td style={{ padding: '10px 10px', verticalAlign: 'top' }}>
-                        <div style={{ fontWeight: 600, fontSize: 12.5, color: 'var(--text, #1c1f2e)' }}>
+                        <div style={{ fontWeight: 600, fontSize: 12.5, color: "var(--text, var(--foreground))" }}>
                           {formatDate(l.start_date)} → {formatDate(l.end_date)}
                         </div>
-                        <div style={{ fontSize: 11.5, color: 'var(--text-secondary, #696e79)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div style={{ fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
                           <Calendar size={11} />
                           <span>{days} {days === 1 ? 'Day' : 'Days'}</span>
                         </div>
@@ -1555,7 +1555,7 @@ export default function TeacherLeaveApprove() {
                           style={{
                             margin: 0,
                             fontSize: 12.5,
-                            color: 'var(--text, #1c1f2e)',
+                            color: "var(--text, var(--foreground))",
                             lineHeight: 1.4,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -1567,7 +1567,7 @@ export default function TeacherLeaveApprove() {
                         >
                           {l.reason}
                         </p>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted, #94969f)', marginTop: 2 }}>
+                        <div style={{ fontSize: 11, color: "var(--text-muted, var(--muted-foreground))", marginTop: 2 }}>
                           Applied: {formatDate(l.created_at)}
                         </div>
                         {l.document_url && (
@@ -1581,9 +1581,9 @@ export default function TeacherLeaveApprove() {
                                 gap: 4,
                                 padding: '2px 6px',
                                 borderRadius: 4,
-                                border: '1px solid #fcc3d1',
-                                background: '#fff2f4',
-                                color: '#c0174a',
+                                border: "1px solid var(--border)",
+                                background: "var(--card)",
+                                color: "var(--primary)",
                                 fontSize: 11,
                                 fontWeight: 600,
                                 cursor: 'pointer',
@@ -1613,9 +1613,9 @@ export default function TeacherLeaveApprove() {
                               borderRadius: 4,
                               fontSize: 11.5,
                               fontWeight: 700,
-                              background: '#fbecd3',
-                              color: '#8f5c12',
-                              border: '1px solid #f6dcb2'
+                              background: "var(--secondary)",
+                              color: "var(--warning)",
+                              border: "1px solid var(--border)"
                             }}
                           >
                             <Clock size={11} />
@@ -1633,16 +1633,16 @@ export default function TeacherLeaveApprove() {
                                 borderRadius: 4,
                                 fontSize: 11.5,
                                 fontWeight: 700,
-                                background: '#cce6e1',
-                                color: '#02604f',
-                                border: '1px solid #99ccc3'
+                                background: "var(--secondary)",
+                                color: "var(--success)",
+                                border: "1px solid var(--border)"
                               }}
                             >
                               <CheckCircle2 size={11} />
                               Approved
                             </span>
                             {l.review_notes && (
-                              <div style={{ fontSize: 11, color: 'var(--text-secondary, #696e79)', marginTop: 2 }}>
+                              <div style={{ fontSize: 11, color: "var(--text-secondary, var(--muted-foreground))", marginTop: 2 }}>
                                 "{l.review_notes}"
                               </div>
                             )}
@@ -1659,16 +1659,16 @@ export default function TeacherLeaveApprove() {
                                 borderRadius: 4,
                                 fontSize: 11.5,
                                 fontWeight: 700,
-                                background: '#f7d5d5',
-                                color: '#a82424',
-                                border: '1px solid #f2c0c0'
+                                background: "var(--secondary)",
+                                color: "var(--destructive)",
+                                border: "1px solid var(--border)"
                               }}
                             >
                               <XCircle size={11} />
                               Rejected
                             </span>
                             {l.review_notes && (
-                              <div style={{ fontSize: 11, color: 'var(--text-secondary, #696e79)', marginTop: 2 }}>
+                              <div style={{ fontSize: 11, color: "var(--text-secondary, var(--muted-foreground))", marginTop: 2 }}>
                                 "{l.review_notes}"
                               </div>
                             )}
@@ -1686,9 +1686,9 @@ export default function TeacherLeaveApprove() {
                             style={{
                               padding: '4px 8px',
                               borderRadius: 4,
-                              border: '1px solid var(--border, #eaeaec)',
-                              background: 'var(--surface, #FFF)',
-                              color: 'var(--text, #1c1f2e)',
+                              border: "1px solid var(--border, var(--border))",
+                              background: "var(--surface, var(--card))",
+                              color: "var(--text, var(--foreground))",
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -1715,8 +1715,8 @@ export default function TeacherLeaveApprove() {
                                   padding: '4px 8px',
                                   borderRadius: 4,
                                   border: 'none',
-                                  background: '#03806a',
-                                  color: '#FFF',
+                                  background: "var(--success)",
+                                  color: "var(--background)",
                                   cursor: 'pointer',
                                   display: 'inline-flex',
                                   alignItems: 'center',
@@ -1741,9 +1741,9 @@ export default function TeacherLeaveApprove() {
                                 style={{
                                   padding: '4px 8px',
                                   borderRadius: 4,
-                                  border: '1px solid #f2c0c0',
-                                  background: '#fbeaea',
-                                  color: '#d32f2f',
+                                  border: "1px solid var(--border)",
+                                  background: "var(--card)",
+                                  color: "var(--destructive)",
                                   cursor: 'pointer',
                                   display: 'inline-flex',
                                   alignItems: 'center',
@@ -1778,7 +1778,7 @@ export default function TeacherLeaveApprove() {
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'rgba(28, 31, 46, 0.65)',
+            background: "var(--card)",
             backdropFilter: 'blur(3px)',
             display: 'flex',
             alignItems: 'center',
@@ -1792,8 +1792,8 @@ export default function TeacherLeaveApprove() {
         >
           <div
             style={{
-              background: 'var(--surface, #FFF)',
-              border: '1px solid var(--border, #eaeaec)',
+              background: "var(--surface, var(--card))",
+              border: "1px solid var(--border, var(--border))",
               borderRadius: 4,
               width: '100%',
               maxWidth: 540,
@@ -1804,25 +1804,25 @@ export default function TeacherLeaveApprove() {
             <div
               style={{
                 padding: '18px 22px',
-                borderBottom: '1px solid var(--border, #eaeaec)',
+                borderBottom: "1px solid var(--border, var(--border))",
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                background: 'var(--modal-header, #f9f9fa)'
+                background: "var(--modal-header, var(--card))"
               }}
             >
               <div>
-                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text, #1c1f2e)' }}>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
                   Faculty Leave Request Details
                 </h3>
-                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary, #696e79)' }}>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: "var(--text-secondary, var(--muted-foreground))" }}>
                   Submitted on {formatDate(viewingLeave.created_at)}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setViewingLeave(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary, #696e79)' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: "var(--text-secondary, var(--muted-foreground))" }}
               >
                 <X size={18} />
               </button>
@@ -1837,8 +1837,8 @@ export default function TeacherLeaveApprove() {
                   gap: 12,
                   padding: '12px 14px',
                   borderRadius: 4,
-                  background: 'var(--background, #f9f9fa)',
-                  border: '1px solid var(--border, #eaeaec)',
+                  background: "var(--background, var(--card))",
+                  border: "1px solid var(--border, var(--border))",
                   marginBottom: 16
                 }}
               >
@@ -1847,8 +1847,8 @@ export default function TeacherLeaveApprove() {
                     width: 44,
                     height: 44,
                     borderRadius: '50%',
-                    background: '#e11d55',
-                    color: '#FFF',
+                    background: "var(--primary)",
+                    color: "var(--background)",
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -1859,10 +1859,10 @@ export default function TeacherLeaveApprove() {
                   {(viewingLeave.applicant_name || 'TC').slice(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text, #1c1f2e)' }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text, var(--foreground))" }}>
                     <PersonProfileLink kind="teacher" id={viewingLeave.applicant_id} name={viewingLeave.applicant_name} person={viewingLeave as any} />
                   </div>
-                  <div style={{ fontSize: 12.5, color: 'var(--text-secondary, #696e79)' }}>
+                  <div style={{ fontSize: 12.5, color: "var(--text-secondary, var(--muted-foreground))" }}>
                     {viewingLeave.teacher_email || viewingLeave.identifier || 'Faculty Member'}
                   </div>
                 </div>
@@ -1875,15 +1875,15 @@ export default function TeacherLeaveApprove() {
                   <div style={{
                     padding: '12px 14px',
                     borderRadius: 4,
-                    background: '#e6f2f0',
-                    border: '1px solid #99ccc3',
+                    background: "var(--secondary)",
+                    border: "1px solid var(--border)",
                     marginBottom: 16
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#024035', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--success)", textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                         Approved Leave Record ({formatMonthDisplay(monthFilter)})
                       </span>
-                      <span style={{ fontSize: 12, fontWeight: 800, color: '#02604f' }}>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: "var(--success)" }}>
                         Total Approved: {modalStats.totalApprovedDays}{totalAllowedQuota > 0 ? `/${totalAllowedQuota}` : ''} {modalStats.totalApprovedDays === 1 ? 'Day' : 'Days'}
                       </span>
                     </div>
@@ -1899,9 +1899,9 @@ export default function TeacherLeaveApprove() {
                             style={{
                               fontSize: 11.5,
                               fontWeight: isPos ? 700 : 500,
-                              color: isPos ? '#9a133c' : '#535766',
-                              background: isPos ? '#fff2f4' : '#FFF',
-                              border: `1px solid ${isPos ? '#fcc3d1' : '#d4d5d9'}`,
+                              color: isPos ? "var(--primary)" : "var(--muted-foreground)",
+                              background: isPos ? "var(--card)" : "var(--card)",
+                              border: `1px solid ${isPos ? "var(--border)" : "var(--border)"}`,
                               padding: '2px 8px',
                               borderRadius: 4
                             }}
@@ -1911,7 +1911,7 @@ export default function TeacherLeaveApprove() {
                         );
                       })}
                     </div>
-                    <div style={{ fontSize: 11, color: '#02604f', marginTop: 6, fontStyle: 'italic' }}>
+                    <div style={{ fontSize: 11, color: "var(--success)", marginTop: 6, fontStyle: 'italic' }}>
                       Approved leave counts increment only when a request is approved by school admin.
                     </div>
                   </div>
@@ -1921,7 +1921,7 @@ export default function TeacherLeaveApprove() {
               {/* Details grid */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #696e79)' }}>LEAVE TYPE</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary, var(--muted-foreground))" }}>LEAVE TYPE</div>
                   <div style={{ marginTop: 4 }}>
                     <span
                       style={{
@@ -1940,7 +1940,7 @@ export default function TeacherLeaveApprove() {
                         const pol = allDynamicLeaveTypes.find((t) => matchesPolicy(viewingLeave.leave_type, t));
                         const dur = calculateDays(viewingLeave.start_date, viewingLeave.end_date);
                         return (
-                          <span style={{ fontSize: 11, fontWeight: 800, padding: '1px 5px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.75)' }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, padding: '1px 5px', borderRadius: 4, background: "var(--card)" }}>
                             {pol && pol.allowedDays > 0 ? `${dur}/${pol.allowedDays}d` : `${dur}d`}
                           </span>
                         );
@@ -1950,22 +1950,22 @@ export default function TeacherLeaveApprove() {
                 </div>
 
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #696e79)' }}>TOTAL DURATION</div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text, #1c1f2e)', marginTop: 4 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary, var(--muted-foreground))" }}>TOTAL DURATION</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text, var(--foreground))", marginTop: 4 }}>
                     {calculateDays(viewingLeave.start_date, viewingLeave.end_date)} Days
                   </div>
                 </div>
 
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #696e79)' }}>FROM DATE</div>
-                  <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text, #1c1f2e)', marginTop: 4 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary, var(--muted-foreground))" }}>FROM DATE</div>
+                  <div style={{ fontWeight: 600, fontSize: 13.5, color: "var(--text, var(--foreground))", marginTop: 4 }}>
                     {formatDate(viewingLeave.start_date)}
                   </div>
                 </div>
 
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #696e79)' }}>TO DATE</div>
-                  <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text, #1c1f2e)', marginTop: 4 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary, var(--muted-foreground))" }}>TO DATE</div>
+                  <div style={{ fontWeight: 600, fontSize: 13.5, color: "var(--text, var(--foreground))", marginTop: 4 }}>
                     {formatDate(viewingLeave.end_date)}
                   </div>
                 </div>
@@ -1973,18 +1973,18 @@ export default function TeacherLeaveApprove() {
 
               {/* Reason */}
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #696e79)', marginBottom: 6 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary, var(--muted-foreground))", marginBottom: 6 }}>
                   REASON FOR LEAVE
                 </div>
                 <div
                   style={{
                     padding: '12px 14px',
                     borderRadius: 4,
-                    background: 'var(--background, #f9f9fa)',
-                    border: '1px solid var(--border, #eaeaec)',
+                    background: "var(--background, var(--card))",
+                    border: "1px solid var(--border, var(--border))",
                     fontSize: 13.5,
                     lineHeight: 1.5,
-                    color: 'var(--text, #1c1f2e)'
+                    color: "var(--text, var(--foreground))"
                   }}
                 >
                   {viewingLeave.reason}
@@ -1993,7 +1993,7 @@ export default function TeacherLeaveApprove() {
 
               {/* Attached Supporting Document */}
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #696e79)', marginBottom: 6 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary, var(--muted-foreground))", marginBottom: 6 }}>
                   ATTACHED SUPPORTING DOCUMENT / PROOF
                 </div>
                 {viewingLeave.document_url ? (
@@ -2004,8 +2004,8 @@ export default function TeacherLeaveApprove() {
                       justifyContent: 'space-between',
                       padding: '12px 14px',
                       borderRadius: 4,
-                      background: '#fff2f4',
-                      border: '1px solid #fcc3d1'
+                      background: "var(--card)",
+                      border: "1px solid var(--border)"
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
@@ -2014,8 +2014,8 @@ export default function TeacherLeaveApprove() {
                           width: 36,
                           height: 36,
                           borderRadius: 4,
-                          background: '#e11d55',
-                          color: '#FFF',
+                          background: "var(--primary)",
+                          color: "var(--background)",
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -2029,10 +2029,10 @@ export default function TeacherLeaveApprove() {
                         )}
                       </div>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: 13, color: '#7a1031', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: "var(--primary)", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {viewingLeave.document_name || 'Faculty Leave Document'}
                         </div>
-                        <div style={{ fontSize: 11.5, color: '#e11d55', marginTop: 1 }}>
+                        <div style={{ fontSize: 11.5, color: "var(--primary)", marginTop: 1 }}>
                           Supporting proof provided by faculty member
                         </div>
                       </div>
@@ -2049,8 +2049,8 @@ export default function TeacherLeaveApprove() {
                           padding: '6px 12px',
                           borderRadius: 4,
                           border: 'none',
-                          background: '#e11d55',
-                          color: '#FFF',
+                          background: "var(--primary)",
+                          color: "var(--background)",
                           fontSize: 12.5,
                           fontWeight: 600,
                           cursor: 'pointer'
@@ -2066,10 +2066,10 @@ export default function TeacherLeaveApprove() {
                     style={{
                       padding: '10px 14px',
                       borderRadius: 4,
-                      background: 'var(--background, #f9f9fa)',
-                      border: '1px solid var(--border, #eaeaec)',
+                      background: "var(--background, var(--card))",
+                      border: "1px solid var(--border, var(--border))",
                       fontSize: 12.5,
-                      color: 'var(--text-muted, #94969f)',
+                      color: "var(--text-muted, var(--muted-foreground))",
                       fontStyle: 'italic'
                     }}
                   >
@@ -2083,22 +2083,22 @@ export default function TeacherLeaveApprove() {
                 style={{
                   padding: '12px 14px',
                   borderRadius: 4,
-                  border: '1px solid var(--border, #eaeaec)',
-                  background: viewingLeave.status === 'APPROVED' ? '#e6f2f0' : viewingLeave.status === 'REJECTED' ? '#fbeaea' : '#fdf5e9'
+                  border: "1px solid var(--border, var(--border))",
+                  background: viewingLeave.status === 'APPROVED' ? "var(--secondary)" : viewingLeave.status === 'REJECTED' ? "var(--card)" : "var(--card)"
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: viewingLeave.status === 'APPROVED' ? '#024035' : viewingLeave.status === 'REJECTED' ? '#7e1b1b' : '#6b450e' }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: viewingLeave.status === 'APPROVED' ? "var(--success)" : viewingLeave.status === 'REJECTED' ? "var(--destructive)" : "var(--warning)" }}>
                     Status: {viewingLeave.status}
                   </span>
                   {viewingLeave.reviewed_at && (
-                    <span style={{ fontSize: 11.5, color: 'var(--text-secondary, #696e79)' }}>
+                    <span style={{ fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))" }}>
                       Reviewed on {formatDate(viewingLeave.reviewed_at)}
                     </span>
                   )}
                 </div>
                 {viewingLeave.review_notes && (
-                  <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--text, #1c1f2e)' }}>
+                  <p style={{ margin: '6px 0 0', fontSize: 12.5, color: "var(--text, var(--foreground))" }}>
                     Remarks: <b>{viewingLeave.review_notes}</b> ({viewingLeave.reviewer_name || 'Admin'})
                   </p>
                 )}
@@ -2108,7 +2108,7 @@ export default function TeacherLeaveApprove() {
             <div
               style={{
                 padding: '14px 22px',
-                borderTop: '1px solid var(--border, #eaeaec)',
+                borderTop: "1px solid var(--border, var(--border))",
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'flex-end',
@@ -2121,9 +2121,9 @@ export default function TeacherLeaveApprove() {
                 style={{
                   padding: '8px 16px',
                   borderRadius: 4,
-                  border: '1px solid var(--border, #eaeaec)',
-                  background: 'var(--surface, #FFF)',
-                  color: 'var(--text, #1c1f2e)',
+                  border: "1px solid var(--border, var(--border))",
+                  background: "var(--surface, var(--card))",
+                  color: "var(--text, var(--foreground))",
                   fontWeight: 600,
                   fontSize: 13,
                   cursor: 'pointer'
@@ -2144,8 +2144,8 @@ export default function TeacherLeaveApprove() {
                       padding: '8px 16px',
                       borderRadius: 4,
                       border: 'none',
-                      background: '#03806a',
-                      color: '#FFF',
+                      background: "var(--success)",
+                      color: "var(--background)",
                       fontWeight: 600,
                       fontSize: 13,
                       cursor: 'pointer'
@@ -2162,9 +2162,9 @@ export default function TeacherLeaveApprove() {
                     style={{
                       padding: '8px 16px',
                       borderRadius: 4,
-                      border: '1px solid #f2c0c0',
-                      background: '#fbeaea',
-                      color: '#d32f2f',
+                      border: "1px solid var(--border)",
+                      background: "var(--card)",
+                      color: "var(--destructive)",
                       fontWeight: 600,
                       fontSize: 13,
                       cursor: 'pointer'
@@ -2188,7 +2188,7 @@ export default function TeacherLeaveApprove() {
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'rgba(28, 31, 46, 0.65)',
+            background: "var(--card)",
             backdropFilter: 'blur(3px)',
             display: 'flex',
             alignItems: 'center',
@@ -2202,8 +2202,8 @@ export default function TeacherLeaveApprove() {
         >
           <div
             style={{
-              background: 'var(--surface, #FFF)',
-              border: '1px solid var(--border, #eaeaec)',
+              background: "var(--surface, var(--card))",
+              border: "1px solid var(--border, var(--border))",
               borderRadius: 4,
               width: '100%',
               maxWidth: 480,
@@ -2211,30 +2211,30 @@ export default function TeacherLeaveApprove() {
               overflow: 'hidden'
             }}
           >
-            <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--border, #eaeaec)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: '18px 22px', borderBottom: "1px solid var(--border, var(--border))", display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <CheckCircle2 size={20} color="#03806a" />
-                <h3 style={{ margin: 0, fontSize: 16.5, fontWeight: 700, color: 'var(--text, #1c1f2e)' }}>
+                <h3 style={{ margin: 0, fontSize: 16.5, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
                   Approve Faculty Leave
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setApprovingLeave(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary, #696e79)' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: "var(--text-secondary, var(--muted-foreground))" }}
               >
                 <X size={18} />
               </button>
             </div>
 
             <div style={{ padding: '20px 22px' }}>
-              <p style={{ margin: '0 0 14px', fontSize: 13.5, color: 'var(--text, #1c1f2e)' }}>
+              <p style={{ margin: '0 0 14px', fontSize: 13.5, color: "var(--text, var(--foreground))" }}>
                 Are you sure you want to approve <b>{approvingLeave.applicant_name}</b>'s leave request for{' '}
                 <b>{calculateDays(approvingLeave.start_date, approvingLeave.end_date)} day(s)</b> ({formatDate(approvingLeave.start_date)} to {formatDate(approvingLeave.end_date)})?
               </p>
 
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1c1f2e)', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginBottom: 6 }}>
                   Approval Remarks (Optional):
                 </label>
                 <input
@@ -2246,9 +2246,9 @@ export default function TeacherLeaveApprove() {
                     width: '100%',
                     padding: '9px 12px',
                     borderRadius: 4,
-                    border: '1px solid var(--border, #d4d5d9)',
-                    background: 'var(--surface, #FFF)',
-                    color: 'var(--text, #1c1f2e)',
+                    border: "1px solid var(--border, var(--border))",
+                    background: "var(--surface, var(--card))",
+                    color: "var(--text, var(--foreground))",
                     fontSize: 13,
                     outline: 'none',
                     boxSizing: 'border-box'
@@ -2257,7 +2257,7 @@ export default function TeacherLeaveApprove() {
               </div>
             </div>
 
-            <div style={{ padding: '14px 22px', borderTop: '1px solid var(--border, #eaeaec)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
+            <div style={{ padding: '14px 22px', borderTop: "1px solid var(--border, var(--border))", display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
               <button
                 type="button"
                 onClick={() => setApprovingLeave(null)}
@@ -2265,9 +2265,9 @@ export default function TeacherLeaveApprove() {
                 style={{
                   padding: '8px 16px',
                   borderRadius: 4,
-                  border: '1px solid var(--border, #d4d5d9)',
-                  background: 'var(--surface, #FFF)',
-                  color: 'var(--text, #1c1f2e)',
+                  border: "1px solid var(--border, var(--border))",
+                  background: "var(--surface, var(--card))",
+                  color: "var(--text, var(--foreground))",
                   fontWeight: 600,
                   fontSize: 13,
                   cursor: 'pointer'
@@ -2283,8 +2283,8 @@ export default function TeacherLeaveApprove() {
                   padding: '8px 18px',
                   borderRadius: 4,
                   border: 'none',
-                  background: '#03806a',
-                  color: '#FFF',
+                  background: "var(--success)",
+                  color: "var(--background)",
                   fontWeight: 600,
                   fontSize: 13,
                   cursor: 'pointer'
@@ -2306,7 +2306,7 @@ export default function TeacherLeaveApprove() {
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'rgba(28, 31, 46, 0.65)',
+            background: "var(--card)",
             backdropFilter: 'blur(3px)',
             display: 'flex',
             alignItems: 'center',
@@ -2320,8 +2320,8 @@ export default function TeacherLeaveApprove() {
         >
           <div
             style={{
-              background: 'var(--surface, #FFF)',
-              border: '1px solid var(--border, #eaeaec)',
+              background: "var(--surface, var(--card))",
+              border: "1px solid var(--border, var(--border))",
               borderRadius: 4,
               width: '100%',
               maxWidth: 480,
@@ -2329,30 +2329,30 @@ export default function TeacherLeaveApprove() {
               overflow: 'hidden'
             }}
           >
-            <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--border, #eaeaec)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: '18px 22px', borderBottom: "1px solid var(--border, var(--border))", display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <XCircle size={20} color="#d32f2f" />
-                <h3 style={{ margin: 0, fontSize: 16.5, fontWeight: 700, color: 'var(--text, #1c1f2e)' }}>
+                <h3 style={{ margin: 0, fontSize: 16.5, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
                   Reject Faculty Leave Application
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setRejectingLeave(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary, #696e79)' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: "var(--text-secondary, var(--muted-foreground))" }}
               >
                 <X size={18} />
               </button>
             </div>
 
             <div style={{ padding: '20px 22px' }}>
-              <p style={{ margin: '0 0 14px', fontSize: 13.5, color: 'var(--text, #1c1f2e)' }}>
+              <p style={{ margin: '0 0 14px', fontSize: 13.5, color: "var(--text, var(--foreground))" }}>
                 Please provide a rejection note or reason for declining <b>{rejectingLeave.applicant_name}</b>'s leave request:
               </p>
 
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1c1f2e)', marginBottom: 6 }}>
-                  Reason for Rejection <span style={{ color: '#d32f2f' }}>*</span>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginBottom: 6 }}>
+                  Reason for Rejection <span style={{ color: "var(--destructive)" }}>*</span>
                 </label>
                 <AutoExpandingTextarea
                   minHeight={42}
@@ -2364,9 +2364,9 @@ export default function TeacherLeaveApprove() {
                     width: '100%',
                     padding: '9px 12px',
                     borderRadius: 4,
-                    border: '1px solid var(--border, #d4d5d9)',
-                    background: 'var(--surface, #FFF)',
-                    color: 'var(--text, #1c1f2e)',
+                    border: "1px solid var(--border, var(--border))",
+                    background: "var(--surface, var(--card))",
+                    color: "var(--text, var(--foreground))",
                     fontSize: 13,
                     lineHeight: 1.45,
                     outline: 'none',
@@ -2376,7 +2376,7 @@ export default function TeacherLeaveApprove() {
               </div>
             </div>
 
-            <div style={{ padding: '14px 22px', borderTop: '1px solid var(--border, #eaeaec)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
+            <div style={{ padding: '14px 22px', borderTop: "1px solid var(--border, var(--border))", display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
               <button
                 type="button"
                 onClick={() => setRejectingLeave(null)}
@@ -2384,9 +2384,9 @@ export default function TeacherLeaveApprove() {
                 style={{
                   padding: '8px 16px',
                   borderRadius: 4,
-                  border: '1px solid var(--border, #d4d5d9)',
-                  background: 'var(--surface, #FFF)',
-                  color: 'var(--text, #1c1f2e)',
+                  border: "1px solid var(--border, var(--border))",
+                  background: "var(--surface, var(--card))",
+                  color: "var(--text, var(--foreground))",
                   fontWeight: 600,
                   fontSize: 13,
                   cursor: 'pointer'
@@ -2402,8 +2402,8 @@ export default function TeacherLeaveApprove() {
                   padding: '8px 18px',
                   borderRadius: 4,
                   border: 'none',
-                  background: '#d32f2f',
-                  color: '#FFF',
+                  background: "var(--destructive)",
+                  color: "var(--background)",
                   fontWeight: 600,
                   fontSize: 13,
                   cursor: 'pointer'
@@ -2425,7 +2425,7 @@ export default function TeacherLeaveApprove() {
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'rgba(28, 31, 46, 0.75)',
+            background: "var(--card)",
             backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
@@ -2439,8 +2439,8 @@ export default function TeacherLeaveApprove() {
         >
           <div
             style={{
-              background: 'var(--surface, #FFF)',
-              border: '1px solid var(--border, #eaeaec)',
+              background: "var(--surface, var(--card))",
+              border: "1px solid var(--border, var(--border))",
               borderRadius: 4,
               width: '100%',
               maxWidth: 720,
@@ -2455,16 +2455,16 @@ export default function TeacherLeaveApprove() {
             <div
               style={{
                 padding: '16px 20px',
-                borderBottom: '1px solid var(--border, #eaeaec)',
+                borderBottom: "1px solid var(--border, var(--border))",
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                background: 'var(--modal-header, #f9f9fa)'
+                background: "var(--modal-header, var(--card))"
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                 <Paperclip size={18} color="#e11d55" />
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #1c1f2e)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text, var(--foreground))", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {viewingDoc.name}
                 </h3>
               </div>
@@ -2475,9 +2475,9 @@ export default function TeacherLeaveApprove() {
                   style={{
                     padding: '6px 12px',
                     borderRadius: 4,
-                    border: '1px solid var(--border, #d4d5d9)',
-                    background: '#FFF',
-                    color: 'var(--text, #1c1f2e)',
+                    border: "1px solid var(--border, var(--border))",
+                    background: "var(--card)",
+                    color: "var(--text, var(--foreground))",
                     fontSize: 12.5,
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -2497,8 +2497,8 @@ export default function TeacherLeaveApprove() {
                     padding: '6px 12px',
                     borderRadius: 4,
                     border: 'none',
-                    background: '#e11d55',
-                    color: '#FFF',
+                    background: "var(--primary)",
+                    color: "var(--background)",
                     fontSize: 12.5,
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -2518,7 +2518,7 @@ export default function TeacherLeaveApprove() {
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
-                    color: 'var(--text-secondary, #696e79)',
+                    color: "var(--text-secondary, var(--muted-foreground))",
                     padding: 4,
                     marginLeft: 4
                   }}
@@ -2529,7 +2529,7 @@ export default function TeacherLeaveApprove() {
             </div>
 
             {/* Modal Body */}
-            <div style={{ padding: 20, overflowY: 'auto', flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'var(--card-subtle, #f5f5f6)' }}>
+            <div style={{ padding: 20, overflowY: 'auto', flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', background: "var(--card-subtle, var(--secondary))" }}>
               {viewingDoc.url.startsWith('data:image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(viewingDoc.url) ? (
                 <img
                   src={viewingDoc.url}
@@ -2543,12 +2543,12 @@ export default function TeacherLeaveApprove() {
                   style={{ width: '100%', height: '65vh', border: 'none', borderRadius: 4 }}
                 />
               ) : (
-                <div style={{ textAlign: 'center', padding: '40px 20px', background: 'var(--bg-card, #FFF)', borderRadius: 4, width: '100%', maxWidth: 420, border: '1px solid var(--border, #eaeaec)' }}>
+                <div style={{ textAlign: 'center', padding: '40px 20px', background: "var(--bg-card, var(--card))", borderRadius: 4, width: '100%', maxWidth: 420, border: "1px solid var(--border, var(--border))" }}>
                   <FileText size={48} color="#e11d55" style={{ margin: '0 auto 12px', display: 'block' }} />
-                  <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text, #1c1f2e)', marginBottom: 4 }}>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text, var(--foreground))", marginBottom: 4 }}>
                     {viewingDoc.name}
                   </div>
-                  <p style={{ fontSize: 13, color: 'var(--text-muted, #696e79)', marginBottom: 16 }}>
+                  <p style={{ fontSize: 13, color: "var(--text-muted, var(--muted-foreground))", marginBottom: 16 }}>
                     Direct inline preview is not supported for this file type. Please open or download it to view.
                   </p>
                   <button
@@ -2558,8 +2558,8 @@ export default function TeacherLeaveApprove() {
                       padding: '8px 16px',
                       borderRadius: 4,
                       border: 'none',
-                      background: '#e11d55',
-                      color: '#FFF',
+                      background: "var(--primary)",
+                      color: "var(--background)",
                       fontSize: 13,
                       fontWeight: 600,
                       cursor: 'pointer',

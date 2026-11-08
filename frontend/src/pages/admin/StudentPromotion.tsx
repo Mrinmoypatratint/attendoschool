@@ -409,9 +409,9 @@ export default function StudentPromotion() {
           marginBottom: 16,
           padding: '12px 16px',
           borderRadius: 4,
-          background: 'rgba(3, 128, 106, 0.12)',
-          border: '1px solid rgba(3, 128, 106, 0.25)',
-          color: '#03806a',
+          background: "var(--secondary)",
+          border: "1px solid var(--border)",
+          color: "var(--success)",
           fontSize: 13
         }}>
           {message}
@@ -420,8 +420,8 @@ export default function StudentPromotion() {
 
       {/* Directory Box Container with Toolbar, Table, and Pagination (Matching Students Directory) */}
       <div className="directory-box" style={{
-        background: 'var(--bg-card, #ffffff)',
-        border: '1px solid var(--border, #eaeaec)',
+        background: "var(--bg-card, var(--card))",
+        border: "1px solid var(--border, var(--border))",
         borderRadius: 4,
         boxShadow: 'none',
         overflow: 'hidden',
@@ -432,8 +432,8 @@ export default function StudentPromotion() {
         {/* Top Header Filter Bar */}
         <div className="directory-box-header" style={{
           padding: '12px 18px',
-          background: 'var(--bg-card, #ffffff)',
-          borderBottom: '1px solid var(--border, #eaeaec)',
+          background: "var(--bg-card, var(--card))",
+          borderBottom: "1px solid var(--border, var(--border))",
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -442,7 +442,7 @@ export default function StudentPromotion() {
         }}>
           {/* Search Input */}
           <div style={{ position: 'relative', minWidth: 260, maxWidth: 460, flex: '1 1 auto', height: 38, display: 'flex', alignItems: 'center' }}>
-            <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94969f', pointerEvents: 'none' }} />
+            <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: "var(--muted-foreground)", pointerEvents: 'none' }} />
             <input
               type="text"
               placeholder="Search name, roll no, admission no, class..."
@@ -454,7 +454,7 @@ export default function StudentPromotion() {
                 padding: '7px 12px 7px 32px',
                 fontSize: 13,
                 borderRadius: 4,
-                border: '1px solid var(--border, #d4d5d9)',
+                border: "1px solid var(--border, var(--border))",
                 outline: 'none',
                 boxSizing: 'border-box'
               }}
@@ -470,7 +470,7 @@ export default function StudentPromotion() {
                 setSectionFilter('');
                 setPage(1);
               }}
-              style={{ padding: '6px 10px', fontSize: 12.5, borderRadius: 4, border: '1px solid var(--border, #d4d5d9)' }}
+              style={{ padding: '6px 10px', fontSize: 12.5, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}
             >
               <option value="">All Classes ({availableClasses.length})</option>
               {availableClasses.map(c => (
@@ -481,7 +481,7 @@ export default function StudentPromotion() {
             <select
               value={sectionFilter}
               onChange={e => { setSectionFilter(e.target.value); setPage(1); }}
-              style={{ padding: '6px 10px', fontSize: 12.5, borderRadius: 4, border: '1px solid var(--border, #d4d5d9)' }}
+              style={{ padding: '6px 10px', fontSize: 12.5, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}
             >
               <option value="">All Sections ({availableSections.length})</option>
               {availableSections.map(s => (
@@ -492,7 +492,7 @@ export default function StudentPromotion() {
             <select
               value={statusFilter}
               onChange={e => { setStatusFilter(e.target.value as any); setPage(1); }}
-              style={{ padding: '6px 10px', fontSize: 12.5, borderRadius: 4, border: '1px solid var(--border, #d4d5d9)' }}
+              style={{ padding: '6px 10px', fontSize: 12.5, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}
             >
               <option value="ALL">All Status</option>
               <option value="PENDING">Pending Only ({eligibleCount})</option>
@@ -508,11 +508,11 @@ export default function StudentPromotion() {
                   padding: '6px 12px',
                   fontSize: 12.5,
                   borderRadius: 4,
-                  border: '1px solid var(--border, #d4d5d9)',
-                  background: 'var(--bg-card, #ffffff)',
+                  border: "1px solid var(--border, var(--border))",
+                  background: "var(--bg-card, var(--card))",
                   cursor: 'pointer',
                   fontWeight: 600,
-                  color: allFilteredEligibleSelected ? '#d32f2f' : '#e11d55'
+                  color: allFilteredEligibleSelected ? "var(--destructive)" : "var(--primary)"
                 }}
                 onClick={() => {
                   const next = { ...selected };
@@ -535,11 +535,11 @@ export default function StudentPromotion() {
                 padding: '6px 12px',
                 fontSize: 12.5,
                 borderRadius: 4,
-                border: '1px solid #66b3a6',
-                background: '#e6f2f0',
+                border: "1px solid var(--border)",
+                background: "var(--secondary)",
                 cursor: 'pointer',
                 fontWeight: 600,
-                color: '#02604f',
+                color: "var(--success)",
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6
@@ -607,20 +607,20 @@ export default function StudentPromotion() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px 20px', color: '#696e79' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px 20px', color: "var(--muted-foreground)" }}>
                     Loading candidate roster from database...
                   </td>
                 </tr>
               ) : displayedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px 20px', color: '#696e79' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px 20px', color: "var(--muted-foreground)" }}>
                     {items.length === 0
                       ? 'No students found for this academic session. Please select another source session.'
                       : 'No candidate students match the active search or filter criteria.'}
                   </td>
                 </tr>
               ) : displayedItems.map(x => (
-                <tr key={x.id} style={{ background: selected[x.id] ? 'rgba(225, 29, 85, 0.05)' : 'transparent' }}>
+                <tr key={x.id} style={{ background: selected[x.id] ? "var(--accent)" : 'transparent' }}>
                   <td style={{ textAlign: 'center' }}>
                     <input
                       type="checkbox"
@@ -632,8 +632,8 @@ export default function StudentPromotion() {
                   <td>
                     <span className="roll" style={{
                       fontWeight: 700,
-                      background: 'rgba(225, 29, 85, 0.12)',
-                      color: '#e11d55',
+                      background: "var(--accent)",
+                      color: "var(--primary)",
                       padding: '2px 8px',
                       borderRadius: 4,
                       fontSize: 12
@@ -642,7 +642,7 @@ export default function StudentPromotion() {
                     </span>
                   </td>
                   <td>
-                    <span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--text, #3e4152)', background: 'var(--card-subtle, #f5f5f6)', padding: '2px 6px', borderRadius: 4, fontSize: '0.82rem' }}>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 600, color: "var(--text, var(--muted-foreground))", background: "var(--card-subtle, var(--secondary))", padding: '2px 6px', borderRadius: 4, fontSize: '0.82rem' }}>
                       {x.admission_number || x.admissionNumber || '—'}
                     </span>
                   </td>
@@ -657,11 +657,11 @@ export default function StudentPromotion() {
                       style={{
                         padding: '4px 8px',
                         borderRadius: 4,
-                        border: '1px solid var(--border, #d4d5d9)',
+                        border: "1px solid var(--border, var(--border))",
                         fontSize: 12.5,
-                        background: !selected[x.id] ? '#f9f9fa' : '#ffffff',
+                        background: !selected[x.id] ? "var(--card)" : "var(--card)",
                         cursor: !selected[x.id] ? 'not-allowed' : 'pointer',
-                        color: outcome[x.id] === 'RETAINED' ? '#d32f2f' : outcome[x.id] === 'GRADUATED' ? '#03806a' : '#282c3f'
+                        color: outcome[x.id] === 'RETAINED' ? "var(--destructive)" : outcome[x.id] === 'GRADUATED' ? "var(--success)" : "var(--foreground)"
                       }}
                     >
                       <option value="PROMOTED">PROMOTED (Next Class)</option>
@@ -678,9 +678,9 @@ export default function StudentPromotion() {
                       borderRadius: 999,
                       fontSize: 11,
                       fontWeight: 600,
-                      background: x.already_processed ? '#cce6e1' : '#fbecd3',
-                      color: x.already_processed ? '#024035' : '#8f5c12',
-                      border: `1px solid ${x.already_processed ? '#99ccc3' : '#f6dcb2'}`
+                      background: x.already_processed ? "var(--secondary)" : "var(--secondary)",
+                      color: x.already_processed ? "var(--success)" : "var(--warning)",
+                      border: `1px solid ${x.already_processed ? "var(--border)" : "var(--border)"}`
                     }}>
                       {x.already_processed ? '✓ Processed' : '⏳ Pending'}
                     </span>
