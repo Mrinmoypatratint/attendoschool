@@ -107,16 +107,16 @@ These commands are instructions for the owner. Running them changes the VPS/acco
 6. **Create the private backup config**, as the same Unix user that runs the backend:
 
    ```bash
-   install -d -m 700 /home/attendoschool/.attendoschool-backup-state
-   touch /home/attendoschool/.attendoschool-backup-state/backup.env
-   chmod 600 /home/attendoschool/.attendoschool-backup-state/backup.env
-   nano /home/attendoschool/.attendoschool-backup-state/backup.env
+   install -d -m 700 /home/attendoschool/htdocs/attendoschool.online/backend/.backup-state
+   touch /home/attendoschool/htdocs/attendoschool.online/backend/.backup-state/backup.env
+   chmod 600 /home/attendoschool/htdocs/attendoschool.online/backend/.backup-state/backup.env
+   nano /home/attendoschool/htdocs/attendoschool.online/backend/.backup-state/backup.env
    ```
 
    Fill it with trusted Bash assignments. Quote values containing shell characters. Never paste this file into chat:
 
    ```bash
-   BACKUP_DIR=/home/attendoschool/.attendoschool-backup-state/private
+   BACKUP_DIR=/home/attendoschool/htdocs/attendoschool.online/backend/.backup-state/private
    BACKUP_AGE_RECIPIENT='age1_REPLACE_WITH_YOUR_PUBLIC_RECIPIENT'
    BACKUP_GITHUB_REPO='Mrinmoypatratint/attendoschool-private-backups'
    BACKUP_GH_TOKEN='REPLACE_WITH_BACKUP_REPO_ONLY_TOKEN'
@@ -152,7 +152,7 @@ These commands are instructions for the owner. Running them changes the VPS/acco
 9. **Run once manually** and wait for success:
 
    ```bash
-   BACKUP_CONFIG_FILE=/home/attendoschool/.attendoschool-backup-state/backup.env \
+   BACKUP_CONFIG_FILE=/home/attendoschool/htdocs/attendoschool.online/backend/.backup-state/backup.env \
      bash scripts/backup.sh
    ```
 
@@ -160,7 +160,7 @@ These commands are instructions for the owner. Running them changes the VPS/acco
 10. **Schedule daily**, using `crontab -e` for that user:
 
     ```cron
-    17 2 * * * BACKUP_CONFIG_FILE=/home/attendoschool/.attendoschool-backup-state/backup.env /bin/bash /home/attendoschool/htdocs/attendoschool.online/scripts/backup/scheduled.sh >> /home/attendoschool/.attendoschool-backup-state/cron.log 2>&1 # attendoschool-backup-managed
+    17 2 * * * BACKUP_CONFIG_FILE=/home/attendoschool/htdocs/attendoschool.online/backend/.backup-state/backup.env /bin/bash /home/attendoschool/htdocs/attendoschool.online/scripts/backup/scheduled.sh >> /home/attendoschool/htdocs/attendoschool.online/backend/.backup-state/cron.log 2>&1 # attendoschool-backup-managed
     ```
 
     This is 02:17 in the VPS cron timezone; check `date` first. Release tags and logs use UTC. Make the log owner-only and rotate it. The worker must stay running. Cron waits for that worker's success. A missing worker eventually fails the queued record instead of pretending a backup exists.
@@ -456,7 +456,7 @@ Student data stays encrypted before leaving the server for GitHub. The private r
 
 The production deployment runs `scripts/backup/install-tools.sh` and `provision.cjs prepare`. These inspect database version/configuration without printing credentials, download and extract signed client-tool packages into the deployment user's private backup directory, create mode-700/600 backup state/config, preserve existing application settings, and add an idempotent cron entry when host cron is available. No sudo password, system package installation, maintainer script, database server upgrade, database restore, private age identity, or plaintext upload is involved. If host cron is unavailable, the daily GitHub Actions SSH schedule queues the job. Matching PostgreSQL clients can come from a user-local apt source using the [official PostgreSQL repository and signature key](https://www.postgresql.org/download/linux/ubuntu/); no system apt source is modified.
 
-`scheduled.sh` logs PAUSED without creating a fake successful backup while either the public recipient or repo token is missing. Manual offline backups remain subject to the same real store-coverage checks. No broad GitHub CLI credential is copied to the VPS.
+`scheduled.sh` logs PAUSED without creating a fake successful backup while either the public recipient or repo token is missing. Manual offline backups remain subject to the same real store-coverage checks. No broad GitHub CLI credential is copied to the VPS. State is under `backend/.backup-state` because the deployment account can write the checkout but cannot create directories directly under `/home/attendoschool`. The state directory is mode 700, files are mode 600, and it is excluded from Git and Docker contexts and outside the app's public static roots.
 
 [Backup operations](https://github.com/Mrinmoypatratint/attendoschool/actions/workflows/backup-operations.yml) supports `inspect`, `prepare`, `monitor`, and `daily`. It uses the existing GitHub Actions VPS credentials; your laptop does not need an SSH key. The daily 03:47 UTC run checks the last encrypted release and, when host cron is unavailable, queues the nightly backup over SSH. Once enabled, a missing/expired/incomplete release fails the workflow; verify your [GitHub Actions notification settings](https://github.com/settings/notifications/actions) for failure emails. The monitor reports PAUSED while credentials are deferred. GitHub scheduled-workflow delay/inactivity limits still apply; the optional independent heartbeat remains useful.
 

@@ -39,6 +39,14 @@ test('managed cron update preserves other jobs and is idempotent', () => {
   assert.equal(cronText(first, '/app', '/private/config', '/private/state'), first);
   assert.equal(setEnv('JWT_SECRET="keep"\nBACKUP_DIR=old\n', 'BACKUP_DIR', '/new'), 'JWT_SECRET="keep"\nBACKUP_DIR="/new"\n');
 });
+test('default state stays under the writable backend directory and out of user home', async t => {
+  const { dir } = await fixture(t), root = path.join(dir, 'checkout');
+  await fs.mkdir(path.join(root, 'backend'), { recursive: true });
+  await fs.writeFile(path.join(root, 'backend/.env'), 'DB_DRIVER=postgres\n');
+  const prepared = await prepare({ root, env: { NODE_ENV: 'test', DB_DRIVER: 'postgres' }, parse });
+  assert.equal(prepared.state, path.join(root, 'backend/.backup-state'));
+  assert.equal(prepared.config, path.join(prepared.state, 'backup.env'));
+});
 test('monitor distinguishes paused, healthy, expired and incomplete uploaded backups', async t => {
   const { env } = await fixture(t); assert.equal((await monitor(env)).state, 'paused');
   env.BACKUP_AGE_RECIPIENT = 'public'; await fs.mkdir(env.BACKUP_DIR);

@@ -36,7 +36,7 @@ module.exports = {
       exec_mode: 'fork',
       autorestart: true,
       kill_timeout: 10000,
-      env: { BACKUP_CONFIG_FILE: '/home/attendoschool/.attendoschool-backup-state/backup.env' }
+      env: { BACKUP_CONFIG_FILE: require('path').join(__dirname, 'backend/.backup-state/backup.env') }
     }
   ]
 };
