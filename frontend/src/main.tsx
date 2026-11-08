@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import { AuthProvider } from './hooks/useAuth';
 import { ToastProvider } from './components/Toast';
+import { AccessProvider } from './rbac/AccessProvider';
 import { PopupProvider } from './components/PopupModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import App from './App';
@@ -25,7 +26,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <AuthProvider>
           <PopupProvider>
             <ToastProvider>
-              <App />
+              <AccessProvider>
+                <App />
+              </AccessProvider>
             </ToastProvider>
           </PopupProvider>
         </AuthProvider>

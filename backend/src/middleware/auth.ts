@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
+import { enforceAccountStatus } from '../rbac/middleware';
 
 export type Role = 'SUPER_ADMIN'|'SCHOOL_ADMIN'|'TEACHER'|'PARENT'|'STUDENT';
 export type AuthUser = {
@@ -23,7 +24,7 @@ export function requireAuth(req:AuthRequest,res:Response,next:NextFunction) {
 
   try {
     req.user = jwt.verify(token, env.jwtSecret, { algorithms: ['HS256'] }) as AuthUser;
-    return next();
+    return enforceAccountStatus(req, res, next);
   } catch (primaryErr: any) {
     // Only try fallback secrets in development (never in production — security risk + CPU waste)
     if (process.env.NODE_ENV !== 'production') {
@@ -35,7 +36,7 @@ export function requireAuth(req:AuthRequest,res:Response,next:NextFunction) {
       for (const secret of fallbackSecrets) {
         try {
           req.user = jwt.verify(token, secret, { algorithms: ['HS256'] }) as AuthUser;
-          return next();
+          return enforceAccountStatus(req, res, next);
         } catch {}
       }
     }
@@ -46,6 +47,24 @@ export function requireAuth(req:AuthRequest,res:Response,next:NextFunction) {
       code: isExpired ? 'TOKEN_EXPIRED' : 'INVALID_TOKEN'
     });
   }
+}
+
+/**
+ * Verifies the request's bearer/query token exactly like requireAuth but WITHOUT responding or
+ * populating req.user. Used by the RBAC gate (rbac/middleware.ts). Returns null when absent/invalid.
+ */
+export function decodeAuthToken(req: Request): AuthUser | null {
+  const h = req.headers.authorization;
+  const token = h?.startsWith('Bearer ') ? h.slice(7) : (req.query?.token as string);
+  if (!token || typeof token !== 'string') return null;
+  const secrets = [env.jwtSecret];
+  if (process.env.NODE_ENV !== 'production') {
+    for (const s of ['super-secret-jwt-key-for-local-testing-12345', 'development-only-secret']) if (s !== env.jwtSecret) secrets.push(s);
+  }
+  for (const secret of secrets) {
+    try { return jwt.verify(token, secret, { algorithms: ['HS256'] }) as AuthUser; } catch {}
+  }
+  return null;
 }
 
 export function requireRoles(...roles: Role[]) {

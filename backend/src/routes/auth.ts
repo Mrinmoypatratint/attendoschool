@@ -11,6 +11,7 @@ import { sendPasswordResetEmail } from '../services/emailService';
 import { queueEmailNotification } from '../services/notificationService';
 import { validatePasswordStrength } from '../utils/passwordPolicy';
 import { loginRateLimit, clearLoginAttempts } from '../middleware/security';
+import { loginAccountGate } from '../rbac/middleware';
 import { isFirebaseConfigured, collections, firestore } from '../firebase';
 import { findFirestoreUserByEmail, getFirestoreSchools, getFirestoreSchoolById } from '../services/firestoreService';
 
@@ -277,7 +278,7 @@ function roleMatches(userRole: string, expectedRole?: string): boolean {
 }
 
 // POST /api/auth/login - Multi-tenant login supporting Firestore, PostgreSQL, and Demo fallback
-router.post('/login', loginRateLimit, async (req, res) => {
+router.post('/login', loginRateLimit, loginAccountGate, async (req, res) => {
   const { instituteId, email, studentId, admissionNumber, admissionNo, password, role: expectedRole } = req.body ?? {};
   const rawIdentifier = String(admissionNumber || admissionNo || email || studentId || '').trim();
 

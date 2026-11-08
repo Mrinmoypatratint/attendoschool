@@ -1,0 +1,5020 @@
+{
+  "summary": {
+    "routes": 556,
+    "principals": [
+      "ANON",
+      "SUPER_ADMIN",
+      "SCHOOL_ADMIN",
+      "TEACHER",
+      "STUDENT",
+      "PARENT",
+      "SCHOOL_ADMIN_B"
+    ]
+  },
+  "results": {
+    "DELETE /api/admin/mentors": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/calendar/holidays/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/classes/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/communication-v25/announcements/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/communication/announcements/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/designations/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/designations/promotions/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/leave-policies/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/routines/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/school-profile/photo": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/sections/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/student/assignments/:id/attachments/:attachmentId": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "ALLOW",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "DELETE /api/students/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/subjects/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/super-admin/notifications/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "DELETE /api/super-admin/plans/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "DELETE /api/super-admin/schools/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "DELETE /api/teacher/assignments/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/teacher/assignments/:id/attachments/:attachmentId": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/teachers/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/timetable-v22/entries/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/timetable-v22/entries/clear": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/timetable-v22/periods/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/timetable-v22/periods/clear": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/timetable/entries/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/timetable/entries/clear": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/timetable/periods/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /api/timetable/periods/clear": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /designations/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /designations/promotions/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "DELETE /leave-policies/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/academic-years": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/academic-years-v15": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/academic-years-v15/active": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/academic-years/active": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/admin/mentors": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/admin/temporary-assignments": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/analytics": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/analytics-v24": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/analytics-v24/events": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/analytics-v24/export-students": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/analytics-v24/platform": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/analytics-v24/rankings": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/analytics-v24/school": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/analytics-v24/summary": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/analytics/events": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/analytics/export-students": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/analytics/platform": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/analytics/rankings": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/analytics/school": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/analytics/summary": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-corrections": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-corrections-v13": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-corrections-v13/history": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-corrections/history": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-reports": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-reports-v12": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-reports-v12/daily": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-reports-v12/defaulters": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-reports-v12/export/csv": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-reports-v12/export/pdf": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-reports-v12/monthly": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-reports-v12/students": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-reports-v12/summary": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-reports-v12/template": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-reports/daily": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-reports/defaulters": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-reports/export/csv": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-reports/export/pdf": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-reports/monthly": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-reports/students": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-reports/summary": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance-reports/template": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance/:sessionId/audit-trail/export": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance/:sessionId/records": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance/attendance/:sessionId/audit-trail/export": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance/attendance/:sessionId/records": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance/attendance/audit-trail/export": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance/attendance/authorized-sections": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance/attendance/history": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance/attendance/today-status": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance/audit-trail/export": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance/authorized-sections": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance/classes/:classId/:sectionId/students": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance/history": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance/profile": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance/routine/today": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance/routine/week": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance/students": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance/students/:classId/:sectionId": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/attendance/today-status": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/auth/institutes": {
+      "ANON": "ALLOW",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/auth/lookup-institute": {
+      "ANON": "ALLOW",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/auth/me": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/auth/verify-reset-token": {
+      "ANON": "ALLOW",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/backups": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/backups-v21": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/backups-v21/jobs": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/backups/jobs": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/calendar/calculate": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/calendar/check-date": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/calendar/holidays": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/calendar/working-days": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/classes": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/communication": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/communication-v25": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/communication-v25/announcements": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/communication-v25/announcements/:id/attachment/download": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/communication-v25/announcements/:id/attachment/preview": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/communication-v25/announcements/:id/replies": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/communication-v25/delivery-summary": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/communication-v25/parent/inbox": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/communication-v25/parent/preferences": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/communication-v25/replies": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/communication-v25/teacher/inbox": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/communication/announcements": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/communication/announcements/:id/attachment/download": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/communication/announcements/:id/attachment/preview": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/communication/announcements/:id/replies": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/communication/delivery-summary": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/communication/parent/inbox": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/communication/parent/preferences": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/communication/replies": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/communication/teacher/inbox": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/dashboard/overview": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/dashboard/school": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/dashboard/super-admin": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/demo-request": {
+      "ANON": "ALLOW",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/designations": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/designations/faculty": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/designations/promotions": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/final-integration/db-check": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/final-integration/integrity": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/final-integration/migration-smoke": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/final-integration/parent-isolation/:parentUserId/:studentId": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/final-v28/db-check": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/final-v28/integrity": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/final-v28/migration-smoke": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/final-v28/parent-isolation/:parentUserId/:studentId": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/health": {
+      "ANON": "ALLOW",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/health/email-status": {
+      "ANON": "ALLOW",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/invoices": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/invoices/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/invoices/:id/pdf": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/leave-policies": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notification-channels/analytics": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notification-channels/channels": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notification-channels/logs": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notification-channels/preview/:templateKey": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notification-channels/smtp": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notification-channels/smtp-logs": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notification-channels/templates": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notifications": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notifications-channels/analytics": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notifications-channels/channels": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notifications-channels/logs": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notifications-channels/preview/:templateKey": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notifications-channels/smtp": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notifications-channels/smtp-logs": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notifications-channels/templates": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notifications-v11/analytics": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notifications-v11/channels": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notifications-v11/logs": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notifications-v11/preview/:templateKey": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notifications-v11/smtp": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notifications-v11/smtp-logs": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notifications-v11/templates": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notifications/email-logs": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notifications/logs": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/notifications/settings": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/offline-attendance-v23/sync/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/offline-attendance/sync/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/parent-onboarding": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/parent-onboarding-v27": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/parent-portal-v17/children": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/parent-portal-v17/children/:id/attendance": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/parent-portal/children": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/parent-portal/children/:id/attendance": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/people": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/people-v14": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/people-v14/students": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/people-v14/students/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/people-v14/teachers": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/people/students": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/people/students/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/people/teachers": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/permissions": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/permissions-v18": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/permissions-v18/me": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/permissions-v18/permissions": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/permissions-v18/roles": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/permissions/me": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/permissions/permissions": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/permissions/roles": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/production-v26/health": {
+      "ANON": "ALLOW",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/production-v26/jobs": {
+      "ANON": "ALLOW",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/production-v26/ready": {
+      "ANON": "ALLOW",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/production/health": {
+      "ANON": "ALLOW",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/production/jobs": {
+      "ANON": "ALLOW",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/production/ready": {
+      "ANON": "ALLOW",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/reviews/leaves": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/reviews/notifications": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/reviews/photos": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/reviews/teacher-leaves": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/reviews/teacher-leaves/export-excel": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/reviews/teacher-leaves/my": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/routines": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/school-payment/invoices": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/school-payment/payments": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/school-payment/plans": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/school-payment/subscription": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/school-profile": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/search": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/sections": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/student-promotions": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/student-promotions-v16": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/student-promotions-v16/candidates": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/student-promotions-v16/eligible": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/student-promotions/candidates": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/student-promotions/eligible": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/student/announcements": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "ALLOW",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/student/assignments": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "ALLOW",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/student/assignments/:id/attachments/:attachmentId/download": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "ALLOW",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/student/assignments/:id/attachments/:attachmentId/preview": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "ALLOW",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/student/assignments/:id/document/download": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "ALLOW",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/student/assignments/:id/document/preview": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "ALLOW",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/student/attendance": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "ALLOW",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/student/dashboard": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "ALLOW",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/student/exams": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "ALLOW",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/student/leave-requests": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "ALLOW",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/student/me": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "ALLOW",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/student/timetable": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "ALLOW",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/students": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/students/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/students/registered-emails": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/students/template": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/subjects": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/subscriptions": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/subscriptions-v19": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/subscriptions-v19/access": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_401",
+      "SCHOOL_ADMIN": "MW_402",
+      "TEACHER": "MW_402",
+      "STUDENT": "MW_402",
+      "PARENT": "MW_402",
+      "SCHOOL_ADMIN_B": "MW_402"
+    },
+    "GET /api/subscriptions-v19/current": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/subscriptions-v19/details": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/subscriptions-v19/status": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/subscriptions/access": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_401",
+      "SCHOOL_ADMIN": "MW_402",
+      "TEACHER": "MW_402",
+      "STUDENT": "MW_402",
+      "PARENT": "MW_402",
+      "SCHOOL_ADMIN_B": "MW_402"
+    },
+    "GET /api/subscriptions/current": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/subscriptions/details": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/subscriptions/status": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/super-admin/audit-logs": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/super-admin/invoices": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/super-admin/invoices/:id/receipt": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/super-admin/mail-service": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/super-admin/monitor": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/super-admin/notifications": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/super-admin/overview": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/super-admin/payments": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/super-admin/payments/reconciliation": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/super-admin/plans": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/super-admin/schools": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/super-admin/schools/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/super-admin/search": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/super-admin/settings": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/super-admin/smtp": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/super-admin/users": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "GET /api/teacher-assignments": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/:sessionId/audit-trail/export": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/:sessionId/records": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/assignments": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/assignments/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/assignments/:id/document/download": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/assignments/:id/document/preview": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/assignments/:id/submissions": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/assignments/:id/submissions/:submissionId/attachments/:attachmentId/download": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/assignments/:id/submissions/:submissionId/attachments/:attachmentId/preview": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/assignments/eligible-options": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/assignments/mentor-info": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/assignments/my-mentored": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/assignments/my-published": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/assignments/storage-status": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/assignments/storage/status": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/attendance/:sessionId/audit-trail/export": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/attendance/:sessionId/records": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/attendance/audit-trail/export": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/attendance/authorized-sections": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/attendance/history": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/attendance/today-status": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/audit-trail/export": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/authorized-sections": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/classes/:classId/:sectionId/students": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/history": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/mentor/attendance-analysis": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/mentor/my-classes": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/mentor/permissions": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/mentor/teacher-assignments": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/profile": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/routine/today": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/routine/week": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/students": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/students/:classId/:sectionId": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teacher/today-status": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teachers": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teachers/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teachers/:id/assignments": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/teachers/template": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/timetable": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/timetable-v22": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/timetable-v22/conflicts": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/timetable-v22/entries": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/timetable-v22/periods": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/timetable-v22/teacher-availability/:teacherId": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/timetable/conflicts": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/timetable/entries": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/timetable/periods": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /api/timetable/teacher-availability/:teacherId": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /demo-request": {
+      "ANON": "ALLOW",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /designations": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /designations/faculty": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /designations/promotions": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "GET /leave-policies": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PATCH /api/admin/temporary-assignments/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PATCH /api/communication-v25/announcements/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PATCH /api/communication/announcements/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PATCH /api/leave-policies/:id/toggle-status": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PATCH /api/people-v14/students/:id/status": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PATCH /api/people-v14/teachers/:id/status": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PATCH /api/people/students/:id/status": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PATCH /api/people/teachers/:id/status": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PATCH /api/student/profile": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "ALLOW",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "PATCH /api/super-admin/schools/:id/status": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "PATCH /api/super-admin/users/:id/status": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "PATCH /leave-policies/:id/toggle-status": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/academic-years": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/academic-years-v15": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/academic-years-v15/:id/:action": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/academic-years-v15/:id/activate": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/academic-years-v15/:id/archive": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/academic-years-v15/:id/deactivate": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/academic-years-v15/:id/unarchive": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/academic-years/:id/:action": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/academic-years/:id/activate": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/academic-years/:id/archive": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/academic-years/:id/deactivate": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/academic-years/:id/unarchive": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/admin/mentors": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/admin/temporary-assignments": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/admin/temporary-assignments/:id/end": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/analytics-v24/snapshot": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/analytics/snapshot": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/attendance": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "MW_400",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/attendance-corrections": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/attendance-corrections-v13": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/attendance-corrections-v13/:id/review": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/attendance-corrections/:id/review": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/attendance-reports-v12/import-offline": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/attendance-reports/import-offline": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/attendance/:sessionId/reattendance": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/attendance/attendance": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "MW_400",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/attendance/attendance/:sessionId/reattendance": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/auth/login": {
+      "ANON": "ALLOW",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/auth/refresh": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/auth/request-password-reset": {
+      "ANON": "ALLOW",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/auth/reset-password": {
+      "ANON": "ALLOW",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/backups-v21/cleanup": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/backups-v21/create": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/backups-v21/restore-test/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/backups-v21/trigger": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/backups/cleanup": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/backups/create": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/backups/restore-test/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/backups/trigger": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/calendar/holidays": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/classes": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/communication-v25/announcements": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/communication-v25/announcements/:id/publish": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/communication-v25/announcements/:id/reply": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/communication-v25/parent/read/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/communication-v25/process-scheduled": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/communication-v25/teacher/read/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/communication/announcements": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/communication/announcements/:id/publish": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/communication/announcements/:id/reply": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/communication/parent/read/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/communication/process-scheduled": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/communication/teacher/read/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/demo-request": {
+      "ANON": "ALLOW",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/designations": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/designations/promote": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/health/email-test": {
+      "ANON": "ALLOW",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/invoices/:id/email": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/leave-policies": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/notification-channels/attendance-email": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/notification-channels/logs/:id/retry": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/notification-channels/process": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/notification-channels/smtp/test": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/notification-channels/test-email": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/notifications-channels/attendance-email": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/notifications-channels/logs/:id/retry": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/notifications-channels/process": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/notifications-channels/smtp/test": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/notifications-channels/test-email": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/notifications-v11/attendance-email": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/notifications-v11/logs/:id/retry": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/notifications-v11/process": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/notifications-v11/smtp/test": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/notifications-v11/test-email": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/notifications/attendance-email": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/notifications/process": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/offline-attendance-v23/sync": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/offline-attendance-v23/sync/:id/process": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/offline-attendance/sync": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/offline-attendance/sync/:id/process": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/parent-onboarding": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/parent-onboarding-v27": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/parent-onboarding-v27/:parentUserId/link": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/parent-onboarding/:parentUserId/link": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/permissions-v18/assign": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/permissions-v18/seed": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/permissions/assign": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/permissions/seed": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/reviews/leaves": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/reviews/photos": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/reviews/teacher-leaves": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/routines": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/school-payment/razorpay/order": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/school-payment/razorpay/verify": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/school-payment/renew/mock-complete": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/school-payment/renew/order": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/school-profile/photo": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/sections": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/security-v20/check-login": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/security-v20/cleanup": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/security-v20/logout-refresh": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/security-v20/validate-password": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/security/check-login": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/security/cleanup": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/security/logout-refresh": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/security/validate-password": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/student-promotions-v16/execute": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/student-promotions-v16/process": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/student-promotions/execute": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/student-promotions/process": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/student/announcements/:id/read": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "ALLOW",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/student/assignments/:id/submit": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "ALLOW",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/student/leave-requests": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "ALLOW",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/students": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/students/:id/send-reset-email": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/students/bulk-delete": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/students/bulk-import": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/subjects": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/subscriptions-v19/run-worker": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/subscriptions/run-worker": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/super-admin/gateway/mock/complete": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/super-admin/gateway/order": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/super-admin/gateway/razorpay/webhook": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/super-admin/mail-service/toggle": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/super-admin/notifications/:id/read": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/super-admin/notifications/read-all": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/super-admin/payments/:id/reconcile": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/super-admin/payments/mock/complete": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/super-admin/payments/order": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/super-admin/payments/razorpay/verify": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/super-admin/plans": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/super-admin/schools": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/super-admin/schools/:id/renew": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/super-admin/smtp/test": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/super-admin/subscriptions/expire-now": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "POST /api/teacher": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "MW_400",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/teacher/:sessionId/reattendance": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/teacher/assignments": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/teacher/assignments/:id/attachments": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/teacher/attendance": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "MW_400",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/teacher/attendance/:sessionId/reattendance": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/teachers": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/teachers/:id/send-reset-email": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/teachers/bulk-delete": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/teachers/bulk-import": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/timetable": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/timetable-v22": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/timetable-v22/entries": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/timetable-v22/entries/:id/publish": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/timetable-v22/periods": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/timetable-v22/periods/template": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/timetable-v22/substitutes": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/timetable/entries": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/timetable/entries/:id/publish": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/timetable/periods": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/timetable/periods/template": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/timetable/substitutes": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /api/webhooks/razorpay/webhook": {
+      "ANON": "ALLOW",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /demo-request": {
+      "ANON": "ALLOW",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /designations": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /designations/promote": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "POST /leave-policies": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/academic-years-v15/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/academic-years/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/attendance/:sessionId/student/:studentId": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/attendance/attendance/:sessionId/student/:studentId": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "MW_400",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/attendance/change-password": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/attendance/photo": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/attendance/profile": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/calendar/holidays/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/calendar/working-days": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/communication-v25/announcements/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/communication-v25/parent/preferences": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/communication/announcements/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/communication/parent/preferences": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/designations/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/invoices/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "PUT /api/leave-policies/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/notification-channels/channels": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/notification-channels/smtp": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/notification-channels/templates/:channel": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/notifications-channels/channels": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/notifications-channels/smtp": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/notifications-channels/templates/:channel": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/notifications-v11/channels": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/notifications-v11/smtp": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/notifications-v11/templates/:channel": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/notifications/settings": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/people-v14/students/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/people-v14/teachers/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/people/students/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/people/teachers/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/reviews/leaves/:id/approve": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/reviews/leaves/:id/reject": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/reviews/leaves/:id/seen": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/reviews/leaves/mark-all-seen": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/reviews/photos/:id/approve": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/reviews/photos/:id/reject": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/reviews/teacher-leaves/:id/approve": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/reviews/teacher-leaves/:id/reject": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "ALLOW",
+      "PARENT": "ALLOW",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/school-profile": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/school-profile/change-password": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/student/change-password": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "ALLOW",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "PUT /api/student/photo": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "ALLOW",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "PUT /api/student/profile": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "ALLOW",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "PUT /api/students/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/subjects/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/super-admin/plans/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "PUT /api/super-admin/schools/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "PUT /api/super-admin/schools/:id/status": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "PUT /api/super-admin/settings": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "PUT /api/super-admin/smtp": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "DENY_403",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "DENY_403"
+    },
+    "PUT /api/teacher/:sessionId/student/:studentId": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/teacher/assignments/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/teacher/assignments/:id/submissions/:submissionId/grade": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/teacher/attendance/:sessionId/student/:studentId": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "MW_400",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/teacher/change-password": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/teacher/mentor/permissions": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/teacher/photo": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/teacher/profile": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "ALLOW",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/teachers/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/teachers/:id/assignments": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "DENY_403",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/timetable-v22/entries/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /api/timetable/entries/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /designations/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    },
+    "PUT /leave-policies/:id": {
+      "ANON": "DENY_401",
+      "SUPER_ADMIN": "ALLOW",
+      "SCHOOL_ADMIN": "ALLOW",
+      "TEACHER": "DENY_403",
+      "STUDENT": "DENY_403",
+      "PARENT": "DENY_403",
+      "SCHOOL_ADMIN_B": "ALLOW"
+    }
+  }
+}

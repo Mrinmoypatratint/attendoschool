@@ -33,6 +33,29 @@ export const api = axios.create({
 });
 
 export const AUTH_EXPIRED_EVENT = 'attendoschool_auth_expired';
+/** RBAC: 403 PERMISSION_DENIED / FEATURE_DISABLED — shown as a toast; the session is never purged. */
+export const ACCESS_DENIED_EVENT = 'attendoschool_access_denied';
+
+function handleAccessErrorCode(status: number, data: any): boolean {
+  const code = data?.code;
+  if (status === 403 && (code === 'PERMISSION_DENIED' || code === 'FEATURE_DISABLED')) {
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(ACCESS_DENIED_EVENT, { detail: { code, message: data?.message, permission: data?.permission, feature: data?.feature } }));
+    return true;
+  }
+  if (status === 401 && code === 'ACCOUNT_DISABLED') {
+    try { sessionStorage.setItem('attendo_logout_reason', 'account_disabled'); } catch {}
+    localStorage.removeItem('attendance_token');
+    localStorage.removeItem('attendance_user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT, { detail: { message: data?.message } }));
+      if (!window.location.hash.includes('/login')) window.location.hash = '#/login?account_disabled=1';
+    }
+    return true;
+  }
+  return false;
+}
 let isHandlingAuthError = false;
 
 // Attach auth token to all outgoing requests
@@ -87,6 +110,11 @@ api.interceptors.response.use(
           window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT, { detail: { message: 'Session updated for optimal performance. Please sign in.' } }));
         }
       }
+    }
+
+    // RBAC access codes (403 PERMISSION_DENIED / FEATURE_DISABLED → toast; 401 ACCOUNT_DISABLED → logout)
+    if (error.response && handleAccessErrorCode(error.response.status, error.response.data)) {
+      return Promise.reject(error);
     }
 
     // Handle 401 unauthorized / token expired
@@ -173,10 +201,15 @@ export async function apiRequest<T = any>(url: string, options?: RequestInit, re
         }
 
         let errorMsg = `HTTP Error ${response.status}`;
+        let errorData: any = null;
         try {
-          const data = await response.json();
-          if (data.message) errorMsg = data.message;
+          errorData = await response.json();
+          if (errorData.message) errorMsg = errorData.message;
         } catch {}
+
+        if (handleAccessErrorCode(response.status, errorData)) {
+          throw new Error(errorMsg);
+        }
 
         if (response.status === 401) {
           localStorage.removeItem('attendance_token');

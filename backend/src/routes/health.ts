@@ -3,6 +3,8 @@ import { checkPostgresHealth, isPostgresConfigured } from '../db';
 import { checkFirestoreHealth, isFirebaseConfigured } from '../firebase';
 import { env } from '../config/env';
 import { testSmtpConnection, getGlobalSmtpConfig, isEmailServiceEnabled } from '../services/notificationService';
+import { getAccessStore } from '../rbac/accessStore';
+import { getEnforcementMode } from '../rbac/accessService';
 
 const r = Router();
 
@@ -24,6 +26,8 @@ r.get('/', async (_req, res) => {
     hosting: 'hostinger_vps',
     version: 'production',
     uptime: process.uptime(),
+    rbac: await getAccessStore().status().catch(() => 'UNKNOWN'),
+    rbacMode: getEnforcementMode(),
     timestamp: new Date().toISOString()
   });
 });
