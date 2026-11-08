@@ -7,9 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "mobile:sync": "npm run build && cap sync",
-    "mobile:android": "npm run build && cap sync android",
-    "mobile:ios": "npm run build && cap sync ios",
+    "mobile:sync": "npm run build -- --mode native && cap sync",
+    "mobile:android": "npm run build -- --mode native && cap sync android",
+    "mobile:ios": "npm run build -- --mode native && cap sync ios",
     "mobile:open:android": "cap open android",
     "mobile:open:ios": "cap open ios"
   },

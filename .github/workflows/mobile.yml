@@ -141,14 +141,17 @@ jobs:
           mkdir -p ios/output
           ditto -c -k --keepParent ios/DerivedData/Build/Products/Debug-iphonesimulator/App.app ios/output/AttendoSchool-simulator.zip
       - name: Launch the app in an iPhone simulator
+        timeout-minutes: 8
         run: |
           DEVICE_ID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; print(next(d['udid'] for ds in json.load(sys.stdin)['devices'].values() for d in ds if 'iPhone' in d['name']))")
           xcrun simctl boot "$DEVICE_ID"
           xcrun simctl bootstatus "$DEVICE_ID" -b
           xcrun simctl install "$DEVICE_ID" ios/DerivedData/Build/Products/Debug-iphonesimulator/App.app
           xcrun simctl launch "$DEVICE_ID" online.attendoschool.app
-          sleep 5
+          sleep 15
           xcrun simctl io "$DEVICE_ID" screenshot ios/output/AttendoSchool-ios-login.png
+          xcrun simctl spawn "$DEVICE_ID" log show --last 2m --style compact --predicate 'process == "App"' > ios/output/native-startup.log
+          swift ../scripts/mobile/assert-ios-screen.swift ios/output/AttendoSchool-ios-login.png
       - name: Import distribution signing when requested
         if: inputs.signed_release
         env:
@@ -177,11 +180,13 @@ jobs:
           fi
           ditto -c -k --keepParent ios/output/AttendoSchool.xcarchive ios/output/AttendoSchool-device-archive.zip
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: ios-${{ inputs.signed_release && 'signed' || 'simulator-and-unsigned' }}-${{ github.run_number }}
           path: |
             frontend/ios/output/*.zip
             frontend/ios/output/*.png
+            frontend/ios/output/*.log
             frontend/ios/output/store/*.ipa
           if-no-files-found: error
           retention-days: 14

@@ -1,5 +1,15 @@
 import { test, expect } from '@playwright/test';
 import { nativeApiUrl, PRODUCTION_API_URL } from '../../frontend/src/platform/apiConfig';
+import { nativeEntryHtml } from '../../frontend/scripts/nativeHtml';
+
+test('native entry keeps local assets and removes blocking third-party startup dependencies', () => {
+  const html = nativeEntryHtml('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant"><link rel="preconnect" href="https://fonts.gstatic.com"><script src="https://checkout.razorpay.com/v1/checkout.js"></script><script type="module" src="./assets/index.js"></script><link rel="stylesheet" href="./assets/index.css">');
+  expect(html).not.toContain('fonts.googleapis.com');
+  expect(html).not.toContain('fonts.gstatic.com');
+  expect(html).toContain('<script async src="https://checkout.razorpay.com/v1/checkout.js">');
+  expect(html).toContain('src="./assets/index.js"');
+  expect(html).toContain('href="./assets/index.css"');
+});
 
 test('native API defaults to the same production backend as the web application', () => {
   expect(nativeApiUrl()).toBe(PRODUCTION_API_URL);
