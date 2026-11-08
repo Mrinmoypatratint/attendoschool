@@ -12,6 +12,7 @@ const envDir = fs.existsSync(path.resolve(__dirname, '.env'))
 export default defineConfig(({ mode }) => ({
   base: './',
   envDir,
+  build: mode === 'native' ? { target: ['chrome83', 'safari15'] } : undefined,
   plugins: [react(), {
     name: 'native-offline-shell',
     transformIndexHtml(html: string) {
