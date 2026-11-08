@@ -1,0 +1,190 @@
+[
+  {
+    "theme": "light",
+    "viewport": 1440,
+    "width": 1440,
+    "scroll": 1440,
+    "bodyHeight": 900,
+    "rootPrimary": "#e11d55",
+    "loginPrimary": "#292d29",
+    "roles": [
+      {
+        "name": "Administrator\nCentral Platform Admin",
+        "height": 82
+      },
+      {
+        "name": "School Admin\nPrincipal & Administration",
+        "height": 82
+      },
+      {
+        "name": "Teacher\nFaculty & Routine",
+        "height": 82
+      },
+      {
+        "name": "Student\nStudent & Parent Portal",
+        "height": 82
+      }
+    ],
+    "credentialChecks": [
+      {
+        "id": "role-select-admin",
+        "noOverflow": true
+      },
+      {
+        "id": "role-select-school-admin",
+        "noOverflow": true
+      },
+      {
+        "id": "role-select-teacher",
+        "noOverflow": true
+      },
+      {
+        "id": "role-select-student",
+        "noOverflow": true
+      }
+    ],
+    "forgotDialogVisible": true,
+    "pageErrors": []
+  },
+  {
+    "theme": "light",
+    "viewport": 360,
+    "width": 360,
+    "scroll": 360,
+    "bodyHeight": 800,
+    "rootPrimary": "#e11d55",
+    "loginPrimary": "#292d29",
+    "roles": [
+      {
+        "name": "Administrator\nCentral Platform Admin",
+        "height": 76.046875
+      },
+      {
+        "name": "School Admin\nPrincipal & Administration",
+        "height": 76.046875
+      },
+      {
+        "name": "Teacher\nFaculty & Routine",
+        "height": 76.046875
+      },
+      {
+        "name": "Student\nStudent & Parent Portal",
+        "height": 76
+      }
+    ],
+    "credentialChecks": [
+      {
+        "id": "role-select-admin",
+        "noOverflow": true
+      },
+      {
+        "id": "role-select-school-admin",
+        "noOverflow": true
+      },
+      {
+        "id": "role-select-teacher",
+        "noOverflow": true
+      },
+      {
+        "id": "role-select-student",
+        "noOverflow": true
+      }
+    ],
+    "forgotDialogVisible": true,
+    "pageErrors": []
+  },
+  {
+    "theme": "dark",
+    "viewport": 1440,
+    "width": 1440,
+    "scroll": 1440,
+    "bodyHeight": 900,
+    "rootPrimary": "#e11d55",
+    "loginPrimary": "#eeeee8",
+    "roles": [
+      {
+        "name": "Administrator\nCentral Platform Admin",
+        "height": 82
+      },
+      {
+        "name": "School Admin\nPrincipal & Administration",
+        "height": 82
+      },
+      {
+        "name": "Teacher\nFaculty & Routine",
+        "height": 82
+      },
+      {
+        "name": "Student\nStudent & Parent Portal",
+        "height": 82
+      }
+    ],
+    "credentialChecks": [
+      {
+        "id": "role-select-admin",
+        "noOverflow": true
+      },
+      {
+        "id": "role-select-school-admin",
+        "noOverflow": true
+      },
+      {
+        "id": "role-select-teacher",
+        "noOverflow": true
+      },
+      {
+        "id": "role-select-student",
+        "noOverflow": true
+      }
+    ],
+    "forgotDialogVisible": true,
+    "pageErrors": []
+  },
+  {
+    "theme": "dark",
+    "viewport": 360,
+    "width": 360,
+    "scroll": 360,
+    "bodyHeight": 800,
+    "rootPrimary": "#e11d55",
+    "loginPrimary": "#eeeee8",
+    "roles": [
+      {
+        "name": "Administrator\nCentral Platform Admin",
+        "height": 76.046875
+      },
+      {
+        "name": "School Admin\nPrincipal & Administration",
+        "height": 76.046875
+      },
+      {
+        "name": "Teacher\nFaculty & Routine",
+        "height": 76.046875
+      },
+      {
+        "name": "Student\nStudent & Parent Portal",
+        "height": 76
+      }
+    ],
+    "credentialChecks": [
+      {
+        "id": "role-select-admin",
+        "noOverflow": true
+      },
+      {
+        "id": "role-select-school-admin",
+        "noOverflow": true
+      },
+      {
+        "id": "role-select-teacher",
+        "noOverflow": true
+      },
+      {
+        "id": "role-select-student",
+        "noOverflow": true
+      }
+    ],
+    "forgotDialogVisible": true,
+    "pageErrors": []
+  }
+]

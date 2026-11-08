@@ -372,3 +372,13 @@ Screenshots and measurements: [artifacts/ui-reskin](artifacts/ui-reskin/), [visu
 - Exams & Results: no active `/student/exams` route was added or reskinned. A legacy `StudentExams.tsx` file and related references exist; the handover’s statement that no exam code exists was too broad.
 - Fees collection for schools: no module in this scope (platform billing/invoices already exist and were restyled).
 - Library and Transport: no modules in this checkout to restyle.
+
+
+## Login refinement — 2026-11-08
+
+- Owner requested a natural, professional login rather than bright/generated-looking styling.
+- Login-only paper/charcoal tokens replace the empty navy panel and pink decorative accents. A native Georgia tagline pairs with the existing Assistant interface font; there are no new images, gradients, glows, shadows, dependencies or font downloads.
+- The existing four roles are full-width rows with neutral line icons. Mobile keeps the same hierarchy and visible descriptions. Credential controls are 48px tall; role targets are at least 76px tall.
+- Only `frontend/src/theme/auth.css` and `frontend/src/theme/tokens.css` change application styling. API calls, handlers, fields, IDs, guards, routes and visible source strings are unchanged. Authenticated dashboard tokens retain their original palette.
+- Frontend build passes. Playwright: **8 passed / the same 10 existing navigation-layout failures**, zero new failures. Four roles × light/dark × desktop/mobile = **16 credential-flow checks**; password visibility, changing roles and reset-dialog opening pass. No horizontal overflow or page errors in those mocked checks; no real sign-in/reset request was sent.
+- Preview/evidence: `artifacts/login-refinement/` (role selection and credential screenshots at 1440px and 360px in both themes, plus verification/test JSON).

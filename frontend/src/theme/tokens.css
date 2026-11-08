@@ -128,6 +128,33 @@ html[data-theme="light"],
   --font: 'Assistant', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
+/* Login-only paper and ink; authenticated dashboard colours are unchanged. */
+.as-simple-page {
+  --app-bg: #f5f4ef;
+  --background: #f5f4ef;
+  --card: #ffffff;
+  --foreground: #292d29;
+  --muted-foreground: #676d65;
+  --secondary: #f2f2ed;
+  --border: #dddfd6;
+  --input: #c9cdc3;
+  --accent: #f2f2ed;
+  --primary: var(--foreground);
+  --ring: var(--foreground);
+}
+[data-theme="dark"] .as-simple-page,
+.dark .as-simple-page {
+  --app-bg: #161616;
+  --background: #161616;
+  --card: #1f1f1f;
+  --foreground: #eeeee8;
+  --muted-foreground: #a7aaa2;
+  --secondary: #282828;
+  --border: #363636;
+  --input: #50504c;
+  --accent: #282828;
+}
+
 /* ── Dark (the app already supports dark mode) — neutral greys only ── */
 [data-theme="dark"],
 .dark,
