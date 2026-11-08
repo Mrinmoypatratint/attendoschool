@@ -47,6 +47,9 @@ For a separate staging server only, set `VITE_NATIVE_API_URL` when building.
 It must be an absolute HTTPS API URL. The default is the production server.
 Native runtime handling includes Android back navigation and save/share sheets
 for existing PDF, attachment and export download controls.
+The `native` build mode uses local font fallbacks and loads checkout asynchronously,
+so startup does not wait for third-party font or payment servers. The iOS smoke
+test captures the rendered screen and fails if the WebView remains blank.
 
 ## CI artifacts
 
