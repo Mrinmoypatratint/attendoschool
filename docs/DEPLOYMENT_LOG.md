@@ -50,3 +50,7 @@ Result:         SUCCESS / REVIEW NEEDED
 > Deployment history is automatically tracked in GitHub Actions.
 > Each run's Step Summary contains the complete deployment record.
 > Build artifacts are retained for 30 days for rollback capability.
+
+| Date | Change | Run | Notes |
+| --- | --- | --- | --- |
+| 2026-11-08 | RBAC & feature control + 3 security fixes (#83, `7d70b95`) | CD 42458750861 ✅ | Live `/api/health`: `rbac: NOT_INSTALLED`, `rbacMode: shadow` — migration 051 not yet applied (manual step, see docs/rbac/ROLLOUT.md). |
