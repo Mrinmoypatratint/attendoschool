@@ -86,3 +86,289 @@ RBAC `rbac/components.tsx` (ToggleSwitch, TriState, ConfirmChangeModal, SourceBa
 
 ## Needs owner decision
 (see "Results")
+
+## Results
+
+Continuation completed locally on `feature/ui-reskin`, 2026-11-08. No push, merge, backend change, dependency installation, test edit, API/route/guard/handler/state change, or visible-string rewrite was performed in this continuation. The two A commits preserve the inherited work described in `ui_update.md`, including its existing markup adjustments.
+
+### Changes and local commits
+
+| Task | Local commit | Build |
+| --- | --- | --- |
+| A1 — theme | `3a5eb59` | Pass |
+| A2 — inherited mechanical sweep | `35aaab3` | Pass |
+| B — overview metrics | `1f36fc5` | Pass |
+| C — topbars | `b73263d` | Pass |
+| D — fonts | `2924801` | Pass |
+| E — student guidance | `dc0d9c7` | Pass |
+| F — admin | `6f27a80` | Pass |
+| F — teacher | `e8a3785` | Pass |
+| F — student | `19fa5d8` | Pass |
+| F — super-admin | `6e97520` | Pass |
+| G — grids/attendance | `ca31dcd` | Pass |
+| H — dark surfaces | `7cc744c` | Pass |
+| I — mobile review and final surface fixes | `c0a0e69` | Pass |
+| J — results record | This documentation commit | Pass (final frontend build) |
+
+Exact files per task:
+
+<details>
+<summary>A1 — theme (6 files)</summary>
+
+- `frontend/index.html`
+- `frontend/src/main.tsx`
+- `frontend/src/theme/auth.css`
+- `frontend/src/theme/components.css`
+- `frontend/src/theme/tokens.css`
+- `frontend/tailwind.config.js`
+
+</details>
+
+<details>
+<summary>A2 — inherited mechanical sweep (67 files)</summary>
+
+- `frontend/src/App.tsx`
+- `frontend/src/components/StudentProfileHoverCard.tsx`
+- `frontend/src/components/TeacherProfileHoverCard.tsx`
+- `frontend/src/components/ThreeDBackground.tsx`
+- `frontend/src/components/Toast.tsx`
+- `frontend/src/components/preview/DestructiveConfirmModal.tsx`
+- `frontend/src/components/student/StudentLayout.tsx`
+- `frontend/src/components/student/StudentSearchBar.tsx`
+- `frontend/src/components/student/student-portal.css`
+- `frontend/src/pages/admin/AcademicYears.tsx`
+- `frontend/src/pages/admin/Analytics.tsx`
+- `frontend/src/pages/admin/AttendanceReports.tsx`
+- `frontend/src/pages/admin/Communication.tsx`
+- `frontend/src/pages/admin/Designations.tsx`
+- `frontend/src/pages/admin/LeaveApprove.tsx`
+- `frontend/src/pages/admin/LeavePolicy.tsx`
+- `frontend/src/pages/admin/PeopleManagement.tsx`
+- `frontend/src/pages/admin/Permissions.tsx`
+- `frontend/src/pages/admin/PhotoApprove.tsx`
+- `frontend/src/pages/admin/SmtpLogs.tsx`
+- `frontend/src/pages/admin/StudentPromotion.tsx`
+- `frontend/src/pages/admin/TeacherLeaveApprove.tsx`
+- `frontend/src/pages/admin/Timetable.tsx`
+- `frontend/src/pages/landing/LandingCapabilities.tsx`
+- `frontend/src/pages/landing/LandingDemo.tsx`
+- `frontend/src/pages/landing/LandingFlow.tsx`
+- `frontend/src/pages/landing/LandingFooter.tsx`
+- `frontend/src/pages/landing/LandingHero.tsx`
+- `frontend/src/pages/landing/LandingNav.tsx`
+- `frontend/src/pages/landing/LandingRoles.tsx`
+- `frontend/src/pages/landing/LandingTrust.tsx`
+- `frontend/src/pages/landing/LandingWhy.tsx`
+- `frontend/src/pages/landing/components/ExplodedLayers3D.tsx`
+- `frontend/src/pages/landing/components/FeaturePreviewScreens.tsx`
+- `frontend/src/pages/landing/components/ProductDashboard3D.tsx`
+- `frontend/src/pages/landing/components/RolePortalScreens.tsx`
+- `frontend/src/pages/landing/landing.css`
+- `frontend/src/pages/student/StudentAnnouncements.tsx`
+- `frontend/src/pages/student/StudentAssignments.tsx`
+- `frontend/src/pages/student/StudentAttendance.tsx`
+- `frontend/src/pages/student/StudentDashboard.tsx`
+- `frontend/src/pages/student/StudentExams.tsx`
+- `frontend/src/pages/student/StudentLeaveRequest.tsx`
+- `frontend/src/pages/student/StudentProfile.tsx`
+- `frontend/src/pages/student/StudentTimetable.tsx`
+- `frontend/src/pages/teacher/ClassMentorWorkspace.tsx`
+- `frontend/src/pages/teacher/TeacherAnnouncements.tsx`
+- `frontend/src/pages/teacher/TeacherAssignments.tsx`
+- `frontend/src/pages/teacher/TeacherLeaveRequest.tsx`
+- `frontend/src/pages/teacher/TeacherProfile.tsx`
+- `frontend/src/styles.css`
+- `frontend/src/super-admin/AuditLogsViewer.tsx`
+- `frontend/src/super-admin/BackupsManagement.tsx`
+- `frontend/src/super-admin/InvoicesManagement.tsx`
+- `frontend/src/super-admin/MonitoringHealth.tsx`
+- `frontend/src/super-admin/PaymentsLedger.tsx`
+- `frontend/src/super-admin/PeopleDirectory.tsx`
+- `frontend/src/super-admin/PlatformAnalytics.tsx`
+- `frontend/src/super-admin/PlatformSettings.tsx`
+- `frontend/src/super-admin/ReportsManagement.tsx`
+- `frontend/src/super-admin/RolesPermissions.tsx`
+- `frontend/src/super-admin/SchoolsManagement.tsx`
+- `frontend/src/super-admin/SecurityCenter.tsx`
+- `frontend/src/super-admin/SubscriptionsManagement.tsx`
+- `frontend/src/super-admin/SuperAdminLayout.tsx`
+- `frontend/src/super-admin/SuperAdminOverview.tsx`
+- `frontend/src/super-admin/super-admin.css`
+
+</details>
+
+<details>
+<summary>B — overview metrics (2 files)</summary>
+
+- `frontend/src/super-admin/SuperAdminOverview.tsx`
+- `frontend/src/super-admin/super-admin.css`
+
+</details>
+
+<details>
+<summary>C — topbars (1 files)</summary>
+
+- `frontend/src/theme/components.css`
+
+</details>
+
+<details>
+<summary>D — fonts (2 files)</summary>
+
+- `frontend/index.html`
+- `frontend/src/styles.css`
+
+</details>
+
+<details>
+<summary>E — student guidance (1 files)</summary>
+
+- `frontend/src/theme/components.css`
+
+</details>
+
+<details>
+<summary>F — admin (14 files)</summary>
+
+- `frontend/src/pages/admin/AcademicYears.tsx`
+- `frontend/src/pages/admin/Analytics.tsx`
+- `frontend/src/pages/admin/AttendanceReports.tsx`
+- `frontend/src/pages/admin/Communication.tsx`
+- `frontend/src/pages/admin/Designations.tsx`
+- `frontend/src/pages/admin/LeaveApprove.tsx`
+- `frontend/src/pages/admin/LeavePolicy.tsx`
+- `frontend/src/pages/admin/PeopleManagement.tsx`
+- `frontend/src/pages/admin/Permissions.tsx`
+- `frontend/src/pages/admin/PhotoApprove.tsx`
+- `frontend/src/pages/admin/SmtpLogs.tsx`
+- `frontend/src/pages/admin/StudentPromotion.tsx`
+- `frontend/src/pages/admin/TeacherLeaveApprove.tsx`
+- `frontend/src/pages/admin/Timetable.tsx`
+
+</details>
+
+<details>
+<summary>F — teacher (5 files)</summary>
+
+- `frontend/src/pages/teacher/ClassMentorWorkspace.tsx`
+- `frontend/src/pages/teacher/TeacherAnnouncements.tsx`
+- `frontend/src/pages/teacher/TeacherAssignments.tsx`
+- `frontend/src/pages/teacher/TeacherLeaveRequest.tsx`
+- `frontend/src/pages/teacher/TeacherProfile.tsx`
+
+</details>
+
+<details>
+<summary>F — student (5 files)</summary>
+
+- `frontend/src/pages/student/StudentAnnouncements.tsx`
+- `frontend/src/pages/student/StudentAssignments.tsx`
+- `frontend/src/pages/student/StudentDashboard.tsx`
+- `frontend/src/pages/student/StudentProfile.tsx`
+- `frontend/src/pages/student/StudentTimetable.tsx`
+
+</details>
+
+<details>
+<summary>F — super-admin (15 files)</summary>
+
+- `frontend/src/super-admin/AuditLogsViewer.tsx`
+- `frontend/src/super-admin/BackupsManagement.tsx`
+- `frontend/src/super-admin/InvoicesManagement.tsx`
+- `frontend/src/super-admin/MonitoringHealth.tsx`
+- `frontend/src/super-admin/PaymentsLedger.tsx`
+- `frontend/src/super-admin/PeopleDirectory.tsx`
+- `frontend/src/super-admin/PlatformAnalytics.tsx`
+- `frontend/src/super-admin/PlatformSettings.tsx`
+- `frontend/src/super-admin/ReportsManagement.tsx`
+- `frontend/src/super-admin/RolesPermissions.tsx`
+- `frontend/src/super-admin/SchoolsManagement.tsx`
+- `frontend/src/super-admin/SecurityCenter.tsx`
+- `frontend/src/super-admin/SubscriptionsManagement.tsx`
+- `frontend/src/super-admin/SuperAdminLayout.tsx`
+- `frontend/src/super-admin/SuperAdminOverview.tsx`
+
+</details>
+
+<details>
+<summary>G — grids/attendance (5 files)</summary>
+
+- `frontend/src/App.tsx`
+- `frontend/src/pages/admin/AcademicYears.tsx`
+- `frontend/src/pages/admin/Timetable.tsx`
+- `frontend/src/pages/student/StudentTimetable.tsx`
+- `frontend/src/theme/components.css`
+
+</details>
+
+<details>
+<summary>H — dark surfaces (7 files)</summary>
+
+- `artifacts/ui-reskin/parent-dark-desktop.png`
+- `artifacts/ui-reskin/school_admin-dark-desktop.png`
+- `artifacts/ui-reskin/student-dark-desktop.png`
+- `artifacts/ui-reskin/super_admin-dark-desktop.png`
+- `artifacts/ui-reskin/teacher-dark-desktop.png`
+- `artifacts/ui-reskin/visual-results.json`
+- `frontend/src/theme/components.css`
+
+</details>
+
+<details>
+<summary>I — mobile review and final surface fixes (10 files)</summary>
+
+- `artifacts/ui-reskin/parent-dark-desktop.png`
+- `artifacts/ui-reskin/parent-dark-mobile.png`
+- `artifacts/ui-reskin/school_admin-dark-desktop.png`
+- `artifacts/ui-reskin/school_admin-dark-mobile.png`
+- `artifacts/ui-reskin/student-dark-mobile.png`
+- `artifacts/ui-reskin/super_admin-dark-desktop.png`
+- `artifacts/ui-reskin/super_admin-dark-mobile.png`
+- `artifacts/ui-reskin/teacher-dark-desktop.png`
+- `artifacts/ui-reskin/teacher-dark-mobile.png`
+- `frontend/src/theme/components.css`
+
+</details>
+
+J changes `UI_RESKIN_PLAN.md` and records `artifacts/ui-reskin/verification-summary.json`.
+
+### Verification
+
+| Check | Before | After |
+| --- | --- | --- |
+| Frontend `tsc -b && vite build` | Pass | Pass after each task/module and final fixes |
+| Full Playwright suite (18 cases) | 8 passed / 10 failed | 8 passed / 10 failed; zero new failures |
+| Failure identity | 10 navigation-layout cases | Same 10 cases; unchanged pathname/HashRouter mismatch |
+| Protected TSX structure | Snapshot after inherited sweep (`35aaab3`) | Unchanged after abstracting className/literal inline-style values; conditions retained |
+| Test/backend files | Unchanged | Unchanged |
+| Dark screenshots | Prior handover only | Five roles, 1440 × 1000, settled after welcome animation |
+| Mobile screenshots | Prior handover only | Five roles, 360 × 800 |
+| Page-level mobile overflow | Prior handover only | 17/17 checked routes: scrollWidth = clientWidth = 360 |
+| Browser page errors with mocked API | Not measured in this continuation baseline | Zero on all five role contexts |
+| Dark canvas/header | Mixed legacy colours | Body/main `rgb(18,18,18)`; topbar `rgb(28,28,28)` across all five roles |
+| Topbar dimensions | Mixed/inset | All five: height 64px, radius 0; mobile layout corrected |
+| Dev server | Inherited server on 5173 | Verification server stopped after checks |
+
+Commands used `npm.cmd` / `npx.cmd` because PowerShell blocks npm.ps1. An intermediate admin colour replacement failed typechecking (TS2367); conditional tests were restored before that module was committed. Final builds pass. Vite retains its existing large-chunk warning; bundle splitting is outside visual scope.
+
+All `/api/**` requests in the visual checks returned `[]`; fake users/tokens were local browser fixtures. Screenshots exercise empty/fallback states, not real database data, delivery/payment behavior, populated-grid rendering, or every status variation. No real user account was used.
+
+Screenshots and measurements: [artifacts/ui-reskin](artifacts/ui-reskin/), [visual-results.json](artifacts/ui-reskin/visual-results.json), [verification-summary.json](artifacts/ui-reskin/verification-summary.json).
+
+### Needs owner decision / deferred changes
+
+- Decorative emoji remain in visible strings; no removal or wording change was made.
+- Landing pages retain the inherited mechanical palette sweep. Further marketing/3D redesign awaits a scope decision.
+- Demo credentials in README and the existing demo credential flow were not changed; credential/security remediation is outside this visual-only pass.
+- Attendance currently has Present, Left Early and Absent actions plus existing late-arrival flow. Creating literal P/A/L/H actions or renaming these controls would need text/behavior changes, so no new action was added.
+- Grids without an existing today-state hook cannot gain a truthful current-date highlight through CSS alone. Existing selected-day styles and existing today hooks were preserved; adding date logic is deferred.
+- Status palettes returned by helper functions/configuration objects, SVG paint props, and remaining colour expressions outside literal inline style values were left alone to respect the TSX edit boundary. Full semantic remapping of those helpers needs separately approved scope.
+- DM Sans/Inter/Caveat/Kalam remain loaded because they still have actual source references. Orbitron, Share Tech Mono and the unused DM Serif font request were removed; Assistant remains the theme font.
+- The 10 navigation tests still use pathname URLs with HashRouter; no test was modified. Correcting that mismatch needs a separate functional/testing task.
+- Before any future push, reconcile the branch with current main as described in the handover; no merge/push/deployment was attempted.
+
+### Skipped modules
+
+- Exams & Results: no active `/student/exams` route was added or reskinned. A legacy `StudentExams.tsx` file and related references exist; the handover’s statement that no exam code exists was too broad.
+- Fees collection for schools: no module in this scope (platform billing/invoices already exist and were restyled).
+- Library and Transport: no modules in this checkout to restyle.
