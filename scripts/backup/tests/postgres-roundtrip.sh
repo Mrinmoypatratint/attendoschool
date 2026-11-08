@@ -23,7 +23,9 @@ if [[ -n "$local_pg" ]]; then
   pg_cmd=()
 else
   docker run -d --name "$container" -e POSTGRES_PASSWORD=fixture-db-password -e POSTGRES_DB=fixture -v "$fixture:$fixture" postgres:16-bookworm >/dev/null
-  for _ in {1..60}; do docker exec "$container" pg_isready -U postgres >/dev/null 2>&1 && break; sleep 1; done
+  # The image starts a temporary Unix-socket server during initialization.
+  # Only its final server accepts TCP, so do not use socket readiness here.
+  for _ in {1..60}; do docker exec "$container" pg_isready -h 127.0.0.1 -U postgres -d fixture >/dev/null 2>&1 && break; sleep 1; done
   export BACKUP_TEST_DB_HOST=127.0.0.1
   pg_cmd=(docker exec "$container")
 for tool in psql pg_dump pg_restore; do
