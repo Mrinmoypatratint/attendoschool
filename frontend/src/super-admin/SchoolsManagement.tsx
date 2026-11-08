@@ -1094,22 +1094,22 @@ export function SchoolsManagement({ initialCreateOpen = false }: SchoolsManageme
       {deleteSchool && (
         <div className="sa-modal-backdrop" onClick={() => !deleteBusy && setDeleteSchool(null)}>
           <div className="sa-modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: '490px' }}>
-            <div className="sa-modal-header" style={{ borderBottomColor: '#f2c0c0' }}>
+            <div className="sa-modal-header" style={{ borderBottomColor: "var(--border)" }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{
                   width: '36px',
                   height: '36px',
                   borderRadius: '50%',
-                  background: '#fbeaea',
+                  background: "var(--card)",
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#d32f2f'
+                  color: "var(--destructive)"
                 }}>
                   <Trash2 size={18} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, color: '#7e1b1b', fontSize: '16px' }}>Delete School Institution</h3>
+                  <h3 style={{ margin: 0, color: "var(--destructive)", fontSize: '16px' }}>Delete School Institution</h3>
                   <span className="sa-modal-subtitle">Permanent & Irreversible Operation</span>
                 </div>
               </div>
@@ -1117,22 +1117,22 @@ export function SchoolsManagement({ initialCreateOpen = false }: SchoolsManageme
             </div>
             <div style={{ padding: '16px 0' }}>
               <div style={{
-                background: '#fbeaea',
-                border: '1px solid #f2c0c0',
+                background: "var(--card)",
+                border: "1px solid var(--border)",
                 borderRadius: '4px',
                 padding: '12px 14px',
                 marginBottom: '16px'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                   <AlertTriangle size={16} color="#d32f2f" />
-                  <strong style={{ color: '#7e1b1b', fontSize: '13px' }}>Warning: Destructive Database Action</strong>
+                  <strong style={{ color: "var(--destructive)", fontSize: '13px' }}>Warning: Destructive Database Action</strong>
                 </div>
-                <p style={{ margin: 0, fontSize: '12.5px', color: '#541212', lineHeight: 1.5 }}>
+                <p style={{ margin: 0, fontSize: '12.5px', color: "var(--destructive)", lineHeight: 1.5 }}>
                   You are about to permanently delete <strong>{deleteSchool.name}</strong> ({deleteSchool.code}).
                   All associated records, including administrator logins, teachers, student rosters, classes, timetable routines, and attendance sessions will be completely purged from the database.
                 </p>
               </div>
-              <p style={{ fontSize: '13px', color: '#535766', margin: 0 }}>
+              <p style={{ fontSize: '13px', color: "var(--muted-foreground)", margin: 0 }}>
                 Are you sure you want to proceed with deleting this school?
               </p>
             </div>

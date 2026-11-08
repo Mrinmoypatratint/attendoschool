@@ -135,7 +135,7 @@ export const PaymentsLedger: React.FC = () => {
       </div>
 
       {actionSuccess && (
-        <div style={{ margin: '14px 0', padding: '12px 16px', borderRadius: '4px', background: 'rgba(3, 128, 106, 0.1)', color: '#03806a', border: '1px solid rgba(3, 128, 106, 0.2)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ margin: '14px 0', padding: '12px 16px', borderRadius: '4px', background: "var(--secondary)", color: "var(--success)", border: "1px solid var(--border)", fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="20 6 9 17 4 12" />
           </svg>
@@ -144,7 +144,7 @@ export const PaymentsLedger: React.FC = () => {
       )}
 
       {error && (
-        <div className="error-banner" style={{ margin: '16px 0', padding: '12px 16px', borderRadius: '4px', background: 'rgba(211, 47, 47, 0.1)', color: '#d32f2f', border: '1px solid rgba(211, 47, 47, 0.2)' }}>
+        <div className="error-banner" style={{ margin: '16px 0', padding: '12px 16px', borderRadius: '4px', background: "var(--secondary)", color: "var(--destructive)", border: "1px solid var(--border)" }}>
           {error}
         </div>
       )}
@@ -152,49 +152,49 @@ export const PaymentsLedger: React.FC = () => {
       {/* KPI Cards Strip */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', margin: '20px 0' }}>
         <div className="card" style={{ padding: '18px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: '#696e79', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Total Settled Revenue
           </div>
-          <div style={{ fontSize: '24px', fontWeight: '800', color: '#03806a', marginTop: '6px' }}>
+          <div style={{ fontSize: '24px', fontWeight: '800', color: "var(--success)", marginTop: '6px' }}>
             ₹{totalSettled.toLocaleString('en-IN')}
           </div>
-          <div style={{ fontSize: '12px', color: '#696e79', marginTop: '4px' }}>
+          <div style={{ fontSize: '12px', color: "var(--muted-foreground)", marginTop: '4px' }}>
             Across verified tenant accounts
           </div>
         </div>
 
         <div className="card" style={{ padding: '18px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: '#696e79', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Pending Invoices
           </div>
-          <div style={{ fontSize: '24px', fontWeight: '800', color: pendingCount > 0 ? '#e9a23b' : '#1c1f2e', marginTop: '6px' }}>
+          <div style={{ fontSize: '24px', fontWeight: '800', color: pendingCount > 0 ? "var(--warning)" : "var(--foreground)", marginTop: '6px' }}>
             {pendingCount}
           </div>
-          <div style={{ fontSize: '12px', color: '#696e79', marginTop: '4px' }}>
+          <div style={{ fontSize: '12px', color: "var(--muted-foreground)", marginTop: '4px' }}>
             Awaiting bank or gateway capture
           </div>
         </div>
 
         <div className="card" style={{ padding: '18px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: '#696e79', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Reconciled Transactions
           </div>
-          <div style={{ fontSize: '24px', fontWeight: '800', color: '#e11d55', marginTop: '6px' }}>
+          <div style={{ fontSize: '24px', fontWeight: '800', color: "var(--primary)", marginTop: '6px' }}>
             {reconciledCount} / {payments.length}
           </div>
-          <div style={{ fontSize: '12px', color: '#696e79', marginTop: '4px' }}>
+          <div style={{ fontSize: '12px', color: "var(--muted-foreground)", marginTop: '4px' }}>
             Audit verification matched
           </div>
         </div>
 
         <div className="card" style={{ padding: '18px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: '#696e79', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Default Currency & Gateway
           </div>
-          <div style={{ fontSize: '24px', fontWeight: '800', color: '#1c1f2e', marginTop: '6px' }}>
+          <div style={{ fontSize: '24px', fontWeight: '800', color: "var(--foreground)", marginTop: '6px' }}>
             INR · Razorpay
           </div>
-          <div style={{ fontSize: '12px', color: '#03806a', marginTop: '4px' }}>
+          <div style={{ fontSize: '12px', color: "var(--success)", marginTop: '4px' }}>
             18% GST auto-computed
           </div>
         </div>
@@ -227,7 +227,7 @@ export const PaymentsLedger: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span style={{ fontSize: '13px', color: '#696e79', fontWeight: '500' }}>Status:</span>
+            <span style={{ fontSize: '13px', color: "var(--muted-foreground)", fontWeight: '500' }}>Status:</span>
             <select
               className="form-control"
               style={{ width: '130px' }}
@@ -242,7 +242,7 @@ export const PaymentsLedger: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span style={{ fontSize: '13px', color: '#696e79', fontWeight: '500' }}>Reconciliation:</span>
+            <span style={{ fontSize: '13px', color: "var(--muted-foreground)", fontWeight: '500' }}>Reconciliation:</span>
             <select
               className="form-control"
               style={{ width: '160px' }}
@@ -291,14 +291,14 @@ export const PaymentsLedger: React.FC = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: '#696e79' }}>
-                    <div className="spinner" style={{ margin: '0 auto 12px', width: '28px', height: '28px', border: '3px solid #eaeaec', borderTopColor: '#e11d55', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: "var(--muted-foreground)" }}>
+                    <div className="spinner" style={{ margin: '0 auto 12px', width: '28px', height: '28px', border: "3px solid var(--border)", borderTopColor: "var(--border)", borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
                     Loading payment records...
                   </td>
                 </tr>
               ) : filteredPayments.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: '#696e79' }}>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: "var(--muted-foreground)" }}>
                     No payment transactions matching the selected criteria.
                   </td>
                 </tr>
@@ -310,32 +310,32 @@ export const PaymentsLedger: React.FC = () => {
                   return (
                     <tr key={p.id}>
                       <td>
-                        <span style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: '600', color: '#3e4152' }}>
+                        <span style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)" }}>
                           {p.id.length > 20 ? `${p.id.slice(0, 16)}...` : p.id}
                         </span>
                         {p.provider_order_id && (
-                          <div style={{ fontSize: '11px', color: '#94969f' }}>
+                          <div style={{ fontSize: '11px', color: "var(--muted-foreground)" }}>
                             Ref: {p.provider_order_id}
                           </div>
                         )}
                       </td>
                       <td>
-                        <div style={{ fontWeight: '600', color: '#1c1f2e' }}>
+                        <div style={{ fontWeight: '600', color: "var(--foreground)" }}>
                           {p.school_name || '—'}
                         </div>
                       </td>
                       <td>
-                        <span style={{ fontSize: '12px', color: '#e11d55', fontWeight: '600' }}>
+                        <span style={{ fontSize: '12px', color: "var(--primary)", fontWeight: '600' }}>
                           {p.plan_name || 'Enterprise'}
                         </span>
                       </td>
                       <td>
-                        <span style={{ fontWeight: '700', color: '#1c1f2e' }}>
+                        <span style={{ fontWeight: '700', color: "var(--foreground)" }}>
                           ₹{Number(p.amount || 0).toLocaleString('en-IN')}
                         </span>
                       </td>
                       <td>
-                        <span className="badge" style={{ background: '#f5f5f6', color: '#535766' }}>
+                        <span className="badge" style={{ background: "var(--secondary)", color: "var(--muted-foreground)" }}>
                           {p.provider || 'RAZORPAY'}
                         </span>
                       </td>
@@ -348,16 +348,16 @@ export const PaymentsLedger: React.FC = () => {
                         <span
                           className="badge"
                           style={{
-                            background: isReconciled ? 'rgba(3, 128, 106, 0.1)' : 'rgba(233, 162, 59, 0.1)',
-                            color: isReconciled ? '#03806a' : '#e9a23b',
-                            border: `1px solid ${isReconciled ? 'rgba(3, 128, 106, 0.2)' : 'rgba(233, 162, 59, 0.2)'}`
+                            background: isReconciled ? "var(--secondary)" : "var(--secondary)",
+                            color: isReconciled ? "var(--success)" : "var(--warning)",
+                            border: `1px solid ${isReconciled ? "var(--border)" : "var(--border)"}`
                           }}
                         >
                           {isReconciled ? 'RECONCILED' : 'PENDING AUDIT'}
                         </span>
                       </td>
                       <td>
-                        <div style={{ fontSize: '12px', color: '#696e79' }}>
+                        <div style={{ fontSize: '12px', color: "var(--muted-foreground)" }}>
                           {p.paid_at || p.created_at ? new Date(p.paid_at || p.created_at!).toLocaleString('en-IN') : 'Recent'}
                         </div>
                       </td>
@@ -365,14 +365,14 @@ export const PaymentsLedger: React.FC = () => {
                         {!isReconciled ? (
                           <button
                             className="btn-secondary"
-                            style={{ padding: '4px 10px', fontSize: '11px', color: '#ffffff' }}
+                            style={{ padding: '4px 10px', fontSize: '11px', color: "var(--background)" }}
                             disabled={reconcilingId === p.id}
                             onClick={() => handleReconcile(p.id)}
                           >
                             {reconcilingId === p.id ? 'Reconciling...' : 'Reconcile'}
                           </button>
                         ) : (
-                          <span style={{ fontSize: '12px', color: '#03806a', fontWeight: '600' }}>
+                          <span style={{ fontSize: '12px', color: "var(--success)", fontWeight: '600' }}>
                             &check; Verified
                           </span>
                         )}
