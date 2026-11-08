@@ -15,10 +15,15 @@ on:
       android_apis:
         description: Android startup-test API levels as a JSON array
         type: string
-        default: '[29,35,36]'
+        default: '[30,33,36]'
+      startup_only:
+        description: Diagnose a previously built APK without rebuilding
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: mobile-${{ github.ref }}
@@ -29,7 +34,40 @@ env:
   MOBILE_BUILD_NUMBER: ${{ github.run_number }}
 
 jobs:
+  startup:
+    if: inputs.startup_only
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        api: ${{ fromJSON(inputs.android_apis || '[30,33,36]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 42474833037
+          name: android-test-and-unsigned-5
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: artifacts/startup/apk
+      - run: sudo chmod 666 /dev/kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          arch: x86_64
+          target: google_apis
+          profile: pixel_2
+          disable-animations: true
+          script: bash scripts/mobile/android-launch-smoke.sh artifacts/startup/apk/apk/debug/app-debug.apk artifacts/startup/api-${{ matrix.api }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: startup-baseline-api-${{ matrix.api }}
+          path: artifacts/startup/api-${{ matrix.api }}/
+          if-no-files-found: warn
+
   verify:
+    if: ${{ !inputs.startup_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -56,13 +94,13 @@ jobs:
 
   android:
     needs: verify
-    if: inputs.platform != 'ios'
+    if: inputs.platform != 'ios' && !inputs.startup_only
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        android-api: ${{ fromJSON(inputs.android_apis || '[29,35,36]') }}
+        android-api: ${{ fromJSON(inputs.android_apis || '[30,33,36]') }}
     defaults:
       run:
         working-directory: frontend
@@ -82,6 +120,9 @@ jobs:
           packages: 'platform-tools platforms;android-36 build-tools;35.0.0'
           log-accepted-android-sdk-licenses: false
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+          cache-read-only: false
       - run: npm ci
       - run: npm run mobile:android
       - name: Load upload signing key when requested
@@ -108,7 +149,7 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: bash android/gradlew -p android assembleDebug bundleRelease
+        run: gradle -p android assembleDebug bundleRelease
       - name: Enable emulator hardware acceleration
         run: sudo chmod 666 /dev/kvm
       - name: Cold-launch the APK and check for crashes
@@ -144,7 +185,7 @@ jobs:
 
   ios:
     needs: verify
-    if: inputs.platform != 'android'
+    if: inputs.platform != 'android' && !inputs.startup_only
     runs-on: macos-26
     timeout-minutes: 45
     defaults:
