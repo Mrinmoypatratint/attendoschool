@@ -4444,7 +4444,7 @@ function AdminHome() {
       <Layout>
         {/* Dashboard Error / Quota Notice */}
         {dashboardError && (
-          <div className="admin-alert-banner warning" style={{ marginBottom: 16, backgroundColor: '#fbeaea', borderColor: '#f2c0c0', color: '#7e1b1b' }}>
+          <div className="admin-alert-banner warning" style={{ marginBottom: 16, backgroundColor: "var(--card)", borderColor: "var(--border)", color: "var(--destructive)" }}>
             <div className="alert-left">
               <AlertTriangle size={20} color="#d32f2f" />
               <div>
@@ -4452,7 +4452,7 @@ function AdminHome() {
                 <p style={{ margin: 0, fontSize: 13 }}>{dashboardError}</p>
               </div>
             </div>
-            <button className="alert-action-btn" onClick={() => load(0)} style={{ backgroundColor: '#d32f2f', color: '#ffffff' }}>
+            <button className="alert-action-btn" onClick={() => load(0)} style={{ backgroundColor: "var(--destructive)", color: "var(--background)" }}>
               Retry Connection
             </button>
           </div>
@@ -4520,20 +4520,20 @@ function AdminHome() {
 
           {/* Student Gender Split - Session Dependent */}
           <div className="kpi-card" onClick={() => nav('/students')} title="Click to view student directory">
-            <div className="kpi-icon-wrap blue" style={{ background: 'rgba(92, 107, 192, 0.1)', color: '#5c6bc0' }}>
+            <div className="kpi-icon-wrap blue" style={{ background: "var(--secondary)", color: "var(--info)" }}>
               <Users size={22} />
             </div>
             <div className="kpi-body" style={{ width: '100%' }}>
               <span className="kpi-label">Students (M / F)</span>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 4, flexWrap: 'wrap' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#5c6bc0' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: "var(--info)" }}>
                   <span style={{ fontSize: 13.5, fontWeight: 700 }}>Male:</span>
-                  <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #1c1f2e)' }}>{loading ? '...' : (data?.studentMaleCount ?? 0)}</strong>
+                  <strong style={{ fontSize: 15.5, fontWeight: 800, color: "var(--text, var(--foreground))" }}>{loading ? '...' : (data?.studentMaleCount ?? 0)}</strong>
                 </span>
-                <span style={{ color: 'var(--border, #d4d5d9)', fontWeight: 300, fontSize: 13 }}>|</span>
-                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#e11d55' }}>
+                <span style={{ color: "var(--border, var(--muted-foreground))", fontWeight: 300, fontSize: 13 }}>|</span>
+                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: "var(--primary)" }}>
                   <span style={{ fontSize: 13.5, fontWeight: 700 }}>Female:</span>
-                  <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #1c1f2e)' }}>{loading ? '...' : (data?.studentFemaleCount ?? 0)}</strong>
+                  <strong style={{ fontSize: 15.5, fontWeight: 800, color: "var(--text, var(--foreground))" }}>{loading ? '...' : (data?.studentFemaleCount ?? 0)}</strong>
                 </span>
               </div>
               <span className="kpi-sub neutral" style={{ marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
@@ -4553,20 +4553,20 @@ function AdminHome() {
 
           {/* Teacher Gender Split - Session Independent */}
           <div className="kpi-card" onClick={() => nav('/teachers')} title="Click to view faculty directory">
-            <div className="kpi-icon-wrap indigo" style={{ background: 'rgba(225, 29, 85, 0.1)', color: '#e11d55' }}>
+            <div className="kpi-icon-wrap indigo" style={{ background: "var(--accent)", color: "var(--primary)" }}>
               <GraduationCap size={22} />
             </div>
             <div className="kpi-body" style={{ width: '100%' }}>
               <span className="kpi-label">Faculty (M / F)</span>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 4, flexWrap: 'wrap' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#5c6bc0' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: "var(--info)" }}>
                   <span style={{ fontSize: 13.5, fontWeight: 700 }}>Male:</span>
-                  <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #1c1f2e)' }}>{loading ? '...' : (data?.teacherMaleCount ?? 0)}</strong>
+                  <strong style={{ fontSize: 15.5, fontWeight: 800, color: "var(--text, var(--foreground))" }}>{loading ? '...' : (data?.teacherMaleCount ?? 0)}</strong>
                 </span>
-                <span style={{ color: 'var(--border, #d4d5d9)', fontWeight: 300, fontSize: 13 }}>|</span>
-                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#e11d55' }}>
+                <span style={{ color: "var(--border, var(--muted-foreground))", fontWeight: 300, fontSize: 13 }}>|</span>
+                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: "var(--primary)" }}>
                   <span style={{ fontSize: 13.5, fontWeight: 700 }}>Female:</span>
-                  <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #1c1f2e)' }}>{loading ? '...' : (data?.teacherFemaleCount ?? 0)}</strong>
+                  <strong style={{ fontSize: 15.5, fontWeight: 800, color: "var(--text, var(--foreground))" }}>{loading ? '...' : (data?.teacherFemaleCount ?? 0)}</strong>
                 </span>
               </div>
               <span className="kpi-sub neutral" style={{ marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
@@ -4661,7 +4661,7 @@ function AdminHome() {
                   </div>
                   <div className="metric-stat">
                     <span className="metric-label">Left Early</span>
-                    <span className="metric-num amber" style={{ color: '#b8781c' }}>{todayAtt.leftEarly ?? todayAtt.left_early ?? 0}</span>
+                    <span className="metric-num amber" style={{ color: "var(--warning)" }}>{todayAtt.leftEarly ?? todayAtt.left_early ?? 0}</span>
                   </div>
                   <div className="metric-stat">
                     <span className="metric-label">Total Marked</span>
@@ -4820,7 +4820,7 @@ function AdminHome() {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)', flexWrap: 'wrap', gap: 6 }}>
                   <span>Institutional Target: <b>90% Minimum</b></span>
-                  <span style={{ color: weeklyAvg >= 90 ? '#03806a' : '#e9a23b', fontWeight: 600 }}>Weekly Average: ~{weeklyAvg}%</span>
+                  <span style={{ color: weeklyAvg >= 90 ? "var(--success)" : "var(--warning)", fontWeight: 600 }}>Weekly Average: ~{weeklyAvg}%</span>
                 </div>
               </>
             )}
@@ -4870,15 +4870,15 @@ function AdminHome() {
             {/* Live status indicators */}
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 11.5, color: 'var(--text-muted)' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#03806a' }}></span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: "var(--success)" }}></span>
                 SMS Gateway: Active
               </span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#03806a' }}></span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: "var(--success)" }}></span>
                 Database: Tenant Isolated
               </span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#03806a' }}></span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: "var(--success)" }}></span>
                 Backups: Automated Daily
               </span>
             </div>
@@ -15717,7 +15717,7 @@ function Attendance() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 18 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: existingSession ? '#03806a' : '#e9a23b' }}></span>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: existingSession ? "var(--success)" : "var(--warning)" }}></span>
             <p className="eyebrow" style={{ margin: 0 }}>ATTENDANCE CONTROL & RE-ATTENDANCE STATION</p>
           </div>
           <h1 style={{ margin: 0, fontSize: 24 }}>Daily Class Attendance</h1>
@@ -15740,8 +15740,8 @@ function Attendance() {
       {/* Cross-Teacher Live Session Banner (When attendance has already been taken) */}
       {existingSession && (
         <div style={{
-          background: 'rgba(3, 128, 106, 0.08)',
-          border: '1px solid rgba(3, 128, 106, 0.3)',
+          background: "var(--secondary)",
+          border: "1px solid var(--border)",
           borderRadius: 4,
           padding: '16px 20px',
           marginBottom: 16,
@@ -15753,16 +15753,16 @@ function Attendance() {
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span className="badge" style={{ background: '#03806a', color: '#ffffff', fontWeight: 700, padding: '3px 8px', fontSize: 11 }}>
+              <span className="badge" style={{ background: "var(--success)", color: "var(--background)", fontWeight: 700, padding: '3px 8px', fontSize: 11 }}>
                 ✓ ATTENDANCE RECORDED FOR TODAY
               </span>
               {existingSession.is_reattendance && (
-                <span className="badge" style={{ background: 'rgba(233, 162, 59, 0.15)', color: '#b8781c', fontWeight: 700, padding: '3px 8px', fontSize: 11 }}>
+                <span className="badge" style={{ background: "var(--secondary)", color: "var(--warning)", fontWeight: 700, padding: '3px 8px', fontSize: 11 }}>
                   🔄 RE-ATTENDANCE LOGGED ({existingSession.reattendance_count || 1}x)
                 </span>
               )}
               <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>
-                Taken by: <strong style={{ color: '#e11d55' }}>{existingSession.teacher_name || 'Faculty Member'}</strong>
+                Taken by: <strong style={{ color: "var(--primary)" }}>{existingSession.teacher_name || 'Faculty Member'}</strong>
               </span>
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                 ({fmt(existingSession.start_time)} – {fmt(existingSession.end_time)})
@@ -15781,7 +15781,7 @@ function Attendance() {
               <button
                 type="button"
                 onClick={() => setIsEditingAttendance(true)}
-                style={{ fontSize: 12.5, padding: '6px 14px', background: '#e11d55', color: '#ffffff', border: 'none', borderRadius: 4, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                style={{ fontSize: 12.5, padding: '6px 14px', background: "var(--primary)", color: "var(--background)", border: 'none', borderRadius: 4, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
               >
                 <PenLine size={14} /> Edit Attendance
               </button>
@@ -15793,7 +15793,7 @@ function Attendance() {
                   setIsEditingAttendance(false);
                   checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
                 }}
-                style={{ fontSize: 12.5, padding: '6px 14px', background: 'var(--bg-subtle, #f5f5f6)', color: 'var(--text, #3e4152)', border: '1px solid var(--border)', borderRadius: 4, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                style={{ fontSize: 12.5, padding: '6px 14px', background: "var(--bg-subtle, var(--secondary))", color: "var(--text, var(--muted-foreground))", border: '1px solid var(--border)', borderRadius: 4, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
               >
                 Cancel Edit
               </button>
@@ -15823,8 +15823,8 @@ function Attendance() {
       {/* Sunday / Gazetted Holiday Attendance Guard Banner (TC-ATT-010) */}
       {calendarGuard && !calendarGuard.isInstructional && (
         <div style={{
-          background: 'rgba(211, 47, 47, 0.08)',
-          border: '1px solid rgba(211, 47, 47, 0.3)',
+          background: "var(--secondary)",
+          border: "1px solid var(--border)",
           borderRadius: 4,
           padding: '14px 18px',
           marginBottom: 16,
@@ -15835,9 +15835,9 @@ function Attendance() {
           gap: 12
         }} id="non-instructional-guard-banner">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <AlertTriangle size={22} style={{ color: '#d32f2f', flexShrink: 0 }} />
+            <AlertTriangle size={22} style={{ color: "var(--destructive)", flexShrink: 0 }} />
             <div>
-              <b style={{ color: '#a82424', fontSize: 13.5 }}>
+              <b style={{ color: "var(--destructive)", fontSize: 13.5 }}>
                 Selected date is a declared non-instructional day ({calendarGuard.reason || 'Holiday / Sunday'})
               </b>
               <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--text-muted)' }}>
@@ -15870,11 +15870,11 @@ function Attendance() {
                   boxSizing: 'border-box',
                   padding: '4px 12px',
                   borderRadius: 4,
-                  background: 'var(--bg-subtle, #f5f5f6)',
-                  border: '1px solid var(--border, #d4d5d9)',
+                  background: "var(--bg-subtle, var(--secondary))",
+                  border: "1px solid var(--border, var(--border))",
                   fontWeight: 700,
                   fontSize: 13,
-                  color: 'var(--text, #1c1f2e)'
+                  color: "var(--text, var(--foreground))"
                 }}>
                   {currentClass
                     ? (currentClass.class_number === -1 || currentClass.class_number === '-1' ? 'Class L KG' :
@@ -15893,11 +15893,11 @@ function Attendance() {
                   boxSizing: 'border-box',
                   padding: '4px 12px',
                   borderRadius: 4,
-                  background: 'var(--bg-subtle, #f5f5f6)',
-                  border: '1px solid var(--border, #d4d5d9)',
+                  background: "var(--bg-subtle, var(--secondary))",
+                  border: "1px solid var(--border, var(--border))",
                   fontWeight: 700,
                   fontSize: 13,
-                  color: 'var(--text, #1c1f2e)'
+                  color: "var(--text, var(--foreground))"
                 }}>
                   Section {currentSection?.name || currentSection?.sectionName || (authorizedSections[0] ? authorizedSections[0].sectionName : 'A')}
                 </span>
@@ -15925,11 +15925,11 @@ function Attendance() {
                     boxSizing: 'border-box',
                     padding: '4px 10px',
                     borderRadius: 4,
-                    border: '1px solid var(--border, #d4d5d9)',
+                    border: "1px solid var(--border, var(--border))",
                     fontSize: 13,
                     fontWeight: 600,
-                    color: 'var(--text, #1c1f2e)',
-                    background: 'var(--bg-card, #ffffff)'
+                    color: "var(--text, var(--foreground))",
+                    background: "var(--bg-card, var(--card))"
                   }}
                 >
                   {classes
@@ -15965,11 +15965,11 @@ function Attendance() {
                     boxSizing: 'border-box',
                     padding: '4px 10px',
                     borderRadius: 4,
-                    border: '1px solid var(--border, #d4d5d9)',
+                    border: "1px solid var(--border, var(--border))",
                     fontSize: 13,
                     fontWeight: 600,
-                    color: 'var(--text, #1c1f2e)',
-                    background: 'var(--bg-card, #ffffff)'
+                    color: "var(--text, var(--foreground))",
+                    background: "var(--bg-card, var(--card))"
                   }}
                 >
                   {sections
@@ -16002,11 +16002,11 @@ function Attendance() {
                 boxSizing: 'border-box',
                 padding: '4px 10px',
                 borderRadius: 4,
-                border: '1px solid var(--border, #d4d5d9)',
+                border: "1px solid var(--border, var(--border))",
                 fontSize: 13,
                 fontWeight: 600,
-                color: 'var(--text, #1c1f2e)',
-                background: 'var(--bg-card, #ffffff)',
+                color: "var(--text, var(--foreground))",
+                background: "var(--bg-card, var(--card))",
                 outline: 'none'
               }}
             />
@@ -16050,7 +16050,7 @@ function Attendance() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="alert-action-btn" style={{ background: '#03806a' }} onClick={() => nav('/dashboard')}>
+            <button className="alert-action-btn" style={{ background: "var(--success)" }} onClick={() => nav('/dashboard')}>
               Go to Dashboard →
             </button>
             <button className="secondary" onClick={() => setActiveModal('AUDIT_LOGS')}>
@@ -16063,8 +16063,8 @@ function Attendance() {
       {/* Attendance Email Action Card */}
       {done && (
         <div style={{
-          background: 'var(--bg-card, #ffffff)',
-          border: '1px solid #d4d5d9',
+          background: "var(--bg-card, var(--card))",
+          border: "1px solid var(--border)",
           borderRadius: 4,
           padding: '20px 24px',
           marginBottom: 24,
@@ -16074,11 +16074,11 @@ function Attendance() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Mail size={20} color="#e11d55" />
-                <h3 style={{ margin: 0, fontSize: 16.5, fontWeight: 700, color: 'var(--text, #1c1f2e)' }}>
+                <h3 style={{ margin: 0, fontSize: 16.5, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
                   Dispatch Institutional Email Alerts
                 </h3>
               </div>
-              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted, #696e79)' }}>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: "var(--text-muted, var(--muted-foreground))" }}>
                 Send professional, branded notification emails to parents and students for this confirmed attendance session.
               </p>
             </div>
@@ -16086,9 +16086,9 @@ function Attendance() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              background: 'rgba(225, 29, 85, 0.12)',
-              border: '1px solid rgba(225, 29, 85, 0.25)',
-              color: 'var(--primary-600, #e11d55)',
+              background: "var(--accent)",
+              border: "1px solid var(--border)",
+              color: "var(--primary-600, var(--primary))",
               borderRadius: 4,
               padding: '4px 12px',
               fontSize: 12.5,
@@ -16100,8 +16100,8 @@ function Attendance() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 18 }}>
             {/* Filter Target */}
-            <div style={{ background: 'var(--card-subtle, #f9f9fa)', padding: 12, borderRadius: 4, border: '1px solid var(--border, #eaeaec)' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted, #696e79)', marginBottom: 8 }}>
+            <div style={{ background: "var(--card-subtle, var(--card))", padding: 12, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: "var(--text-muted, var(--muted-foreground))", marginBottom: 8 }}>
                 Target Attendance Group
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -16139,8 +16139,8 @@ function Attendance() {
             </div>
 
             {/* Recipient Contacts */}
-            <div style={{ background: 'var(--card-subtle, #f9f9fa)', padding: 12, borderRadius: 4, border: '1px solid var(--border, #eaeaec)' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted, #696e79)', marginBottom: 8 }}>
+            <div style={{ background: "var(--card-subtle, var(--card))", padding: 12, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: "var(--text-muted, var(--muted-foreground))", marginBottom: 8 }}>
                 Recipient Contact Addresses
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -16166,7 +16166,7 @@ function Attendance() {
 
           {/* Action Row */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <div style={{ fontSize: 12.5, color: 'var(--text-muted, #696e79)' }}>
+            <div style={{ fontSize: 12.5, color: "var(--text-muted, var(--muted-foreground))" }}>
               ℹ️ Individual MIME emails are delivered separately. Contact privacy is strictly preserved.
             </div>
             <button
@@ -16176,8 +16176,8 @@ function Attendance() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
-                background: '#e11d55',
-                color: '#ffffff',
+                background: "var(--primary)",
+                color: "var(--background)",
                 fontWeight: 600,
                 padding: '9px 18px',
                 borderRadius: 4,
@@ -16201,9 +16201,9 @@ function Attendance() {
               display: 'flex',
               alignItems: 'center',
               gap: 10,
-              background: emailResult.success ? 'rgba(3, 128, 106, 0.12)' : 'rgba(211, 47, 47, 0.12)',
-              border: emailResult.success ? '1px solid rgba(3, 128, 106, 0.3)' : '1px solid rgba(211, 47, 47, 0.3)',
-              color: emailResult.success ? '#03806a' : '#d32f2f'
+              background: emailResult.success ? "var(--secondary)" : "var(--secondary)",
+              border: emailResult.success ? "1px solid var(--border)" : "1px solid var(--border)",
+              color: emailResult.success ? "var(--success)" : "var(--destructive)"
             }}>
               {emailResult.success ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
               <span>{emailResult.message}</span>
@@ -16254,7 +16254,7 @@ function Attendance() {
               padding: '4px 10px'
             }}
           >
-            <ArrowUpDown size={14} style={{ color: '#e11d55' }} />
+            <ArrowUpDown size={14} style={{ color: "var(--primary)" }} />
             <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
               Sort by:
             </span>
@@ -16317,10 +16317,10 @@ function Attendance() {
       <div
         ref={rosterTopRef}
         style={{
-          border: '1px solid var(--border, #d4d5d9)',
+          border: "1px solid var(--border, var(--border))",
           borderRadius: 4,
           overflow: 'hidden',
-          background: 'var(--bg-card, #ffffff)',
+          background: "var(--bg-card, var(--card))",
           marginBottom: 16,
           boxShadow: 'none',
           width: '100%',
@@ -16374,22 +16374,22 @@ function Attendance() {
                     key={s.id}
                     style={{
                       background: isLeftEarly
-                        ? 'rgba(233, 162, 59, 0.05)'
+                        ? "var(--secondary)"
                         : isLate
-                          ? 'rgba(225, 29, 85, 0.05)'
+                          ? "var(--accent)"
                           : isPresent
                             ? 'var(--bg-card)'
                             : isAbsent
-                              ? 'rgba(211, 47, 47, 0.04)'
+                              ? "var(--secondary)"
                               : 'var(--bg-card)',
                       borderColor: isLeftEarly
-                        ? 'rgba(233, 162, 59, 0.4)'
+                        ? "var(--border)"
                         : isLate
-                          ? 'rgba(225, 29, 85, 0.3)'
+                          ? "var(--border)"
                           : isPresent
                             ? 'var(--border)'
                             : isAbsent
-                              ? 'rgba(211, 47, 47, 0.3)'
+                              ? "var(--border)"
                               : 'var(--border)',
                       padding: '12px 16px',
                       display: 'flex',
@@ -16408,8 +16408,8 @@ function Attendance() {
                       <span
                         className="roll"
                         style={{
-                          background: isLeftEarly ? '#fbecd3' : isLate ? '#ffe1e8' : isPresent ? '#fff2f4' : isAbsent ? '#f7d5d5' : 'var(--bg-subtle)',
-                          color: isLeftEarly ? '#8f5c12' : isLate ? '#c0174a' : isPresent ? '#e11d55' : isAbsent ? '#d32f2f' : 'var(--text-muted)',
+                          background: isLeftEarly ? "var(--secondary)" : isLate ? "var(--card)" : isPresent ? "var(--card)" : isAbsent ? "var(--secondary)" : 'var(--bg-subtle)',
+                          color: isLeftEarly ? "var(--warning)" : isLate ? "var(--primary)" : isPresent ? "var(--primary)" : isAbsent ? "var(--destructive)" : 'var(--text-muted)',
                           fontWeight: 700,
                           minWidth: 32,
                           textAlign: 'center'
@@ -16426,9 +16426,9 @@ function Attendance() {
                               borderRadius: 4,
                               fontSize: 10.5,
                               fontWeight: 600,
-                              background: formatGender(s.gender) === 'Female' ? '#fff2f4' : formatGender(s.gender) === 'Male' ? '#eef0f9' : '#f9f9fa',
-                              color: formatGender(s.gender) === 'Female' ? '#e11d55' : formatGender(s.gender) === 'Male' ? '#5c6bc0' : '#696e79',
-                              border: `1px solid ${formatGender(s.gender) === 'Female' ? '#fcc3d1' : formatGender(s.gender) === 'Male' ? '#c9cee9' : '#eaeaec'}`
+                              background: formatGender(s.gender) === 'Female' ? "var(--card)" : formatGender(s.gender) === 'Male' ? "var(--card)" : "var(--card)",
+                              color: formatGender(s.gender) === 'Female' ? "var(--primary)" : formatGender(s.gender) === 'Male' ? "var(--info)" : "var(--muted-foreground)",
+                              border: `1px solid ${formatGender(s.gender) === 'Female' ? "var(--border)" : formatGender(s.gender) === 'Male' ? "var(--border)" : "var(--border)"}`
                             }}>
                               {formatGender(s.gender)}
                             </span>
@@ -16437,13 +16437,13 @@ function Attendance() {
                         </div>
                         {/* Status Annotations for Re-attendance */}
                         {isLeftEarly && (
-                          <div style={{ fontSize: 11.5, color: '#8f5c12', marginTop: 3, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <div style={{ fontSize: 11.5, color: "var(--warning)", marginTop: 3, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
                             <DoorOpen size={13} />
                             <span>Left early {stObj.departurePeriod ? `(${stObj.departurePeriod})` : ''} at {stObj.departureTime || '—'}{stObj.remarks ? `: ${stObj.remarks}` : ''}</span>
                           </div>
                         )}
                         {isLate && (
-                          <div style={{ fontSize: 11.5, color: '#c0174a', marginTop: 3, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <div style={{ fontSize: 11.5, color: "var(--primary)", marginTop: 3, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
                             <Clock size={13} />
                             <span>Late arrival {stObj.arrivalPeriod ? `(${stObj.arrivalPeriod})` : ''} at {stObj.arrivalTime || '—'}{stObj.remarks ? `: ${stObj.remarks}` : ''}</span>
                           </div>
@@ -16464,15 +16464,15 @@ function Attendance() {
                           alignItems: 'center',
                           gap: 4,
                           background: isLeftEarly
-                            ? 'rgba(233, 162, 59, 0.15)'
+                            ? "var(--secondary)"
                             : isLate
-                              ? 'rgba(225, 29, 85, 0.12)'
+                              ? "var(--accent)"
                               : isPresent
-                                ? 'rgba(3, 128, 106, 0.12)'
+                                ? "var(--secondary)"
                                 : isAbsent
-                                  ? 'rgba(211, 47, 47, 0.12)'
-                                  : 'rgba(105, 110, 121, 0.12)',
-                          color: isLeftEarly ? '#8f5c12' : isLate ? '#e11d55' : isPresent ? '#03806a' : isAbsent ? '#d32f2f' : 'var(--text-muted)'
+                                  ? "var(--secondary)"
+                                  : "var(--secondary)",
+                          color: isLeftEarly ? "var(--warning)" : isLate ? "var(--warning)" : isPresent ? "var(--success)" : isAbsent ? "var(--destructive)" : 'var(--text-muted)'
                         }}
                       >
                         {isLeftEarly ? '🚪 LEFT EARLY' : isLate ? '⏰ LATE' : isPresent ? '✓ PRESENT' : isAbsent ? '✕ ABSENT' : '⚪ UNMARKED'}
@@ -16481,7 +16481,7 @@ function Attendance() {
                       {/* Attendance Action Buttons */}
                       {isAlreadyEdited ? (
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                          <span style={{ fontSize: 11.5, color: '#03806a', fontWeight: 600, padding: '4px 6px' }}>
+                          <span style={{ fontSize: 11.5, color: "var(--success)", fontWeight: 600, padding: '4px 6px' }}>
                             (Finalized)
                           </span>
                           <button
@@ -16492,8 +16492,8 @@ function Attendance() {
                               padding: '3px 8px',
                               borderRadius: 4,
                               border: '1px solid var(--border)',
-                              background: 'var(--bg-subtle, #f5f5f6)',
-                              color: 'var(--text-muted, #94969f)',
+                              background: "var(--bg-subtle, var(--secondary))",
+                              color: "var(--text-muted, var(--muted-foreground))",
                               cursor: 'not-allowed',
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -16520,7 +16520,7 @@ function Attendance() {
                               borderRadius: 4,
                               border: '1px solid var(--border)',
                               background: 'var(--card)',
-                              color: '#e11d55',
+                              color: "var(--primary)",
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -16543,9 +16543,9 @@ function Attendance() {
                               fontSize: 11.5,
                               padding: '5px 12px',
                               borderRadius: 4,
-                              border: isPresent ? '1px solid #03806a' : '1px solid var(--border)',
-                              background: isPresent ? '#03806a' : 'var(--bg-subtle)',
-                              color: isPresent ? '#ffffff' : 'var(--text)',
+                              border: isPresent ? "1px solid var(--border)" : '1px solid var(--border)',
+                              background: isPresent ? "var(--success)" : 'var(--bg-subtle)',
+                              color: isPresent ? "var(--background)" : 'var(--text)',
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -16566,9 +16566,9 @@ function Attendance() {
                               fontSize: 11.5,
                               padding: '5px 12px',
                               borderRadius: 4,
-                              border: isLeftEarly ? '1px solid #e9a23b' : '1px solid var(--border)',
-                              background: isLeftEarly ? '#e9a23b' : 'var(--bg-subtle)',
-                              color: isLeftEarly ? '#ffffff' : 'var(--text)',
+                              border: isLeftEarly ? "1px solid var(--border)" : '1px solid var(--border)',
+                              background: isLeftEarly ? "var(--warning)" : 'var(--bg-subtle)',
+                              color: isLeftEarly ? "var(--background)" : 'var(--text)',
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -16590,9 +16590,9 @@ function Attendance() {
                               fontSize: 11.5,
                               padding: '5px 12px',
                               borderRadius: 4,
-                              border: isAbsent ? '1px solid #d32f2f' : '1px solid var(--border)',
-                              background: isAbsent ? '#d32f2f' : 'var(--bg-subtle)',
-                              color: isAbsent ? '#ffffff' : 'var(--text)',
+                              border: isAbsent ? "1px solid var(--border)" : '1px solid var(--border)',
+                              background: isAbsent ? "var(--destructive)" : 'var(--bg-subtle)',
+                              color: isAbsent ? "var(--background)" : 'var(--text)',
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -16652,7 +16652,7 @@ function Attendance() {
                 <button
                   type="button"
                   disabled={true}
-                  style={{ minWidth: 190, opacity: 0.9, cursor: 'default', background: '#03806a', color: '#ffffff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 600, fontSize: 13 }}
+                  style={{ minWidth: 190, opacity: 0.9, cursor: 'default', background: "var(--success)", color: "var(--background)", display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 600, fontSize: 13 }}
                 >
                   <CheckCircle2 size={15} /> {isAlreadyEdited ? 'Attendance Finalized' : 'Attendance Submitted'}
                 </button>
@@ -16660,7 +16660,7 @@ function Attendance() {
                   <button
                     type="button"
                     onClick={() => setIsEditingAttendance(true)}
-                    style={{ minWidth: 150, background: '#e11d55', color: '#ffffff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 600, fontSize: 13, border: 'none', borderRadius: 4, padding: '8px 16px', cursor: 'pointer' }}
+                    style={{ minWidth: 150, background: "var(--primary)", color: "var(--background)", display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 600, fontSize: 13, border: 'none', borderRadius: 4, padding: '8px 16px', cursor: 'pointer' }}
                   >
                     <PenLine size={14} /> Edit Attendance
                   </button>
@@ -16690,7 +16690,7 @@ function Attendance() {
                       initiateAttendancePreview(false);
                     }
                   }}
-                  style={{ minWidth: 180, background: existingSession ? '#e11d55' : undefined }}
+                  style={{ minWidth: 180, background: existingSession ? "var(--primary)" : undefined }}
                 >
                   {busy ? 'Saving…' : existingSession ? '✓ Submit Updated Attendance' : 'Review & Submit Attendance'}
                 </button>
@@ -16705,7 +16705,7 @@ function Attendance() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(28, 31, 46, 0.7)',
+          background: "var(--card)",
           backdropFilter: 'blur(6px)',
           zIndex: 9999,
           display: 'flex',
@@ -16714,7 +16714,7 @@ function Attendance() {
           padding: 16
         }}>
           <div style={{
-            background: 'var(--bg-card, #ffffff)',
+            background: "var(--bg-card, var(--card))",
             border: '1px solid var(--border)',
             borderRadius: 4,
             width: '100%',
@@ -16724,7 +16724,7 @@ function Attendance() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ background: '#fbecd3', color: '#8f5c12', padding: 8, borderRadius: 4, display: 'inline-flex' }}>
+                <span style={{ background: "var(--secondary)", color: "var(--warning)", padding: 8, borderRadius: 4, display: 'inline-flex' }}>
                   <DoorOpen size={20} />
                 </span>
                 <div>
@@ -16736,7 +16736,7 @@ function Attendance() {
             </div>
 
             {/* Student Card Summary */}
-            <div style={{ background: 'var(--bg-subtle, #f9f9fa)', padding: '10px 14px', borderRadius: 4, border: '1px solid var(--border)', marginBottom: 18 }}>
+            <div style={{ background: "var(--bg-subtle, var(--card))", padding: '10px 14px', borderRadius: 4, border: '1px solid var(--border)', marginBottom: 18 }}>
               <div style={{ fontWeight: 700, fontSize: 14 }}>{selectedStudent.name}</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                 Roll: {selectedStudent.roll_number || '—'} · Parent: {selectedStudent.parent_name || 'Parent'} ({selectedStudent.parent_sms_number || 'Mobile on record'})
@@ -16830,7 +16830,7 @@ function Attendance() {
               <button
                 onClick={submitEarlyDeparture}
                 disabled={savingAction}
-                style={{ background: '#b8781c', color: '#ffffff', border: 'none', padding: '9px 18px', borderRadius: 4, fontWeight: 600, cursor: 'pointer' }}
+                style={{ background: "var(--warning)", color: "var(--background)", border: 'none', padding: '9px 18px', borderRadius: 4, fontWeight: 600, cursor: 'pointer' }}
               >
                 {savingAction ? 'Recording Departure…' : '✓ Confirm Early Departure'}
               </button>
@@ -16844,7 +16844,7 @@ function Attendance() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(28, 31, 46, 0.7)',
+          background: "var(--card)",
           backdropFilter: 'blur(6px)',
           zIndex: 9999,
           display: 'flex',
@@ -16853,7 +16853,7 @@ function Attendance() {
           padding: 16
         }}>
           <div style={{
-            background: 'var(--bg-card, #ffffff)',
+            background: "var(--bg-card, var(--card))",
             border: '1px solid var(--border)',
             borderRadius: 4,
             width: '100%',
@@ -16863,7 +16863,7 @@ function Attendance() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ background: '#ffe1e8', color: '#c0174a', padding: 8, borderRadius: 4, display: 'inline-flex' }}>
+                <span style={{ background: "var(--card)", color: "var(--primary)", padding: 8, borderRadius: 4, display: 'inline-flex' }}>
                   <Clock size={20} />
                 </span>
                 <div>
@@ -16874,7 +16874,7 @@ function Attendance() {
               <button className="secondary" onClick={() => setActiveModal(null)} style={{ padding: '4px 8px', borderRadius: 4 }}>✕</button>
             </div>
 
-            <div style={{ background: 'var(--bg-subtle, #f9f9fa)', padding: '10px 14px', borderRadius: 4, border: '1px solid var(--border)', marginBottom: 18 }}>
+            <div style={{ background: "var(--bg-subtle, var(--card))", padding: '10px 14px', borderRadius: 4, border: '1px solid var(--border)', marginBottom: 18 }}>
               <div style={{ fontWeight: 700, fontSize: 14 }}>{selectedStudent.name}</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                 Roll: {selectedStudent.roll_number || '—'} · Parent: {selectedStudent.parent_name || 'Parent'}
@@ -16959,7 +16959,7 @@ function Attendance() {
               <button
                 onClick={submitLateArrival}
                 disabled={savingAction}
-                style={{ background: '#e11d55', color: '#ffffff', border: 'none', padding: '9px 18px', borderRadius: 4, fontWeight: 600, cursor: 'pointer' }}
+                style={{ background: "var(--primary)", color: "var(--background)", border: 'none', padding: '9px 18px', borderRadius: 4, fontWeight: 600, cursor: 'pointer' }}
               >
                 {savingAction ? 'Saving Late Arrival…' : '✓ Confirm Late Arrival'}
               </button>
@@ -16991,7 +16991,7 @@ function Attendance() {
           <div style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(28, 31, 46, 0.7)',
+            background: "var(--card)",
             backdropFilter: 'blur(6px)',
             zIndex: 9999,
             display: 'flex',
@@ -17000,7 +17000,7 @@ function Attendance() {
             padding: 16
           }}>
             <div style={{
-              background: 'var(--bg-card, #ffffff)',
+              background: "var(--bg-card, var(--card))",
               border: '1px solid var(--border)',
               borderRadius: 4,
               width: '100%',
@@ -17025,7 +17025,7 @@ function Attendance() {
               <div style={{
                 padding: '12px 24px',
                 borderBottom: '1px solid var(--border)',
-                background: 'var(--bg-subtle, #f9f9fa)',
+                background: "var(--bg-subtle, var(--card))",
                 display: 'flex',
                 flexWrap: 'wrap',
                 gap: 10,
@@ -17092,7 +17092,7 @@ function Attendance() {
                       onClick={() => handleExportAudit('xlsx')}
                       disabled={exportingAudit || !existingSession?.id}
                       title="Export filtered audit logs as styled Excel spreadsheet (.xlsx)"
-                      style={{ fontSize: 12, padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(3, 128, 106, 0.08)', color: '#03806a', borderColor: '#03806a' }}
+                      style={{ fontSize: 12, padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: 5, background: "var(--secondary)", color: "var(--success)", borderColor: "var(--border)" }}
                     >
                       <FileSpreadsheet size={13} />
                       {exportingAudit ? 'Exporting...' : 'Export Excel (.xlsx)'}
@@ -17126,7 +17126,7 @@ function Attendance() {
                         <div
                           key={log.id || idx}
                           style={{
-                            background: 'var(--bg-subtle, #f9f9fa)',
+                            background: "var(--bg-subtle, var(--card))",
                             border: '1px solid var(--border)',
                             borderRadius: 4,
                             padding: '12px 14px'
@@ -17141,11 +17141,11 @@ function Attendance() {
                             </span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, marginBottom: 4 }}>
-                            <span className="badge" style={{ background: 'rgba(105, 110, 121,0.1)', color: 'var(--text-muted)' }}>{prevSt}</span>
+                            <span className="badge" style={{ background: "var(--secondary)", color: 'var(--text-muted)' }}>{prevSt}</span>
                             <span>➔</span>
                             <span className="badge" style={{
-                              background: newSt === 'LEFT_EARLY' ? '#fbecd3' : newSt === 'LATE' ? '#ffe1e8' : newSt === 'PRESENT' ? '#cce6e1' : '#f7d5d5',
-                              color: newSt === 'LEFT_EARLY' ? '#8f5c12' : newSt === 'LATE' ? '#c0174a' : newSt === 'PRESENT' ? '#02604f' : '#a82424',
+                              background: newSt === 'LEFT_EARLY' ? "var(--secondary)" : newSt === 'LATE' ? "var(--card)" : newSt === 'PRESENT' ? "var(--secondary)" : "var(--secondary)",
+                              color: newSt === 'LEFT_EARLY' ? "var(--warning)" : newSt === 'LATE' ? "var(--primary)" : newSt === 'PRESENT' ? "var(--success)" : "var(--destructive)",
                               fontWeight: 700
                             }}>
                               {newSt}

@@ -818,7 +818,7 @@ export default function Timetable() {
           )}
         </div>
       ) : isTeacher ? (
-        <div className="table-wrap">
+        <div className="table-wrap ui-period-grid">
           <table>
             <thead>
               <tr>
@@ -977,7 +977,7 @@ export default function Timetable() {
           </table>
         </div>
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap ui-period-grid">
           <table>
             <thead>
               <tr>
@@ -1090,7 +1090,7 @@ export default function Timetable() {
           </button>
         )}
       </div>
-      <div className="table-wrap">
+      <div className="table-wrap ui-period-grid">
         <table>
           <thead><tr><th>Day</th><th>Period</th><th>Time</th><th>Subject</th><th>Faculty</th><th>Alt. Faculty</th><th>Room</th><th>Status</th>{(isSchoolAdmin || isTeacher) && <th style={{ textAlign: 'right', width: 140 }}>Actions</th>}</tr></thead>
           <tbody>

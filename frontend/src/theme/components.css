@@ -368,3 +368,46 @@ table tbody tr[aria-selected="true"] > td, table tbody tr.selected > td { backgr
 }
 .student-sidebar .student-motivation-title { color: var(--foreground) !important; }
 .student-sidebar .student-motivation-desc { color: var(--muted-foreground) !important; }
+
+/* Calendar/timetable grids and the existing attendance controls. */
+.ui-period-grid table { border-collapse: collapse; background: var(--card); }
+.ui-period-grid th, .ui-period-grid td { border: 1px solid var(--border); }
+.ui-period-grid tbody tr, .ui-period-grid tbody td { background: var(--card) !important; }
+.ui-period-grid tbody tr:nth-child(5n + 1) td:first-child { border-left: 3px solid var(--primary); }
+.ui-period-grid tbody tr:nth-child(5n + 2) td:first-child { border-left: 3px solid var(--foreground); }
+.ui-period-grid tbody tr:nth-child(5n + 3) td:first-child { border-left: 3px solid var(--success); }
+.ui-period-grid tbody tr:nth-child(5n + 4) td:first-child { border-left: 3px solid var(--warning); }
+.ui-period-grid tbody tr:nth-child(5n) td:first-child { border-left: 3px solid var(--info); }
+.ui-calendar-grid { gap: 0 !important; border: 1px solid var(--border); border-radius: 4px; }
+.ui-calendar-grid > div {
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--border) !important;
+  border-radius: 0 !important;
+  background: var(--card) !important;
+  overflow-wrap: anywhere;
+  box-shadow: none !important;
+}
+.ui-timetable-days button { border-radius: 4px 4px 0 0; box-shadow: none; }
+.attendance-list button[title="Mark Present"],
+.attendance-list button[title="Mark Absent"],
+.attendance-list button[title="Mark student early departure"] {
+  min-height: 40px;
+  min-width: 80px;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+.attendance-list button[title="Mark Present"] { border-color: var(--success) !important; }
+.attendance-list button[title="Mark Absent"] { border-color: var(--destructive) !important; }
+.attendance-list button[title="Mark student early departure"] { border-color: var(--warning) !important; }
+.student-kpi-icon-wrap, .kpi-card .kpi-icon, .kpi-card .kpi-icon-wrap {
+  background: transparent !important;
+  color: var(--muted-foreground) !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.badge.sent, .badge.approved, .badge.published, .badge.paid, .badge.active { background: var(--secondary); color: var(--success); }
+.badge.queued, .badge.pending, .badge.draft, .badge.late { background: var(--secondary); color: var(--warning); }
+.badge.failed, .badge.rejected, .badge.overdue, .badge.absent, .badge.suspended { background: var(--secondary); color: var(--destructive); }
+.badge.leave, .badge.holiday { background: var(--secondary); color: var(--info); }
+.badge.inactive, .badge.archived { background: var(--secondary); color: var(--muted-foreground); }

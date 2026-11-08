@@ -91,7 +91,7 @@ export function StudentTimetable() {
           scrollbarWidth: 'none',
           msOverflowStyle: 'none'
         }}
-        className="no-scrollbar pb-px [&::-webkit-scrollbar]:hidden"
+        className="ui-timetable-days no-scrollbar pb-px [&::-webkit-scrollbar]:hidden"
       >
         {days.map((d) => {
           const isSelected = selectedDay === d.num;
@@ -105,7 +105,7 @@ export function StudentTimetable() {
                 padding: '12px 20px',
                 background: 'none',
                 border: 'none',
-                borderBottom: isSelected ? "3px solid var(--border)" : '3px solid transparent',
+                borderBottom: isSelected ? "3px solid var(--primary)" : '3px solid transparent',
                 color: isSelected ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
                 fontWeight: isSelected ? 700 : 500,
                 fontSize: 15,
@@ -154,7 +154,7 @@ export function StudentTimetable() {
             <p>No lectures scheduled for this day.</p>
           </div>
         ) : (
-          <div className="student-table-wrap overflow-x-auto">
+          <div className="student-table-wrap ui-period-grid overflow-x-auto">
             <table className="student-table w-full border-collapse text-left text-sm">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800">

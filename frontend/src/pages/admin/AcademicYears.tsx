@@ -2295,14 +2295,14 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                         </div>
 
                         {/* Calendar Day Labels */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, textAlign: 'center', fontSize: 10, fontWeight: 700, color: "var(--text-muted, var(--muted-foreground))", marginBottom: 4 }}>
+                        <div className="ui-calendar-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, textAlign: 'center', fontSize: 10, fontWeight: 700, color: "var(--text-muted, var(--muted-foreground))", marginBottom: 4 }}>
                           {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d, i) => (
                             <div key={d} style={{ padding: '2px 0', color: i === 0 ? "var(--destructive)" : 'inherit' }}>{d}</div>
                           ))}
                         </div>
 
                         {/* Calendar Day Matrix */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+                        <div className="ui-calendar-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
                           {Array.from({ length: firstDayOfWeek }).map((_, i) => (
                             <div key={'empty-' + i} style={{ height: 32 }} />
                           ))}
@@ -2360,7 +2360,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
               ) : (
                 /* SINGLE MONTH DETAILED VIEW */
                 <div style={{ background: "var(--bg-card, var(--card))", border: "1px solid var(--border, var(--border))", borderRadius: 4, padding: 20 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, textAlign: 'center', fontSize: 13, fontWeight: 700, marginBottom: 8, paddingBottom: 8, borderBottom: "1px solid var(--border)" }}>
+                  <div className="ui-calendar-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, textAlign: 'center', fontSize: 13, fontWeight: 700, marginBottom: 8, paddingBottom: 8, borderBottom: "1px solid var(--border)" }}>
                     {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d, i) => (
                       <div key={d} style={{ color: i === 0 ? "var(--destructive)" : "var(--text, var(--muted-foreground))" }}>{d}</div>
                     ))}
@@ -2385,7 +2385,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                     });
 
                     return (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8 }}>
+                      <div className="ui-calendar-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8 }}>
                         {Array.from({ length: firstDayOfWeek }).map((_, i) => (
                           <div key={'empty-' + i} style={{ minHeight: 90, background: "var(--card-subtle, var(--card))", borderRadius: 4, border: "1px dashed var(--border)" }} />
                         ))}
