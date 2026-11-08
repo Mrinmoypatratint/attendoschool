@@ -164,7 +164,8 @@ class BackupManager {
     // The worker's separate flock serializes actual jobs. Lock files contain no secrets.
     if (process.platform === 'win32') return this[`_${action}`](payload);
     const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
-    const result = JSON.parse(String(await command('flock', ['-x', '-w', '10', path.join(this.dir, 'control.flock'), process.execPath, path.join(__dirname, 'control.cjs'), action, encoded], this.env)));
+    const localFlock = path.resolve(this.dir, '../tools/prefix/usr/bin/flock');
+    const result = JSON.parse(String(await command(sync.existsSync(localFlock) ? localFlock : 'flock', ['-x', '-w', '10', path.join(this.dir, 'control.flock'), process.execPath, path.join(__dirname, 'control.cjs'), action, encoded], this.env)));
     if (result.error) throw Object.assign(fail(result.error, result.status || 500), { code: result.code });
     return result.value;
   }

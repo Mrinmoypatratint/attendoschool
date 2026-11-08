@@ -5,7 +5,7 @@ on:
       operation:
         description: 'Inspect safe metadata, prepare server settings, or check last encrypted release'
         type: choice
-        options: [inspect, prepare, monitor]
+        options: [inspect, prepare, monitor, daily]
         default: inspect
   schedule:
     - cron: '47 3 * * *'
@@ -33,7 +33,7 @@ jobs:
           script: |
             set -eu
             cd /home/attendoschool/htdocs/attendoschool.online
-            case '${{ inputs.operation || 'monitor' }}' in
+            case '${{ inputs.operation || 'daily' }}' in
               inspect) node scripts/backup/provision.cjs inspect ;;
               prepare)
                 bash scripts/backup/install-tools.sh
@@ -42,5 +42,11 @@ jobs:
                 pm2 save
                 ;;
               monitor) node scripts/backup/provision.cjs monitor ;;
+              daily)
+                if ! crontab -l 2>/dev/null | grep -q '# attendoschool-backup-managed'; then
+                  BACKUP_CONFIG_FILE=/home/attendoschool/.config/attendoschool-backup.env bash scripts/backup/scheduled.sh
+                fi
+                node scripts/backup/provision.cjs monitor
+                ;;
               *) exit 2 ;;
             esac

@@ -47,7 +47,9 @@ jobs:
           BACKUP_REQUIRE_AGE: '1'
         run: npm run test:backups
       - name: Cron and worker entrypoint round trip (no real database or GitHub)
-        run: bash scripts/backup/tests/roundtrip.sh
+        run: |
+          bash scripts/backup/tests/roundtrip.sh
+          bash scripts/backup/tests/tools-install.sh
       - name: Real PostgreSQL 16 dump, decrypt, checksums and isolated restore
         run: bash scripts/backup/tests/postgres-roundtrip.sh
       - name: Install UI test dependencies

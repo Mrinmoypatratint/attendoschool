@@ -75,6 +75,12 @@ async function prepare({ root = ROOT, base = '/home/attendoschool', env = proces
     saved = lines;
   }
   if (saved.BACKUP_DIR !== dir) throw Error('Existing backup directory differs; preserve it and review migration rather than overwriting settings');
+  const runtime = path.join(state, 'tools/runtime.env');
+  if (await fs.access(runtime).then(() => true, () => false)) {
+    const content = await fs.readFile(config, 'utf8');
+    const line = `source ${quote(runtime)}`;
+    if (!content.split('\n').includes(line)) await replacePrivate(config, `${content.trimEnd()}\n${line}\n`);
+  }
   for (const key of ['BACKUP_AGE_RECIPIENT', 'BACKUP_GH_TOKEN']) {
     if (!env[key]) continue; // Empty workflow secrets never erase a previously configured value.
     const current = await fs.readFile(config, 'utf8'), replacement = `${key}=${quote(env[key])}`;
@@ -111,10 +117,13 @@ async function main(args) {
     const result = await prepare({ env, parse: dotenv.parse });
     const { spawnSync } = require('node:child_process');
     const old = spawnSync('crontab', ['-l'], { encoding: 'utf8' });
-    if (old.error) throw Error('crontab is unavailable; install cron before provisioning');
-    const applied = spawnSync('crontab', ['-'], { input: result.cron(old.stdout || ''), encoding: 'utf8' });
-    if (applied.status !== 0) throw Error('Unable to install the managed backup cron entry');
-    result.report.cronInstalled = true; console.log(JSON.stringify(result.report, null, 2));
+    if (!old.error) {
+      const applied = spawnSync('crontab', ['-'], { input: result.cron(old.stdout || ''), encoding: 'utf8' });
+      result.report.cronInstalled = applied.status === 0;
+    } else result.report.cronInstalled = false;
+    result.report.schedule = result.report.cronInstalled ? 'Daily user cron; GitHub Actions checks missed runs' : 'Daily GitHub Actions SSH schedule (host cron unavailable)';
+    await replacePrivate(path.join(result.state, 'setup-report.json'), JSON.stringify(result.report, null, 2) + '\n');
+    console.log(JSON.stringify(result.report, null, 2));
   } else if (args[0] === 'monitor') {
     const config = '/home/attendoschool/.config/attendoschool-backup.env';
     const stat = await fs.lstat(config); if (!stat.isFile() || stat.isSymbolicLink() || (stat.mode & 0o777) !== 0o600) throw Error('Unsafe backup config');
