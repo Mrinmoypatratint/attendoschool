@@ -374,7 +374,7 @@ export function StudentProfile() {
           border: '1px solid var(--border)',
           borderRadius: 4,
           padding: '24px 28px',
-          background: 'var(--surface, #ffffff)',
+          background: "var(--surface, var(--card))",
           boxShadow: 'none',
           marginBottom: 24
         }}
@@ -388,10 +388,10 @@ export function StudentProfile() {
                 width: 90,
                 height: 90,
                 borderRadius: '50%',
-                border: '3px solid #ffffff',
+                border: "3px solid var(--border)",
                 boxShadow: 'none',
-                backgroundColor: '#e11d55',
-                background: '#e11d55',
+                backgroundColor: "var(--primary)",
+                background: "var(--primary)",
                 overflow: 'hidden',
                 flexShrink: 0,
                 display: 'flex',
@@ -409,7 +409,7 @@ export function StudentProfile() {
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               ) : (
-                <div style={{ color: '#ffffff', fontWeight: 800, fontSize: 28, letterSpacing: '0.02em', userSelect: 'none' }}>
+                <div style={{ color: "var(--background)", fontWeight: 800, fontSize: 28, letterSpacing: '0.02em', userSelect: 'none' }}>
                   {profile?.name ? profile.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'S'}
                 </div>
               )}
@@ -419,13 +419,13 @@ export function StudentProfile() {
                 style={{
                   position: 'absolute',
                   inset: 0,
-                  backgroundColor: 'rgba(28, 31, 46, 0.45)',
+                  backgroundColor: "var(--card)",
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   opacity: 0,
                   transition: 'opacity 0.2s ease',
-                  color: '#ffffff'
+                  color: "var(--background)"
                 }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0'; }}
@@ -437,7 +437,7 @@ export function StudentProfile() {
             {/* Title & Info */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 750, color: 'var(--text, #1c1f2e)' }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 750, color: "var(--text, var(--foreground))" }}>
                   {String(profile?.name || 'STUDENT').toUpperCase()}
                 </h3>
                 <span
@@ -449,15 +449,15 @@ export function StudentProfile() {
                     fontWeight: 700,
                     padding: '2px 8px',
                     borderRadius: 4,
-                    background: '#e6f2f0',
-                    color: '#03806a',
-                    border: '1px solid #99ccc3'
+                    background: "var(--secondary)",
+                    color: "var(--success)",
+                    border: "1px solid var(--border)"
                   }}
                 >
                   <ShieldCheck size={12} /> {profile?.className ? `${profile.className} - Section ${profile.sectionName || ''}` : 'STUDENT'}
                 </span>
               </div>
-              <p className="muted" style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text-muted, #696e79)' }}>
+              <p className="muted" style={{ margin: '0 0 10px', fontSize: 13, color: "var(--text-muted, var(--muted-foreground))" }}>
                 Official student display picture and institutional profile badge. Roll: <b>{profile?.rollNumber || '—'}</b> · Admission No: <b>{profile?.admissionNumber || '—'}</b>
               </p>
 
@@ -480,8 +480,8 @@ export function StudentProfile() {
                     gap: 6,
                     fontSize: 13,
                     padding: '7px 14px',
-                    backgroundColor: '#e11d55',
-                    color: '#ffffff',
+                    backgroundColor: "var(--primary)",
+                    color: "var(--background)",
                     border: 'none',
                     borderRadius: 4,
                     fontWeight: 600,
@@ -503,9 +503,9 @@ export function StudentProfile() {
                       gap: 5,
                       fontSize: 13,
                       padding: '7px 12px',
-                      backgroundColor: '#f7d5d5',
-                      color: '#a82424',
-                      border: '1px solid #e88d8d',
+                      backgroundColor: "var(--secondary)",
+                      color: "var(--destructive)",
+                      border: "1px solid var(--border)",
                       borderRadius: 4,
                       fontWeight: 600,
                       cursor: 'pointer'
@@ -516,7 +516,7 @@ export function StudentProfile() {
                     Remove Picture
                   </button>
                 )}
-                <span style={{ fontSize: 12, color: 'var(--muted, #696e79)' }}>
+                <span style={{ fontSize: 12, color: "var(--muted, var(--muted-foreground))" }}>
                   PNG, JPG, WebP up to 5MB
                 </span>
               </div>
@@ -670,7 +670,7 @@ export function StudentProfile() {
                 </label>
 
                 <label style={{ display: 'grid', gap: 4, gridColumn: 'span 2' }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #3e4152)' }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text, var(--muted-foreground))" }}>
                     Student Email:
                   </span>
                   <input
@@ -682,11 +682,11 @@ export function StudentProfile() {
                       width: '100%',
                       padding: '8px 12px',
                       borderRadius: 4,
-                      border: '1px solid var(--border-strong, #d4d5d9)',
+                      border: "1px solid var(--border-strong, var(--border))",
                       fontSize: 13,
                       outline: 'none',
-                      backgroundColor: 'var(--card-bg, #ffffff)',
-                      color: 'var(--text, #1c1f2e)',
+                      backgroundColor: "var(--card-bg, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       boxSizing: 'border-box'
                     }}
                   />

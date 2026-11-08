@@ -465,11 +465,11 @@ export function StudentAnnouncements() {
         marginBottom: 16,
         padding: '10px 14px',
         borderRadius: 4,
-        backgroundColor: 'var(--card-subtle, #f9f9fa)',
-        border: '1px solid var(--border, #eaeaec)'
+        backgroundColor: "var(--card-subtle, var(--card))",
+        border: "1px solid var(--border, var(--border))"
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #535766)', textTransform: 'uppercase', letterSpacing: '0.03em', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary, var(--muted-foreground))", textTransform: 'uppercase', letterSpacing: '0.03em', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <Filter size={13} /> Filter:
           </span>
 
@@ -489,10 +489,10 @@ export function StudentAnnouncements() {
               fontSize: 12.5,
               fontWeight: 600,
               cursor: 'pointer',
-              border: sourceFilter === 'ALL' ? '1px solid #e11d55' : '1px solid var(--border, #d4d5d9)',
-              backgroundColor: sourceFilter === 'ALL' ? '#e11d55' : 'var(--bg-card, #ffffff)',
-              color: sourceFilter === 'ALL' ? '#ffffff' : 'var(--text, #1c1f2e)',
-              boxShadow: sourceFilter === 'ALL' ? '0 1px 3px rgba(225, 29, 85,0.2)' : 'none',
+              border: sourceFilter === 'ALL' ? "1px solid var(--border)" : "1px solid var(--border, var(--border))",
+              backgroundColor: sourceFilter === 'ALL' ? "var(--primary)" : "var(--bg-card, var(--card))",
+              color: sourceFilter === 'ALL' ? "var(--background)" : "var(--text, var(--foreground))",
+              boxShadow: sourceFilter === 'ALL' ? "none" : 'none',
               transition: 'all 0.15s ease'
             }}
           >
@@ -500,8 +500,8 @@ export function StudentAnnouncements() {
               fontSize: 11,
               padding: '1px 6px',
               borderRadius: 4,
-              backgroundColor: sourceFilter === 'ALL' ? 'rgba(255,255,255,0.25)' : 'var(--card-subtle, #f5f5f6)',
-              color: sourceFilter === 'ALL' ? '#ffffff' : 'var(--text-muted, #696e79)'
+              backgroundColor: sourceFilter === 'ALL' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: sourceFilter === 'ALL' ? "var(--background)" : "var(--text-muted, var(--muted-foreground))"
             }}>{announcements.length}</span>
           </button>
 
@@ -521,10 +521,10 @@ export function StudentAnnouncements() {
               fontSize: 12.5,
               fontWeight: 600,
               cursor: 'pointer',
-              border: sourceFilter === 'SCHOOL' ? '1px solid #e11d55' : '1px solid var(--border, #d4d5d9)',
-              backgroundColor: sourceFilter === 'SCHOOL' ? '#e11d55' : 'var(--bg-card, #ffffff)',
-              color: sourceFilter === 'SCHOOL' ? '#ffffff' : 'var(--text, #1c1f2e)',
-              boxShadow: sourceFilter === 'SCHOOL' ? '0 1px 3px rgba(225, 29, 85,0.2)' : 'none',
+              border: sourceFilter === 'SCHOOL' ? "1px solid var(--border)" : "1px solid var(--border, var(--border))",
+              backgroundColor: sourceFilter === 'SCHOOL' ? "var(--primary)" : "var(--bg-card, var(--card))",
+              color: sourceFilter === 'SCHOOL' ? "var(--background)" : "var(--text, var(--foreground))",
+              boxShadow: sourceFilter === 'SCHOOL' ? "none" : 'none',
               transition: 'all 0.15s ease'
             }}
           >
@@ -533,8 +533,8 @@ export function StudentAnnouncements() {
               fontSize: 11,
               padding: '1px 6px',
               borderRadius: 4,
-              backgroundColor: sourceFilter === 'SCHOOL' ? 'rgba(255,255,255,0.25)' : 'var(--card-subtle, #f5f5f6)',
-              color: sourceFilter === 'SCHOOL' ? '#ffffff' : 'var(--text-muted, #696e79)'
+              backgroundColor: sourceFilter === 'SCHOOL' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: sourceFilter === 'SCHOOL' ? "var(--background)" : "var(--text-muted, var(--muted-foreground))"
             }}>{schoolCount}</span>
           </button>
 
@@ -551,10 +551,10 @@ export function StudentAnnouncements() {
               fontSize: 12.5,
               fontWeight: 600,
               cursor: 'pointer',
-              border: sourceFilter === 'TEACHER' ? '1px solid #e11d55' : '1px solid var(--border, #d4d5d9)',
-              backgroundColor: sourceFilter === 'TEACHER' ? '#e11d55' : 'var(--bg-card, #ffffff)',
-              color: sourceFilter === 'TEACHER' ? '#ffffff' : 'var(--text, #1c1f2e)',
-              boxShadow: sourceFilter === 'TEACHER' ? '0 1px 3px rgba(225, 29, 85,0.2)' : 'none',
+              border: sourceFilter === 'TEACHER' ? "1px solid var(--border)" : "1px solid var(--border, var(--border))",
+              backgroundColor: sourceFilter === 'TEACHER' ? "var(--primary)" : "var(--bg-card, var(--card))",
+              color: sourceFilter === 'TEACHER' ? "var(--background)" : "var(--text, var(--foreground))",
+              boxShadow: sourceFilter === 'TEACHER' ? "none" : 'none',
               transition: 'all 0.15s ease'
             }}
           >
@@ -563,8 +563,8 @@ export function StudentAnnouncements() {
               fontSize: 11,
               padding: '1px 6px',
               borderRadius: 4,
-              backgroundColor: sourceFilter === 'TEACHER' ? 'rgba(255,255,255,0.25)' : 'var(--card-subtle, #f5f5f6)',
-              color: sourceFilter === 'TEACHER' ? '#ffffff' : 'var(--text-muted, #696e79)'
+              backgroundColor: sourceFilter === 'TEACHER' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: sourceFilter === 'TEACHER' ? "var(--background)" : "var(--text-muted, var(--muted-foreground))"
             }}>{teacherCount}</span>
           </button>
         </div>
@@ -572,7 +572,7 @@ export function StudentAnnouncements() {
         {/* Specific Teacher Name Filter */}
         {sourceFilter === 'TEACHER' && teacherNames.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #535766)' }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary, var(--muted-foreground))" }}>
               Teacher:
             </label>
             <select
@@ -582,9 +582,9 @@ export function StudentAnnouncements() {
                 padding: '5px 10px',
                 borderRadius: 4,
                 fontSize: 12.5,
-                border: '1px solid var(--border, #d4d5d9)',
-                backgroundColor: 'var(--bg-card, #ffffff)',
-                color: 'var(--text, #1c1f2e)',
+                border: "1px solid var(--border, var(--border))",
+                backgroundColor: "var(--bg-card, var(--card))",
+                color: "var(--text, var(--foreground))",
                 outline: 'none',
                 cursor: 'pointer'
               }}
@@ -695,7 +695,7 @@ export function StudentAnnouncements() {
                 style={{
                   marginTop: 8,
                   cursor: 'pointer',
-                  color: 'var(--text, #1c1f2e)',
+                  color: "var(--text, var(--foreground))",
                   transition: 'color 0.15s ease'
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = '#e11d55')}
@@ -707,7 +707,7 @@ export function StudentAnnouncements() {
               {/* Dynamic Author Indicator */}
               <div style={{
                 fontSize: 12,
-                color: isTeacherNotice(a) ? '#02604f' : '#c0174a',
+                color: isTeacherNotice(a) ? "var(--success)" : "var(--primary)",
                 fontWeight: 600,
                 marginTop: 2,
                 marginBottom: 8,
@@ -735,8 +735,8 @@ export function StudentAnnouncements() {
                   marginTop: 14,
                   padding: '12px 16px',
                   borderRadius: 4,
-                  backgroundColor: 'var(--card-subtle, #f9f9fa)',
-                  border: '1px solid var(--border, #d4d5d9)',
+                  backgroundColor: "var(--card-subtle, var(--card))",
+                  border: "1px solid var(--border, var(--border))",
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
@@ -748,8 +748,8 @@ export function StudentAnnouncements() {
                       width: 36,
                       height: 36,
                       borderRadius: 4,
-                      backgroundColor: '#fff2f4',
-                      color: '#e11d55',
+                      backgroundColor: "var(--card)",
+                      color: "var(--primary)",
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -761,7 +761,7 @@ export function StudentAnnouncements() {
                       <div style={{
                         fontWeight: 600,
                         fontSize: 13.5,
-                        color: 'var(--text, #1c1f2e)',
+                        color: "var(--text, var(--foreground))",
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap'
@@ -769,7 +769,7 @@ export function StudentAnnouncements() {
                         {a.attachment_name || 'Attached Document'}
                       </div>
                       {a.attachment_size ? (
-                        <div style={{ fontSize: 11.5, color: 'var(--text-muted, #696e79)' }}>
+                        <div style={{ fontSize: 11.5, color: "var(--text-muted, var(--muted-foreground))" }}>
                           {(a.attachment_size / 1024).toFixed(1)} KB
                         </div>
                       ) : null}
@@ -787,9 +787,9 @@ export function StudentAnnouncements() {
                           gap: 6,
                           padding: '7px 14px',
                           borderRadius: 4,
-                          backgroundColor: '#fff2f4',
-                          color: '#e11d55',
-                          border: '1px solid #fcc3d1',
+                          backgroundColor: "var(--card)",
+                          color: "var(--primary)",
+                          border: "1px solid var(--border)",
                           fontSize: 12.5,
                           fontWeight: 600,
                           cursor: 'pointer',
@@ -811,8 +811,8 @@ export function StudentAnnouncements() {
                         gap: 6,
                         padding: '7px 14px',
                         borderRadius: 4,
-                        backgroundColor: '#e11d55',
-                        color: '#ffffff',
+                        backgroundColor: "var(--primary)",
+                        color: "var(--background)",
                         fontSize: 12.5,
                         fontWeight: 600,
                         textDecoration: 'none',
@@ -906,7 +906,7 @@ export function StudentAnnouncements() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(28, 31, 46, 0.65)',
+            background: "var(--card)",
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
             display: 'flex',
@@ -922,8 +922,8 @@ export function StudentAnnouncements() {
               width: isNoticeMaximized ? 'min(1280px, 98vw)' : 'min(640px, 95vw)',
               height: isNoticeMaximized ? '94vh' : 'auto',
               maxHeight: '94vh',
-              background: 'var(--bg-card, #ffffff)',
-              border: '1px solid var(--border, #eaeaec)',
+              background: "var(--bg-card, var(--card))",
+              border: "1px solid var(--border, var(--border))",
               borderRadius: isNoticeMaximized ? 12 : 16,
               boxShadow: 'none',
               display: 'flex',
@@ -936,8 +936,8 @@ export function StudentAnnouncements() {
             {/* Modal Header */}
             <div style={{
               padding: isNoticeMaximized ? '16px 24px' : '18px 24px',
-              borderBottom: '1px solid var(--border, #eaeaec)',
-              background: 'var(--card-subtle, #f9f9fa)',
+              borderBottom: "1px solid var(--border, var(--border))",
+              background: "var(--card-subtle, var(--card))",
               display: 'flex',
               alignItems: 'flex-start',
               justifyContent: 'space-between',
@@ -948,8 +948,8 @@ export function StudentAnnouncements() {
                   width: 42,
                   height: 42,
                   borderRadius: 4,
-                  background: (viewingNotice.status || 'PUBLISHED') === 'PUBLISHED' ? 'rgba(3, 128, 106, 0.12)' : 'rgba(225, 29, 85, 0.12)',
-                  color: (viewingNotice.status || 'PUBLISHED') === 'PUBLISHED' ? '#03806a' : '#e11d55',
+                  background: (viewingNotice.status || 'PUBLISHED') === 'PUBLISHED' ? "var(--secondary)" : "var(--accent)",
+                  color: (viewingNotice.status || 'PUBLISHED') === 'PUBLISHED' ? "var(--success)" : "var(--primary)",
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -968,9 +968,9 @@ export function StudentAnnouncements() {
                       borderRadius: 4,
                       fontSize: 11,
                       fontWeight: 700,
-                      backgroundColor: '#e6f2f0',
-                      color: '#02604f',
-                      border: '1px solid #99ccc3'
+                      backgroundColor: "var(--secondary)",
+                      color: "var(--success)",
+                      border: "1px solid var(--border)"
                     }}>
                       <CheckCircle2 size={12} />
                       PUBLISHED
@@ -985,8 +985,8 @@ export function StudentAnnouncements() {
                       borderRadius: 4,
                       fontSize: 11,
                       fontWeight: 700,
-                      backgroundColor: viewingNotice.priority === 'EMERGENCY' ? '#f7d5d5' : viewingNotice.priority === 'HIGH' ? '#fbecd3' : 'var(--card-subtle, #f5f5f6)',
-                      color: viewingNotice.priority === 'EMERGENCY' ? '#a82424' : viewingNotice.priority === 'HIGH' ? '#8f5c12' : 'var(--text-secondary, #535766)'
+                      backgroundColor: viewingNotice.priority === 'EMERGENCY' ? "var(--secondary)" : viewingNotice.priority === 'HIGH' ? "var(--secondary)" : "var(--card-subtle, var(--secondary))",
+                      color: viewingNotice.priority === 'EMERGENCY' ? "var(--destructive)" : viewingNotice.priority === 'HIGH' ? "var(--warning)" : "var(--text-secondary, var(--muted-foreground))"
                     }}>
                       {viewingNotice.priority === 'EMERGENCY' && <AlertTriangle size={11} />}
                       {viewingNotice.priority || 'NORMAL'}
@@ -998,9 +998,9 @@ export function StudentAnnouncements() {
                       fontWeight: 600,
                       padding: '2px 8px',
                       borderRadius: 4,
-                      backgroundColor: '#fff2f4',
-                      color: '#c0174a',
-                      border: '1px solid #fcc3d1'
+                      backgroundColor: "var(--card)",
+                      color: "var(--primary)",
+                      border: "1px solid var(--border)"
                     }}>
                       {getAudienceBadgeText(viewingNotice)}
                     </span>
@@ -1014,9 +1014,9 @@ export function StudentAnnouncements() {
                         borderRadius: 4,
                         fontSize: 11,
                         fontWeight: 700,
-                        backgroundColor: '#e6f2f0',
-                        color: '#02604f',
-                        border: '1px solid #99ccc3'
+                        backgroundColor: "var(--secondary)",
+                        color: "var(--success)",
+                        border: "1px solid var(--border)"
                       }}>
                         <GraduationCap size={12} />
                         Teacher: {viewingNotice.author_name || 'Teacher'}
@@ -1030,9 +1030,9 @@ export function StudentAnnouncements() {
                         borderRadius: 4,
                         fontSize: 11,
                         fontWeight: 700,
-                        backgroundColor: '#fff2f4',
-                        color: '#c0174a',
-                        border: '1px solid #fcc3d1'
+                        backgroundColor: "var(--card)",
+                        color: "var(--primary)",
+                        border: "1px solid var(--border)"
                       }}>
                         <Building2 size={12} />
                         By School Admin
@@ -1044,7 +1044,7 @@ export function StudentAnnouncements() {
                     margin: 0,
                     fontSize: isNoticeMaximized ? 20 : 17,
                     fontWeight: 700,
-                    color: 'var(--text, #1c1f2e)',
+                    color: "var(--text, var(--foreground))",
                     lineHeight: 1.35,
                     wordBreak: 'break-word'
                   }}>
@@ -1052,7 +1052,7 @@ export function StudentAnnouncements() {
                   </h2>
                   <div style={{
                     fontSize: 12.5,
-                    color: isTeacherNotice(viewingNotice) ? '#02604f' : '#c0174a',
+                    color: isTeacherNotice(viewingNotice) ? "var(--success)" : "var(--primary)",
                     fontWeight: 600,
                     marginTop: 6,
                     display: 'flex',
@@ -1081,7 +1081,7 @@ export function StudentAnnouncements() {
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: 'var(--text-muted, #696e79)',
+                    color: "var(--text-muted, var(--muted-foreground))",
                     cursor: 'pointer',
                     padding: 4,
                     borderRadius: 4,
@@ -1105,7 +1105,7 @@ export function StudentAnnouncements() {
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: 'var(--text-muted, #696e79)',
+                    color: "var(--text-muted, var(--muted-foreground))",
                     cursor: 'pointer',
                     padding: 4,
                     borderRadius: 4,
@@ -1141,26 +1141,26 @@ export function StudentAnnouncements() {
                 gap: 12,
                 padding: '10px 14px',
                 borderRadius: 4,
-                backgroundColor: 'var(--card-subtle, #f9f9fa)',
-                border: '1px solid var(--border, #eaeaec)',
+                backgroundColor: "var(--card-subtle, var(--card))",
+                border: "1px solid var(--border, var(--border))",
                 fontSize: 12
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary, #535766)' }}>
-                  <Clock size={14} style={{ color: '#03806a' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: "var(--text-secondary, var(--muted-foreground))" }}>
+                  <Clock size={14} style={{ color: "var(--success)" }} />
                   <span>
                     Published on <b>{formatPublishDate(viewingNotice.published_at || viewingNotice.created_at)}</b> at <b>{formatPublishTime(viewingNotice.published_at || viewingNotice.created_at)}</b>
                   </span>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <span style={{ color: 'var(--text-muted, #696e79)' }}>
-                    Recipients: <strong style={{ color: 'var(--text, #1c1f2e)' }}>{viewingNotice.recipient_count || 1}</strong>
+                  <span style={{ color: "var(--text-muted, var(--muted-foreground))" }}>
+                    Recipients: <strong style={{ color: "var(--text, var(--foreground))" }}>{viewingNotice.recipient_count || 1}</strong>
                   </span>
-                  <span style={{ color: 'var(--text-muted, #696e79)' }}>
-                    Read: <strong style={{ color: 'var(--text, #1c1f2e)' }}>{viewingNotice.read_count || (viewingNotice.read_at ? 1 : 0)}</strong>
+                  <span style={{ color: "var(--text-muted, var(--muted-foreground))" }}>
+                    Read: <strong style={{ color: "var(--text, var(--foreground))" }}>{viewingNotice.read_count || (viewingNotice.read_at ? 1 : 0)}</strong>
                   </span>
-                  <span style={{ color: 'var(--text-muted, #696e79)' }}>
-                    Replies: <strong style={{ color: '#e11d55' }}>{viewingNotice.reply_count || 0}</strong>
+                  <span style={{ color: "var(--text-muted, var(--muted-foreground))" }}>
+                    Replies: <strong style={{ color: "var(--primary)" }}>{viewingNotice.reply_count || 0}</strong>
                   </span>
                 </div>
               </div>
@@ -1173,20 +1173,20 @@ export function StudentAnnouncements() {
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.04em',
-                  color: 'var(--text-muted, #696e79)',
+                  color: "var(--text-muted, var(--muted-foreground))",
                   marginBottom: 8
                 }}>
                   Announcement Message
                 </label>
                 <div style={{
-                  backgroundColor: 'var(--bg-card, #ffffff)',
-                  border: '1px solid var(--border, #d4d5d9)',
-                  borderLeft: '4px solid #03806a',
+                  backgroundColor: "var(--bg-card, var(--card))",
+                  border: "1px solid var(--border, var(--border))",
+                  borderLeft: "4px solid var(--border)",
                   borderRadius: 4,
                   padding: isNoticeMaximized ? '20px 22px' : '16px 18px',
                   fontSize: 14,
                   lineHeight: 1.7,
-                  color: 'var(--text, #282c3f)',
+                  color: "var(--text, var(--foreground))",
                   whiteSpace: 'pre-wrap',
                   wordBreak: 'break-word',
                   maxHeight: isNoticeMaximized ? 'calc(94vh - 360px)' : 280,
@@ -1196,7 +1196,7 @@ export function StudentAnnouncements() {
                   {viewingNotice.message ? (
                     viewingNotice.message
                   ) : (
-                    <span style={{ color: 'var(--text-muted, #94969f)', fontStyle: 'italic' }}>
+                    <span style={{ color: "var(--text-muted, var(--muted-foreground))", fontStyle: 'italic' }}>
                       No message content available.
                     </span>
                   )}
@@ -1212,7 +1212,7 @@ export function StudentAnnouncements() {
                     fontWeight: 700,
                     textTransform: 'uppercase',
                     letterSpacing: '0.04em',
-                    color: 'var(--text-muted, #696e79)',
+                    color: "var(--text-muted, var(--muted-foreground))",
                     marginBottom: 8
                   }}>
                     Attached Document
@@ -1223,8 +1223,8 @@ export function StudentAnnouncements() {
                     justifyContent: 'space-between',
                     padding: '12px 16px',
                     borderRadius: 4,
-                    backgroundColor: 'var(--card-subtle, #f9f9fa)',
-                    border: '1px solid var(--border, #d4d5d9)',
+                    backgroundColor: "var(--card-subtle, var(--card))",
+                    border: "1px solid var(--border, var(--border))",
                     gap: 12,
                     flexWrap: 'wrap'
                   }}>
@@ -1233,8 +1233,8 @@ export function StudentAnnouncements() {
                         width: 36,
                         height: 36,
                         borderRadius: 4,
-                        backgroundColor: '#fff2f4',
-                        color: '#e11d55',
+                        backgroundColor: "var(--card)",
+                        color: "var(--primary)",
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -1246,7 +1246,7 @@ export function StudentAnnouncements() {
                         <div style={{
                           fontWeight: 600,
                           fontSize: 13.5,
-                          color: 'var(--text, #1c1f2e)',
+                          color: "var(--text, var(--foreground))",
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap'
@@ -1254,7 +1254,7 @@ export function StudentAnnouncements() {
                           {viewingNotice.attachment_name || 'Attached File'}
                         </div>
                         {viewingNotice.attachment_size ? (
-                          <div style={{ fontSize: 11.5, color: 'var(--text-muted, #696e79)' }}>
+                          <div style={{ fontSize: 11.5, color: "var(--text-muted, var(--muted-foreground))" }}>
                             {(viewingNotice.attachment_size / 1024).toFixed(1)} KB
                           </div>
                         ) : null}
@@ -1272,9 +1272,9 @@ export function StudentAnnouncements() {
                             gap: 6,
                             padding: '7px 14px',
                             borderRadius: 4,
-                            backgroundColor: '#fff2f4',
-                            color: '#e11d55',
-                            border: '1px solid #fcc3d1',
+                            backgroundColor: "var(--card)",
+                            color: "var(--primary)",
+                            border: "1px solid var(--border)",
                             fontSize: 12.5,
                             fontWeight: 600,
                             cursor: 'pointer',
@@ -1296,8 +1296,8 @@ export function StudentAnnouncements() {
                           gap: 6,
                           padding: '7px 14px',
                           borderRadius: 4,
-                          backgroundColor: '#e11d55',
-                          color: '#ffffff',
+                          backgroundColor: "var(--primary)",
+                          color: "var(--background)",
                           fontSize: 12.5,
                           fontWeight: 600,
                           textDecoration: 'none',
@@ -1315,8 +1315,8 @@ export function StudentAnnouncements() {
             {/* Modal Footer */}
             <div style={{
               padding: '14px 24px',
-              borderTop: '1px solid var(--border, #eaeaec)',
-              background: 'var(--card-subtle, #f9f9fa)',
+              borderTop: "1px solid var(--border, var(--border))",
+              background: "var(--card-subtle, var(--card))",
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'flex-end',
@@ -1335,8 +1335,8 @@ export function StudentAnnouncements() {
                   fontWeight: 600,
                   cursor: 'pointer',
                   border: 'none',
-                  backgroundColor: '#e11d55',
-                  color: '#ffffff',
+                  backgroundColor: "var(--primary)",
+                  color: "var(--background)",
                   boxShadow: 'none'
                 }}
               >

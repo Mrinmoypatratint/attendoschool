@@ -85,7 +85,7 @@ export function StudentTimetable() {
         style={{
           display: 'flex',
           gap: 12,
-          borderBottom: '2px solid var(--border, #eaeaec)',
+          borderBottom: "2px solid var(--border, var(--border))",
           marginBottom: 16,
           overflowX: 'auto',
           scrollbarWidth: 'none',
@@ -105,8 +105,8 @@ export function StudentTimetable() {
                 padding: '12px 20px',
                 background: 'none',
                 border: 'none',
-                borderBottom: isSelected ? '3px solid #e11d55' : '3px solid transparent',
-                color: isSelected ? '#e11d55' : 'var(--text-secondary, #696e79)',
+                borderBottom: isSelected ? "3px solid var(--border)" : '3px solid transparent',
+                color: isSelected ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
                 fontWeight: isSelected ? 700 : 500,
                 fontSize: 15,
                 cursor: 'pointer',
@@ -124,8 +124,8 @@ export function StudentTimetable() {
                 style={{
                   padding: '2px 8px',
                   borderRadius: 4,
-                  background: isSelected ? '#ffe1e8' : 'var(--card-subtle, #f5f5f6)',
-                  color: isSelected ? '#c0174a' : '#696e79',
+                  background: isSelected ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+                  color: isSelected ? "var(--primary)" : "var(--muted-foreground)",
                   fontSize: 12,
                   fontWeight: 700
                 }}
