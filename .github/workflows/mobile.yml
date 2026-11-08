@@ -55,6 +55,10 @@ jobs:
     if: inputs.platform != 'ios'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        android-api: [29, 35]
     defaults:
       run:
         working-directory: frontend
@@ -101,9 +105,28 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: bash android/gradlew -p android assembleDebug bundleRelease
+      - name: Enable emulator hardware acceleration
+        run: sudo chmod 666 /dev/kvm
+      - name: Cold-launch the APK and check for crashes
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.android-api }}
+          arch: x86_64
+          target: google_apis
+          profile: pixel_2
+          disable-animations: true
+          working-directory: frontend
+          script: bash ../scripts/mobile/android-launch-smoke.sh android/app/build/outputs/apk/debug/app-debug.apk android/startup-test
+      - name: Upload Android startup evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-startup-api-${{ matrix.android-api }}-${{ github.run_number }}
+          path: frontend/android/startup-test/
+          if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         with:
-          name: android-${{ inputs.signed_release && 'signed' || 'test-and-unsigned' }}-${{ github.run_number }}
+          name: android-${{ inputs.signed_release && 'signed' || 'test-and-unsigned' }}-api-${{ matrix.android-api }}-${{ github.run_number }}
           path: |
             frontend/android/app/build/outputs/apk/debug/*.apk
             frontend/android/app/build/outputs/bundle/release/*.aab
