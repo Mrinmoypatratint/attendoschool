@@ -131,6 +131,8 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: xcodebuild -version
+      - name: Compile the visual smoke checker
+        run: swiftc ../scripts/mobile/assert-ios-screen.swift -o "$RUNNER_TEMP/assert-ios-screen"
       - run: npm ci
       - run: npm run mobile:ios
       - name: Compile simulator app
@@ -151,7 +153,7 @@ jobs:
           sleep 15
           xcrun simctl io "$DEVICE_ID" screenshot ios/output/AttendoSchool-ios-login.png
           xcrun simctl spawn "$DEVICE_ID" log show --last 2m --style compact --predicate 'process == "App"' > ios/output/native-startup.log
-          swift ../scripts/mobile/assert-ios-screen.swift ios/output/AttendoSchool-ios-login.png
+          "$RUNNER_TEMP/assert-ios-screen" ios/output/AttendoSchool-ios-login.png
       - name: Import distribution signing when requested
         if: inputs.signed_release
         env:
