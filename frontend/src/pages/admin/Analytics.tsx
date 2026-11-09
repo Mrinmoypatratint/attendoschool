@@ -240,7 +240,7 @@ export default function Analytics() {
 
   const renderClassSectionFilter = (idPrefix = 'filter', showExport = false) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--gray-50)', padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--gray-50)', padding: '5px 10px', borderRadius: 4, border: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--primary-600)', fontSize: 12.5, fontWeight: 600 }}>
           <Filter size={14} />
           <span>Class & Section:</span>
@@ -258,7 +258,7 @@ export default function Analytics() {
           }}
           style={{
             padding: '4px 8px',
-            borderRadius: 6,
+            borderRadius: 4,
             border: '1px solid var(--border)',
             background: 'var(--bg-card)',
             fontSize: 12.5,
@@ -291,7 +291,7 @@ export default function Analytics() {
           }}
           style={{
             padding: '4px 8px',
-            borderRadius: 6,
+            borderRadius: 4,
             border: '1px solid var(--border)',
             background: 'var(--bg-card)',
             fontSize: 12.5,
@@ -323,7 +323,7 @@ export default function Analytics() {
             style={{
               background: 'none',
               border: 'none',
-              color: '#dc2626',
+              color: "var(--destructive)",
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
@@ -351,19 +351,19 @@ export default function Analytics() {
             alignItems: 'center',
             gap: 6,
             padding: '6px 13px',
-            borderRadius: 8,
-            border: '1px solid #16a34a',
-            background: '#f0fdf4',
-            color: '#15803d',
+            borderRadius: 4,
+            border: "1px solid var(--border)",
+            background: "var(--secondary)",
+            color: "var(--success)",
             fontWeight: 600,
             fontSize: 12.5,
             cursor: exporting ? 'not-allowed' : 'pointer',
             transition: 'all 0.15s ease',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+            boxShadow: 'none'
           }}
           title={`Export ${filterClass ? (filterSection ? `Class ${filterClass} - Section ${filterSection}` : `Class ${filterClass}`) : 'All Classes'} At-Risk Watchlist to Excel (.xlsx)`}
         >
-          <FileSpreadsheet size={15} style={{ color: '#16a34a' }} />
+          <FileSpreadsheet size={15} style={{ color: "var(--success)" }} />
           <span>{exporting ? 'Exporting...' : 'Export Excel'}</span>
         </button>
       )}
@@ -565,10 +565,10 @@ export default function Analytics() {
                   {/* Legend */}
                   <div style={{ display: 'flex', gap: 12, fontSize: 12, alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <div style={{ width: 10, height: 10, background: '#3b82f6', borderRadius: 2 }}></div> Present %
+                      <div style={{ width: 10, height: 10, background: "var(--primary)", borderRadius: 2 }}></div> Present %
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <div style={{ width: 10, height: 10, background: '#ef4444', borderRadius: 2 }}></div> Target (75%)
+                      <div style={{ width: 10, height: 10, background: "var(--destructive)", borderRadius: 2 }}></div> Target (75%)
                     </div>
                   </div>
                 </div>
@@ -625,10 +625,10 @@ export default function Analytics() {
                             style={{ 
                               height: `${rate}%`,
                               background: rate >= 90 
-                                ? 'linear-gradient(180deg, #10b981 0%, #059669 100%)' 
+                                ? "var(--success)" 
                                 : rate >= 80 
-                                  ? 'linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)'
-                                  : 'linear-gradient(180deg, #f59e0b 0%, #d97706 100%)'
+                                  ? "var(--primary)"
+                                  : "var(--warning)"
                             }}
                           >
                             {rate > 0 && <div className="bar-value-tooltip">{rate}%</div>}
@@ -663,12 +663,12 @@ export default function Analytics() {
                     )}
                   </div>
                   <div style={{ display: 'flex', gap: 20, fontSize: 13, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <div>Present: <strong style={{ color: selectedDay.present_records > 0 ? '#10b981' : 'var(--text-muted)' }}>{selectedDay.present_records}</strong></div>
-                    <div>Absent: <strong style={{ color: selectedDay.absent_records > 0 ? '#ef4444' : 'var(--text-muted)' }}>{selectedDay.absent_records}</strong></div>
-                    <div>Left Early: <strong style={{ color: (selectedDay.left_early_records || 0) > 0 ? '#d97706' : 'var(--text-muted)' }}>{selectedDay.left_early_records || 0}</strong></div>
+                    <div>Present: <strong style={{ color: selectedDay.present_records > 0 ? "var(--success)" : 'var(--text-muted)' }}>{selectedDay.present_records}</strong></div>
+                    <div>Absent: <strong style={{ color: selectedDay.absent_records > 0 ? "var(--destructive)" : 'var(--text-muted)' }}>{selectedDay.absent_records}</strong></div>
+                    <div>Left Early: <strong style={{ color: (selectedDay.left_early_records || 0) > 0 ? "var(--warning)" : 'var(--text-muted)' }}>{selectedDay.left_early_records || 0}</strong></div>
                     <div>Attendance Rate: <strong style={{ color: selectedDay.has_attendance ? 'var(--text)' : 'var(--text-muted)' }}>{selectedDay.attendance_percentage}%</strong></div>
                     {!selectedDay.has_attendance && (
-                      <span style={{ fontSize: 11.5, background: 'var(--gray-200)', color: 'var(--text-muted)', padding: '2px 8px', borderRadius: 12, fontWeight: 500 }}>
+                      <span style={{ fontSize: 11.5, background: 'var(--gray-200)', color: 'var(--text-muted)', padding: '2px 8px', borderRadius: 4, fontWeight: 500 }}>
                         No attendance recorded
                       </span>
                     )}
@@ -722,7 +722,7 @@ export default function Analytics() {
                       <div key={c.classNumber} style={{ padding: 16, border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', background: 'var(--bg-card)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                           <span style={{ fontWeight: 700, fontSize: 14 }}>{c.className}</span>
-                          <strong style={{ fontSize: 15, color: rate >= 90 ? '#10b981' : rate >= 75 ? '#3b82f6' : '#dc2626' }}>{rate}%</strong>
+                          <strong style={{ fontSize: 15, color: rate >= 90 ? "var(--success)" : rate >= 75 ? "var(--primary)" : "var(--destructive)" }}>{rate}%</strong>
                         </div>
                         <div className="class-progress-bar">
                           <div className={`class-progress-fill ${colorClass}`} style={{ width: `${Math.min(100, rate)}%` }}></div>
@@ -730,7 +730,7 @@ export default function Analytics() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: 'var(--text-muted)', marginTop: 8, gap: 8, flexWrap: 'wrap' }}>
                           <span>Present: {c.present}</span>
                           <span>Absent: {c.absent}</span>
-                          <span style={{ color: (c.leftEarly || c.left_early || 0) > 0 ? '#d97706' : undefined, fontWeight: (c.leftEarly || c.left_early || 0) > 0 ? 600 : undefined }}>
+                          <span style={{ color: (c.leftEarly || c.left_early || 0) > 0 ? "var(--warning)" : undefined, fontWeight: (c.leftEarly || c.left_early || 0) > 0 ? 600 : undefined }}>
                             Left Early: {c.leftEarly ?? c.left_early ?? 0}
                           </span>
                         </div>
@@ -747,7 +747,7 @@ export default function Analytics() {
             <div className="panel" style={{ padding: 22, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <AlertTriangle size={20} style={{ color: '#dc2626' }} />
+                  <AlertTriangle size={20} style={{ color: "var(--destructive)" }} />
                   <div>
                     <h3 style={{ margin: 0, fontSize: 16 }}>Chronic Absenteeism Watchlist (&lt; 75%)</h3>
                     <p className="muted" style={{ margin: '3px 0 0', fontSize: 13 }}>
@@ -761,7 +761,7 @@ export default function Analytics() {
 
               {(!data.lowAttendanceStudents || data.lowAttendanceStudents.length === 0) ? (
                 <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  <CheckCircle2 size={36} style={{ color: '#10b981', margin: '0 auto 10px', display: 'block' }} />
+                  <CheckCircle2 size={36} style={{ color: "var(--success)", margin: '0 auto 10px', display: 'block' }} />
                   <h4 style={{ margin: '0 0 6px', fontSize: 15, color: 'var(--text)' }}>
                     {filterClass || filterSection ? 'No At-Risk Students for Selected Filter' : 'No At-Risk Students'}
                   </h4>
@@ -804,11 +804,11 @@ export default function Analytics() {
                           <td><PersonProfileLink kind="student" id={st.id || st.student_id} name={st.name} person={st as any}><b>{st.name}</b></PersonProfileLink></td>
                           <td>{st.class_name} - {st.section_name}</td>
                           <td>
-                            <span style={{ color: '#ef4444', fontWeight: 700, fontSize: 14, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', padding: '3px 8px', borderRadius: 4 }}>
+                            <span style={{ color: "var(--destructive)", fontWeight: 700, fontSize: 14, background: "var(--secondary)", border: "1px solid var(--border)", padding: '3px 8px', borderRadius: 4 }}>
                               {st.attendance_rate}%
                             </span>
                           </td>
-                          <td><b style={{ color: '#d97706' }}>{st.absent_days} sessions</b></td>
+                          <td><b style={{ color: "var(--warning)" }}>{st.absent_days} sessions</b></td>
                           <td>
                             <div>{st.parent_name}</div>
                             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{st.parent_phone}</div>

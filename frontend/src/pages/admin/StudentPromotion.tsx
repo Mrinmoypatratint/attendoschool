@@ -408,10 +408,10 @@ export default function StudentPromotion() {
         <div className="success" style={{
           marginBottom: 16,
           padding: '12px 16px',
-          borderRadius: 8,
-          background: 'rgba(16, 185, 129, 0.12)',
-          border: '1px solid rgba(16, 185, 129, 0.25)',
-          color: '#10b981',
+          borderRadius: 4,
+          background: "var(--secondary)",
+          border: "1px solid var(--border)",
+          color: "var(--success)",
           fontSize: 13
         }}>
           {message}
@@ -420,10 +420,10 @@ export default function StudentPromotion() {
 
       {/* Directory Box Container with Toolbar, Table, and Pagination (Matching Students Directory) */}
       <div className="directory-box" style={{
-        background: 'var(--bg-card, #ffffff)',
-        border: '1px solid var(--border, #e2e8f0)',
-        borderRadius: 12,
-        boxShadow: '0 1px 3px rgba(15, 23, 42, 0.05)',
+        background: "var(--bg-card, var(--card))",
+        border: "1px solid var(--border, var(--border))",
+        borderRadius: 4,
+        boxShadow: 'none',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
@@ -432,8 +432,8 @@ export default function StudentPromotion() {
         {/* Top Header Filter Bar */}
         <div className="directory-box-header" style={{
           padding: '12px 18px',
-          background: 'var(--bg-card, #ffffff)',
-          borderBottom: '1px solid var(--border, #e2e8f0)',
+          background: "var(--bg-card, var(--card))",
+          borderBottom: "1px solid var(--border, var(--border))",
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -442,7 +442,7 @@ export default function StudentPromotion() {
         }}>
           {/* Search Input */}
           <div style={{ position: 'relative', minWidth: 260, maxWidth: 460, flex: '1 1 auto', height: 38, display: 'flex', alignItems: 'center' }}>
-            <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+            <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: "var(--muted-foreground)", pointerEvents: 'none' }} />
             <input
               type="text"
               placeholder="Search name, roll no, admission no, class..."
@@ -453,8 +453,8 @@ export default function StudentPromotion() {
                 height: '100%',
                 padding: '7px 12px 7px 32px',
                 fontSize: 13,
-                borderRadius: 6,
-                border: '1px solid var(--border, #cbd5e1)',
+                borderRadius: 4,
+                border: "1px solid var(--border, var(--border))",
                 outline: 'none',
                 boxSizing: 'border-box'
               }}
@@ -470,7 +470,7 @@ export default function StudentPromotion() {
                 setSectionFilter('');
                 setPage(1);
               }}
-              style={{ padding: '6px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid var(--border, #cbd5e1)' }}
+              style={{ padding: '6px 10px', fontSize: 12.5, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}
             >
               <option value="">All Classes ({availableClasses.length})</option>
               {availableClasses.map(c => (
@@ -481,7 +481,7 @@ export default function StudentPromotion() {
             <select
               value={sectionFilter}
               onChange={e => { setSectionFilter(e.target.value); setPage(1); }}
-              style={{ padding: '6px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid var(--border, #cbd5e1)' }}
+              style={{ padding: '6px 10px', fontSize: 12.5, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}
             >
               <option value="">All Sections ({availableSections.length})</option>
               {availableSections.map(s => (
@@ -492,7 +492,7 @@ export default function StudentPromotion() {
             <select
               value={statusFilter}
               onChange={e => { setStatusFilter(e.target.value as any); setPage(1); }}
-              style={{ padding: '6px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid var(--border, #cbd5e1)' }}
+              style={{ padding: '6px 10px', fontSize: 12.5, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}
             >
               <option value="ALL">All Status</option>
               <option value="PENDING">Pending Only ({eligibleCount})</option>
@@ -507,12 +507,12 @@ export default function StudentPromotion() {
                 style={{
                   padding: '6px 12px',
                   fontSize: 12.5,
-                  borderRadius: 6,
-                  border: '1px solid var(--border, #cbd5e1)',
-                  background: 'var(--bg-card, #ffffff)',
+                  borderRadius: 4,
+                  border: "1px solid var(--border, var(--border))",
+                  background: "var(--bg-card, var(--card))",
                   cursor: 'pointer',
                   fontWeight: 600,
-                  color: allFilteredEligibleSelected ? '#dc2626' : '#2563eb'
+                  color: allFilteredEligibleSelected ? "var(--destructive)" : "var(--primary)"
                 }}
                 onClick={() => {
                   const next = { ...selected };
@@ -534,12 +534,12 @@ export default function StudentPromotion() {
               style={{
                 padding: '6px 12px',
                 fontSize: 12.5,
-                borderRadius: 6,
-                border: '1px solid #86efac',
-                background: '#f0fdf4',
+                borderRadius: 4,
+                border: "1px solid var(--border)",
+                background: "var(--secondary)",
                 cursor: 'pointer',
                 fontWeight: 600,
-                color: '#15803d',
+                color: "var(--success)",
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6
@@ -548,7 +548,7 @@ export default function StudentPromotion() {
                 ? `Export promoted students of ${classFilter} - Section ${sectionFilter} to Excel` 
                 : 'Select Class and Section to export promoted students to Excel'}
             >
-              <FileSpreadsheet size={14} color="#16a34a" /> Export Promoted (Excel)
+              <FileSpreadsheet size={14} color="#03806a" /> Export Promoted (Excel)
             </button>
           </div>
         </div>
@@ -607,20 +607,20 @@ export default function StudentPromotion() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px 20px', color: "var(--muted-foreground)" }}>
                     Loading candidate roster from database...
                   </td>
                 </tr>
               ) : displayedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px 20px', color: "var(--muted-foreground)" }}>
                     {items.length === 0
                       ? 'No students found for this academic session. Please select another source session.'
                       : 'No candidate students match the active search or filter criteria.'}
                   </td>
                 </tr>
               ) : displayedItems.map(x => (
-                <tr key={x.id} style={{ background: selected[x.id] ? 'rgba(59, 130, 246, 0.05)' : 'transparent' }}>
+                <tr key={x.id} style={{ background: selected[x.id] ? "var(--accent)" : 'transparent' }}>
                   <td style={{ textAlign: 'center' }}>
                     <input
                       type="checkbox"
@@ -632,8 +632,8 @@ export default function StudentPromotion() {
                   <td>
                     <span className="roll" style={{
                       fontWeight: 700,
-                      background: 'rgba(37, 99, 235, 0.12)',
-                      color: '#3b82f6',
+                      background: "var(--accent)",
+                      color: "var(--primary)",
                       padding: '2px 8px',
                       borderRadius: 4,
                       fontSize: 12
@@ -642,7 +642,7 @@ export default function StudentPromotion() {
                     </span>
                   </td>
                   <td>
-                    <span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--text, #334155)', background: 'var(--card-subtle, #f1f5f9)', padding: '2px 6px', borderRadius: 4, fontSize: '0.82rem' }}>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 600, color: "var(--text, var(--muted-foreground))", background: "var(--card-subtle, var(--secondary))", padding: '2px 6px', borderRadius: 4, fontSize: '0.82rem' }}>
                       {x.admission_number || x.admissionNumber || '—'}
                     </span>
                   </td>
@@ -656,12 +656,12 @@ export default function StudentPromotion() {
                       onChange={e => setOutcome({ ...outcome, [x.id]: e.target.value })}
                       style={{
                         padding: '4px 8px',
-                        borderRadius: 6,
-                        border: '1px solid var(--border, #cbd5e1)',
+                        borderRadius: 4,
+                        border: "1px solid var(--border, var(--border))",
                         fontSize: 12.5,
-                        background: !selected[x.id] ? '#f8fafc' : '#ffffff',
+                        background: !selected[x.id] ? "var(--card)" : "var(--card)",
                         cursor: !selected[x.id] ? 'not-allowed' : 'pointer',
-                        color: outcome[x.id] === 'RETAINED' ? '#dc2626' : outcome[x.id] === 'GRADUATED' ? '#059669' : '#1e293b'
+                        color: outcome[x.id] === 'RETAINED' ? "var(--destructive)" : outcome[x.id] === 'GRADUATED' ? "var(--success)" : "var(--foreground)"
                       }}
                     >
                       <option value="PROMOTED">PROMOTED (Next Class)</option>
@@ -678,9 +678,9 @@ export default function StudentPromotion() {
                       borderRadius: 999,
                       fontSize: 11,
                       fontWeight: 600,
-                      background: x.already_processed ? '#dcfce7' : '#fef3c7',
-                      color: x.already_processed ? '#166534' : '#b45309',
-                      border: `1px solid ${x.already_processed ? '#bbf7d0' : '#fde68a'}`
+                      background: x.already_processed ? "var(--secondary)" : "var(--secondary)",
+                      color: x.already_processed ? "var(--success)" : "var(--warning)",
+                      border: `1px solid ${x.already_processed ? "var(--border)" : "var(--border)"}`
                     }}>
                       {x.already_processed ? '✓ Processed' : '⏳ Pending'}
                     </span>

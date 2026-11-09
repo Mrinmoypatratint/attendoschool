@@ -226,7 +226,7 @@ export const ReportsManagement: React.FC = () => {
       </div>
 
       {error && (
-        <div className="sa-alert error" style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, color: '#dc2626' }}>
+        <div className="sa-alert error" style={{ padding: '12px 16px', background: "var(--card)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--destructive)" }}>
           {error}
         </div>
       )}
@@ -304,7 +304,7 @@ export const ReportsManagement: React.FC = () => {
           {/* Left: School Selector & Search */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', flex: 1 }}>
             <div style={{ position: 'relative', width: 260 }}>
-              <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: "var(--muted-foreground)" }} />
               <input
                 type="text"
                 className="sa-filter-search-input"
@@ -316,7 +316,7 @@ export const ReportsManagement: React.FC = () => {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Building2 size={16} style={{ color: '#64748b' }} />
+              <Building2 size={16} style={{ color: "var(--muted-foreground)" }} />
               <select
                 className="sa-select-input"
                 value={selectedSchool}
@@ -341,7 +341,7 @@ export const ReportsManagement: React.FC = () => {
                 onChange={e => setFrom(e.target.value)}
                 title="From Date"
               />
-              <span style={{ color: '#94a3b8', fontSize: 13 }}>to</span>
+              <span style={{ color: "var(--muted-foreground)", fontSize: 13 }}>to</span>
               <input
                 type="date"
                 className="sa-select-input"
@@ -363,11 +363,11 @@ export const ReportsManagement: React.FC = () => {
 
       {/* ─── Reports Table ─── */}
       <div className="sa-card">
-        <div className="sa-card-head" style={{ borderBottom: '1px solid #e2e8f0', padding: '16px 20px' }}>
+        <div className="sa-card-head" style={{ borderBottom: "1px solid var(--border)", padding: '16px 20px' }}>
           <div className="sa-card-title-group">
             <FileText size={18} className="sa-card-icon" />
             <h3>Student Roster Attendance Telemetry</h3>
-            <span style={{ fontSize: 12, color: '#64748b', marginLeft: 8 }}>
+            <span style={{ fontSize: 12, color: "var(--muted-foreground)", marginLeft: 8 }}>
               ({filteredRows.length} {filteredRows.length === 1 ? 'student record' : 'student records'})
             </span>
           </div>
@@ -415,14 +415,14 @@ export const ReportsManagement: React.FC = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px 0', color: '#64748b' }}>
-                    <RefreshCw size={24} className="spinning" style={{ margin: '0 auto 10px', display: 'block', color: '#2563eb' }} />
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px 0', color: "var(--muted-foreground)" }}>
+                    <RefreshCw size={24} className="spinning" style={{ margin: '0 auto 10px', display: 'block', color: "var(--primary)" }} />
                     Compiling institutional reports...
                   </td>
                 </tr>
               ) : paginatedRows.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px 0', color: '#64748b' }}>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px 0', color: "var(--muted-foreground)" }}>
                     No student attendance records found for this date range and campus filter.
                   </td>
                 </tr>
@@ -444,8 +444,8 @@ export const ReportsManagement: React.FC = () => {
                               width: 32,
                               height: 32,
                               borderRadius: '50%',
-                              background: '#eff6ff',
-                              color: '#2563eb',
+                              background: "var(--card)",
+                              color: "var(--primary)",
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -456,8 +456,8 @@ export const ReportsManagement: React.FC = () => {
                             {r.student_name.slice(0, 2).toUpperCase()}
                           </div>
                           <div>
-                            <strong style={{ fontSize: 13, color: '#0f172a', display: 'block' }}>{r.student_name}</strong>
-                            <span style={{ fontSize: 11, color: '#64748b' }}>ID: {r.student_id}</span>
+                            <strong style={{ fontSize: 13, color: "var(--foreground)", display: 'block' }}>{r.student_name}</strong>
+                            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>ID: {r.student_id}</span>
                           </div>
                         </div>
                       </td>
@@ -465,23 +465,23 @@ export const ReportsManagement: React.FC = () => {
                       <td>
                         <span style={{ fontWeight: 600 }}>Class {r.class_name || '10'}-{r.section_name || 'A'}</span>
                       </td>
-                      <td style={{ textAlign: 'center', fontWeight: 600, color: '#16a34a' }}>
+                      <td style={{ textAlign: 'center', fontWeight: 600, color: "var(--success)" }}>
                         {r.present_days}
                       </td>
-                      <td style={{ textAlign: 'center', fontWeight: 600, color: r.absent_days > 0 ? '#ef4444' : '#64748b' }}>
+                      <td style={{ textAlign: 'center', fontWeight: 600, color: r.absent_days > 0 ? "var(--destructive)" : "var(--muted-foreground)" }}>
                         {r.absent_days}
                       </td>
-                      <td style={{ textAlign: 'center', color: '#64748b' }}>
+                      <td style={{ textAlign: 'center', color: "var(--muted-foreground)" }}>
                         {r.marked_days}
                       </td>
                       <td style={{ textAlign: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                          <div style={{ width: 60, height: 6, background: '#e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
+                          <div style={{ width: 60, height: 6, background: "var(--secondary)", borderRadius: 4, overflow: 'hidden' }}>
                             <div
                               style={{
                                 width: `${Math.min(100, Math.max(0, pct))}%`,
                                 height: '100%',
-                                background: isHigh ? '#16a34a' : isMed ? '#f59e0b' : '#ef4444',
+                                background: isHigh ? "var(--success)" : isMed ? "var(--warning)" : "var(--destructive)",
                                 borderRadius: 4
                               }}
                             />
@@ -504,8 +504,8 @@ export const ReportsManagement: React.FC = () => {
 
         {/* ─── Pagination ─── */}
         {!loading && filteredRows.length > 0 && (
-          <div className="sa-pagination-bar" style={{ padding: '16px 20px', borderTop: '1px solid #e2e8f0' }}>
-            <span style={{ fontSize: 13, color: '#64748b' }}>
+          <div className="sa-pagination-bar" style={{ padding: '16px 20px', borderTop: "1px solid var(--border)" }}>
+            <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
               Showing <strong>{(currentPage - 1) * pageSize + 1}</strong> to <strong>{Math.min(currentPage * pageSize, filteredRows.length)}</strong> of <strong>{filteredRows.length}</strong> records
             </span>
             <div className="sa-pagination-controls">

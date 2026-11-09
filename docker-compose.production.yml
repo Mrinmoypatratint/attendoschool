@@ -16,14 +16,34 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: .
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
     env_file: .env.production
+    volumes:
+      - backup_data:/app/backups/private
     depends_on:
       db:
         condition: service_healthy
     expose:
       - "5000"
+
+  backup-worker:
+    build:
+      context: .
+      dockerfile: scripts/backup/Dockerfile
+      args:
+        PG_MAJOR: ${BACKUP_PG_MAJOR:-16}
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      BACKUP_DIR: /app/backups/private
+    # Liveness checks see web + worker PIDs. This is a single-host file queue.
+    pid: "service:backend"
+    depends_on:
+      - backend
+    volumes:
+      - backup_data:/app/backups/private
 
   frontend:
     build:
@@ -49,3 +69,4 @@ services:
 
 volumes:
   postgres_data:
+  backup_data:

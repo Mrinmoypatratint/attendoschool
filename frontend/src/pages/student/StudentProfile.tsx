@@ -367,125 +367,213 @@ export function StudentProfile() {
         </div>
       </div>
 
-      <div className="student-profile-layout grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Profile Card Summary */}
-        <div className="student-card student-profile-hero-card rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm flex flex-col items-center text-center">
-          <div className="student-profile-avatar-large relative w-24 h-24 rounded-full overflow-hidden bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 flex items-center justify-center text-3xl font-bold border-2 border-slate-200 dark:border-slate-700">
-            {profile?.photoUrl ? (
-              <img
-                src={profile.photoUrl}
-                alt={profile.name}
-                className="student-profile-avatar-img w-full h-full object-cover"
-              />
-            ) : (
-              <span>{profile?.name?.charAt(0) || 'S'}</span>
-            )}
-            {uploadingPhoto && (
-              <div className="student-avatar-loading-overlay absolute inset-0 bg-black/50 flex items-center justify-center text-white">
-                <Loader2 size={24} className="animate-spin" />
-              </div>
-            )}
-          </div>
-
-          {/* Upload / Change Picture action buttons */}
-          <div className="student-avatar-actions flex items-center gap-2 mt-4">
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept="image/png,image/jpeg,image/jpg,image/webp"
-              className="hidden"
-              onChange={handlePhotoSelect}
-            />
-            <button
-              type="button"
-              className="student-avatar-btn-upload inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 cursor-pointer transition-colors"
+      {/* ── Top Hero Card: Student Display Picture & Profile Banner ── */}
+      <div
+        className="student-card"
+        style={{
+          border: '1px solid var(--border)',
+          borderRadius: 4,
+          padding: '24px 28px',
+          background: "var(--surface, var(--card))",
+          boxShadow: 'none',
+          marginBottom: 24
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+            {/* Avatar Circle */}
+            <div
+              style={{
+                position: 'relative',
+                width: 90,
+                height: 90,
+                borderRadius: '50%',
+                border: "3px solid var(--border)",
+                boxShadow: 'none',
+                backgroundColor: "var(--primary)",
+                background: "var(--primary)",
+                overflow: 'hidden',
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer'
+              }}
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploadingPhoto}
-              title={profile?.photoUrl ? 'Click to change profile picture' : 'Click to upload picture'}
+              title="Click to upload or change picture"
             >
-              <Camera size={14} />
-              <span>{profile?.photoUrl ? 'Change Picture' : 'Upload Picture'}</span>
-            </button>
-            {profile?.photoUrl && (
-              <button
-                type="button"
-                className="student-avatar-btn-remove p-1.5 text-xs rounded-md bg-red-50 hover:bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 cursor-pointer transition-colors"
-                onClick={handleRemovePhoto}
-                disabled={uploadingPhoto}
-                title="Remove picture"
-              >
-                <Trash2 size={13} />
-              </button>
-            )}
-          </div>
+              {profile?.photoUrl ? (
+                <img
+                  src={profile.photoUrl}
+                  alt={profile.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <div style={{ color: "var(--background)", fontWeight: 800, fontSize: 28, letterSpacing: '0.02em', userSelect: 'none' }}>
+                  {profile?.name ? profile.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'S'}
+                </div>
+              )}
 
-          {photoMsg && (
-            <div className={`student-photo-notice ${photoMsg.type} mt-3 px-3 py-2 rounded-md text-xs flex items-center gap-1.5 ${
+              {/* Camera overlay on hover */}
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  backgroundColor: "var(--card)",
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: 0,
+                  transition: 'opacity 0.2s ease',
+                  color: "var(--background)"
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0'; }}
+              >
+                {uploadingPhoto ? <Loader2 size={24} className="animate-spin" /> : <Camera size={24} />}
+              </div>
+            </div>
+
+            {/* Title & Info */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 750, color: "var(--text, var(--foreground))" }}>
+                  {String(profile?.name || 'STUDENT').toUpperCase()}
+                </h3>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    background: "var(--secondary)",
+                    color: "var(--success)",
+                    border: "1px solid var(--border)"
+                  }}
+                >
+                  <ShieldCheck size={12} /> {profile?.className ? `${profile.className} - Section ${profile.sectionName || ''}` : 'STUDENT'}
+                </span>
+              </div>
+              <p className="muted" style={{ margin: '0 0 10px', fontSize: 13, color: "var(--text-muted, var(--muted-foreground))" }}>
+                Official student display picture and institutional profile badge. Roll: <b>{profile?.rollNumber || '—'}</b> · Admission No: <b>{profile?.admissionNumber || '—'}</b>
+              </p>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                  style={{ display: 'none' }}
+                  onChange={handlePhotoSelect}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontSize: 13,
+                    padding: '7px 14px',
+                    backgroundColor: "var(--primary)",
+                    color: "var(--background)",
+                    border: 'none',
+                    borderRadius: 4,
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Camera size={14} />
+                  {uploadingPhoto ? 'Uploading...' : (profile?.photoUrl ? 'Change Picture' : 'Upload Picture')}
+                </button>
+
+                {profile?.photoUrl && (
+                  <button
+                    type="button"
+                    onClick={handleRemovePhoto}
+                    disabled={uploadingPhoto}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      fontSize: 13,
+                      padding: '7px 12px',
+                      backgroundColor: "var(--secondary)",
+                      color: "var(--destructive)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 4,
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                    title="Remove picture"
+                  >
+                    <Trash2 size={13} />
+                    Remove Picture
+                  </button>
+                )}
+                <span style={{ fontSize: 12, color: "var(--muted, var(--muted-foreground))" }}>
+                  PNG, JPG, WebP up to 5MB
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {photoMsg && (
+          <div
+            className={`student-photo-notice ${photoMsg.type} mt-3 px-3 py-2 rounded-md text-xs flex items-center gap-1.5 ${
               photoMsg.type === 'success'
                 ? 'bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400'
                 : 'bg-red-500/10 border border-red-500/25 text-red-500'
-            }`}>
-              {photoMsg.type === 'success' ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
-              <span>{photoMsg.text}</span>
-            </div>
-          )}
-
-          {profile?.hasPendingPhotoApproval && (
-            <div className="student-profile-pending-banner mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 flex items-center gap-3 text-left">
-              {profile?.pendingPhotoUrl && (
-                <img
-                  src={profile.pendingPhotoUrl}
-                  alt="Pending submission"
-                  className="w-9 h-9 rounded-md object-cover border-2 border-amber-500 shrink-0"
-                />
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-xs flex items-center gap-1">
-                  <Clock size={13} /> Photo Pending Approval
-                </div>
-                <div className="text-[11.5px] opacity-90 mt-0.5">
-                  Your uploaded photo is waiting for teacher approval. Once approved, it will automatically become active on your profile.
-                </div>
-              </div>
-            </div>
-          )}
-
-          {profile?.photoApprovalStatus === 'REJECTED' && (
-            <div className="student-profile-rejected-banner mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-400 text-left">
-              <div className="font-bold text-xs flex items-center gap-1 mb-0.5">
-                <AlertCircle size={13} /> Photo Declined by Administrator
-              </div>
-              <div className="text-[11.5px]">
-                Reason: "{profile.photoRejectionReason || 'Photo does not meet administrative standards.'}"
-              </div>
-              <div className="text-[11px] mt-1 text-slate-500">
-                Please upload a clear, front-facing passport-style photo.
-              </div>
-            </div>
-          )}
-
-          <h2 className="profile-hero-name text-lg font-bold text-slate-900 dark:text-slate-100 mt-4 mb-0.5">{String(profile?.name || 'STUDENT').toUpperCase()}</h2>
-          <p className="profile-hero-role text-xs text-slate-500 dark:text-slate-400 m-0 mb-3">{profile?.className} - Section {profile?.sectionName}</p>
-          <div 
-            className="profile-hero-badge inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 text-xs font-semibold"
-            onClick={() => {
-              const site = profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website;
-              if (site) {
-                window.open(site, '_blank', 'noopener,noreferrer');
-              }
-            }}
-            style={{ 
-              cursor: (profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website) ? 'pointer' : 'default'
-            }}
-            title={(profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website) ? `Visit Official Website: ${profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website}` : profile?.schoolName}
+            }`}
           >
-            <School size={14} />
-            <span>{profile?.schoolName}</span>
-            {(profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website) && (
-              <ExternalLink size={12} className="ml-1 opacity-80" />
-            )}
+            {photoMsg.type === 'success' ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
+            <span>{photoMsg.text}</span>
           </div>
-        </div>
+        )}
+
+        {profile?.hasPendingPhotoApproval && (
+          <div className="student-profile-pending-banner mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 flex items-center gap-3 text-left">
+            {profile?.pendingPhotoUrl && (
+              <img
+                src={profile.pendingPhotoUrl}
+                alt="Pending submission"
+                className="w-9 h-9 rounded-md object-cover border-2 border-amber-500 shrink-0"
+              />
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="font-bold text-xs flex items-center gap-1">
+                <Clock size={13} /> Photo Pending Approval
+              </div>
+              <div className="text-[11.5px] opacity-90 mt-0.5">
+                Your uploaded photo is waiting for teacher approval. Once approved, it will automatically become active on your profile.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {profile?.photoApprovalStatus === 'REJECTED' && (
+          <div className="student-profile-rejected-banner mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-400 text-left">
+            <div className="font-bold text-xs flex items-center gap-1 mb-0.5">
+              <AlertCircle size={13} /> Photo Declined by Administrator
+            </div>
+            <div className="text-[11.5px]">
+              Reason: "{profile.photoRejectionReason || 'Photo does not meet administrative standards.'}"
+            </div>
+            <div className="text-[11px] mt-1 text-slate-500">
+              Please upload a clear, front-facing passport-style photo.
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── 2-Column Main Section (Matching School Admin & Teacher Profile UI) ── */}
+      <div className="student-profile-layout grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Academic & Personal Details */}
         <div className="student-card student-profile-details-card rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
@@ -582,7 +670,7 @@ export function StudentProfile() {
                 </label>
 
                 <label style={{ display: 'grid', gap: 4, gridColumn: 'span 2' }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text, var(--muted-foreground))" }}>
                     Student Email:
                   </span>
                   <input
@@ -593,12 +681,12 @@ export function StudentProfile() {
                     style={{
                       width: '100%',
                       padding: '8px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border-strong, #cbd5e1)',
+                      borderRadius: 4,
+                      border: "1px solid var(--border-strong, var(--border))",
                       fontSize: 13,
                       outline: 'none',
-                      backgroundColor: 'var(--card-bg, #ffffff)',
-                      color: 'var(--text, #0f172a)',
+                      backgroundColor: "var(--card-bg, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       boxSizing: 'border-box'
                     }}
                   />

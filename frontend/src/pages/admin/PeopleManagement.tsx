@@ -832,7 +832,7 @@ export default function PeopleManagement() {
             <button
               onClick={() => setImportOpen(true)}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md font-medium text-xs md:text-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#10b981', color: '#ffffff' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: "var(--success)", color: "var(--background)" }}
               title="Import faculty via Excel spreadsheet or CSV with interactive preview"
             >
               <FileSpreadsheet size={16} /> Import Excel / CSV
@@ -857,9 +857,9 @@ export default function PeopleManagement() {
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 12,
-          backgroundColor: toastNotice.type === 'error' ? '#fef2f2' : '#f0fdf4',
-          border: `1px solid ${toastNotice.type === 'error' ? '#fecaca' : '#bbf7d0'}`,
-          color: toastNotice.type === 'error' ? '#991b1b' : '#166534',
+          backgroundColor: toastNotice.type === 'error' ? "var(--card)" : "var(--secondary)",
+          border: `1px solid ${toastNotice.type === 'error' ? "var(--border)" : "var(--border)"}`,
+          color: toastNotice.type === 'error' ? "var(--destructive)" : "var(--success)",
           fontSize: 13
         }}>
           <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -884,16 +884,16 @@ export default function PeopleManagement() {
           <div style={{
             width: '100%',
             height: '4px',
-            background: 'rgba(37, 99, 235, 0.12)',
+            background: "var(--accent)",
             overflow: 'hidden',
             position: 'relative'
           }}>
             <div style={{
               height: '100%',
               width: `${loadProgress}%`,
-              background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)',
+              background: "var(--primary)",
               transition: 'width 0.15s ease-out',
-              boxShadow: '0 0 8px rgba(59, 130, 246, 0.5)'
+              boxShadow: 'none'
             }} />
           </div>
         )}
@@ -924,7 +924,7 @@ export default function PeopleManagement() {
                 placeholder={tab === 'students' ? 'Search by name, roll, or parent…' : 'Search by name, employee ID/Savior_NO, or email…'}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                style={{ width: 300, background: '#ffffff' }}
+                style={{ width: 300, background: "var(--card)" }}
               />
               <button type="submit" disabled={loading}>
                 {loading ? 'Searching…' : 'Search'}
@@ -953,11 +953,11 @@ export default function PeopleManagement() {
                 alignItems: 'center',
                 gap: 6,
                 padding: '6px 12px',
-                background: loading ? '#f1f5f9' : 'var(--card-bg, #ffffff)',
-                border: '1px solid var(--border, #cbd5e1)',
-                borderRadius: 'var(--radius-sm, 6px)',
+                background: loading ? "var(--secondary)" : "var(--card-bg, var(--card))",
+                border: "1px solid var(--border, var(--border))",
+                borderRadius: 'var(--radius-sm, 4px)',
                 fontSize: 12.5,
-                color: loading ? '#64748b' : 'var(--text, #1e293b)',
+                color: loading ? "var(--muted-foreground)" : "var(--text, var(--foreground))",
                 cursor: loading ? 'not-allowed' : 'pointer',
                 fontWeight: 500,
                 transition: 'all 0.15s ease'
@@ -965,7 +965,7 @@ export default function PeopleManagement() {
               title={`Refetch ${tab === 'students' ? 'students' : 'faculty'} from database`}
               id="people-refresh-btn"
             >
-              <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
+              <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: "var(--primary)" }} />
               <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
             </button>
 
@@ -975,13 +975,13 @@ export default function PeopleManagement() {
               alignItems: 'center',
               gap: 5,
               padding: '4px 9px',
-              borderRadius: 6,
-              background: 'var(--bg-muted, #f8fafc)',
-              border: '1px solid var(--border, #e2e8f0)',
+              borderRadius: 4,
+              background: "var(--bg-muted, var(--card))",
+              border: "1px solid var(--border, var(--border))",
               fontSize: 12,
-              color: 'var(--text-secondary, #475569)'
+              color: "var(--text-secondary, var(--muted-foreground))"
             }} title="Last successful synchronization with database">
-              <Clock size={12} style={{ color: '#64748b' }} />
+              <Clock size={12} style={{ color: "var(--muted-foreground)" }} />
               <span>Last fetched: <b>{formatLastFetched(lastFetchedAt)}</b></span>
               {loading && (
                 <span style={{
@@ -991,8 +991,8 @@ export default function PeopleManagement() {
                   marginLeft: 3,
                   padding: '1px 5px',
                   borderRadius: 4,
-                  background: '#dbeafe',
-                  color: '#1d4ed8',
+                  background: "var(--card)",
+                  color: "var(--primary)",
                   fontWeight: 600,
                   fontSize: 11
                 }}>
@@ -1002,7 +1002,7 @@ export default function PeopleManagement() {
               )}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #475569)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: "var(--text-secondary, var(--muted-foreground))" }}>
               <span>Rows per page:</span>
               <select
                 value={directoryPageSize}
@@ -1010,10 +1010,10 @@ export default function PeopleManagement() {
                 style={{
                   padding: '4px 8px',
                   fontSize: 12.5,
-                  borderRadius: 6,
-                  border: '1px solid var(--border, #cbd5e1)',
-                  background: 'var(--card-bg, #ffffff)',
-                  color: 'var(--text, #1e293b)',
+                  borderRadius: 4,
+                  border: "1px solid var(--border, var(--border))",
+                  background: "var(--card-bg, var(--card))",
+                  color: "var(--text, var(--foreground))",
                   cursor: 'pointer'
                 }}
               >
@@ -1050,15 +1050,15 @@ export default function PeopleManagement() {
               left: 0,
               right: 0,
               zIndex: 20,
-              background: 'rgba(239, 246, 255, 0.95)',
+              background: "var(--card)",
               backdropFilter: 'blur(4px)',
-              borderBottom: '1px solid #bfdbfe',
+              borderBottom: "1px solid var(--border)",
               padding: '6px 14px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               fontSize: 12,
-              color: '#1d4ed8',
+              color: "var(--primary)",
               fontWeight: 500
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -1067,8 +1067,8 @@ export default function PeopleManagement() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontWeight: 700 }}>{loadProgress}%</span>
-                <div style={{ width: 70, height: 5, background: '#bfdbfe', borderRadius: 999, overflow: 'hidden' }}>
-                  <div style={{ width: `${loadProgress}%`, height: '100%', background: '#2563eb', transition: 'width 0.15s ease' }} />
+                <div style={{ width: 70, height: 5, background: "var(--accent)", borderRadius: 999, overflow: 'hidden' }}>
+                  <div style={{ width: `${loadProgress}%`, height: '100%', background: "var(--primary)", transition: 'width 0.15s ease' }} />
                 </div>
               </div>
             </div>
@@ -1120,9 +1120,9 @@ export default function PeopleManagement() {
                             borderRadius: 999,
                             fontSize: 11.5,
                             fontWeight: 500,
-                            background: formatGender(r.gender) === 'Female' ? '#fdf2f8' : formatGender(r.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
-                            color: formatGender(r.gender) === 'Female' ? '#db2777' : formatGender(r.gender) === 'Male' ? '#0284c7' : '#64748b',
-                            border: `1px solid ${formatGender(r.gender) === 'Female' ? '#fbcfe8' : formatGender(r.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
+                            background: formatGender(r.gender) === 'Female' ? "var(--card)" : formatGender(r.gender) === 'Male' ? "var(--card)" : "var(--card)",
+                            color: formatGender(r.gender) === 'Female' ? "var(--primary)" : formatGender(r.gender) === 'Male' ? "var(--info)" : "var(--muted-foreground)",
+                            border: `1px solid ${formatGender(r.gender) === 'Female' ? "var(--border)" : formatGender(r.gender) === 'Male' ? "var(--border)" : "var(--border)"}`
                           }}>
                             {formatGender(r.gender)}
                           </span>
@@ -1155,15 +1155,15 @@ export default function PeopleManagement() {
                         {loading ? (
                           <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 10, maxWidth: 320, margin: '0 auto' }}>
                             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <Loader2 size={36} style={{ color: '#2563eb', animation: 'spinAnim 0.8s linear infinite' }} />
-                              <span style={{ position: 'absolute', fontSize: 11, fontWeight: 700, color: '#1d4ed8' }}>{loadProgress}%</span>
+                              <Loader2 size={36} style={{ color: "var(--primary)", animation: 'spinAnim 0.8s linear infinite' }} />
+                              <span style={{ position: 'absolute', fontSize: 11, fontWeight: 700, color: "var(--primary)" }}>{loadProgress}%</span>
                             </div>
                             <div>
-                              <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text, #1e293b)' }}>Loading Student Directory...</div>
-                              <div style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', marginTop: 2 }}>Fetching enrolled students from database ({loadProgress}%)</div>
+                              <div style={{ fontWeight: 600, fontSize: 13.5, color: "var(--text, var(--foreground))" }}>Loading Student Directory...</div>
+                              <div style={{ fontSize: 12, color: "var(--text-muted, var(--muted-foreground))", marginTop: 2 }}>Fetching enrolled students from database ({loadProgress}%)</div>
                             </div>
-                            <div style={{ width: '100%', height: 5, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
-                              <div style={{ width: `${loadProgress}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)', transition: 'width 0.15s ease' }} />
+                            <div style={{ width: '100%', height: 5, background: "var(--secondary)", borderRadius: 999, overflow: 'hidden' }}>
+                              <div style={{ width: `${loadProgress}%`, height: '100%', background: "var(--primary)", transition: 'width 0.15s ease' }} />
                             </div>
                           </div>
                         ) : (
@@ -1209,9 +1209,9 @@ export default function PeopleManagement() {
                             borderRadius: 999,
                             fontSize: 11.5,
                             fontWeight: 500,
-                            background: formatGender(r.gender) === 'Female' ? '#fdf2f8' : formatGender(r.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
-                            color: formatGender(r.gender) === 'Female' ? '#db2777' : formatGender(r.gender) === 'Male' ? '#0284c7' : '#64748b',
-                            border: `1px solid ${formatGender(r.gender) === 'Female' ? '#fbcfe8' : formatGender(r.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
+                            background: formatGender(r.gender) === 'Female' ? "var(--card)" : formatGender(r.gender) === 'Male' ? "var(--card)" : "var(--card)",
+                            color: formatGender(r.gender) === 'Female' ? "var(--primary)" : formatGender(r.gender) === 'Male' ? "var(--info)" : "var(--muted-foreground)",
+                            border: `1px solid ${formatGender(r.gender) === 'Female' ? "var(--border)" : formatGender(r.gender) === 'Male' ? "var(--border)" : "var(--border)"}`
                           }}>
                             {formatGender(r.gender)}
                           </span>
@@ -1235,15 +1235,15 @@ export default function PeopleManagement() {
                         {loading ? (
                           <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 10, maxWidth: 320, margin: '0 auto' }}>
                             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <Loader2 size={36} style={{ color: '#2563eb', animation: 'spinAnim 0.8s linear infinite' }} />
-                              <span style={{ position: 'absolute', fontSize: 11, fontWeight: 700, color: '#1d4ed8' }}>{loadProgress}%</span>
+                              <Loader2 size={36} style={{ color: "var(--primary)", animation: 'spinAnim 0.8s linear infinite' }} />
+                              <span style={{ position: 'absolute', fontSize: 11, fontWeight: 700, color: "var(--primary)" }}>{loadProgress}%</span>
                             </div>
                             <div>
-                              <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text, #1e293b)' }}>Loading Faculty Directory...</div>
-                              <div style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', marginTop: 2 }}>Fetching faculty records from database ({loadProgress}%)</div>
+                              <div style={{ fontWeight: 600, fontSize: 13.5, color: "var(--text, var(--foreground))" }}>Loading Faculty Directory...</div>
+                              <div style={{ fontSize: 12, color: "var(--text-muted, var(--muted-foreground))", marginTop: 2 }}>Fetching faculty records from database ({loadProgress}%)</div>
                             </div>
-                            <div style={{ width: '100%', height: 5, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
-                              <div style={{ width: `${loadProgress}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)', transition: 'width 0.15s ease' }} />
+                            <div style={{ width: '100%', height: 5, background: "var(--secondary)", borderRadius: 999, overflow: 'hidden' }}>
+                              <div style={{ width: `${loadProgress}%`, height: '100%', background: "var(--primary)", transition: 'width 0.15s ease' }} />
                             </div>
                           </div>
                         ) : (
@@ -1260,7 +1260,7 @@ export default function PeopleManagement() {
 
         {/* Box Footer (Pagination Bar) */}
         <div className="directory-box-footer">
-          <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
+          <div style={{ color: "var(--text-secondary, var(--muted-foreground))", fontSize: 12.5 }}>
             {rows.length === 0 ? (
               `Showing 0 ${tab === 'students' ? 'students' : 'faculty members'}`
             ) : (
@@ -1301,9 +1301,9 @@ export default function PeopleManagement() {
                   padding: '3px 6px',
                   fontSize: 12,
                   borderRadius: 4,
-                  border: '1px solid var(--border, #cbd5e1)',
-                  background: 'var(--card-bg, #ffffff)',
-                  color: 'var(--text, #1e293b)',
+                  border: "1px solid var(--border, var(--border))",
+                  background: "var(--card-bg, var(--card))",
+                  color: "var(--text, var(--foreground))",
                   cursor: 'pointer'
                 }}
               >
@@ -1379,21 +1379,21 @@ export default function PeopleManagement() {
                 {/* Last Registered Teacher Banner in Red */}
                 {lastRegisteredTeacherInfo && (
                   <div style={{
-                    color: '#dc2626',
+                    color: "var(--destructive)",
                     fontSize: 12.5,
                     fontWeight: 600,
                     padding: '8px 12px',
-                    backgroundColor: '#fef2f2',
-                    border: '1px solid #fecaca',
-                    borderRadius: 6,
+                    backgroundColor: "var(--card)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 4,
                     marginBottom: 12,
                     display: 'flex',
                     alignItems: 'center',
                     gap: 6
                   }}>
-                    <Info size={15} style={{ flexShrink: 0, color: '#dc2626' }} />
+                    <Info size={15} style={{ flexShrink: 0, color: "var(--destructive)" }} />
                     <span>
-                      Last registered teacher: <strong style={{ color: '#b91c1c' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#b91c1c' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
+                      Last registered teacher: <strong style={{ color: "var(--destructive)" }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: "var(--destructive)" }}>{lastRegisteredTeacherInfo.employeeId}</strong>
                     </span>
                   </div>
                 )}
@@ -1430,7 +1430,7 @@ export default function PeopleManagement() {
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, alignItems: 'start' }}>
                         <label>
                           <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                            First Name <span style={{ color: '#ef4444', fontWeight: 600 }}>*</span>
+                            First Name <span style={{ color: "var(--destructive)", fontWeight: 600 }}>*</span>
                           </span>
                           <input
                             required
@@ -1438,8 +1438,8 @@ export default function PeopleManagement() {
                             maxLength={15}
                             value={fnVal}
                             style={{
-                              borderColor: isFnInvalid ? '#ef4444' : undefined,
-                              boxShadow: isFnInvalid ? '0 0 0 1px #ef4444' : undefined
+                              borderColor: isFnInvalid ? "var(--border)" : undefined,
+                              boxShadow: isFnInvalid ? "none" : undefined
                             }}
                             onChange={e => {
                               const fn = e.target.value.replace(/\s/g, '').slice(0, 15);
@@ -1448,30 +1448,30 @@ export default function PeopleManagement() {
                             }}
                           />
                           {fnVal && /\d/.test(fnVal) ? (
-                            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                            <span style={{ color: "var(--destructive)", fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                               Enter a string not a number
                             </span>
                           ) : fnVal && /\s/.test(fnVal) ? (
-                            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                            <span style={{ color: "var(--destructive)", fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                               Spaces are not allowed in First Name
                             </span>
                           ) : fnVal && fnVal.length < 3 ? (
-                            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                            <span style={{ color: "var(--destructive)", fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                               Must be 3 to 15 characters
                             </span>
                           ) : null}
                         </label>
                         <label>
                           <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                            Middle Name <span style={{ fontSize: 11, color: '#64748b', fontWeight: 'normal' }}>(Optional)</span>
+                            Middle Name <span style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 'normal' }}>(Optional)</span>
                           </span>
                           <input
                             placeholder="e.g. Kumar"
                             maxLength={15}
                             value={mnVal}
                             style={{
-                              borderColor: isMnInvalid ? '#ef4444' : undefined,
-                              boxShadow: isMnInvalid ? '0 0 0 1px #ef4444' : undefined
+                              borderColor: isMnInvalid ? "var(--border)" : undefined,
+                              boxShadow: isMnInvalid ? "none" : undefined
                             }}
                             onChange={e => {
                               const mn = e.target.value.replace(/\s/g, '').slice(0, 15);
@@ -1480,14 +1480,14 @@ export default function PeopleManagement() {
                             }}
                           />
                           {mnVal && /\d/.test(mnVal) && (
-                            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                            <span style={{ color: "var(--destructive)", fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                               Enter a string not a number
                             </span>
                           )}
                         </label>
                         <label style={{ gridColumn: '1 / -1' }}>
                           <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                            Last Name <span style={{ color: '#ef4444', fontWeight: 600 }}>*</span>
+                            Last Name <span style={{ color: "var(--destructive)", fontWeight: 600 }}>*</span>
                           </span>
                           <input
                             required
@@ -1495,8 +1495,8 @@ export default function PeopleManagement() {
                             maxLength={20}
                             value={lnVal}
                             style={{
-                              borderColor: isLnInvalid ? '#ef4444' : undefined,
-                              boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
+                              borderColor: isLnInvalid ? "var(--border)" : undefined,
+                              boxShadow: isLnInvalid ? "none" : undefined
                             }}
                             onChange={e => {
                               const ln = e.target.value.replace(/\d/g, '').slice(0, 20);
@@ -1505,11 +1505,11 @@ export default function PeopleManagement() {
                             }}
                           />
                           {lnVal && /\d/.test(lnVal) ? (
-                            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                            <span style={{ color: "var(--destructive)", fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                               Enter a string not a number
                             </span>
                           ) : lnVal && (lnVal.length < 2 || lnVal.length > 20) ? (
-                            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                            <span style={{ color: "var(--destructive)", fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                               Must be 2 to 20 characters
                             </span>
                           ) : null}
@@ -1517,18 +1517,18 @@ export default function PeopleManagement() {
                       </div>
 
                       {/* Full Name — auto-computed, read-only */}
-                      <label style={{ color: 'var(--text-secondary, #64748b)', fontSize: 12 }}>
+                      <label style={{ color: "var(--text-secondary, var(--muted-foreground))", fontSize: 12 }}>
                         <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                          <span style={{ fontWeight: 600, color: 'var(--text, #334155)' }}>Full Name</span>
-                          <span style={{ color: '#10b981', fontSize: 11, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                            <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: '#10b981' }} />
+                          <span style={{ fontWeight: 600, color: "var(--text, var(--muted-foreground))" }}>Full Name</span>
+                          <span style={{ color: "var(--success)", fontSize: 11, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: "var(--success)" }} />
                             Auto-generated
                           </span>
                         </span>
                         <input
                           readOnly
                           tabIndex={-1}
-                          style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)', fontWeight: 600 }}
+                          style={{ backgroundColor: "var(--card-subtle, var(--card))", color: "var(--text, var(--muted-foreground))", cursor: 'default', border: "1px solid var(--border, var(--border))", fontWeight: 600 }}
                           value={formatCapitalizedName(fnVal, mnVal, lnVal) || teacherForm.name || ''}
                           placeholder="Full name will appear here automatically"
                         />
@@ -1536,7 +1536,7 @@ export default function PeopleManagement() {
 
                       <label>
                         <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          Email Address (for Faculty Portal Login) <span style={{ color: '#ef4444' }}>*</span>
+                          Email Address (for Faculty Portal Login) <span style={{ color: "var(--destructive)" }}>*</span>
                         </span>
                         <input
                           required
@@ -1544,17 +1544,17 @@ export default function PeopleManagement() {
                           placeholder="teacher@school.local"
                           value={teacherForm.email || ''}
                           style={{
-                            borderColor: (isEmailDuplicateInUi || isEmailInvalidInUi) ? '#ef4444' : undefined,
-                            boxShadow: (isEmailDuplicateInUi || isEmailInvalidInUi) ? '0 0 0 1px #ef4444' : undefined
+                            borderColor: (isEmailDuplicateInUi || isEmailInvalidInUi) ? "var(--border)" : undefined,
+                            boxShadow: (isEmailDuplicateInUi || isEmailInvalidInUi) ? "none" : undefined
                           }}
                           onChange={e => setTeacherForm({ ...teacherForm, email: e.target.value.trim() })}
                         />
                         {isEmailDuplicateInUi ? (
-                          <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
+                          <span style={{ color: "var(--destructive)", fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
                             Already exist
                           </span>
                         ) : isEmailInvalidInUi ? (
-                          <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                          <span style={{ color: "var(--destructive)", fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                             Please enter a valid email address
                           </span>
                         ) : null}
@@ -1562,20 +1562,20 @@ export default function PeopleManagement() {
 
                       <label>
                         <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          Employee ID / Savior_NO <span style={{ color: '#ef4444' }}>*</span>
+                          Employee ID / Savior_NO <span style={{ color: "var(--destructive)" }}>*</span>
                         </span>
                         <input
                           required
                           placeholder="e.g. EMP001 or SAVIOR_101"
                           value={teacherForm.employeeId || teacherForm.saviorNo || ''}
                           style={{
-                            borderColor: isEmpIdDuplicateInUi ? '#ef4444' : undefined,
-                            boxShadow: isEmpIdDuplicateInUi ? '0 0 0 1px #ef4444' : undefined
+                            borderColor: isEmpIdDuplicateInUi ? "var(--border)" : undefined,
+                            boxShadow: isEmpIdDuplicateInUi ? "none" : undefined
                           }}
                           onChange={e => setTeacherForm({ ...teacherForm, employeeId: e.target.value, saviorNo: e.target.value })}
                         />
                         {isEmpIdDuplicateInUi && (
-                          <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
+                          <span style={{ color: "var(--destructive)", fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
                             Already existed
                           </span>
                         )}
@@ -1593,7 +1593,7 @@ export default function PeopleManagement() {
                     <select
                       value={formatGender(teacherForm.gender) || ''}
                       onChange={e => setTeacherForm({ ...teacherForm, gender: formatGender(e.target.value) })}
-                      style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
                     >
                       <option value="">Select Gender</option>
                       <option value="Male">Male</option>
@@ -1603,7 +1603,7 @@ export default function PeopleManagement() {
                   </label>
                   <label>
                     <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      Joining Date <span style={{ color: '#ef4444' }}>*</span> <span style={{ color: '#64748b', fontSize: 11, fontWeight: 400 }}>(DD-MM-YYYY)</span>
+                      Joining Date <span style={{ color: "var(--destructive)" }}>*</span> <span style={{ color: "var(--muted-foreground)", fontSize: 11, fontWeight: 400 }}>(DD-MM-YYYY)</span>
                     </span>
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginTop: 4 }}>
                       <input
@@ -1619,8 +1619,8 @@ export default function PeopleManagement() {
                         style={{
                           width: '100%',
                           padding: '8px 34px 8px 10px',
-                          borderRadius: 6,
-                          border: `1px solid ${(teacherForm.joiningDate || teacherForm.joining_date) && !isValidDdMmYyyy(teacherForm.joiningDate || teacherForm.joining_date) ? '#ef4444' : 'var(--border)'}`,
+                          borderRadius: 4,
+                          border: `1px solid ${(teacherForm.joiningDate || teacherForm.joining_date) && !isValidDdMmYyyy(teacherForm.joiningDate || teacherForm.joining_date) ? "var(--border)" : 'var(--border)'}`,
                           boxSizing: 'border-box'
                         }}
                       />
@@ -1658,13 +1658,13 @@ export default function PeopleManagement() {
                         style={{
                           position: 'absolute',
                           right: 10,
-                          color: '#64748b',
+                          color: "var(--muted-foreground)",
                           pointerEvents: 'none'
                         }}
                       />
                     </div>
                     {(teacherForm.joiningDate || teacherForm.joining_date) && !isValidDdMmYyyy(teacherForm.joiningDate || teacherForm.joining_date) && (
-                      <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      <span style={{ color: "var(--destructive)", fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                         Strict format required: DD-MM-YYYY (e.g. 01-07-2022)
                       </span>
                     )}
@@ -1675,13 +1675,13 @@ export default function PeopleManagement() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
                   <label>
                     <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      Designation <span style={{ color: '#ef4444' }}>*</span>
+                      Designation <span style={{ color: "var(--destructive)" }}>*</span>
                     </span>
                     <select
                       required
                       value={teacherForm.designation || ''}
                       onChange={e => setTeacherForm({ ...teacherForm, designation: e.target.value })}
-                      style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
                     >
                       <option value="">Select Designation</option>
                       {teacherForm.designation && !allocDesignations.some(d => (d.title || d.name) === teacherForm.designation) && (
@@ -1700,7 +1700,7 @@ export default function PeopleManagement() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <label>
                     <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      Mobile Number <span style={{ color: '#ef4444' }}>*</span>
+                      Mobile Number <span style={{ color: "var(--destructive)" }}>*</span>
                     </span>
                     <input
                       required
@@ -1715,12 +1715,12 @@ export default function PeopleManagement() {
                       style={{
                         width: '100%',
                         boxSizing: 'border-box',
-                        borderColor: (teacherForm.mobile && teacherForm.mobile.length < 10) ? '#ef4444' : undefined,
-                        boxShadow: (teacherForm.mobile && teacherForm.mobile.length < 10) ? '0 0 0 1px #ef4444' : undefined
+                        borderColor: (teacherForm.mobile && teacherForm.mobile.length < 10) ? "var(--border)" : undefined,
+                        boxShadow: (teacherForm.mobile && teacherForm.mobile.length < 10) ? "none" : undefined
                       }}
                     />
                     {teacherForm.mobile && teacherForm.mobile.length < 10 && (
-                      <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      <span style={{ color: "var(--destructive)", fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                         Must be a valid 10-digit mobile number
                       </span>
                     )}
@@ -1764,7 +1764,7 @@ export default function PeopleManagement() {
                           section: ''
                         });
                       }}
-                      style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
                     >
                       <option value="">Select Class (Optional)</option>
                       {allocClasses.length > 0 ? (
@@ -1804,7 +1804,7 @@ export default function PeopleManagement() {
                           section: sName
                         });
                       }}
-                      style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
                     >
                       <option value="">Select Section (Optional)</option>
                       {(() => {
@@ -1863,17 +1863,17 @@ export default function PeopleManagement() {
                 {/* Automatic Email Notice */}
                 <div style={{
                   padding: 12,
-                  backgroundColor: '#eff6ff',
-                  borderRadius: 8,
-                  border: '1px solid #bfdbfe',
+                  backgroundColor: "var(--card)",
+                  borderRadius: 4,
+                  border: "1px solid var(--border)",
                   margin: '10px 0 16px 0',
                   fontSize: 12.5,
-                  color: '#1e40af',
+                  color: "var(--primary)",
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8
                 }}>
-                  <KeyRound size={16} style={{ color: '#2563eb', flexShrink: 0 }} />
+                  <KeyRound size={16} style={{ color: "var(--primary)", flexShrink: 0 }} />
                   <span>
                     <b>Automatic Teacher Email:</b> Welcome credentials and a secure 24h password setup link will automatically be dispatched via SMTP to the teacher's registered email address upon submission.
                   </span>
@@ -1927,17 +1927,17 @@ export default function PeopleManagement() {
               /* Teacher Preview Card */
               <div style={{ padding: '4px 2px' }}>
                 <div style={{
-                  background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
-                  border: '1px solid #a7f3d0',
-                  borderRadius: 8,
+                  background: "var(--secondary)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 4,
                   padding: 14,
                   marginBottom: 14
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#065f46', fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
-                    <CheckCircle2 size={18} color="#10b981" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: "var(--success)", fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
+                    <CheckCircle2 size={18} color="#03806a" />
                     Teacher Profile Preview
                   </div>
-                  <p style={{ margin: 0, fontSize: 12, color: '#047857' }}>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--success)" }}>
                     Verify the details below before creating the account and dispatching credentials.
                   </p>
                 </div>
@@ -1946,73 +1946,73 @@ export default function PeopleManagement() {
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
                   gap: 12,
-                  background: '#ffffff',
+                  background: "var(--card)",
                   padding: 14,
-                  borderRadius: 8,
+                  borderRadius: 4,
                   border: '1px solid var(--border)',
                   marginBottom: 14
                 }}>
                   <div>
-                    <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Employee Id / Savior_NO</div>
+                    <div style={{ fontSize: 11, color: "var(--muted-foreground)", textTransform: 'uppercase', fontWeight: 600 }}>Employee Id / Savior_NO</div>
                     <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2, fontFamily: 'monospace' }}>{teacherForm.employeeId || teacherForm.saviorNo || '—'}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>First Name</div>
+                    <div style={{ fontSize: 11, color: "var(--muted-foreground)", textTransform: 'uppercase', fontWeight: 600 }}>First Name</div>
                     <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{teacherForm.firstName || '—'}</div>
                   </div>
                   {teacherForm.middleName ? (
                     <div>
-                      <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Middle Name</div>
+                      <div style={{ fontSize: 11, color: "var(--muted-foreground)", textTransform: 'uppercase', fontWeight: 600 }}>Middle Name</div>
                       <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{teacherForm.middleName}</div>
                     </div>
                   ) : null}
                   <div>
-                    <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Last Name</div>
+                    <div style={{ fontSize: 11, color: "var(--muted-foreground)", textTransform: 'uppercase', fontWeight: 600 }}>Last Name</div>
                     <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{teacherForm.lastName || '—'}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Full Name (Auto-Generated)</div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#1e40af', marginTop: 2 }}>{[teacherForm.firstName, teacherForm.middleName, teacherForm.lastName].filter(Boolean).join(' ') || teacherForm.name || '—'}</div>
+                    <div style={{ fontSize: 11, color: "var(--muted-foreground)", textTransform: 'uppercase', fontWeight: 600 }}>Full Name (Auto-Generated)</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--primary)", marginTop: 2 }}>{[teacherForm.firstName, teacherForm.middleName, teacherForm.lastName].filter(Boolean).join(' ') || teacherForm.name || '—'}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Official Email</div>
+                    <div style={{ fontSize: 11, color: "var(--muted-foreground)", textTransform: 'uppercase', fontWeight: 600 }}>Official Email</div>
                     <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{teacherForm.email || '—'}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Designation</div>
+                    <div style={{ fontSize: 11, color: "var(--muted-foreground)", textTransform: 'uppercase', fontWeight: 600 }}>Designation</div>
                     <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{teacherForm.designation || 'Teacher'}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Assigned Class & Section</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#7c3aed', marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: "var(--muted-foreground)", textTransform: 'uppercase', fontWeight: 600 }}>Assigned Class & Section</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--info)", marginTop: 2 }}>
                       {(teacherForm.class_name || teacherForm.class) ? `${teacherForm.class_name || teacherForm.class}${teacherForm.section_name || teacherForm.section ? ` - Section ${teacherForm.section_name || teacherForm.section}` : ''}` : 'Not assigned'}
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Gender</div>
+                    <div style={{ fontSize: 11, color: "var(--muted-foreground)", textTransform: 'uppercase', fontWeight: 600 }}>Gender</div>
                     <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{teacherForm.gender || 'Not Specified'}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Joining Date</div>
+                    <div style={{ fontSize: 11, color: "var(--muted-foreground)", textTransform: 'uppercase', fontWeight: 600 }}>Joining Date</div>
                     <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{teacherForm.joiningDate || teacherForm.joining_date || 'Not Specified'}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Mobile Contact</div>
+                    <div style={{ fontSize: 11, color: "var(--muted-foreground)", textTransform: 'uppercase', fontWeight: 600 }}>Mobile Contact</div>
                     <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{teacherForm.mobile || '—'}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Welcome Dispatch</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#10b981', marginTop: 2 }}>✓ Automatic SMTP Email</div>
+                    <div style={{ fontSize: 11, color: "var(--muted-foreground)", textTransform: 'uppercase', fontWeight: 600 }}>Welcome Dispatch</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--success)", marginTop: 2 }}>✓ Automatic SMTP Email</div>
                   </div>
                 </div>
 
                 <div style={{
                   fontSize: 12,
-                  color: '#1e3a8a',
-                  background: '#eff6ff',
+                  color: "var(--primary)",
+                  background: "var(--card)",
                   padding: '10px 14px',
-                  borderRadius: 6,
-                  border: '1px solid #bfdbfe',
+                  borderRadius: 4,
+                  border: "1px solid var(--border)",
                   marginBottom: 16
                 }}>
                   <b>Security Notice:</b> A temporary password and 24-hour setup link will automatically be generated and emailed to <b>{teacherForm.email}</b>.
@@ -2055,28 +2055,28 @@ export default function PeopleManagement() {
             {/* Last Registered Teacher Banner in Red */}
             {lastRegisteredTeacherInfo && (
               <div style={{
-                color: '#dc2626',
+                color: "var(--destructive)",
                 fontSize: 12.5,
                 fontWeight: 600,
                 padding: '8px 14px',
-                backgroundColor: '#fef2f2',
-                border: '1px solid #fecaca',
-                borderRadius: 6,
+                backgroundColor: "var(--card)",
+                border: "1px solid var(--border)",
+                borderRadius: 4,
                 marginBottom: 14,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
                 flexShrink: 0
               }}>
-                <Info size={15} style={{ flexShrink: 0, color: '#dc2626' }} />
+                <Info size={15} style={{ flexShrink: 0, color: "var(--destructive)" }} />
                 <span>
-                  Last registered teacher: <strong style={{ color: '#b91c1c' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#b91c1c' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
+                  Last registered teacher: <strong style={{ color: "var(--destructive)" }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: "var(--destructive)" }}>{lastRegisteredTeacherInfo.employeeId}</strong>
                 </span>
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-              <span style={{ fontSize: 12, color: '#475569' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '10px 14px', background: "var(--card)", borderRadius: 4, border: "1px solid var(--border)" }}>
+              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
                 Required headers: <code>Savior_No</code>, <code>First Name</code>, <code>Middle Name</code>, <code>Last Name</code>, <code>Full Name(Automatically generated)</code>, <code>Email_id</code>, <code>Gender</code>, <code>Date_of_Birth</code>, <code>Class</code>, <code>Section</code>, <code>Status</code>, <code>Designation</code>
               </span>
               <button
@@ -2090,14 +2090,14 @@ export default function PeopleManagement() {
             </div>
 
             {previewRows.length === 0 ? (
-              <label className="dropzone" style={{ border: '2px dashed #cbd5e1', padding: 24, textAlign: 'center', borderRadius: 8, cursor: 'pointer', display: 'block', background: '#ffffff' }}>
+              <label className="dropzone" style={{ border: "2px dashed var(--border)", padding: 24, textAlign: 'center', borderRadius: 4, cursor: 'pointer', display: 'block', background: "var(--card)" }}>
                 <input
                   type="file"
                   accept=".xlsx, .xls, .csv"
                   onChange={handleFile}
                   style={{ display: 'none' }}
                 />
-                <div className="dropzone-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, color: '#2563eb' }}>
+                <div className="dropzone-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, color: "var(--primary)" }}>
                   <UploadCloud size={28} />
                 </div>
                 <strong style={{ fontSize: 14 }}>Click to browse or drop Excel file here</strong>
@@ -2105,7 +2105,7 @@ export default function PeopleManagement() {
               </label>
             ) : (
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
-                <label className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12.5, padding: '5px 12px', borderRadius: 6 }}>
+                <label className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12.5, padding: '5px 12px', borderRadius: 4 }}>
                   <input
                     type="file"
                     accept=".xlsx, .xls, .csv"
@@ -2123,11 +2123,11 @@ export default function PeopleManagement() {
                 <div style={{
                   marginBottom: 10,
                   padding: '10px 16px',
-                  background: teacherErrorCount > 0 ? '#fffbeb' : '#f0fdf4',
-                  borderRadius: 8,
-                  border: `1px solid ${teacherErrorCount > 0 ? '#fde68a' : '#bbf7d0'}`,
+                  background: teacherErrorCount > 0 ? "var(--card)" : "var(--secondary)",
+                  borderRadius: 4,
+                  border: `1px solid ${teacherErrorCount > 0 ? "var(--border)" : "var(--border)"}`,
                   fontSize: 13,
-                  color: teacherErrorCount > 0 ? '#92400e' : '#166534',
+                  color: teacherErrorCount > 0 ? "var(--warning)" : "var(--success)",
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
@@ -2136,10 +2136,10 @@ export default function PeopleManagement() {
                   <span>
                     {teacherErrorCount > 0 ? '⚠️' : '✅'} <b>{previewRows.length} faculty</b> parsed · <b>{teacherValidCount} valid</b>
                     {teacherErrorCount > 0 && (
-                      <> · <b style={{ color: '#dc2626' }}>{teacherErrorCount} with validation errors</b></>
+                      <> · <b style={{ color: "var(--destructive)" }}>{teacherErrorCount} with validation errors</b></>
                     )}
                   </span>
-                  <span style={{ fontSize: 12, color: teacherErrorCount > 0 ? '#b45309' : '#15803d' }}>
+                  <span style={{ fontSize: 12, color: teacherErrorCount > 0 ? "var(--warning)" : "var(--success)" }}>
                     {teacherErrorCount > 0
                       ? 'Review and resolve highlighted errors below before importing'
                       : 'All records valid and ready for database import'}
@@ -2150,13 +2150,13 @@ export default function PeopleManagement() {
                 <div className="preview-toolbar">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <strong style={{ fontSize: 14 }}>Preview Data</strong>
-                    <span style={{ fontSize: 12, padding: '2px 8px', background: '#e0f2fe', color: '#0369a1', borderRadius: 10, fontWeight: 600 }}>
+                    <span style={{ fontSize: 12, padding: '2px 8px', background: "var(--secondary)", color: "var(--info)", borderRadius: 4, fontWeight: 600 }}>
                       {previewRows.length} records
                     </span>
 
                     {/* Filter tabs if validation errors exist */}
                     {teacherErrorCount > 0 && (
-                      <div style={{ display: 'inline-flex', background: '#f1f5f9', borderRadius: 6, padding: 2, fontSize: 12, marginLeft: 4 }}>
+                      <div style={{ display: 'inline-flex', background: "var(--secondary)", borderRadius: 4, padding: 2, fontSize: 12, marginLeft: 4 }}>
                         <button
                           type="button"
                           onClick={() => { setImportPreviewErrorFilter('all'); setImportPreviewPage(1); }}
@@ -2165,9 +2165,9 @@ export default function PeopleManagement() {
                             borderRadius: 4,
                             border: 'none',
                             cursor: 'pointer',
-                            background: importPreviewErrorFilter === 'all' ? '#ffffff' : 'transparent',
-                            color: importPreviewErrorFilter === 'all' ? '#0f172a' : '#64748b',
-                            boxShadow: importPreviewErrorFilter === 'all' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                            background: importPreviewErrorFilter === 'all' ? "var(--card)" : 'transparent',
+                            color: importPreviewErrorFilter === 'all' ? "var(--foreground)" : "var(--muted-foreground)",
+                            boxShadow: importPreviewErrorFilter === 'all' ? "none" : 'none',
                             fontWeight: importPreviewErrorFilter === 'all' ? 600 : 400
                           }}
                         >
@@ -2181,9 +2181,9 @@ export default function PeopleManagement() {
                             borderRadius: 4,
                             border: 'none',
                             cursor: 'pointer',
-                            background: importPreviewErrorFilter === 'valid' ? '#ffffff' : 'transparent',
-                            color: importPreviewErrorFilter === 'valid' ? '#166534' : '#64748b',
-                            boxShadow: importPreviewErrorFilter === 'valid' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                            background: importPreviewErrorFilter === 'valid' ? "var(--card)" : 'transparent',
+                            color: importPreviewErrorFilter === 'valid' ? "var(--success)" : "var(--muted-foreground)",
+                            boxShadow: importPreviewErrorFilter === 'valid' ? "none" : 'none',
                             fontWeight: importPreviewErrorFilter === 'valid' ? 600 : 400
                           }}
                         >
@@ -2197,9 +2197,9 @@ export default function PeopleManagement() {
                             borderRadius: 4,
                             border: 'none',
                             cursor: 'pointer',
-                            background: importPreviewErrorFilter === 'errors' ? '#ffffff' : 'transparent',
-                            color: importPreviewErrorFilter === 'errors' ? '#dc2626' : '#64748b',
-                            boxShadow: importPreviewErrorFilter === 'errors' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                            background: importPreviewErrorFilter === 'errors' ? "var(--card)" : 'transparent',
+                            color: importPreviewErrorFilter === 'errors' ? "var(--destructive)" : "var(--muted-foreground)",
+                            boxShadow: importPreviewErrorFilter === 'errors' ? "none" : 'none',
                             fontWeight: importPreviewErrorFilter === 'errors' ? 600 : 400
                           }}
                         >
@@ -2212,7 +2212,7 @@ export default function PeopleManagement() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     {/* Search inside preview */}
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                      <Search size={14} style={{ position: 'absolute', left: 8, color: '#94a3b8', pointerEvents: 'none' }} />
+                      <Search size={14} style={{ position: 'absolute', left: 8, color: "var(--muted-foreground)", pointerEvents: 'none' }} />
                       <input
                         type="text"
                         placeholder="Search preview..."
@@ -2221,11 +2221,11 @@ export default function PeopleManagement() {
                         style={{
                           padding: '5px 26px 5px 28px',
                           fontSize: 12.5,
-                          border: '1px solid var(--border, #cbd5e1)',
-                          borderRadius: 6,
+                          border: "1px solid var(--border, var(--border))",
+                          borderRadius: 4,
                           width: 180,
-                          background: 'var(--card-bg, #ffffff)',
-                          color: 'var(--text, #0f172a)'
+                          background: "var(--card-bg, var(--card))",
+                          color: "var(--text, var(--foreground))"
                         }}
                       />
                       {importPreviewSearch && (
@@ -2239,7 +2239,7 @@ export default function PeopleManagement() {
                             border: 'none',
                             cursor: 'pointer',
                             padding: 2,
-                            color: '#94a3b8'
+                            color: "var(--muted-foreground)"
                           }}
                           title="Clear search"
                         >
@@ -2249,7 +2249,7 @@ export default function PeopleManagement() {
                     </div>
 
                     {/* Rows per page selector */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-secondary, #475569)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: "var(--text-secondary, var(--muted-foreground))" }}>
                       <span>Rows per page:</span>
                       <select
                         value={importPreviewPageSize}
@@ -2257,10 +2257,10 @@ export default function PeopleManagement() {
                         style={{
                           padding: '4px 8px',
                           fontSize: 12.5,
-                          borderRadius: 6,
-                          border: '1px solid var(--border, #cbd5e1)',
-                          background: 'var(--card-bg, #ffffff)',
-                          color: 'var(--text, #1e293b)',
+                          borderRadius: 4,
+                          border: "1px solid var(--border, var(--border))",
+                          background: "var(--card-bg, var(--card))",
+                          color: "var(--text, var(--foreground))",
                           cursor: 'pointer'
                         }}
                       >
@@ -2286,7 +2286,7 @@ export default function PeopleManagement() {
                 </div>
 
                 {/* ── PREVIEW TABLE ── */}
-                <div className="preview-table-container" style={{ flex: 1, maxHeight: 'calc(100vh - 350px)', minHeight: 340, overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: 6 }}>
+                <div className="preview-table-container" style={{ flex: 1, maxHeight: 'calc(100vh - 350px)', minHeight: 340, overflow: 'auto', border: "1px solid var(--border)", borderRadius: 4 }}>
                   <table style={{ width: '100%', minWidth: 1200, borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
@@ -2308,7 +2308,7 @@ export default function PeopleManagement() {
                     <tbody>
                       {displayedTeacherPreviewRows.length === 0 ? (
                         <tr>
-                          <td colSpan={13} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
+                          <td colSpan={13} style={{ textAlign: 'center', padding: '36px 20px', color: "var(--muted-foreground)" }}>
                             No teachers match the current search or error filter.
                           </td>
                         </tr>
@@ -2317,29 +2317,29 @@ export default function PeopleManagement() {
                           const rowNum = r._origRowIndex || (teacherStartIdx + i + 1);
                           const hasErr = Boolean(r._errors?.length);
                           return (
-                            <tr key={teacherStartIdx + i} style={{ background: hasErr ? '#fef2f2' : undefined, outline: hasErr ? '1px solid #fecaca' : undefined }}>
-                              <td style={{ color: hasErr ? '#dc2626' : '#94a3b8', fontSize: 11, textAlign: 'center', fontWeight: hasErr ? 700 : 500 }}>
+                            <tr key={teacherStartIdx + i} style={{ background: hasErr ? "var(--card)" : undefined, outline: hasErr ? "1px solid var(--border)" : undefined }}>
+                              <td style={{ color: hasErr ? "var(--destructive)" : "var(--muted-foreground)", fontSize: 11, textAlign: 'center', fontWeight: hasErr ? 700 : 500 }}>
                                 {hasErr ? `⚠ ${rowNum}` : rowNum}
                               </td>
-                              <td style={{ color: r._errors?.some((e: any) => e.field === 'Savior_No') ? '#dc2626' : undefined }}>
+                              <td style={{ color: r._errors?.some((e: any) => e.field === 'Savior_No') ? "var(--destructive)" : undefined }}>
                                 <code>{r.saviorNo || r.employeeId}</code>
                                 {r._errors?.filter((e: any) => e.field === 'Savior_No').map((e: any, j: number) => (
-                                  <div key={j} style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
+                                  <div key={j} style={{ fontSize: 10, color: "var(--destructive)", fontWeight: 600, marginTop: 2 }}>{e.message}</div>
                                 ))}
                               </td>
                               <td>{r.firstName || '—'}</td>
                               <td>{r.middleName || r.middle_name || '—'}</td>
                               <td>{r.lastName || '—'}</td>
-                              <td style={{ color: r._errors?.some((e: any) => e.field === 'Full Name' || e.field === 'First Name') ? '#dc2626' : undefined }}>
+                              <td style={{ color: r._errors?.some((e: any) => e.field === 'Full Name' || e.field === 'First Name') ? "var(--destructive)" : undefined }}>
                                 <b>{r.name}</b>
                                 {r._errors?.filter((e: any) => e.field === 'Full Name' || e.field === 'First Name').map((e: any, j: number) => (
-                                  <div key={j} style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
+                                  <div key={j} style={{ fontSize: 10, color: "var(--destructive)", fontWeight: 600, marginTop: 2 }}>{e.message}</div>
                                 ))}
                               </td>
-                              <td style={{ color: r._errors?.some((e: any) => e.field === 'Email_id' || e.field === 'Email ID') ? '#dc2626' : undefined }}>
+                              <td style={{ color: r._errors?.some((e: any) => e.field === 'Email_id' || e.field === 'Email ID') ? "var(--destructive)" : undefined }}>
                                 {r.email}
                                 {r._errors?.filter((e: any) => e.field === 'Email_id' || e.field === 'Email ID').map((e: any, j: number) => (
-                                  <div key={j} style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
+                                  <div key={j} style={{ fontSize: 10, color: "var(--destructive)", fontWeight: 600, marginTop: 2 }}>{e.message}</div>
                                 ))}
                               </td>
                               <td>
@@ -2351,18 +2351,18 @@ export default function PeopleManagement() {
                                     borderRadius: 999,
                                     fontSize: 11,
                                     fontWeight: 500,
-                                    background: formatGender(r.gender) === 'Female' ? '#fdf2f8' : formatGender(r.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
-                                    color: formatGender(r.gender) === 'Female' ? '#db2777' : formatGender(r.gender) === 'Male' ? '#0284c7' : '#64748b',
-                                    border: `1px solid ${formatGender(r.gender) === 'Female' ? '#fbcfe8' : formatGender(r.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
+                                    background: formatGender(r.gender) === 'Female' ? "var(--card)" : formatGender(r.gender) === 'Male' ? "var(--card)" : "var(--card)",
+                                    color: formatGender(r.gender) === 'Female' ? "var(--primary)" : formatGender(r.gender) === 'Male' ? "var(--info)" : "var(--muted-foreground)",
+                                    border: `1px solid ${formatGender(r.gender) === 'Female' ? "var(--border)" : formatGender(r.gender) === 'Male' ? "var(--border)" : "var(--border)"}`
                                   }}>
                                     {formatGender(r.gender)}
                                   </span>
                                 ) : '—'}
                               </td>
-                              <td style={{ color: r._errors?.some((e: any) => e.field === 'Joining Date') ? '#dc2626' : undefined }}>
+                              <td style={{ color: r._errors?.some((e: any) => e.field === 'Joining Date') ? "var(--destructive)" : undefined }}>
                                 {r.joiningDate || r.joining_date || '—'}
                                 {r._errors?.filter((e: any) => e.field === 'Joining Date').map((e: any, j: number) => (
-                                  <div key={j} style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
+                                  <div key={j} style={{ fontSize: 10, color: "var(--destructive)", fontWeight: 600, marginTop: 2 }}>{e.message}</div>
                                 ))}
                               </td>
                               <td>{r.designation || 'Teacher'}</td>
@@ -2379,7 +2379,7 @@ export default function PeopleManagement() {
 
                 {/* ── PAGINATION BAR ── */}
                 <div className="preview-pagination-bar">
-                  <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
+                  <div style={{ color: "var(--text-secondary, var(--muted-foreground))", fontSize: 12.5 }}>
                     {filteredTeacherPreviewRows.length === 0 ? (
                       'Showing 0 records'
                     ) : (
@@ -2423,9 +2423,9 @@ export default function PeopleManagement() {
                           padding: '3px 6px',
                           fontSize: 12,
                           borderRadius: 4,
-                          border: '1px solid var(--border, #cbd5e1)',
-                          background: 'var(--card-bg, #ffffff)',
-                          color: 'var(--text, #1e293b)',
+                          border: "1px solid var(--border, var(--border))",
+                          background: "var(--card-bg, var(--card))",
+                          color: "var(--text, var(--foreground))",
                           cursor: 'pointer'
                         }}
                       >
@@ -2475,8 +2475,8 @@ export default function PeopleManagement() {
                     onClick={submitBulkImport}
                     disabled={importing || previewRows.length === 0}
                     style={{
-                      background: teacherErrorCount > 0 ? '#ef4444' : '#10b981',
-                      color: '#ffffff',
+                      background: teacherErrorCount > 0 ? "var(--destructive)" : "var(--success)",
+                      color: "var(--background)",
                       fontWeight: 600,
                       padding: '8px 20px',
                       cursor: (importing || previewRows.length === 0) ? 'not-allowed' : 'pointer'
@@ -2519,7 +2519,7 @@ export default function PeopleManagement() {
               <button
                 type="button"
                 onClick={handleExportExcel}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#10b981', color: '#ffffff' }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: "var(--success)", color: "var(--background)" }}
               >
                 <FileSpreadsheet size={15} /> Download Excel (.xlsx)
               </button>

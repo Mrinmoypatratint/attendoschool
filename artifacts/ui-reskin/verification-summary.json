@@ -1,0 +1,31 @@
+{
+  "before": {
+    "expected": 8,
+    "unexpected": 10,
+    "skipped": 0,
+    "flaky": 0
+  },
+  "after": {
+    "expected": 8,
+    "unexpected": 10,
+    "skipped": 0,
+    "flaky": 0
+  },
+  "unchangedFailures": [
+    "navigation-layout.spec.ts:PARENT: mobile navigation uses a drawer",
+    "navigation-layout.spec.ts:PARENT: sticky header and first-click sidebar rail",
+    "navigation-layout.spec.ts:SCHOOL_ADMIN: mobile navigation uses a drawer",
+    "navigation-layout.spec.ts:SCHOOL_ADMIN: sticky header and first-click sidebar rail",
+    "navigation-layout.spec.ts:STUDENT: mobile navigation uses a drawer",
+    "navigation-layout.spec.ts:STUDENT: sticky header and first-click sidebar rail",
+    "navigation-layout.spec.ts:SUPER_ADMIN: mobile navigation uses a drawer",
+    "navigation-layout.spec.ts:SUPER_ADMIN: sticky header and first-click sidebar rail",
+    "navigation-layout.spec.ts:TEACHER: mobile navigation uses a drawer",
+    "navigation-layout.spec.ts:TEACHER: sticky header and first-click sidebar rail"
+  ],
+  "newFailures": [],
+  "structuralAudit": "No changes to behavior, visible text, protected attributes, props or conditional tests after excluding className and literal inline style values; compared with 35aaab3.",
+  "mobilePagesChecked": 17,
+  "testFilesEdited": false,
+  "backendFilesEdited": false
+}

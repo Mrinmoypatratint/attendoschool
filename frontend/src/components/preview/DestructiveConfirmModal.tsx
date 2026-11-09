@@ -38,7 +38,7 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
         >
           <div className="flex items-center gap-3">
             <div
-              className={`w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0 ${
+              className={`w-10 h-10 rounded-[4px] flex items-center justify-center shrink-0 ${
                 isPublish
                   ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
                   : 'bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400'
@@ -83,7 +83,7 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
             </div>
           )}
 
-          <div className="p-3 px-4 rounded-[10px] bg-rose-500/10 border border-rose-500/25 text-slate-800 dark:text-rose-200 text-[13.5px] mb-4 leading-relaxed">
+          <div className="p-3 px-4 rounded-[4px] bg-rose-500/10 border border-rose-500/25 text-slate-800 dark:text-rose-200 text-[13.5px] mb-4 leading-relaxed">
             {warningMessage || (
               <span>
                 Are you sure you want to permanently remove <strong>{entityName}</strong> from active institutional records? This operation will revoke portal access.
@@ -93,7 +93,7 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
 
           {/* Affected Entity Details Card */}
           {details.length > 0 && (
-            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-[10px] p-3 px-3.5">
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-[4px] p-3 px-3.5">
               <span className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 block mb-2">
                 Target Record Details
               </span>

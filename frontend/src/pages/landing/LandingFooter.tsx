@@ -149,7 +149,7 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onScrollTo }) => {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="c360-footer-link"
-                  style={{ color: '#0284C7', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  style={{ color: '#5c6bc0', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
                 >
                   <span>Staff HRMS Portal</span>
                   <ExternalLink size={12} />
@@ -161,7 +161,7 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onScrollTo }) => {
                   type="button"
                   className="c360-footer-link"
                   onClick={() => navigate('/login')}
-                  style={{ color: '#059669', fontWeight: 700 }}
+                  style={{ color: '#03806a', fontWeight: 700 }}
                 >
                   Portal Login →
                 </button>
@@ -212,11 +212,11 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onScrollTo }) => {
           <span>© 2026 AttendoSchool. All rights reserved.</span>
           <div style={{ display: 'flex', gap: 20 }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-              <ShieldCheck size={14} style={{ color: '#059669' }} />
+              <ShieldCheck size={14} style={{ color: '#03806a' }} />
               <span>CBSE Compliant Format</span>
             </span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-              <Lock size={14} style={{ color: '#059669' }} />
+              <Lock size={14} style={{ color: '#03806a' }} />
               <span>Student PII Masked (**)</span>
             </span>
           </div>
@@ -229,7 +229,7 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onScrollTo }) => {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.6)',
+            background: 'rgba(28, 31, 46, 0.6)',
             backdropFilter: 'blur(4px)',
             zIndex: 9999,
             display: 'flex',
@@ -242,13 +242,13 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onScrollTo }) => {
           <div
             style={{
               background: '#FFFFFF',
-              borderRadius: 16,
+              borderRadius: 4,
               maxWidth: 600,
               width: '100%',
               maxHeight: '85vh',
               overflowY: 'auto',
               padding: 32,
-              boxShadow: '0 24px 60px rgba(15, 23, 42, 0.25)',
+              boxShadow: 'none',
               position: 'relative'
             }}
             onClick={e => e.stopPropagation()}
@@ -268,7 +268,7 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onScrollTo }) => {
             >
               <X size={20} />
             </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, color: '#059669' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, color: '#03806a' }}>
               <Lock size={22} />
               <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: 'var(--color-text-primary)' }}>
                 Student Privacy &amp; PII Confidentiality Policy
@@ -301,7 +301,7 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onScrollTo }) => {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.6)',
+            background: 'rgba(28, 31, 46, 0.6)',
             backdropFilter: 'blur(4px)',
             zIndex: 9999,
             display: 'flex',
@@ -314,13 +314,13 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onScrollTo }) => {
           <div
             style={{
               background: '#FFFFFF',
-              borderRadius: 16,
+              borderRadius: 4,
               maxWidth: 600,
               width: '100%',
               maxHeight: '85vh',
               overflowY: 'auto',
               padding: 32,
-              boxShadow: '0 24px 60px rgba(15, 23, 42, 0.25)',
+              boxShadow: 'none',
               position: 'relative'
             }}
             onClick={e => e.stopPropagation()}

@@ -1,0 +1,102 @@
+/* Reference login: deliberately scoped so portal themes remain independent. */
+.as-simple-page {
+  min-height: 100svh; display: flex; align-items: center; justify-content: center;
+  padding: 24px !important; flex-direction: row; box-sizing: border-box;
+  background: radial-gradient(ellipse at 52% 4%, #9b5359 0, transparent 48%), radial-gradient(ellipse at 48% 100%, #a85d62 0, transparent 48%), #640414;
+  color: #141414; font-family: Arial, Helvetica, sans-serif;
+}
+.as-simple-page *, .as-simple-page *::before, .as-simple-page *::after { box-sizing: border-box; }
+.as-simple-page .login-card {
+  display: grid; grid-template-columns: 1fr 1fr; width: min(100%, 1160px); min-height: min(560px, calc(100svh - 48px));
+  padding: 6px; border-radius: 44px; background: #fff; overflow: hidden;
+  box-shadow: 0 28px 65px #30000b30;
+}
+.login-art { position: relative; min-width: 0; border-radius: 38px; overflow: hidden; background: #211321 url('/login-school-dusk.png') center center / cover no-repeat; }
+.login-brand { position: absolute; inset: 24px 18px auto; display: flex; flex-direction: column; align-items: center; color: #fff; text-align: center; }
+.login-brand-mark { width: 118px; height: 104px; }
+.login-wordmark { font-size: clamp(30px, 3.4vw, 43px); line-height: 1.15; font-weight: 750; letter-spacing: -1.6px; white-space: nowrap; }
+.login-wordmark > span { color: #48d51b; }
+.login-tagline { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; font-weight: 600; letter-spacing: 1.4px; white-space: nowrap; }
+.login-tagline > span { height: 2px; width: 26px; background: #fff; }
+.login-form-panel { min-width: 0; padding: 18px 36px 22px 40px; }
+.as-simple-page .login-back { display: flex; width: 32px; height: 32px; padding: 5px; margin: 0 0 4px; border: 0; background: transparent; color: #650514; border-radius: 50%; }
+.login-heading { margin: 0 0 18px; }
+.login-heading h1 { margin: 0; color: #51030d; font-family: inherit; font-size: 44px; font-weight: 750; letter-spacing: -2px; line-height: 1.1; }
+.login-heading p { margin: 4px 0 10px; color: #5d5e63; font-size: 18px; font-weight: 500; line-height: 1.3; letter-spacing: -.7px; }
+.login-heading > span { display: block; width: 78px; height: 5px; background: #b60830; border-radius: 9px; }
+.login-form { display: flex; flex-direction: column; gap: 12px; }
+.login-field { min-width: 0; }
+.login-field > label { display: block; margin-bottom: 6px; font-size: 16px; font-weight: 700; line-height: 1.2; letter-spacing: -.65px; }
+.login-control { position: relative; display: flex; align-items: center; min-width: 0; height: 48px; border: 2px solid #d7d7d9; border-radius: 15px; background: #fff; color: #5a5b5d; transition: border-color .15s, box-shadow .15s; }
+.login-control:focus-within { border-color: #9d0a29; box-shadow: 0 0 0 3px #9d0a2914; }
+.login-control > svg:first-child { position: absolute; left: 18px; width: 26px; height: 26px; pointer-events: none; }
+.as-simple-page .login-control input, .as-simple-page .login-control select { width: 100%; min-width: 0; height: 100%; padding: 0 48px 0 64px; margin: 0; border: 0; border-radius: 18px; background: transparent; box-shadow: none; outline: none; color: #303033; font: 400 17px Arial, Helvetica, sans-serif; letter-spacing: -.4px; }
+.as-simple-page .login-control input:focus, .as-simple-page .login-control select:focus { outline: none; box-shadow: none; }
+.login-control input::placeholder { color: #77777a; opacity: 1; }
+.as-simple-page .login-role-control { border-color: #a10a29; background: #fbecef; color: #6d081b; }
+.as-simple-page .login-role-control select { appearance: none; cursor: pointer; font-size: 17px; }
+.login-select-chevron { position: absolute; right: 18px; width: 22px; pointer-events: none; }
+.as-simple-page .login-eye { position: absolute; right: 6px; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; color: #6d6d70; background: transparent; }
+.as-simple-page .login-eye:hover, .as-simple-page .login-back:hover { background: #f8edef; opacity: 1; }
+.login-forgot-row { text-align: right; margin-top: 0; }
+.as-simple-page .login-forgot-row a { color: #780b1c; font-size: 16px; font-weight: 600; text-decoration: underline dotted; text-underline-offset: 4px; }
+.as-simple-page .login-submit { display: flex; justify-content: center; align-items: center; gap: 20px; width: 100%; min-height: 52px; margin-top: 8px; padding: 12px; border: 0; border-radius: 48px; background: linear-gradient(155deg, #a40829, #4a0010); color: #fff; box-shadow: 0 12px 18px #79051b24; font: 700 25px Arial, Helvetica, sans-serif; text-transform: none; letter-spacing: -.8px; }
+.as-simple-page .login-submit:hover { background: linear-gradient(155deg, #b40a31, #600015); opacity: 1; }
+.as-simple-page .login-submit:disabled { opacity: .6; cursor: wait; }
+.as-simple-page :where(button, a, select):focus-visible { outline: 3px solid #a10a29; outline-offset: 4px; }
+.login-error { display: flex; align-items: start; gap: 8px; padding: 12px; border: 1px solid #e4b8c0; border-radius: 12px; background: #fff2f4; color: #860e25; font-size: 14px; }
+.login-error svg { flex-shrink: 0; }
+.login-school-status { margin: -9px 0 -8px; color: #6e4850; font-size: 13px; }
+.login-school-status span { display: flex; align-items: center; gap: 7px; }
+.login-school-status label { display: block; margin-bottom: 6px; }
+.as-simple-page .login-school-status select { width: 100%; min-height: 40px; padding: 8px; border: 1px solid #d7c3c7; border-radius: 8px; color: #4a3036; background: white; }
+@media (max-width: 760px) {
+  .as-simple-page { padding: 20px !important; }
+  .as-simple-page .login-card { grid-template-columns: 1fr; min-height: 0; max-width: 540px; border-radius: 32px; }
+  .login-art { min-height: 225px; border-radius: 25px; background-position: center 58%; }
+  .login-art::before { content: ''; position: absolute; inset: 0; background: #1f071d70; }
+  .login-brand { inset: 17px 12px auto; }
+  .login-brand-mark { width: 105px; height: 98px; }
+  .login-wordmark { font-size: 34px; }
+  .login-tagline { font-size: 10px; margin-top: 7px; }
+  .login-form-panel { padding: 24px 22px 30px; }
+  .as-simple-page .login-back { margin-bottom: 12px; }
+  .login-heading { margin-bottom: 26px; }
+  .login-heading h1 { font-size: 46px; }
+  .login-heading p { font-size: 20px; margin: 8px 0 17px; }
+  .login-heading > span { height: 5px; width: 75px; }
+  .login-form { gap: 20px; }
+  .as-simple-page .login-forgot-row a { font-size: 16px; }
+  .as-simple-page .login-submit { margin-top: 10px; min-height: 60px; font-size: 26px; }
+}
+@media (max-width: 380px) {
+  .as-simple-page { padding: 12px !important; }
+  .login-form-panel { padding-inline: 14px; }
+  .login-field > label { font-size: 17px; }
+  .as-simple-page .login-control input, .as-simple-page .login-control select { padding-left: 55px; font-size: 16px; }
+  .login-control > svg:first-child { left: 16px; width: 25px; }
+}
+@media (prefers-reduced-motion: reduce) { .login-control { transition: none; } }
+/* Reset the app shell's global semantic-element rules on this standalone page. */
+.as-simple-page .login-card { height: auto; flex: none; overflow: hidden; }
+.as-simple-page .login-art { display: block; width: auto; height: auto; min-height: 0; position: relative; inset: auto; transform: none; border: 0; z-index: auto; transition: none; }
+.as-simple-page .login-heading { display: block; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.as-simple-page .login-control input { border: 0 !important; background: transparent !important; border-radius: 18px !important; color: #303033 !important; font-size: 17px !important; }
+.as-simple-page .login-field > label { color: #141414; }
+@media (max-width: 760px) { .as-simple-page .login-art { min-height: 225px; } }
+@media (max-width: 380px) { .as-simple-page .login-control input { font-size: 16px !important; } }
+.as-simple-page .login-heading h1 { font-size: 44px !important; }
+@media (max-width: 760px) { .as-simple-page .login-heading h1 { font-size: 46px !important; } }
+
+
+/* Short desktop viewports include the space taken by browser toolbars. */
+@media (min-width: 761px) and (max-height: 700px) {
+  .as-simple-page { padding: 16px !important; }
+  .as-simple-page .login-card { min-height: 0; }
+  .login-form-panel { padding: 14px 28px 18px 32px; }
+  .as-simple-page .login-heading { margin-bottom: 14px; }
+  .as-simple-page .login-heading h1 { font-size: 36px !important; }
+  .login-form { gap: 10px; }
+  .login-control { height: 44px; }
+  .as-simple-page .login-submit { min-height: 50px; margin-top: 6px; font-size: 24px; }
+}

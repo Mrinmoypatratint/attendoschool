@@ -55,7 +55,7 @@ export const LandingFlow: React.FC = () => {
       <div className="c360-container">
         {/* Section Header (Campus360 exact style) */}
         <div style={{ maxWidth: 640, marginBottom: 48, textAlign: 'left' }}>
-          <span className="c360-section-tag" style={{ color: '#059669' }}>
+          <span className="c360-section-tag" style={{ color: '#03806a' }}>
             From Onboarding to Operations
           </span>
           <h2 className="c360-section-title">How a school goes live on AttendoSchool.</h2>
@@ -98,8 +98,8 @@ export const LandingFlow: React.FC = () => {
                   alt="Modern school campus infrastructure and entrance"
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 />
-                <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', color: '#FFFFFF', padding: '4px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <Building2 size={13} style={{ color: '#38BDF8' }} />
+                <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(28, 31, 46, 0.85)', backdropFilter: 'blur(8px)', color: '#FFFFFF', padding: '4px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <Building2 size={13} style={{ color: '#7f8ccd' }} />
                   <span>Campus Infrastructure</span>
                 </div>
               </div>
@@ -113,15 +113,15 @@ export const LandingFlow: React.FC = () => {
                 </h4>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 16 }}>
-                  <div style={{ background: 'var(--color-marketing-bg-alt)', padding: 12, borderRadius: 10, border: '1px solid var(--color-border-muted)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#059669', fontSize: 12, fontWeight: 700 }}>
+                  <div style={{ background: 'var(--color-marketing-bg-alt)', padding: 12, borderRadius: 4, border: '1px solid var(--color-border-muted)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#03806a', fontSize: 12, fontWeight: 700 }}>
                       <Clock size={14} />
                       <span>48 Hours</span>
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>Average Full Setup</div>
                   </div>
 
-                  <div style={{ background: 'var(--color-marketing-bg-alt)', padding: 12, borderRadius: 10, border: '1px solid var(--color-border-muted)' }}>
+                  <div style={{ background: 'var(--color-marketing-bg-alt)', padding: 12, borderRadius: 4, border: '1px solid var(--color-border-muted)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-primary)', fontSize: 12, fontWeight: 700 }}>
                       <CheckCircle2 size={14} />
                       <span>Zero Downtime</span>
@@ -130,7 +130,7 @@ export const LandingFlow: React.FC = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: '#047857', background: '#ECFDF5', padding: '8px 12px', borderRadius: 8, border: '1px solid #A7F3D0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: '#02604f', background: '#e6f2f0', padding: '8px 12px', borderRadius: 4, border: '1px solid #99ccc3' }}>
                   <ShieldCheck size={16} />
                   <span>Includes hardware installation, faculty training & board audit checks</span>
                 </div>

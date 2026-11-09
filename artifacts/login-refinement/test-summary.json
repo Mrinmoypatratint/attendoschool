@@ -1,0 +1,12 @@
+{
+  "passed": 8,
+  "existingFailures": 10,
+  "newFailures": [],
+  "roleFormChecks": 16,
+  "noHorizontalOverflow": true,
+  "applicationFilesChanged": [
+    "frontend/src/theme/auth.css",
+    "frontend/src/theme/tokens.css"
+  ],
+  "tsxOrBehaviorChanges": false
+}

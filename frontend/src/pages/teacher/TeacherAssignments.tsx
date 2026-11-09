@@ -144,7 +144,7 @@ const getFileIcon = (fileName?: string, mimeType?: string) => {
   const lowerMime = (mimeType || '').toLowerCase();
 
   if (lowerMime === 'application/pdf' || lowerName.endsWith('.pdf')) {
-    return <FileText size={18} color="#dc2626" />;
+    return <FileText size={18} color="#d32f2f" />;
   }
   if (
     lowerMime.startsWith('image/') ||
@@ -154,15 +154,15 @@ const getFileIcon = (fileName?: string, mimeType?: string) => {
     lowerName.endsWith('.webp') ||
     lowerName.endsWith('.gif')
   ) {
-    return <Image size={18} color="#2563eb" />;
+    return <Image size={18} color="#e11d55" />;
   }
   if (lowerName.endsWith('.doc') || lowerName.endsWith('.docx')) {
-    return <FileText size={18} color="#2563eb" />;
+    return <FileText size={18} color="#e11d55" />;
   }
   if (lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx') || lowerName.endsWith('.csv')) {
-    return <FileCheck size={18} color="#16a34a" />;
+    return <FileCheck size={18} color="#03806a" />;
   }
-  return <Paperclip size={18} color="#2563eb" />;
+  return <Paperclip size={18} color="#e11d55" />;
 };
 
 const isPreviewableFile = (fileName?: string, mimeType?: string) => {
@@ -794,10 +794,10 @@ export function TeacherAssignments() {
       {/* Header Bar */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 24 }}>
         <div>
-          <h1 style={{ margin: '0 0 6px', fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+          <h1 style={{ margin: '0 0 6px', fontSize: 24, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
             Assignment Management
           </h1>
-          <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted, #64748b)' }}>
+          <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted, var(--muted-foreground))" }}>
             Create and publish assignments across any class or section, manage existing tasks, and review submissions.
           </p>
         </div>
@@ -809,10 +809,10 @@ export function TeacherAssignments() {
             title="Refresh assignments"
             style={{
               padding: '9px 14px',
-              borderRadius: 8,
-              border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--bg, #ffffff)',
-              color: 'var(--text, #1e293b)',
+              borderRadius: 4,
+              border: "1px solid var(--border, var(--border))",
+              background: "var(--bg, var(--card))",
+              color: "var(--text, var(--foreground))",
               fontSize: 13,
               fontWeight: 600,
               cursor: 'pointer',
@@ -829,17 +829,17 @@ export function TeacherAssignments() {
             onClick={() => setShowCreateModal(true)}
             style={{
               padding: '9px 16px',
-              borderRadius: 8,
+              borderRadius: 4,
               border: 'none',
-              background: '#4f46e5',
-              color: '#ffffff',
+              background: "var(--primary)",
+              color: "var(--background)",
               fontSize: 14,
               fontWeight: 600,
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
-              boxShadow: '0 2px 4px rgba(79, 70, 229, 0.25)'
+              boxShadow: 'none'
             }}
           >
             <Plus size={16} /> Create Assignment
@@ -852,7 +852,7 @@ export function TeacherAssignments() {
         style={{
           display: 'flex',
           gap: 12,
-          borderBottom: '2px solid var(--border, #e2e8f0)',
+          borderBottom: "2px solid var(--border, var(--border))",
           marginBottom: 16
         }}
       >
@@ -863,8 +863,8 @@ export function TeacherAssignments() {
             padding: '12px 20px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'published' ? '3px solid #4f46e5' : '3px solid transparent',
-            color: activeTab === 'published' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            borderBottom: activeTab === 'published' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'published' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
             fontWeight: activeTab === 'published' ? 700 : 500,
             fontSize: 15,
             cursor: 'pointer',
@@ -880,9 +880,9 @@ export function TeacherAssignments() {
           <span
             style={{
               padding: '2px 8px',
-              borderRadius: 12,
-              background: activeTab === 'published' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
-              color: activeTab === 'published' ? '#4338ca' : '#64748b',
+              borderRadius: 4,
+              background: activeTab === 'published' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'published' ? "var(--primary)" : "var(--muted-foreground)",
               fontSize: 12,
               fontWeight: 700
             }}
@@ -898,8 +898,8 @@ export function TeacherAssignments() {
             padding: '12px 20px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'mentored' ? '3px solid #4f46e5' : '3px solid transparent',
-            color: activeTab === 'mentored' ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+            borderBottom: activeTab === 'mentored' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'mentored' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
             fontWeight: activeTab === 'mentored' ? 700 : 500,
             fontSize: 15,
             cursor: 'pointer',
@@ -915,9 +915,9 @@ export function TeacherAssignments() {
           <span
             style={{
               padding: '2px 8px',
-              borderRadius: 12,
-              background: activeTab === 'mentored' ? '#e0e7ff' : 'var(--card-subtle, #f1f5f9)',
-              color: activeTab === 'mentored' ? '#4338ca' : '#64748b',
+              borderRadius: 4,
+              background: activeTab === 'mentored' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'mentored' ? "var(--primary)" : "var(--muted-foreground)",
               fontSize: 12,
               fontWeight: 700
             }}
@@ -932,18 +932,18 @@ export function TeacherAssignments() {
         <div
           style={{
             padding: '12px 16px',
-            borderRadius: 8,
-            background: 'var(--card-subtle, #f8fafc)',
-            border: '1px solid var(--border, #e2e8f0)',
+            borderRadius: 4,
+            background: "var(--card-subtle, var(--card))",
+            border: "1px solid var(--border, var(--border))",
             marginBottom: 20,
             display: 'flex',
             alignItems: 'center',
             gap: 10,
             fontSize: 13,
-            color: 'var(--text-secondary, #475569)'
+            color: "var(--text-secondary, var(--muted-foreground))"
           }}
         >
-          <BookOpen size={16} color="#4f46e5" />
+          <BookOpen size={16} color="#e11d55" />
           <span>
             Showing assignments published by <strong>you</strong> across all classes. You have full edit, delete, and submission grading permissions.
           </span>
@@ -952,18 +952,18 @@ export function TeacherAssignments() {
         <div
           style={{
             padding: '12px 16px',
-            borderRadius: 8,
-            background: mentorInfo.has_mentor_class ? '#f0fdf4' : '#fffbeb',
-            border: mentorInfo.has_mentor_class ? '1px solid #bbf7d0' : '1px solid #fde68a',
+            borderRadius: 4,
+            background: mentorInfo.has_mentor_class ? "var(--secondary)" : "var(--card)",
+            border: mentorInfo.has_mentor_class ? "1px solid var(--border)" : "1px solid var(--border)",
             marginBottom: 20,
             display: 'flex',
             alignItems: 'center',
             gap: 10,
             fontSize: 13,
-            color: mentorInfo.has_mentor_class ? '#166534' : '#92400e'
+            color: mentorInfo.has_mentor_class ? "var(--success)" : "var(--warning)"
           }}
         >
-          <GraduationCap size={16} color={mentorInfo.has_mentor_class ? '#16a34a' : '#d97706'} />
+          <GraduationCap size={16} color={mentorInfo.has_mentor_class ? '#03806a' : '#b8781c'} />
           <span>
             {mentorInfo.has_mentor_class ? (
               <>
@@ -990,14 +990,14 @@ export function TeacherAssignments() {
           flexWrap: 'wrap',
           gap: 12,
           padding: 16,
-          borderRadius: 10,
-          background: 'var(--bg-card, #ffffff)',
-          border: '1px solid var(--border, #e2e8f0)',
+          borderRadius: 4,
+          background: "var(--bg-card, var(--card))",
+          border: "1px solid var(--border, var(--border))",
           marginBottom: 20
         }}
       >
         <div style={{ flex: '1 1 240px', position: 'relative' }}>
-          <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-muted, #94a3b8)' }} />
+          <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: "var(--text-muted, var(--muted-foreground))" }} />
           <input
             type="text"
             placeholder="Search assignments by title or description..."
@@ -1006,10 +1006,10 @@ export function TeacherAssignments() {
             style={{
               width: '100%',
               padding: '9px 12px 9px 36px',
-              borderRadius: 8,
-              border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--bg, #ffffff)',
-              color: 'var(--text, #0f172a)',
+              borderRadius: 4,
+              border: "1px solid var(--border, var(--border))",
+              background: "var(--bg, var(--card))",
+              color: "var(--text, var(--foreground))",
               fontSize: 13
             }}
           />
@@ -1022,10 +1022,10 @@ export function TeacherAssignments() {
             style={{
               width: '100%',
               padding: '9px 12px',
-              borderRadius: 8,
-              border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--bg, #ffffff)',
-              color: 'var(--text, #0f172a)',
+              borderRadius: 4,
+              border: "1px solid var(--border, var(--border))",
+              background: "var(--bg, var(--card))",
+              color: "var(--text, var(--foreground))",
               fontSize: 13
             }}
           >
@@ -1043,25 +1043,25 @@ export function TeacherAssignments() {
       <div
         className="panel as-assignment-panel"
         style={{
-          borderRadius: 12,
-          background: 'var(--bg-card, #ffffff)',
-          border: '1px solid var(--border, #e2e8f0)',
+          borderRadius: 4,
+          background: "var(--bg-card, var(--card))",
+          border: "1px solid var(--border, var(--border))",
           overflow: 'hidden'
         }}
       >
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+        <div style={{ padding: '16px 20px', borderBottom: "1px solid var(--border, var(--border))", display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
             {activeTab === 'published' ? 'Assignments Published by Me' : 'Mentored Class Assignments'} ({filteredAssignments.length})
           </h2>
         </div>
 
         {loading ? (
-          <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
-            <Loader2 size={32} className="spin" style={{ margin: '0 auto 12px', color: '#4f46e5' }} />
+          <div style={{ padding: 48, textAlign: 'center', color: "var(--text-muted, var(--muted-foreground))" }}>
+            <Loader2 size={32} className="spin" style={{ margin: '0 auto 12px', color: "var(--primary)" }} />
             <p style={{ margin: 0, fontSize: 14 }}>Loading published assignments...</p>
           </div>
         ) : error ? (
-          <div style={{ padding: 36, textAlign: 'center', color: '#dc2626' }}>
+          <div style={{ padding: 36, textAlign: 'center', color: "var(--destructive)" }}>
             <AlertCircle size={32} style={{ margin: '0 auto 12px' }} />
             <p style={{ margin: '0 0 12px', fontSize: 14 }}>{error}</p>
             <button
@@ -1069,10 +1069,10 @@ export function TeacherAssignments() {
               onClick={loadAssignments}
               style={{
                 padding: '8px 16px',
-                borderRadius: 6,
-                border: '1px solid #dc2626',
-                background: '#fee2e2',
-                color: '#b91c1c',
+                borderRadius: 4,
+                border: "1px solid var(--border)",
+                background: "var(--secondary)",
+                color: "var(--destructive)",
                 cursor: 'pointer'
               }}
             >
@@ -1081,19 +1081,19 @@ export function TeacherAssignments() {
           </div>
         ) : filteredAssignments.length === 0 ? (
           activeTab === 'published' ? (
-            <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
-              <BookOpen size={40} style={{ margin: '0 auto 12px', opacity: 0.5, color: '#4f46e5' }} />
-              <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: 'var(--text, #1e293b)' }}>No Assignments Published by You</h3>
+            <div style={{ padding: 48, textAlign: 'center', color: "var(--text-muted, var(--muted-foreground))" }}>
+              <BookOpen size={40} style={{ margin: '0 auto 12px', opacity: 0.5, color: "var(--primary)" }} />
+              <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: "var(--text, var(--foreground))" }}>No Assignments Published by You</h3>
               <p style={{ margin: '0 0 16px', fontSize: 14 }}>Create and publish your first assignment across any class or section.</p>
               <button
                 type="button"
                 onClick={() => setShowCreateModal(true)}
                 style={{
                   padding: '8px 16px',
-                  borderRadius: 8,
+                  borderRadius: 4,
                   border: 'none',
-                  background: '#4f46e5',
-                  color: '#ffffff',
+                  background: "var(--primary)",
+                  color: "var(--background)",
                   fontWeight: 600,
                   fontSize: 13,
                   cursor: 'pointer'
@@ -1103,17 +1103,17 @@ export function TeacherAssignments() {
               </button>
             </div>
           ) : !mentorInfo.has_mentor_class ? (
-            <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
-              <GraduationCap size={40} style={{ margin: '0 auto 12px', opacity: 0.5, color: '#d97706' }} />
-              <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: 'var(--text, #1e293b)' }}>No Mentored Class Assigned</h3>
+            <div style={{ padding: 48, textAlign: 'center', color: "var(--text-muted, var(--muted-foreground))" }}>
+              <GraduationCap size={40} style={{ margin: '0 auto 12px', opacity: 0.5, color: "var(--warning)" }} />
+              <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: "var(--text, var(--foreground))" }}>No Mentored Class Assigned</h3>
               <p style={{ margin: '0 0 16px', fontSize: 14, maxWidth: 440, marginInline: 'auto' }}>
                 You are not currently assigned as a class mentor to any section. Mentor assignments are configured by school administrators.
               </p>
             </div>
           ) : (
-            <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
-              <BookOpen size={40} style={{ margin: '0 auto 12px', opacity: 0.5, color: '#16a34a' }} />
-              <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: 'var(--text, #1e293b)' }}>No Assignments for Mentored Class</h3>
+            <div style={{ padding: 48, textAlign: 'center', color: "var(--text-muted, var(--muted-foreground))" }}>
+              <BookOpen size={40} style={{ margin: '0 auto 12px', opacity: 0.5, color: "var(--success)" }} />
+              <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: "var(--text, var(--foreground))" }}>No Assignments for Mentored Class</h3>
               <p style={{ margin: '0 0 16px', fontSize: 14 }}>
                 No assignments have been published for {mentorInfo.mentored_classes.map((c) => c.display_name).join(', ')} yet.
               </p>
@@ -1122,10 +1122,10 @@ export function TeacherAssignments() {
                 onClick={() => setShowCreateModal(true)}
                 style={{
                   padding: '8px 16px',
-                  borderRadius: 8,
+                  borderRadius: 4,
                   border: 'none',
-                  background: '#4f46e5',
-                  color: '#ffffff',
+                  background: "var(--primary)",
+                  color: "var(--background)",
                   fontWeight: 600,
                   fontSize: 13,
                   cursor: 'pointer'
@@ -1139,14 +1139,14 @@ export function TeacherAssignments() {
           <div style={{ overflowX: 'auto' }}>
             <table className="as-assignment-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
               <thead>
-                <tr style={{ background: 'var(--card-subtle, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)', minWidth: 200 }}>Assignment Title</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)', minWidth: 140 }}>Class & Section</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)', minWidth: 130 }}>Assigned Date</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)', minWidth: 130 }}>Due Date</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)', textAlign: 'center', minWidth: 110 }}>Attachments</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)', minWidth: 130 }}>Published On</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)', textAlign: 'right', minWidth: 320 }}>Actions</th>
+                <tr style={{ background: "var(--card-subtle, var(--card))", borderBottom: "1px solid var(--border, var(--border))" }}>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))", minWidth: 200 }}>Assignment Title</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))", minWidth: 140 }}>Class & Section</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))", minWidth: 130 }}>Assigned Date</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))", minWidth: 130 }}>Due Date</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))", textAlign: 'center', minWidth: 110 }}>Attachments</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))", minWidth: 130 }}>Published On</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))", textAlign: 'right', minWidth: 320 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -1161,23 +1161,23 @@ export function TeacherAssignments() {
                   return (
                     <tr
                       key={asg.id}
-                      style={{ borderBottom: '1px solid var(--border, #f1f5f9)', transition: 'background 0.15s' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--card-subtle, #f8fafc)')}
+                      style={{ borderBottom: "1px solid var(--border, var(--border))", transition: 'background 0.15s' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--card-subtle, #f9f9fa)')}
                       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     >
                       <td style={{ padding: '14px 16px' }}>
-                        <div style={{ fontWeight: 600, color: 'var(--text, #0f172a)', marginBottom: 2 }}>{asg.title}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748b)', maxWidth: 300, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4 }}>
+                        <div style={{ fontWeight: 600, color: "var(--text, var(--foreground))", marginBottom: 2 }}>{asg.title}</div>
+                        <div style={{ fontSize: 12, color: "var(--text-secondary, var(--muted-foreground))", maxWidth: 300, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4 }}>
                           {asg.description}
                         </div>
                         {activeTab === 'mentored' && (
                           <div>
                             {asg.is_owner ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '1px 6px', borderRadius: 4, background: '#dbeafe', color: '#1e40af', fontSize: 11, fontWeight: 600 }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '1px 6px', borderRadius: 4, background: "var(--card)", color: "var(--primary)", fontSize: 11, fontWeight: 600 }}>
                                 Published by You
                               </span>
                             ) : (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '1px 6px', borderRadius: 4, background: '#f1f5f9', color: '#475569', fontSize: 11, fontWeight: 500 }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '1px 6px', borderRadius: 4, background: "var(--secondary)", color: "var(--muted-foreground)", fontSize: 11, fontWeight: 500 }}>
                                 By: {asg.teacher_name || 'Other Teacher'} (Read-Only)
                               </span>
                             )}
@@ -1185,28 +1185,28 @@ export function TeacherAssignments() {
                         )}
                       </td>
                       <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
-                        <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: 6, background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', fontSize: 12, fontWeight: 600 }}>
+                        <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: 4, background: "var(--accent)", color: "var(--primary)", fontSize: 12, fontWeight: 600 }}>
                           {classDisplay} • {sectionDisplay}
                         </span>
                       </td>
-                      <td style={{ padding: '14px 16px', color: 'var(--text, #334155)', whiteSpace: 'nowrap' }}>
-                        <Calendar size={13} style={{ display: 'inline', marginRight: 4, color: '#64748b' }} />
+                      <td style={{ padding: '14px 16px', color: "var(--text, var(--muted-foreground))", whiteSpace: 'nowrap' }}>
+                        <Calendar size={13} style={{ display: 'inline', marginRight: 4, color: "var(--muted-foreground)" }} />
                         {formatAssignmentDate(asg.assigned_date || asg.created_at)}
                       </td>
-                      <td style={{ padding: '14px 16px', color: 'var(--text, #334155)', whiteSpace: 'nowrap' }}>
-                        <Clock size={13} style={{ display: 'inline', marginRight: 4, color: '#d97706' }} />
+                      <td style={{ padding: '14px 16px', color: "var(--text, var(--muted-foreground))", whiteSpace: 'nowrap' }}>
+                        <Clock size={13} style={{ display: 'inline', marginRight: 4, color: "var(--warning)" }} />
                         <span style={{ fontWeight: 600 }}>{formatAssignmentDate(asg.due_date)}</span>
                       </td>
                       <td style={{ padding: '14px 16px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                         {attCount > 0 ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 12, background: 'rgba(2, 132, 199, 0.1)', color: 'var(--primary-400, #38bdf8)', fontSize: 12, fontWeight: 600 }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: "var(--secondary)", color: "var(--primary-400, var(--info))", fontSize: 12, fontWeight: 600 }}>
                             <Paperclip size={12} /> {attCount}
                           </span>
                         ) : (
-                          <span style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 12 }}>—</span>
+                          <span style={{ color: "var(--text-muted, var(--muted-foreground))", fontSize: 12 }}>—</span>
                         )}
                       </td>
-                      <td style={{ padding: '14px 16px', color: 'var(--text-secondary, #64748b)', fontSize: 12, whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '14px 16px', color: "var(--text-secondary, var(--muted-foreground))", fontSize: 12, whiteSpace: 'nowrap' }}>
                         {pubDate}
                       </td>
                       <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
@@ -1217,10 +1217,10 @@ export function TeacherAssignments() {
                             onClick={() => setViewAssignment(asg)}
                             style={{
                               padding: '6px 10px',
-                              borderRadius: 6,
-                              border: '1px solid var(--border, #cbd5e1)',
-                              background: 'var(--bg, #ffffff)',
-                              color: 'var(--text, #1e293b)',
+                              borderRadius: 4,
+                              border: "1px solid var(--border, var(--border))",
+                              background: "var(--bg, var(--card))",
+                              color: "var(--text, var(--foreground))",
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -1241,10 +1241,10 @@ export function TeacherAssignments() {
                                 onClick={() => handleOpenEdit(asg)}
                                 style={{
                                   padding: '6px 10px',
-                                  borderRadius: 6,
-                                  border: '1px solid var(--border, #cbd5e1)',
-                                  background: 'var(--bg, #ffffff)',
-                                  color: '#0284c7',
+                                  borderRadius: 4,
+                                  border: "1px solid var(--border, var(--border))",
+                                  background: "var(--bg, var(--card))",
+                                  color: "var(--info)",
                                   cursor: 'pointer',
                                   display: 'inline-flex',
                                   alignItems: 'center',
@@ -1262,10 +1262,10 @@ export function TeacherAssignments() {
                                 onClick={() => setDeleteTarget(asg)}
                                 style={{
                                   padding: '6px 10px',
-                                  borderRadius: 6,
-                                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                                  background: 'rgba(239, 68, 68, 0.12)',
-                                  color: '#ef4444',
+                                  borderRadius: 4,
+                                  border: "1px solid var(--border)",
+                                  background: "var(--secondary)",
+                                  color: "var(--destructive)",
                                   cursor: 'pointer',
                                   display: 'inline-flex',
                                   alignItems: 'center',
@@ -1285,10 +1285,10 @@ export function TeacherAssignments() {
                             onClick={() => handleOpenSubmissions(asg)}
                             style={{
                               padding: '6px 10px',
-                              borderRadius: 6,
-                              border: '1px solid rgba(99, 102, 241, 0.3)',
-                              background: 'rgba(99, 102, 241, 0.12)',
-                              color: '#818cf8',
+                              borderRadius: 4,
+                              border: "1px solid var(--border)",
+                              background: "var(--accent)",
+                              color: "var(--primary)",
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -1316,7 +1316,7 @@ export function TeacherAssignments() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
+            background: "var(--card)",
             backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
@@ -1330,33 +1330,33 @@ export function TeacherAssignments() {
               width: '100%',
               maxWidth: isCreateMaximized ? '95vw' : '680px',
               maxHeight: isCreateMaximized ? '95vh' : '90vh',
-              background: 'var(--bg-card, #ffffff)',
-              borderRadius: 14,
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
+              background: "var(--bg-card, var(--card))",
+              borderRadius: 4,
+              boxShadow: 'none',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
-              border: '1px solid var(--border, #cbd5e1)'
+              border: "1px solid var(--border, var(--border))"
             }}
           >
             {/* Modal Header */}
-            <div className="as-assignment-modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', background: 'var(--card-subtle, #f8fafc)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="as-assignment-modal-header" style={{ padding: '16px 20px', borderBottom: "1px solid var(--border, var(--border))", background: "var(--card-subtle, var(--card))", display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <BookOpen size={20} style={{ color: '#4f46e5' }} />
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Create Assignment</h2>
+                <BookOpen size={20} style={{ color: "var(--primary)" }} />
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "var(--text, var(--foreground))" }}>Create Assignment</h2>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <button
                   type="button"
                   onClick={() => setIsCreateMaximized(!isCreateMaximized)}
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)' }}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: "var(--text-muted, var(--muted-foreground))" }}
                 >
                   {isCreateMaximized ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)' }}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: "var(--text-muted, var(--muted-foreground))" }}
                 >
                   <X size={20} />
                 </button>
@@ -1366,7 +1366,7 @@ export function TeacherAssignments() {
             {/* Modal Form */}
             <form onSubmit={handlePublishAssignment} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', padding: 20, gap: 16 }}>
               {createError && (
-                <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ padding: '10px 14px', borderRadius: 4, background: "var(--secondary)", border: "1px solid var(--border)", color: "var(--destructive)", fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <AlertCircle size={16} />
                   <span>{createError}</span>
                 </div>
@@ -1374,8 +1374,8 @@ export function TeacherAssignments() {
 
               {/* Title */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
-                  Assignment Title <span style={{ color: '#ef4444' }}>*</span>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginBottom: 6 }}>
+                  Assignment Title <span style={{ color: "var(--destructive)" }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -1385,10 +1385,10 @@ export function TeacherAssignments() {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    borderRadius: 8,
-                    border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--bg, #ffffff)',
-                    color: 'var(--text, #0f172a)',
+                    borderRadius: 4,
+                    border: "1px solid var(--border, var(--border))",
+                    background: "var(--bg, var(--card))",
+                    color: "var(--text, var(--foreground))",
                     fontSize: 14
                   }}
                   required
@@ -1398,8 +1398,8 @@ export function TeacherAssignments() {
               {/* Target Class and Section */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
-                    Select Class <span style={{ color: '#ef4444' }}>*</span>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginBottom: 6 }}>
+                    Select Class <span style={{ color: "var(--destructive)" }}>*</span>
                   </label>
                   <select
                     value={createForm.class_id}
@@ -1407,10 +1407,10 @@ export function TeacherAssignments() {
                     style={{
                       width: '100%',
                       padding: '10px 12px',
-                      borderRadius: 8,
-                      border: '1px solid var(--border, #cbd5e1)',
-                      background: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #0f172a)',
+                      borderRadius: 4,
+                      border: "1px solid var(--border, var(--border))",
+                      background: "var(--bg, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       fontSize: 14
                     }}
                     required
@@ -1425,7 +1425,7 @@ export function TeacherAssignments() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginBottom: 6 }}>
                     Select Section
                   </label>
                   <select
@@ -1435,10 +1435,10 @@ export function TeacherAssignments() {
                     style={{
                       width: '100%',
                       padding: '10px 12px',
-                      borderRadius: 8,
-                      border: '1px solid var(--border, #cbd5e1)',
-                      background: createForm.class_id ? 'var(--card, #ffffff)' : 'var(--card-subtle, #f1f5f9)',
-                      color: 'var(--text, #0f172a)',
+                      borderRadius: 4,
+                      border: "1px solid var(--border, var(--border))",
+                      background: createForm.class_id ? "var(--card, var(--card))" : "var(--card-subtle, var(--secondary))",
+                      color: "var(--text, var(--foreground))",
                       fontSize: 14
                     }}
                   >
@@ -1455,8 +1455,8 @@ export function TeacherAssignments() {
               {/* Assignment Date and Due Date */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
-                    Assigned Date <span style={{ color: '#ef4444' }}>*</span>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginBottom: 6 }}>
+                    Assigned Date <span style={{ color: "var(--destructive)" }}>*</span>
                   </label>
                   <input
                     type="date"
@@ -1467,10 +1467,10 @@ export function TeacherAssignments() {
                     style={{
                       width: '100%',
                       padding: '10px 12px',
-                      borderRadius: 8,
-                      border: '1px solid var(--border, #cbd5e1)',
-                      background: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #0f172a)',
+                      borderRadius: 4,
+                      border: "1px solid var(--border, var(--border))",
+                      background: "var(--bg, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       fontSize: 14
                     }}
                     required
@@ -1478,8 +1478,8 @@ export function TeacherAssignments() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
-                    Submission Deadline (Due Date) <span style={{ color: '#ef4444' }}>*</span>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginBottom: 6 }}>
+                    Submission Deadline (Due Date) <span style={{ color: "var(--destructive)" }}>*</span>
                   </label>
                   <input
                     type="date"
@@ -1490,10 +1490,10 @@ export function TeacherAssignments() {
                     style={{
                       width: '100%',
                       padding: '10px 12px',
-                      borderRadius: 8,
-                      border: '1px solid var(--border, #cbd5e1)',
-                      background: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #0f172a)',
+                      borderRadius: 4,
+                      border: "1px solid var(--border, var(--border))",
+                      background: "var(--bg, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       fontSize: 14
                     }}
                     required
@@ -1503,7 +1503,7 @@ export function TeacherAssignments() {
 
               {/* Detailed Instructions / Description */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginBottom: 6 }}>
                   Detailed Instructions / Description
                 </label>
                 <AutoExpandingTextarea
@@ -1514,10 +1514,10 @@ export function TeacherAssignments() {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    borderRadius: 8,
-                    border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--bg, #ffffff)',
-                    color: 'var(--text, #0f172a)',
+                    borderRadius: 4,
+                    border: "1px solid var(--border, var(--border))",
+                    background: "var(--bg, var(--card))",
+                    color: "var(--text, var(--foreground))",
                     fontSize: 14,
                     lineHeight: 1.5
                   }}
@@ -1526,7 +1526,7 @@ export function TeacherAssignments() {
 
               {/* Attach Document / File */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginBottom: 6 }}>
                   Attach Document / File
                 </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -1536,10 +1536,10 @@ export function TeacherAssignments() {
                       alignItems: 'center',
                       gap: 6,
                       padding: '7px 14px',
-                      borderRadius: 6,
-                      border: '1px dashed var(--border, #cbd5e1)',
-                      backgroundColor: 'var(--card-subtle, #f8fafc)',
-                      color: 'var(--text, #334155)',
+                      borderRadius: 4,
+                      border: "1px dashed var(--border, var(--border))",
+                      backgroundColor: "var(--card-subtle, var(--card))",
+                      color: "var(--text, var(--muted-foreground))",
                       fontSize: 13,
                       fontWeight: 500,
                       cursor: 'pointer',
@@ -1547,7 +1547,7 @@ export function TeacherAssignments() {
                     }}
                     title="Attach files to this assignment"
                   >
-                    <Paperclip size={15} color="#2563eb" />
+                    <Paperclip size={15} color="#e11d55" />
                     <span>{createFiles.length > 0 ? 'Attach More Files' : 'Attach Document / File'}</span>
                     <input
                       id="create-file-input"
@@ -1566,7 +1566,7 @@ export function TeacherAssignments() {
                       }
                     />
                   </label>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                  <span style={{ fontSize: 12, color: "var(--text-muted, var(--muted-foreground))" }}>
                     {createFiles.length > 0
                       ? `${createFiles.length}/5 files selected (${formatBytes(createFiles.reduce((acc, f) => acc + f.size, 0))})`
                       : 'Supports PDF, JPG, PNG, DOCX, XLSX (up to 5 files, max 10MB each)'}
@@ -1586,9 +1586,9 @@ export function TeacherAssignments() {
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             padding: '8px 12px',
-                            borderRadius: 6,
-                            background: 'var(--card, #ffffff)',
-                            border: '1px solid var(--border, #cbd5e1)',
+                            borderRadius: 4,
+                            background: "var(--card, var(--card))",
+                            border: "1px solid var(--border, var(--border))",
                             gap: 10
                           }}
                         >
@@ -1596,8 +1596,8 @@ export function TeacherAssignments() {
                             <div style={{
                               width: 32,
                               height: 32,
-                              borderRadius: 6,
-                              backgroundColor: '#eff6ff',
+                              borderRadius: 4,
+                              backgroundColor: "var(--card)",
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -1609,14 +1609,14 @@ export function TeacherAssignments() {
                               <div style={{
                                 fontSize: 13,
                                 fontWeight: 600,
-                                color: 'var(--text, #0f172a)',
+                                color: "var(--text, var(--foreground))",
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap'
                               }}>
                                 {fileItem.name}
                               </div>
-                              <div style={{ fontSize: 11, color: '#64748b' }}>
+                              <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
                                 {formatBytes(fileItem.size)}
                               </div>
                             </div>
@@ -1629,10 +1629,10 @@ export function TeacherAssignments() {
                                 onClick={() => openPreview(fileItem.name, fileItem.mimeType, fileItem.blobUrl)}
                                 style={{
                                   padding: '4px 10px',
-                                  borderRadius: 5,
-                                  border: '1px solid #bfdbfe',
-                                  background: '#eff6ff',
-                                  color: '#2563eb',
+                                  borderRadius: 4,
+                                  border: "1px solid var(--border)",
+                                  background: "var(--card)",
+                                  color: "var(--primary)",
                                   fontSize: 12,
                                   fontWeight: 600,
                                   cursor: 'pointer',
@@ -1655,7 +1655,7 @@ export function TeacherAssignments() {
                                 background: 'none',
                                 border: 'none',
                                 cursor: 'pointer',
-                                color: '#ef4444',
+                                color: "var(--destructive)",
                                 padding: 4,
                                 display: 'inline-flex',
                                 alignItems: 'center'
@@ -1672,17 +1672,17 @@ export function TeacherAssignments() {
               </div>
 
               {/* Modal Footer */}
-              <div className="as-assignment-modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '16px 20px', margin: '0 -20px -20px -20px', borderTop: '1px solid var(--border, #e2e8f0)', background: 'var(--card-subtle, #f8fafc)' }}>
+              <div className="as-assignment-modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '16px 20px', margin: '0 -20px -20px -20px', borderTop: "1px solid var(--border, var(--border))", background: "var(--card-subtle, var(--card))" }}>
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
                   disabled={creating}
                   style={{
                     padding: '9px 16px',
-                    borderRadius: 8,
-                    border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--bg, #ffffff)',
-                    color: 'var(--text, #334155)',
+                    borderRadius: 4,
+                    border: "1px solid var(--border, var(--border))",
+                    background: "var(--bg, var(--card))",
+                    color: "var(--text, var(--muted-foreground))",
                     fontWeight: 600,
                     cursor: 'pointer'
                   }}
@@ -1694,16 +1694,16 @@ export function TeacherAssignments() {
                   disabled={creating}
                   style={{
                     padding: '9px 20px',
-                    borderRadius: 8,
+                    borderRadius: 4,
                     border: 'none',
-                    background: '#4f46e5',
-                    color: '#ffffff',
+                    background: "var(--primary)",
+                    color: "var(--background)",
                     fontWeight: 600,
                     cursor: 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 8,
-                    boxShadow: '0 2px 4px rgba(79,70,229,0.3)'
+                    boxShadow: 'none'
                   }}
                 >
                   {creating ? <Loader2 size={16} className="spin" /> : <Send size={16} />}
@@ -1721,7 +1721,7 @@ export function TeacherAssignments() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
+            background: "var(--card)",
             backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
@@ -1735,24 +1735,24 @@ export function TeacherAssignments() {
               width: '100%',
               maxWidth: 680,
               maxHeight: '90vh',
-              background: 'var(--bg-card, #ffffff)',
-              borderRadius: 14,
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
+              background: "var(--bg-card, var(--card))",
+              borderRadius: 4,
+              boxShadow: 'none',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
-              border: '1px solid var(--border, #cbd5e1)'
+              border: "1px solid var(--border, var(--border))"
             }}
           >
-            <div className="as-assignment-modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', background: 'var(--card-subtle, #f8fafc)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="as-assignment-modal-header" style={{ padding: '16px 20px', borderBottom: "1px solid var(--border, var(--border))", background: "var(--card-subtle, var(--card))", display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Eye size={20} style={{ color: '#0284c7' }} />
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Assignment Details</h2>
+                <Eye size={20} style={{ color: "var(--info)" }} />
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "var(--text, var(--foreground))" }}>Assignment Details</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setViewAssignment(null)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)' }}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: "var(--text-muted, var(--muted-foreground))" }}
               >
                 <X size={20} />
               </button>
@@ -1760,46 +1760,46 @@ export function TeacherAssignments() {
 
             <div style={{ padding: 20, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
-                <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', display: 'inline-block', marginBottom: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: "var(--accent)", color: "var(--primary)", display: 'inline-block', marginBottom: 8 }}>
                   Class {viewAssignment.class_number ?? ''} {viewAssignment.section_name ? `• Section ${viewAssignment.section_name}` : '• All Sections'}
                 </span>
-                <h3 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                <h3 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
                   {viewAssignment.title}
                 </h3>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, padding: 12, borderRadius: 8, background: 'var(--card-subtle, #f8fafc)', border: '1px solid var(--border, #e2e8f0)', fontSize: 13 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, padding: 12, borderRadius: 4, background: "var(--card-subtle, var(--card))", border: "1px solid var(--border, var(--border))", fontSize: 13 }}>
                 <div>
-                  <span style={{ display: 'block', color: '#64748b', fontSize: 11, fontWeight: 600 }}>ASSIGNED DATE</span>
-                  <span style={{ fontWeight: 600, color: 'var(--text, #1e293b)' }}>
+                  <span style={{ display: 'block', color: "var(--muted-foreground)", fontSize: 11, fontWeight: 600 }}>ASSIGNED DATE</span>
+                  <span style={{ fontWeight: 600, color: "var(--text, var(--foreground))" }}>
                     {formatAssignmentDate(viewAssignment.assigned_date || viewAssignment.created_at)}
                   </span>
                 </div>
                 <div>
-                  <span style={{ display: 'block', color: '#64748b', fontSize: 11, fontWeight: 600 }}>DUE DATE</span>
-                  <span style={{ fontWeight: 600, color: '#d97706' }}>
+                  <span style={{ display: 'block', color: "var(--muted-foreground)", fontSize: 11, fontWeight: 600 }}>DUE DATE</span>
+                  <span style={{ fontWeight: 600, color: "var(--warning)" }}>
                     {formatAssignmentDate(viewAssignment.due_date)}
                   </span>
                 </div>
                 <div>
-                  <span style={{ display: 'block', color: '#64748b', fontSize: 11, fontWeight: 600 }}>PUBLISHED ON</span>
-                  <span style={{ fontWeight: 600, color: 'var(--text, #1e293b)' }}>
+                  <span style={{ display: 'block', color: "var(--muted-foreground)", fontSize: 11, fontWeight: 600 }}>PUBLISHED ON</span>
+                  <span style={{ fontWeight: 600, color: "var(--text, var(--foreground))" }}>
                     {formatAssignmentDate(viewAssignment.created_at)}
                   </span>
                 </div>
                 <div>
-                  <span style={{ display: 'block', color: '#64748b', fontSize: 11, fontWeight: 600 }}>MAX MARKS</span>
-                  <span style={{ fontWeight: 600, color: 'var(--text, #1e293b)' }}>
+                  <span style={{ display: 'block', color: "var(--muted-foreground)", fontSize: 11, fontWeight: 600 }}>MAX MARKS</span>
+                  <span style={{ fontWeight: 600, color: "var(--text, var(--foreground))" }}>
                     {viewAssignment.max_marks || 100}
                   </span>
                 </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #64748b)', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: "var(--text, var(--muted-foreground))", marginBottom: 6 }}>
                   INSTRUCTIONS
                 </label>
-                <div style={{ padding: 14, borderRadius: 8, background: 'var(--bg, #ffffff)', border: '1px solid var(--border, #e2e8f0)', whiteSpace: 'pre-wrap', lineHeight: 1.6, fontSize: 14, color: 'var(--text, #1e293b)' }}>
+                <div style={{ padding: 14, borderRadius: 4, background: "var(--bg, var(--card))", border: "1px solid var(--border, var(--border))", whiteSpace: 'pre-wrap', lineHeight: 1.6, fontSize: 14, color: "var(--text, var(--foreground))" }}>
                   {viewAssignment.description || 'No instructions provided.'}
                 </div>
               </div>
@@ -1812,7 +1812,7 @@ export function TeacherAssignments() {
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.04em',
-                  color: 'var(--text-muted, #64748b)',
+                  color: "var(--text-muted, var(--muted-foreground))",
                   marginBottom: 8
                 }}>
                   Attached Documents ({Array.isArray(viewAssignment.attachments) ? viewAssignment.attachments.length : (viewAssignment.document_name ? 1 : 0)})
@@ -1838,9 +1838,9 @@ export function TeacherAssignments() {
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             padding: '12px 16px',
-                            borderRadius: 8,
-                            backgroundColor: 'var(--card-subtle, #f8fafc)',
-                            border: '1px solid var(--border, #cbd5e1)',
+                            borderRadius: 4,
+                            backgroundColor: "var(--card-subtle, var(--card))",
+                            border: "1px solid var(--border, var(--border))",
                             gap: 12,
                             flexWrap: 'wrap'
                           }}
@@ -1849,9 +1849,9 @@ export function TeacherAssignments() {
                             <div style={{
                               width: 36,
                               height: 36,
-                              borderRadius: 6,
-                              backgroundColor: '#eff6ff',
-                              color: '#2563eb',
+                              borderRadius: 4,
+                              backgroundColor: "var(--card)",
+                              color: "var(--primary)",
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -1863,7 +1863,7 @@ export function TeacherAssignments() {
                               <div style={{
                                 fontWeight: 600,
                                 fontSize: 13.5,
-                                color: 'var(--text, #0f172a)',
+                                color: "var(--text, var(--foreground))",
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap'
@@ -1871,7 +1871,7 @@ export function TeacherAssignments() {
                                 {att.file_name}
                               </div>
                               {att.file_size ? (
-                                <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>
+                                <div style={{ fontSize: 11.5, color: "var(--text-muted, var(--muted-foreground))" }}>
                                   {formatBytes(att.file_size)}
                                 </div>
                               ) : null}
@@ -1888,12 +1888,12 @@ export function TeacherAssignments() {
                                   alignItems: 'center',
                                   gap: 6,
                                   padding: '7px 14px',
-                                  borderRadius: 6,
-                                  backgroundColor: '#eff6ff',
-                                  color: '#2563eb',
+                                  borderRadius: 4,
+                                  backgroundColor: "var(--card)",
+                                  color: "var(--primary)",
                                   fontSize: 12.5,
                                   fontWeight: 600,
-                                  border: '1px solid #bfdbfe',
+                                  border: "1px solid var(--border)",
                                   cursor: 'pointer'
                                 }}
                               >
@@ -1908,14 +1908,14 @@ export function TeacherAssignments() {
                                 alignItems: 'center',
                                 gap: 6,
                                 padding: '7px 14px',
-                                borderRadius: 6,
-                                backgroundColor: '#2563eb',
-                                color: '#ffffff',
+                                borderRadius: 4,
+                                backgroundColor: "var(--primary)",
+                                color: "var(--background)",
                                 fontSize: 12.5,
                                 fontWeight: 600,
                                 border: 'none',
                                 cursor: 'pointer',
-                                boxShadow: '0 1px 2px rgba(37,99,235,0.2)'
+                                boxShadow: 'none'
                               }}
                             >
                               <Download size={14} /> Download File
@@ -1926,23 +1926,23 @@ export function TeacherAssignments() {
                     })}
                   </div>
                 ) : (
-                  <p style={{ fontSize: 13, color: 'var(--text-muted, #94a3b8)', fontStyle: 'italic', margin: 0 }}>
+                  <p style={{ fontSize: 13, color: "var(--text-muted, var(--muted-foreground))", fontStyle: 'italic', margin: 0 }}>
                     No attachments uploaded.
                   </p>
                 )}
               </div>
             </div>
 
-            <div className="as-assignment-modal-footer" style={{ padding: '14px 20px', borderTop: '1px solid var(--border, #e2e8f0)', background: 'var(--card-subtle, #f8fafc)', display: 'flex', justifyContent: 'flex-end' }}>
+            <div className="as-assignment-modal-footer" style={{ padding: '14px 20px', borderTop: "1px solid var(--border, var(--border))", background: "var(--card-subtle, var(--card))", display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 onClick={() => setViewAssignment(null)}
                 style={{
                   padding: '8px 16px',
-                  borderRadius: 8,
-                  border: '1px solid var(--border, #cbd5e1)',
-                  background: 'var(--card-subtle, #f8fafc)',
-                  color: 'var(--text, #1e293b)',
+                  borderRadius: 4,
+                  border: "1px solid var(--border, var(--border))",
+                  background: "var(--card-subtle, var(--card))",
+                  color: "var(--text, var(--foreground))",
                   fontWeight: 600,
                   fontSize: 13,
                   cursor: 'pointer'
@@ -1961,7 +1961,7 @@ export function TeacherAssignments() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
+            background: "var(--card)",
             backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
@@ -1975,24 +1975,24 @@ export function TeacherAssignments() {
               width: '100%',
               maxWidth: 680,
               maxHeight: '90vh',
-              background: 'var(--bg-card, #ffffff)',
-              borderRadius: 14,
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
+              background: "var(--bg-card, var(--card))",
+              borderRadius: 4,
+              boxShadow: 'none',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
-              border: '1px solid var(--border, #cbd5e1)'
+              border: "1px solid var(--border, var(--border))"
             }}
           >
-            <div className="as-assignment-modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', background: 'var(--card-subtle, #f8fafc)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="as-assignment-modal-header" style={{ padding: '16px 20px', borderBottom: "1px solid var(--border, var(--border))", background: "var(--card-subtle, var(--card))", display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Edit size={20} style={{ color: '#0284c7' }} />
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Edit Assignment</h2>
+                <Edit size={20} style={{ color: "var(--info)" }} />
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "var(--text, var(--foreground))" }}>Edit Assignment</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setEditAssignment(null)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)' }}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: "var(--text-muted, var(--muted-foreground))" }}
               >
                 <X size={20} />
               </button>
@@ -2000,7 +2000,7 @@ export function TeacherAssignments() {
 
             <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', padding: 20, gap: 16 }}>
               {editError && (
-                <div style={{ padding: '10px 14px', borderRadius: 8, background: '#fee2e2', border: '1px solid #f87171', color: '#b91c1c', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ padding: '10px 14px', borderRadius: 4, background: "var(--secondary)", border: "1px solid var(--border)", color: "var(--destructive)", fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <AlertCircle size={16} />
                   <span>{editError}</span>
                 </div>
@@ -2008,8 +2008,8 @@ export function TeacherAssignments() {
 
               {/* Title */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
-                  Assignment Title <span style={{ color: '#ef4444' }}>*</span>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginBottom: 6 }}>
+                  Assignment Title <span style={{ color: "var(--destructive)" }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -2018,10 +2018,10 @@ export function TeacherAssignments() {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    borderRadius: 8,
-                    border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--bg, #ffffff)',
-                    color: 'var(--text, #0f172a)',
+                    borderRadius: 4,
+                    border: "1px solid var(--border, var(--border))",
+                    background: "var(--bg, var(--card))",
+                    color: "var(--text, var(--foreground))",
                     fontSize: 14
                   }}
                   required
@@ -2031,8 +2031,8 @@ export function TeacherAssignments() {
               {/* Target Class and Section */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
-                    Select Class <span style={{ color: '#ef4444' }}>*</span>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginBottom: 6 }}>
+                    Select Class <span style={{ color: "var(--destructive)" }}>*</span>
                   </label>
                   <select
                     value={editForm.class_id}
@@ -2040,10 +2040,10 @@ export function TeacherAssignments() {
                     style={{
                       width: '100%',
                       padding: '10px 12px',
-                      borderRadius: 8,
-                      border: '1px solid var(--border, #cbd5e1)',
-                      background: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #0f172a)',
+                      borderRadius: 4,
+                      border: "1px solid var(--border, var(--border))",
+                      background: "var(--bg, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       fontSize: 14
                     }}
                     required
@@ -2058,7 +2058,7 @@ export function TeacherAssignments() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginBottom: 6 }}>
                     Select Section
                   </label>
                   <select
@@ -2068,10 +2068,10 @@ export function TeacherAssignments() {
                     style={{
                       width: '100%',
                       padding: '10px 12px',
-                      borderRadius: 8,
-                      border: '1px solid var(--border, #cbd5e1)',
-                      background: editForm.class_id ? 'var(--card, #ffffff)' : 'var(--card-subtle, #f1f5f9)',
-                      color: 'var(--text, #0f172a)',
+                      borderRadius: 4,
+                      border: "1px solid var(--border, var(--border))",
+                      background: editForm.class_id ? "var(--card, var(--card))" : "var(--card-subtle, var(--secondary))",
+                      color: "var(--text, var(--foreground))",
                       fontSize: 14
                     }}
                   >
@@ -2088,8 +2088,8 @@ export function TeacherAssignments() {
               {/* Assigned Date and Due Date */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
-                    Assigned Date <span style={{ color: '#ef4444' }}>*</span>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginBottom: 6 }}>
+                    Assigned Date <span style={{ color: "var(--destructive)" }}>*</span>
                   </label>
                   <input
                     type="date"
@@ -2100,10 +2100,10 @@ export function TeacherAssignments() {
                     style={{
                       width: '100%',
                       padding: '10px 12px',
-                      borderRadius: 8,
-                      border: '1px solid var(--border, #cbd5e1)',
-                      background: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #0f172a)',
+                      borderRadius: 4,
+                      border: "1px solid var(--border, var(--border))",
+                      background: "var(--bg, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       fontSize: 14
                     }}
                     required
@@ -2111,8 +2111,8 @@ export function TeacherAssignments() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
-                    Submission Deadline (Due Date) <span style={{ color: '#ef4444' }}>*</span>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginBottom: 6 }}>
+                    Submission Deadline (Due Date) <span style={{ color: "var(--destructive)" }}>*</span>
                   </label>
                   <input
                     type="date"
@@ -2123,10 +2123,10 @@ export function TeacherAssignments() {
                     style={{
                       width: '100%',
                       padding: '10px 12px',
-                      borderRadius: 8,
-                      border: '1px solid var(--border, #cbd5e1)',
-                      background: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #0f172a)',
+                      borderRadius: 4,
+                      border: "1px solid var(--border, var(--border))",
+                      background: "var(--bg, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       fontSize: 14
                     }}
                     required
@@ -2136,7 +2136,7 @@ export function TeacherAssignments() {
 
               {/* Description */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginBottom: 6 }}>
                   Description / Instructions
                 </label>
                 <AutoExpandingTextarea
@@ -2146,10 +2146,10 @@ export function TeacherAssignments() {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    borderRadius: 8,
-                    border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--bg, #ffffff)',
-                    color: 'var(--text, #0f172a)',
+                    borderRadius: 4,
+                    border: "1px solid var(--border, var(--border))",
+                    background: "var(--bg, var(--card))",
+                    color: "var(--text, var(--foreground))",
                     fontSize: 14,
                     lineHeight: 1.5
                   }}
@@ -2159,7 +2159,7 @@ export function TeacherAssignments() {
               {/* Existing Attachments */}
               {editExistingAtts.length > 0 && (
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginBottom: 6 }}>
                     Current Attachments
                   </label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -2174,9 +2174,9 @@ export function TeacherAssignments() {
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             padding: '8px 12px',
-                            borderRadius: 6,
-                            background: isMarked ? '#fee2e2' : 'var(--card-subtle, #f8fafc)',
-                            border: `1px solid ${isMarked ? '#fca5a5' : 'var(--border, #cbd5e1)'}`,
+                            borderRadius: 4,
+                            background: isMarked ? "var(--secondary)" : "var(--card-subtle, var(--card))",
+                            border: `1px solid ${isMarked ? "var(--border)" : "var(--border, var(--border))"}`,
                             opacity: isMarked ? 0.6 : 1,
                             gap: 10
                           }}
@@ -2185,8 +2185,8 @@ export function TeacherAssignments() {
                             <div style={{
                               width: 32,
                               height: 32,
-                              borderRadius: 6,
-                              backgroundColor: isMarked ? '#fecaca' : '#eff6ff',
+                              borderRadius: 4,
+                              backgroundColor: isMarked ? "var(--secondary)" : "var(--card)",
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -2199,7 +2199,7 @@ export function TeacherAssignments() {
                                 fontSize: 13,
                                 fontWeight: 600,
                                 textDecoration: isMarked ? 'line-through' : 'none',
-                                color: isMarked ? '#991b1b' : 'var(--text, #0f172a)',
+                                color: isMarked ? "var(--destructive)" : "var(--text, var(--foreground))",
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap'
@@ -2207,7 +2207,7 @@ export function TeacherAssignments() {
                                 {att.file_name}
                               </div>
                               {att.file_size ? (
-                                <div style={{ fontSize: 11, color: '#64748b' }}>
+                                <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
                                   {formatBytes(att.file_size)}
                                 </div>
                               ) : null}
@@ -2221,10 +2221,10 @@ export function TeacherAssignments() {
                                 onClick={() => openPreview(att.file_name, att.mime_type, null, editAssignment.id, att.id)}
                                 style={{
                                   padding: '4px 8px',
-                                  borderRadius: 5,
-                                  border: '1px solid #bfdbfe',
-                                  background: '#eff6ff',
-                                  color: '#2563eb',
+                                  borderRadius: 4,
+                                  border: "1px solid var(--border)",
+                                  background: "var(--card)",
+                                  color: "var(--primary)",
                                   fontSize: 12,
                                   fontWeight: 600,
                                   cursor: 'pointer',
@@ -2240,7 +2240,7 @@ export function TeacherAssignments() {
                               <button
                                 type="button"
                                 onClick={() => setEditRemovedIds((prev) => prev.filter((id) => id !== att.id))}
-                                style={{ padding: '4px 10px', borderRadius: 5, border: 'none', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                                style={{ padding: '4px 10px', borderRadius: 4, border: 'none', background: "var(--accent)", color: "var(--primary)", fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                               >
                                 Undo
                               </button>
@@ -2248,7 +2248,7 @@ export function TeacherAssignments() {
                               <button
                                 type="button"
                                 onClick={() => setEditRemovedIds((prev) => [...prev, att.id || ''])}
-                                style={{ padding: '4px 10px', borderRadius: 5, border: 'none', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                                style={{ padding: '4px 10px', borderRadius: 4, border: 'none', background: "var(--secondary)", color: "var(--destructive)", fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                               >
                                 Remove
                               </button>
@@ -2263,7 +2263,7 @@ export function TeacherAssignments() {
 
               {/* Add New Attachments */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginBottom: 6 }}>
                   Attach Document / File
                 </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -2273,10 +2273,10 @@ export function TeacherAssignments() {
                       alignItems: 'center',
                       gap: 6,
                       padding: '7px 14px',
-                      borderRadius: 6,
-                      border: '1px dashed var(--border, #cbd5e1)',
-                      backgroundColor: 'var(--card-subtle, #f8fafc)',
-                      color: 'var(--text, #334155)',
+                      borderRadius: 4,
+                      border: "1px dashed var(--border, var(--border))",
+                      backgroundColor: "var(--card-subtle, var(--card))",
+                      color: "var(--text, var(--muted-foreground))",
                       fontSize: 13,
                       fontWeight: 500,
                       cursor: 'pointer',
@@ -2284,7 +2284,7 @@ export function TeacherAssignments() {
                     }}
                     title="Attach new files"
                   >
-                    <Paperclip size={15} color="#2563eb" />
+                    <Paperclip size={15} color="#e11d55" />
                     <span>Attach Document / File</span>
                     <input
                       id="edit-file-input"
@@ -2303,7 +2303,7 @@ export function TeacherAssignments() {
                       }
                     />
                   </label>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                  <span style={{ fontSize: 12, color: "var(--text-muted, var(--muted-foreground))" }}>
                     {editNewFiles.length > 0
                       ? `${editNewFiles.length} new file(s) selected`
                       : 'Upload additional files (max 5 total cumulative).'}
@@ -2323,9 +2323,9 @@ export function TeacherAssignments() {
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             padding: '6px 10px',
-                            borderRadius: 6,
-                            background: 'var(--card, #ffffff)',
-                            border: '1px solid var(--border, #cbd5e1)',
+                            borderRadius: 4,
+                            background: "var(--card, var(--card))",
+                            border: "1px solid var(--border, var(--border))",
                             gap: 10
                           }}
                         >
@@ -2334,7 +2334,7 @@ export function TeacherAssignments() {
                               width: 28,
                               height: 28,
                               borderRadius: 4,
-                              backgroundColor: '#eff6ff',
+                              backgroundColor: "var(--card)",
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -2343,10 +2343,10 @@ export function TeacherAssignments() {
                               {getFileIcon(fileItem.name, fileItem.mimeType)}
                             </div>
                             <div style={{ minWidth: 0 }}>
-                              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text, var(--foreground))", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {fileItem.name}
                               </span>
-                              <span style={{ fontSize: 11, color: '#64748b', marginLeft: 6 }}>
+                              <span style={{ fontSize: 11, color: "var(--muted-foreground)", marginLeft: 6 }}>
                                 ({formatBytes(fileItem.size)})
                               </span>
                             </div>
@@ -2360,9 +2360,9 @@ export function TeacherAssignments() {
                                 style={{
                                   padding: '3px 8px',
                                   borderRadius: 4,
-                                  border: '1px solid #bfdbfe',
-                                  background: '#eff6ff',
-                                  color: '#2563eb',
+                                  border: "1px solid var(--border)",
+                                  background: "var(--card)",
+                                  color: "var(--primary)",
                                   fontSize: 11.5,
                                   fontWeight: 600,
                                   cursor: 'pointer',
@@ -2385,7 +2385,7 @@ export function TeacherAssignments() {
                                 background: 'none',
                                 border: 'none',
                                 cursor: 'pointer',
-                                color: '#ef4444',
+                                color: "var(--destructive)",
                                 padding: 2,
                                 display: 'inline-flex',
                                 alignItems: 'center'
@@ -2402,17 +2402,17 @@ export function TeacherAssignments() {
               </div>
 
               {/* Modal Footer */}
-              <div className="as-assignment-modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '16px 20px', margin: '0 -20px -20px -20px', borderTop: '1px solid var(--border, #e2e8f0)', background: 'var(--card-subtle, #f8fafc)' }}>
+              <div className="as-assignment-modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '16px 20px', margin: '0 -20px -20px -20px', borderTop: "1px solid var(--border, var(--border))", background: "var(--card-subtle, var(--card))" }}>
                 <button
                   type="button"
                   onClick={() => setEditAssignment(null)}
                   disabled={savingEdit}
                   style={{
                     padding: '8px 16px',
-                    borderRadius: 8,
-                    border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--bg, #ffffff)',
-                    color: 'var(--text, #334155)',
+                    borderRadius: 4,
+                    border: "1px solid var(--border, var(--border))",
+                    background: "var(--bg, var(--card))",
+                    color: "var(--text, var(--muted-foreground))",
                     fontWeight: 600,
                     cursor: 'pointer'
                   }}
@@ -2424,10 +2424,10 @@ export function TeacherAssignments() {
                   disabled={savingEdit}
                   style={{
                     padding: '8px 20px',
-                    borderRadius: 8,
+                    borderRadius: 4,
                     border: 'none',
-                    background: '#0284c7',
-                    color: '#ffffff',
+                    background: "var(--info)",
+                    color: "var(--background)",
                     fontWeight: 600,
                     cursor: 'pointer',
                     display: 'inline-flex',
@@ -2450,7 +2450,7 @@ export function TeacherAssignments() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
+            background: "var(--card)",
             backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
@@ -2463,26 +2463,26 @@ export function TeacherAssignments() {
             style={{
               width: '100%',
               maxWidth: 480,
-              background: 'var(--bg-card, #ffffff)',
-              borderRadius: 14,
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
+              background: "var(--bg-card, var(--card))",
+              borderRadius: 4,
+              boxShadow: 'none',
               padding: 24,
-              border: '1px solid var(--border, #cbd5e1)'
+              border: "1px solid var(--border, var(--border))"
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <div style={{ padding: 10, borderRadius: '50%', background: '#fee2e2', color: '#b91c1c' }}>
+              <div style={{ padding: 10, borderRadius: '50%', background: "var(--secondary)", color: "var(--destructive)" }}>
                 <AlertTriangle size={24} />
               </div>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
                 Delete Assignment
               </h3>
             </div>
 
-            <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text, #334155)', lineHeight: 1.5 }}>
+            <p style={{ margin: '0 0 12px', fontSize: 14, color: "var(--text, var(--muted-foreground))", lineHeight: 1.5 }}>
               Are you sure you want to delete <b>{deleteTarget.title}</b>?
             </p>
-            <p style={{ margin: '0 0 20px', fontSize: 13, color: '#b91c1c', lineHeight: 1.4 }}>
+            <p style={{ margin: '0 0 20px', fontSize: 13, color: "var(--destructive)", lineHeight: 1.4 }}>
               This will permanently remove the assignment, all associated attachments from storage, and all student submissions. This action cannot be undone.
             </p>
 
@@ -2493,10 +2493,10 @@ export function TeacherAssignments() {
                 disabled={deleting}
                 style={{
                   padding: '8px 16px',
-                  borderRadius: 8,
-                  border: '1px solid var(--border, #cbd5e1)',
+                  borderRadius: 4,
+                  border: "1px solid var(--border, var(--border))",
                   background: 'transparent',
-                  color: 'var(--text, #334155)',
+                  color: "var(--text, var(--muted-foreground))",
                   fontWeight: 600,
                   fontSize: 13,
                   cursor: 'pointer'
@@ -2510,10 +2510,10 @@ export function TeacherAssignments() {
                 disabled={deleting}
                 style={{
                   padding: '8px 18px',
-                  borderRadius: 8,
+                  borderRadius: 4,
                   border: 'none',
-                  background: '#e11d48',
-                  color: '#ffffff',
+                  background: "var(--destructive)",
+                  color: "var(--background)",
                   fontWeight: 600,
                   fontSize: 13,
                   cursor: 'pointer',
@@ -2536,7 +2536,7 @@ export function TeacherAssignments() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.75)',
+            background: "var(--card)",
             backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
@@ -2550,19 +2550,19 @@ export function TeacherAssignments() {
               width: '100%',
               maxWidth: 900,
               height: '85vh',
-              background: 'var(--bg-card, #ffffff)',
-              borderRadius: 14,
-              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+              background: "var(--bg-card, var(--card))",
+              borderRadius: 4,
+              boxShadow: 'none',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
-              border: '1px solid var(--border, #cbd5e1)'
+              border: "1px solid var(--border, var(--border))"
             }}
           >
-            <div className="as-assignment-modal-header" style={{ padding: '14px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', background: 'var(--card-subtle, #f8fafc)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="as-assignment-modal-header" style={{ padding: '14px 20px', borderBottom: "1px solid var(--border, var(--border))", background: "var(--card-subtle, var(--card))", display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                <Eye size={18} style={{ color: '#0284c7' }} />
-                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <Eye size={18} style={{ color: "var(--info)" }} />
+                <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text, var(--foreground))", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {previewState.fileName}
                 </span>
               </div>
@@ -2573,10 +2573,10 @@ export function TeacherAssignments() {
                     onClick={() => downloadAttachment(previewState.assignmentId!, previewState.fileName, previewState.attachmentId)}
                     style={{
                       padding: '6px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border, #cbd5e1)',
-                      background: 'var(--card-subtle, #f8fafc)',
-                      color: 'var(--text, #1e293b)',
+                      borderRadius: 4,
+                      border: "1px solid var(--border, var(--border))",
+                      background: "var(--card-subtle, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       fontSize: 12,
                       fontWeight: 600,
                       cursor: 'pointer',
@@ -2591,21 +2591,21 @@ export function TeacherAssignments() {
                 <button
                   type="button"
                   onClick={closePreview}
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)' }}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: "var(--text-muted, var(--muted-foreground))" }}
                 >
                   <X size={20} />
                 </button>
               </div>
             </div>
 
-            <div style={{ flex: 1, overflow: 'hidden', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ flex: 1, overflow: 'hidden', background: "var(--card)", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {previewState.loading ? (
-                <div style={{ textAlign: 'center', color: '#cbd5e1' }}>
+                <div style={{ textAlign: 'center', color: "var(--muted-foreground)" }}>
                   <Loader2 size={32} className="spin" style={{ margin: '0 auto 12px' }} />
                   <p style={{ margin: 0, fontSize: 14 }}>Loading preview securely...</p>
                 </div>
               ) : previewState.error ? (
-                <div style={{ textAlign: 'center', color: '#f87171', padding: 24 }}>
+                <div style={{ textAlign: 'center', color: "var(--destructive)", padding: 24 }}>
                   <AlertCircle size={32} style={{ margin: '0 auto 12px' }} />
                   <p style={{ margin: 0, fontSize: 14 }}>{previewState.error}</p>
                 </div>
@@ -2622,10 +2622,10 @@ export function TeacherAssignments() {
                   style={{ width: '100%', height: '100%', border: 'none' }}
                 />
               ) : (
-                <div style={{ textAlign: 'center', color: '#e2e8f0', padding: 32 }}>
-                  <FileText size={48} style={{ color: '#94a3b8', margin: '0 auto 16px' }} />
+                <div style={{ textAlign: 'center', color: "var(--background)", padding: 32 }}>
+                  <FileText size={48} style={{ color: "var(--muted-foreground)", margin: '0 auto 16px' }} />
                   <h4 style={{ margin: '0 0 8px', fontSize: 16 }}>Inline preview not supported for this format</h4>
-                  <p style={{ margin: '0 0 16px', fontSize: 13, color: '#94a3b8' }}>
+                  <p style={{ margin: '0 0 16px', fontSize: 13, color: "var(--muted-foreground)" }}>
                     Document files (.doc, .docx, .xlsx) can be downloaded directly to view on your device.
                   </p>
                   {previewState.assignmentId && (
@@ -2634,10 +2634,10 @@ export function TeacherAssignments() {
                       onClick={() => downloadAttachment(previewState.assignmentId!, previewState.fileName, previewState.attachmentId)}
                       style={{
                         padding: '8px 16px',
-                        borderRadius: 6,
+                        borderRadius: 4,
                         border: 'none',
-                        background: '#0284c7',
-                        color: '#ffffff',
+                        background: "var(--info)",
+                        color: "var(--background)",
                         fontWeight: 600,
                         fontSize: 13,
                         cursor: 'pointer',
@@ -2662,7 +2662,7 @@ export function TeacherAssignments() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
+            background: "var(--card)",
             backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
@@ -2676,28 +2676,28 @@ export function TeacherAssignments() {
               width: '100%',
               maxWidth: 840,
               maxHeight: '90vh',
-              background: 'var(--bg-card, #ffffff)',
-              borderRadius: 14,
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
+              background: "var(--bg-card, var(--card))",
+              borderRadius: 4,
+              boxShadow: 'none',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
-              border: '1px solid var(--border, #cbd5e1)'
+              border: "1px solid var(--border, var(--border))"
             }}
           >
-            <div className="as-assignment-modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', background: 'var(--card-subtle, #f8fafc)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="as-assignment-modal-header" style={{ padding: '16px 20px', borderBottom: "1px solid var(--border, var(--border))", background: "var(--card-subtle, var(--card))", display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h3 style={{ margin: '0 0 2px', fontSize: 17, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                <h3 style={{ margin: '0 0 2px', fontSize: 17, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
                   Student Submissions: {submissionsAsg.title}
                 </h3>
-                <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                <span style={{ fontSize: 12, color: "var(--text-muted, var(--muted-foreground))" }}>
                   Due: {formatAssignmentDate(submissionsAsg.due_date)} | Total Submissions: {submissions.length}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setSubmissionsAsg(null)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)' }}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: "var(--text-muted, var(--muted-foreground))" }}
               >
                 <X size={20} />
               </button>
@@ -2705,51 +2705,51 @@ export function TeacherAssignments() {
 
             <div style={{ padding: 20, overflowY: 'auto', flex: 1 }}>
               {loadingSubs ? (
-                <div style={{ padding: 36, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
-                  <Loader2 size={28} className="spin" style={{ margin: '0 auto 8px', color: '#4f46e5' }} />
+                <div style={{ padding: 36, textAlign: 'center', color: "var(--text-muted, var(--muted-foreground))" }}>
+                  <Loader2 size={28} className="spin" style={{ margin: '0 auto 8px', color: "var(--primary)" }} />
                   <p style={{ margin: 0, fontSize: 14 }}>Loading student submissions...</p>
                 </div>
               ) : submissions.length === 0 ? (
-                <div style={{ padding: 36, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
+                <div style={{ padding: 36, textAlign: 'center', color: "var(--text-muted, var(--muted-foreground))" }}>
                   <FileText size={32} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
                   <p style={{ margin: 0, fontSize: 14 }}>No students have submitted work for this assignment yet.</p>
                 </div>
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
                   <thead>
-                    <tr style={{ background: 'var(--card-subtle, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
-                      <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>Student</th>
-                      <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>Submitted At</th>
-                      <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>Status</th>
-                      <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>Score</th>
-                      <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-muted, #64748b)', textAlign: 'right' }}>Action</th>
+                    <tr style={{ background: "var(--card-subtle, var(--card))", borderBottom: "1px solid var(--border, var(--border))" }}>
+                      <th style={{ padding: '10px 12px', fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))" }}>Student</th>
+                      <th style={{ padding: '10px 12px', fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))" }}>Submitted At</th>
+                      <th style={{ padding: '10px 12px', fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))" }}>Status</th>
+                      <th style={{ padding: '10px 12px', fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))" }}>Score</th>
+                      <th style={{ padding: '10px 12px', fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))", textAlign: 'right' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {submissions.map((sub) => (
-                      <tr key={sub.id} style={{ borderBottom: '1px solid var(--border, #f1f5f9)' }}>
+                      <tr key={sub.id} style={{ borderBottom: "1px solid var(--border, var(--border))" }}>
                         <td style={{ padding: '12px' }}>
                           <PersonProfileLink kind="student" id={sub.student_id} name={sub.student_name || 'Student'}>
-                            <span style={{ fontWeight: 600, color: 'var(--text, #0f172a)' }}>{sub.student_name || 'Student'}</span>
+                            <span style={{ fontWeight: 600, color: "var(--text, var(--foreground))" }}>{sub.student_name || 'Student'}</span>
                           </PersonProfileLink>
                           {sub.roll_number && (
-                            <span style={{ fontSize: 11, color: '#64748b', marginLeft: 6 }}>
+                            <span style={{ fontSize: 11, color: "var(--muted-foreground)", marginLeft: 6 }}>
                               (Roll: {sub.roll_number})
                             </span>
                           )}
                         </td>
-                        <td style={{ padding: '12px', color: 'var(--text-secondary, #64748b)' }}>
+                        <td style={{ padding: '12px', color: "var(--text-secondary, var(--muted-foreground))" }}>
                           {sub.submitted_at ? formatAssignmentDate(sub.submitted_at) : '—'}
                         </td>
                         <td style={{ padding: '12px' }}>
                           <span
                             style={{
                               padding: '2px 8px',
-                              borderRadius: 12,
+                              borderRadius: 4,
                               fontSize: 11,
                               fontWeight: 600,
-                              background: sub.status === 'GRADED' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                              color: sub.status === 'GRADED' ? '#10b981' : '#f59e0b'
+                              background: sub.status === 'GRADED' ? "var(--secondary)" : "var(--secondary)",
+                              color: sub.status === 'GRADED' ? "var(--success)" : "var(--warning)"
                             }}
                           >
                             {sub.status}
@@ -2768,10 +2768,10 @@ export function TeacherAssignments() {
                             }}
                             style={{
                               padding: '5px 12px',
-                              borderRadius: 6,
-                              border: '1px solid var(--border, #cbd5e1)',
-                              background: 'var(--bg, #ffffff)',
-                              color: '#4f46e5',
+                              borderRadius: 4,
+                              border: "1px solid var(--border, var(--border))",
+                              background: "var(--bg, var(--card))",
+                              color: "var(--primary)",
                               fontSize: 12,
                               fontWeight: 600,
                               cursor: 'pointer'
@@ -2788,20 +2788,20 @@ export function TeacherAssignments() {
 
               {/* Sub-form to Grade selected submission */}
               {gradingSub && (
-                <div style={{ marginTop: 20, padding: 16, borderRadius: 10, background: 'var(--card-subtle, #f8fafc)', border: '1px solid var(--border, #cbd5e1)' }}>
-                  <h4 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                <div style={{ marginTop: 20, padding: 16, borderRadius: 4, background: "var(--card-subtle, var(--card))", border: "1px solid var(--border, var(--border))" }}>
+                  <h4 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
                     Grade Submission: {gradingSub.student_name}
                   </h4>
                   {gradingSub.submission_text && (
-                    <div style={{ marginBottom: 12, padding: 10, borderRadius: 6, background: 'var(--bg, #ffffff)', border: '1px solid var(--border, #e2e8f0)', fontSize: 13, color: 'var(--text, #334155)' }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>SUBMISSION TEXT:</span>
+                    <div style={{ marginBottom: 12, padding: 10, borderRadius: 4, background: "var(--bg, var(--card))", border: "1px solid var(--border, var(--border))", fontSize: 13, color: "var(--text, var(--muted-foreground))" }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-foreground)", display: 'block', marginBottom: 4 }}>SUBMISSION TEXT:</span>
                       {gradingSub.submission_text}
                     </div>
                   )}
 
                   {gradingSub.attachments && gradingSub.attachments.length > 0 && (
                     <div style={{ marginBottom: 12 }}>
-                      <span style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748b', display: 'block', marginBottom: 6 }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: "var(--muted-foreground)", display: 'block', marginBottom: 6 }}>
                         SUBMITTED ATTACHMENTS ({gradingSub.attachments.length})
                       </span>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -2815,9 +2815,9 @@ export function TeacherAssignments() {
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
                                 padding: '10px 14px',
-                                borderRadius: 8,
-                                backgroundColor: '#ffffff',
-                                border: '1px solid var(--border, #cbd5e1)',
+                                borderRadius: 4,
+                                backgroundColor: "var(--card)",
+                                border: "1px solid var(--border, var(--border))",
                                 gap: 10
                               }}
                             >
@@ -2825,9 +2825,9 @@ export function TeacherAssignments() {
                                 <div style={{
                                   width: 32,
                                   height: 32,
-                                  borderRadius: 6,
-                                  backgroundColor: '#eff6ff',
-                                  color: '#2563eb',
+                                  borderRadius: 4,
+                                  backgroundColor: "var(--card)",
+                                  color: "var(--primary)",
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
@@ -2836,10 +2836,10 @@ export function TeacherAssignments() {
                                   {getFileIcon(att.file_name, att.mime_type)}
                                 </div>
                                 <div style={{ minWidth: 0 }}>
-                                  <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  <div style={{ fontWeight: 600, fontSize: 13, color: "var(--foreground)", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                     {att.file_name}
                                   </div>
-                                  <div style={{ fontSize: 11, color: '#64748b' }}>
+                                  <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
                                     {formatBytes(att.file_size)}
                                   </div>
                                 </div>
@@ -2851,10 +2851,10 @@ export function TeacherAssignments() {
                                     onClick={() => openSubAttachmentPreview(submissionsAsg.id, gradingSub.id, att.id, att.file_name, att.mime_type)}
                                     style={{
                                       padding: '5px 10px',
-                                      borderRadius: 6,
-                                      border: '1px solid #bfdbfe',
-                                      backgroundColor: '#eff6ff',
-                                      color: '#2563eb',
+                                      borderRadius: 4,
+                                      border: "1px solid var(--border)",
+                                      backgroundColor: "var(--card)",
+                                      color: "var(--primary)",
                                       fontSize: 12,
                                       fontWeight: 600,
                                       cursor: 'pointer',
@@ -2871,10 +2871,10 @@ export function TeacherAssignments() {
                                   onClick={() => downloadSubAttachment(submissionsAsg.id, gradingSub.id, att.id, att.file_name)}
                                   style={{
                                     padding: '5px 12px',
-                                    borderRadius: 6,
+                                    borderRadius: 4,
                                     border: 'none',
-                                    backgroundColor: '#2563eb',
-                                    color: '#ffffff',
+                                    backgroundColor: "var(--primary)",
+                                    color: "var(--background)",
                                     fontSize: 12,
                                     fontWeight: 600,
                                     cursor: 'pointer',
@@ -2909,10 +2909,10 @@ export function TeacherAssignments() {
                           style={{
                             width: '100%',
                             padding: '8px 10px',
-                            borderRadius: 6,
-                            border: '1px solid var(--border, #cbd5e1)',
-                            background: 'var(--bg, #ffffff)',
-                            color: 'var(--text, #0f172a)',
+                            borderRadius: 4,
+                            border: "1px solid var(--border, var(--border))",
+                            background: "var(--bg, var(--card))",
+                            color: "var(--text, var(--foreground))",
                             fontSize: 13
                           }}
                           required
@@ -2930,10 +2930,10 @@ export function TeacherAssignments() {
                           style={{
                             width: '100%',
                             padding: '8px 10px',
-                            borderRadius: 6,
-                            border: '1px solid var(--border, #cbd5e1)',
-                            background: 'var(--bg, #ffffff)',
-                            color: 'var(--text, #0f172a)',
+                            borderRadius: 4,
+                            border: "1px solid var(--border, var(--border))",
+                            background: "var(--bg, var(--card))",
+                            color: "var(--text, var(--foreground))",
                             fontSize: 13
                           }}
                         />
@@ -2944,28 +2944,28 @@ export function TeacherAssignments() {
                       <button
                         type="button"
                         onClick={() => setGradingSub(null)}
-                        style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #cbd5e1', background: 'transparent', cursor: 'pointer', fontSize: 12 }}
+                        style={{ padding: '6px 12px', borderRadius: 4, border: "1px solid var(--border)", background: 'transparent', cursor: 'pointer', fontSize: 12 }}
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
                         disabled={savingGrade}
-                        style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#16a34a', color: '#ffffff', fontWeight: 600, cursor: 'pointer', fontSize: 12 }}
+                        style={{ padding: '6px 16px', borderRadius: 4, border: 'none', background: "var(--success)", color: "var(--background)", fontWeight: 600, cursor: 'pointer', fontSize: 12 }}
                       >
                         {savingGrade ? 'Saving...' : 'Save Grade'}
                       </button>
                     </div>
                   </form>
                 ) : (
-                  <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 13, color: '#64748b' }}>
+                  <div style={{ marginTop: 12, padding: 12, borderRadius: 4, background: "var(--card)", border: "1px solid var(--border)", display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
                       Read-only: Only the assignment author ({submissionsAsg.teacher_name || 'Author'}) can submit or modify grades.
                     </span>
                     <button
                       type="button"
                       onClick={() => setGradingSub(null)}
-                      style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#ffffff', cursor: 'pointer', fontSize: 12 }}
+                      style={{ padding: '6px 12px', borderRadius: 4, border: "1px solid var(--border)", background: "var(--card)", cursor: 'pointer', fontSize: 12 }}
                     >
                       Close
                     </button>
@@ -2975,11 +2975,11 @@ export function TeacherAssignments() {
               )}
             </div>
 
-            <div className="as-assignment-modal-footer" style={{ padding: '12px 20px', borderTop: '1px solid var(--border, #e2e8f0)', background: 'var(--card-subtle, #f8fafc)', display: 'flex', justifyContent: 'flex-end' }}>
+            <div className="as-assignment-modal-footer" style={{ padding: '12px 20px', borderTop: "1px solid var(--border, var(--border))", background: "var(--card-subtle, var(--card))", display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 onClick={() => setSubmissionsAsg(null)}
-                style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--bg, #ffffff)', color: 'var(--text, #1e293b)', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
+                style={{ padding: '8px 16px', borderRadius: 4, border: "1px solid var(--border, var(--border))", background: "var(--bg, var(--card))", color: "var(--text, var(--foreground))", cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
               >
                 Close
               </button>

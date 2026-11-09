@@ -83,14 +83,14 @@ export const PlatformAnalytics: React.FC = () => {
       </div>
 
       {error && (
-        <div className="error-banner" style={{ margin: '16px 0', padding: '12px 16px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+        <div className="error-banner" style={{ margin: '16px 0', padding: '12px 16px', borderRadius: '4px', background: "var(--secondary)", color: "var(--destructive)", border: "1px solid var(--border)" }}>
           {error}
         </div>
       )}
 
       {loading ? (
-        <div style={{ padding: '60px 0', textAlign: 'center', color: '#64748b' }}>
-          <div className="spinner" style={{ margin: '0 auto 16px', width: '32px', height: '32px', border: '3px solid #e2e8f0', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        <div style={{ padding: '60px 0', textAlign: 'center', color: "var(--muted-foreground)" }}>
+          <div className="spinner" style={{ margin: '0 auto 16px', width: '32px', height: '32px', border: "3px solid var(--border)", borderTopColor: "var(--border)", borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
           Calculating platform analytics...
         </div>
       ) : (
@@ -98,49 +98,49 @@ export const PlatformAnalytics: React.FC = () => {
           {/* Top Metric Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', margin: '20px 0' }}>
             <div className="card" style={{ padding: '18px' }}>
-              <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>
+              <div style={{ fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", textTransform: 'uppercase' }}>
                 Total Institutions
               </div>
-              <div style={{ fontSize: '26px', fontWeight: '800', color: '#0f172a', marginTop: '6px' }}>
+              <div style={{ fontSize: '26px', fontWeight: '800', color: "var(--foreground)", marginTop: '6px' }}>
                 {stats?.totalSchools || schools.length || 1}
               </div>
-              <div style={{ fontSize: '12px', color: '#10b981', marginTop: '4px' }}>
+              <div style={{ fontSize: '12px', color: "var(--success)", marginTop: '4px' }}>
                 {stats?.activeSubscriptions || 1} Active subscriptions
               </div>
             </div>
 
             <div className="card" style={{ padding: '18px' }}>
-              <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>
+              <div style={{ fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", textTransform: 'uppercase' }}>
                 Platform Student Base
               </div>
-              <div style={{ fontSize: '26px', fontWeight: '800', color: '#4f46e5', marginTop: '6px' }}>
+              <div style={{ fontSize: '26px', fontWeight: '800', color: "var(--primary)", marginTop: '6px' }}>
                 {stats?.totalStudents || 6}
               </div>
-              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+              <div style={{ fontSize: '12px', color: "var(--muted-foreground)", marginTop: '4px' }}>
                 Enrolled across all classes
               </div>
             </div>
 
             <div className="card" style={{ padding: '18px' }}>
-              <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>
+              <div style={{ fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", textTransform: 'uppercase' }}>
                 Cumulative ARR Run-rate
               </div>
-              <div style={{ fontSize: '26px', fontWeight: '800', color: '#10b981', marginTop: '6px' }}>
+              <div style={{ fontSize: '26px', fontWeight: '800', color: "var(--success)", marginTop: '6px' }}>
                 ₹{((stats?.totalRevenue || 1999) * 12).toLocaleString('en-IN')}
               </div>
-              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+              <div style={{ fontSize: '12px', color: "var(--muted-foreground)", marginTop: '4px' }}>
                 ₹{(stats?.totalRevenue || 1999).toLocaleString('en-IN')} MRR
               </div>
             </div>
 
             <div className="card" style={{ padding: '18px' }}>
-              <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>
+              <div style={{ fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", textTransform: 'uppercase' }}>
                 Avg Platform Attendance
               </div>
-              <div style={{ fontSize: '26px', fontWeight: '800', color: '#0f172a', marginTop: '6px' }}>
+              <div style={{ fontSize: '26px', fontWeight: '800', color: "var(--foreground)", marginTop: '6px' }}>
                 91.8%
               </div>
-              <div style={{ fontSize: '12px', color: '#10b981', marginTop: '4px' }}>
+              <div style={{ fontSize: '12px', color: "var(--success)", marginTop: '4px' }}>
                 Target: &gt; 85% healthy
               </div>
             </div>
@@ -149,12 +149,12 @@ export const PlatformAnalytics: React.FC = () => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px', marginBottom: '24px' }}>
             {/* Tier Packaging Share */}
             <div className="card">
-              <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: '700', color: "var(--foreground)", marginBottom: '16px' }}>
                 Subscription Tier Distribution
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {Object.keys(tierCounts).length === 0 ? (
-                  <div style={{ padding: '20px', color: '#64748b', textAlign: 'center' }}>
+                  <div style={{ padding: '20px', color: "var(--muted-foreground)", textAlign: 'center' }}>
                     Standard packaging active
                   </div>
                 ) : (
@@ -164,15 +164,15 @@ export const PlatformAnalytics: React.FC = () => {
                     return (
                       <div key={tier}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
-                          <span style={{ fontWeight: '600', color: '#334155' }}>{tier}</span>
-                          <span style={{ color: '#64748b' }}>{count} school ({pct}%)</span>
+                          <span style={{ fontWeight: '600', color: "var(--muted-foreground)" }}>{tier}</span>
+                          <span style={{ color: "var(--muted-foreground)" }}>{count} school ({pct}%)</span>
                         </div>
-                        <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ height: '8px', background: "var(--secondary)", borderRadius: '4px', overflow: 'hidden' }}>
                           <div
                             style={{
                               width: `${pct}%`,
                               height: '100%',
-                              background: tier.toLowerCase().includes('enterprise') ? '#6366f1' : tier.toLowerCase().includes('standard') ? '#10b981' : '#f59e0b'
+                              background: tier.toLowerCase().includes('enterprise') ? "var(--primary)" : tier.toLowerCase().includes('standard') ? "var(--success)" : "var(--warning)"
                             }}
                           />
                         </div>
@@ -185,21 +185,21 @@ export const PlatformAnalytics: React.FC = () => {
 
             {/* Attendance Engagement Benchmark */}
             <div className="card">
-              <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: '700', color: "var(--foreground)", marginBottom: '16px' }}>
                 Attendance Compliance Benchmark
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '13px', color: '#334155' }}>Excellent (&ge; 90%)</span>
-                  <span style={{ fontSize: '13px', fontWeight: '700', color: '#10b981' }}>1 Institution</span>
+                <div style={{ padding: '12px', background: "var(--card)", borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '13px', color: "var(--muted-foreground)" }}>Excellent (&ge; 90%)</span>
+                  <span style={{ fontSize: '13px', fontWeight: '700', color: "var(--success)" }}>1 Institution</span>
                 </div>
-                <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '13px', color: '#334155' }}>Good (75% - 89%)</span>
-                  <span style={{ fontSize: '13px', fontWeight: '700', color: '#6366f1' }}>0 Institutions</span>
+                <div style={{ padding: '12px', background: "var(--card)", borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '13px', color: "var(--muted-foreground)" }}>Good (75% - 89%)</span>
+                  <span style={{ fontSize: '13px', fontWeight: '700', color: "var(--primary)" }}>0 Institutions</span>
                 </div>
-                <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '13px', color: '#334155' }}>Underperforming (&lt; 75%)</span>
-                  <span style={{ fontSize: '13px', fontWeight: '700', color: '#ef4444' }}>0 Institutions</span>
+                <div style={{ padding: '12px', background: "var(--card)", borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '13px', color: "var(--muted-foreground)" }}>Underperforming (&lt; 75%)</span>
+                  <span style={{ fontSize: '13px', fontWeight: '700', color: "var(--destructive)" }}>0 Institutions</span>
                 </div>
               </div>
             </div>
@@ -209,10 +209,10 @@ export const PlatformAnalytics: React.FC = () => {
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div>
-                <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: 0 }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '700', color: "var(--foreground)", margin: 0 }}>
                   Institution Engagement Rankings
                 </h3>
-                <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0' }}>
+                <p style={{ fontSize: '12px', color: "var(--muted-foreground)", margin: '2px 0 0 0' }}>
                   Ranked by overall student attendance rate and digital classroom adoption.
                 </p>
               </div>
@@ -234,7 +234,7 @@ export const PlatformAnalytics: React.FC = () => {
                 <tbody>
                   {rankings.length === 0 ? (
                     <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: "var(--muted-foreground)" }}>
                         No ranking benchmarks calculated yet.
                       </td>
                     </tr>
@@ -248,8 +248,8 @@ export const PlatformAnalytics: React.FC = () => {
                               width: '26px',
                               height: '26px',
                               borderRadius: '50%',
-                              background: index === 0 ? '#fef3c7' : '#f1f5f9',
-                              color: index === 0 ? '#b45309' : '#64748b',
+                              background: index === 0 ? "var(--secondary)" : "var(--secondary)",
+                              color: index === 0 ? "var(--warning)" : "var(--muted-foreground)",
                               fontWeight: '700',
                               fontSize: '12px',
                               display: 'flex',
@@ -259,12 +259,12 @@ export const PlatformAnalytics: React.FC = () => {
                               #{index + 1}
                             </div>
                           </td>
-                          <td style={{ fontWeight: '600', color: '#0f172a' }}>{r.name}</td>
+                          <td style={{ fontWeight: '600', color: "var(--foreground)" }}>{r.name}</td>
                           <td><code>{r.code}</code></td>
                           <td>{r.students} students</td>
                           <td>{r.teachers} teachers</td>
                           <td>
-                            <span style={{ fontWeight: '700', color: rate >= 90 ? '#10b981' : rate >= 75 ? '#6366f1' : '#ef4444' }}>
+                            <span style={{ fontWeight: '700', color: rate >= 90 ? "var(--success)" : rate >= 75 ? "var(--primary)" : "var(--destructive)" }}>
                               {rate.toFixed(1)}%
                             </span>
                           </td>

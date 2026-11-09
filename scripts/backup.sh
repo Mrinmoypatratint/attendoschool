@@ -1,5 +1,11 @@
-#!/bin/sh
-set -eu
-mkdir -p "${BACKUP_DIR:-./backups}"
-pg_dump -h "${DB_HOST:-localhost}" -p "${DB_PORT:-5432}" -U "${DB_USER:-postgres}" -d "${DB_NAME:-attendance}" -F p > "${BACKUP_DIR}/attendance_$(date +%Y%m%d_%H%M%S).sql"
-echo "Backup created."
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+config="${BACKUP_CONFIG_FILE:?Set BACKUP_CONFIG_FILE to your private chmod 600 backup env file}"
+[[ -f "$config" && ! -L "$config" && "$(stat -c %a "$config")" == 600 ]] || { echo 'Backup config must be a real chmod 600 file' >&2; exit 1; }
+set -a
+# shellcheck disable=SC1090
+source "$config"
+set +a
+exec node "$root/scripts/backup/runner.cjs" daily

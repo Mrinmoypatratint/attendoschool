@@ -47,6 +47,16 @@
 
 ---
 
+## 2a. RBAC & Feature Control (2026-11-08)
+
+- [ ] Backup, then apply `database/migrations/051_rbac_feature_control.sql` manually (`npm --prefix backend run db:migrate` applies **all** pending migrations — review the pending list first). The CD workflow does not run migrations.
+- [ ] `GET /api/health` shows `"rbac": "READY"` (it shows `NOT_INSTALLED` until 051 is applied; the app then uses legacy access).
+- [ ] Keep `RBAC_ENFORCEMENT=shadow` (default) for the shadow period; review `pm2 logs | grep '\[RBAC_SHADOW\]'`.
+- [ ] Switch to `RBAC_ENFORCEMENT=enforce` only after the shadow review; rollback = `RBAC_ENFORCEMENT=off` + `pm2 reload`.
+- Full procedure: `docs/rbac/ROLLOUT.md`.
+
+---
+
 ## 3. Post-Deployment Verification Checklist
 
 - [x] **API Health Endpoint:** Verify `GET https://attendoschool.online/api/health` returns HTTP 200 with healthy database connectivity.

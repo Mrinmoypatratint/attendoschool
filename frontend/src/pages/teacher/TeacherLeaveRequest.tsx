@@ -191,9 +191,9 @@ export default function TeacherLeaveRequest() {
         code: p.code,
         name: p.name,
         label: `${label} — ${p.days_count} Days / ${cycle}`,
-        color: p.accrual_cycle === 'YEARLY' ? '#3b82f6' : '#8b5cf6',
-        bg: p.accrual_cycle === 'YEARLY' ? 'rgba(59, 130, 246, 0.12)' : 'rgba(139, 92, 246, 0.12)',
-        border: p.accrual_cycle === 'YEARLY' ? 'rgba(59, 130, 246, 0.25)' : 'rgba(139, 92, 246, 0.25)'
+        color: p.accrual_cycle === 'YEARLY' ? '#e11d55' : '#5c6bc0',
+        bg: p.accrual_cycle === 'YEARLY' ? 'rgba(225, 29, 85, 0.12)' : 'rgba(92, 107, 192, 0.12)',
+        border: p.accrual_cycle === 'YEARLY' ? 'rgba(225, 29, 85, 0.25)' : 'rgba(92, 107, 192, 0.25)'
       };
     });
   }, [configuredPolicies]);
@@ -369,9 +369,9 @@ export default function TeacherLeaveRequest() {
     return {
       value: norm || 'LEAVE',
       label: cleanLabel || 'Leave',
-      color: '#4B5563',
-      bg: '#F3F4F6',
-      border: '#E5E7EB'
+      color: '#535766',
+      bg: '#f5f5f6',
+      border: '#eaeaec'
     };
   };
 
@@ -440,91 +440,230 @@ export default function TeacherLeaveRequest() {
       )}
 
       {/* ── KPI Stat Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center justify-between shadow-xs">
-          <div>
-            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Total Requests
-            </div>
-            <div className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+          gap: 16,
+          marginBottom: 24
+        }}
+      >
+        <div
+          style={{
+            background: "var(--surface, var(--card))",
+            border: "1px solid var(--border, var(--border))",
+            borderRadius: 4,
+            padding: '18px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            minHeight: 116,
+            boxShadow: 'none'
+          }}
+        >
+          <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text-secondary, var(--muted-foreground))", letterSpacing: '-0.01em' }}>
+            Total Requests
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
+            <div style={{ fontSize: 34, fontWeight: 800, color: "var(--text, var(--foreground))", lineHeight: 1 }}>
               {counts.all}
             </div>
-          </div>
-          <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-            <FileText size={22} />
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 4,
+                background: "var(--accent)",
+                color: "var(--primary)",
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <FileText size={22} />
+            </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center justify-between shadow-xs">
-          <div>
-            <div className="text-xs font-semibold text-amber-500 uppercase tracking-wider">
-              Pending Review
-            </div>
-            <div className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 mt-1">
+        <div
+          style={{
+            background: "var(--surface, var(--card))",
+            border: "1px solid var(--border, var(--border))",
+            borderRadius: 4,
+            padding: '18px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            minHeight: 116,
+            boxShadow: 'none'
+          }}
+        >
+          <div style={{ fontSize: 17, fontWeight: 700, color: "var(--warning)", letterSpacing: '-0.01em' }}>
+            Pending Review
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
+            <div style={{ fontSize: 34, fontWeight: 800, color: "var(--warning)", lineHeight: 1 }}>
               {counts.pending}
             </div>
-          </div>
-          <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center shrink-0">
-            <Clock size={22} />
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 4,
+                background: "var(--secondary)",
+                color: "var(--warning)",
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <Clock size={22} />
+            </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center justify-between shadow-xs">
-          <div>
-            <div className="text-xs font-semibold text-emerald-500 uppercase tracking-wider">
-              Approved
-            </div>
-            <div className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">
+        <div
+          style={{
+            background: "var(--surface, var(--card))",
+            border: "1px solid var(--border, var(--border))",
+            borderRadius: 4,
+            padding: '18px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            minHeight: 116,
+            boxShadow: 'none'
+          }}
+        >
+          <div style={{ fontSize: 17, fontWeight: 700, color: "var(--success)", letterSpacing: '-0.01em' }}>
+            Approved
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
+            <div style={{ fontSize: 34, fontWeight: 800, color: "var(--success)", lineHeight: 1 }}>
               {counts.approved}
             </div>
-          </div>
-          <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-500 flex items-center justify-center shrink-0">
-            <CheckCircle2 size={22} />
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 4,
+                background: "var(--secondary)",
+                color: "var(--success)",
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <CheckCircle2 size={22} />
+            </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4.5 flex items-center justify-between shadow-xs">
-          <div>
-            <div className="text-xs font-semibold text-rose-500 uppercase tracking-wider">
-              Rejected
-            </div>
-            <div className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 mt-1">
+        <div
+          style={{
+            background: "var(--surface, var(--card))",
+            border: "1px solid var(--border, var(--border))",
+            borderRadius: 4,
+            padding: '18px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            minHeight: 116,
+            boxShadow: 'none'
+          }}
+        >
+          <div style={{ fontSize: 17, fontWeight: 700, color: "var(--destructive)", letterSpacing: '-0.01em' }}>
+            Rejected
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
+            <div style={{ fontSize: 34, fontWeight: 800, color: "var(--destructive)", lineHeight: 1 }}>
               {counts.rejected}
             </div>
-          </div>
-          <div className="w-11 h-11 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-500 flex items-center justify-center shrink-0">
-            <XCircle size={22} />
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 4,
+                background: "var(--secondary)",
+                color: "var(--destructive)",
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <XCircle size={22} />
+            </div>
           </div>
         </div>
 
         {/* ── Pending Leave Card (Dynamic Admin Policies & Approved Counts) ── */}
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col justify-between shadow-xs">
-          <div className="flex items-center justify-between mb-2">
+        <div
+          style={{
+            background: "var(--surface, var(--card))",
+            border: "1px solid var(--border, var(--border))",
+            borderRadius: 4,
+            padding: '16px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            boxShadow: 'none'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <div>
-              <div className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--info)", textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Pending Leave
               </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <div style={{ fontSize: 11, color: "var(--text-secondary, var(--muted-foreground))", marginTop: 2 }}>
                 Entitlement & Usage
               </div>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 4,
+                background: "var(--secondary)",
+                color: "var(--info)",
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
               <Calendar size={20} />
             </div>
           </div>
 
-          <div className={`grid ${leaveBalances.length > 4 ? 'grid-cols-2' : 'grid-cols-1'} gap-x-4 gap-y-1`}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: leaveBalances.length > 4 ? '1fr 1fr' : '1fr',
+              gap: '4px 16px'
+            }}
+          >
             {leaveBalances.map((item) => (
               <div
                 key={item.key}
-                className="text-xs font-bold flex items-center justify-between font-mono"
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
+                }}
                 title={`${item.name}: ${item.approvedDays} approved out of ${item.allowedDays} allowed days`}
               >
-                <span className="lowercase text-slate-600 dark:text-slate-400 font-semibold">
+                <span style={{ textTransform: 'lowercase', color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>
                   {item.code.toLowerCase()}
                 </span>
-                <span className="text-slate-400 mx-1.5">-</span>
-                <span className={item.approvedDays > 0 ? 'text-emerald-700 dark:text-emerald-400 font-extrabold' : 'text-slate-900 dark:text-white font-extrabold'}>
+                <span style={{ color: "var(--text-secondary, var(--muted-foreground))", margin: '0 6px' }}>-</span>
+                <span style={{ color: item.approvedDays > 0 ? "var(--success)" : "var(--text, var(--foreground))", fontWeight: 800 }}>
                   {item.approvedDays}/{item.allowedDays}
                 </span>
               </div>
@@ -534,50 +673,165 @@ export default function TeacherLeaveRequest() {
       </div>
 
       {/* ── Status Tab Navigation ── */}
-      <div className="student-tab-bar flex gap-1.5 border-b border-slate-200 dark:border-slate-700 mb-5 overflow-x-auto pb-px">
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          borderBottom: "2px solid var(--border, var(--border))",
+          marginBottom: 16,
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
+        }}
+        className="no-scrollbar pb-px [&::-webkit-scrollbar]:hidden"
+      >
         <button
           type="button"
-          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
-            activeTab === 'ALL'
-              ? 'border-blue-600 text-blue-600 dark:text-blue-400 active'
-              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
           onClick={() => setActiveTab('ALL')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'ALL' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'ALL' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+            fontWeight: activeTab === 'ALL' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          All Applications ({counts.all})
+          <FileText size={18} />
+          <span>All Applications</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 4,
+              background: activeTab === 'ALL' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'ALL' ? "var(--primary)" : "var(--muted-foreground)",
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {counts.all}
+          </span>
         </button>
+
         <button
           type="button"
-          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
-            activeTab === 'PENDING'
-              ? 'border-amber-500 text-amber-600 dark:text-amber-400 active'
-              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
           onClick={() => setActiveTab('PENDING')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'PENDING' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'PENDING' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+            fontWeight: activeTab === 'PENDING' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          Pending Review ({counts.pending})
+          <Clock size={18} />
+          <span>Pending Review</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 4,
+              background: activeTab === 'PENDING' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'PENDING' ? "var(--primary)" : "var(--muted-foreground)",
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {counts.pending}
+          </span>
         </button>
+
         <button
           type="button"
-          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
-            activeTab === 'APPROVED'
-              ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400 active'
-              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
           onClick={() => setActiveTab('APPROVED')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'APPROVED' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'APPROVED' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+            fontWeight: activeTab === 'APPROVED' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          Approved ({counts.approved})
+          <CheckCircle2 size={18} />
+          <span>Approved</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 4,
+              background: activeTab === 'APPROVED' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'APPROVED' ? "var(--primary)" : "var(--muted-foreground)",
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {counts.approved}
+          </span>
         </button>
+
         <button
           type="button"
-          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
-            activeTab === 'REJECTED'
-              ? 'border-rose-600 text-rose-600 dark:text-rose-400 active'
-              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
           onClick={() => setActiveTab('REJECTED')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'REJECTED' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'REJECTED' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+            fontWeight: activeTab === 'REJECTED' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          Rejected ({counts.rejected})
+          <XCircle size={18} />
+          <span>Rejected</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 4,
+              background: activeTab === 'REJECTED' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'REJECTED' ? "var(--primary)" : "var(--muted-foreground)",
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {counts.rejected}
+          </span>
         </button>
       </div>
 

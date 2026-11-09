@@ -91,7 +91,7 @@ export const AuditLogsViewer: React.FC = () => {
       </div>
 
       {error && (
-        <div className="error-banner" style={{ margin: '16px 0', padding: '12px 16px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+        <div className="error-banner" style={{ margin: '16px 0', padding: '12px 16px', borderRadius: '4px', background: "var(--secondary)", color: "var(--destructive)", border: "1px solid var(--border)" }}>
           {error}
         </div>
       )}
@@ -113,7 +113,7 @@ export const AuditLogsViewer: React.FC = () => {
               height="16"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#94a3b8"
+              stroke="#94969f"
               strokeWidth="2"
               style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}
             >
@@ -123,7 +123,7 @@ export const AuditLogsViewer: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '500' }}>Action Filter:</span>
+            <span style={{ fontSize: '13px', color: "var(--muted-foreground)", fontWeight: '500' }}>Action Filter:</span>
             <select
               className="form-control"
               style={{ width: '200px' }}
@@ -172,14 +172,14 @@ export const AuditLogsViewer: React.FC = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                    <div className="spinner" style={{ margin: '0 auto 12px', width: '28px', height: '28px', border: '3px solid #e2e8f0', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: "var(--muted-foreground)" }}>
+                    <div className="spinner" style={{ margin: '0 auto 12px', width: '28px', height: '28px', border: "3px solid var(--border)", borderTopColor: "var(--border)", borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
                     Loading compliance audit trail...
                   </td>
                 </tr>
               ) : filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: "var(--muted-foreground)" }}>
                     No audit records matching your search query.
                   </td>
                 </tr>
@@ -195,8 +195,8 @@ export const AuditLogsViewer: React.FC = () => {
                         <span
                           className="badge"
                           style={{
-                            background: isCreate ? 'rgba(16, 185, 129, 0.1)' : isRenew ? 'rgba(99, 102, 241, 0.1)' : isStatus ? 'rgba(245, 158, 11, 0.1)' : '#f1f5f9',
-                            color: isCreate ? '#10b981' : isRenew ? '#4f46e5' : isStatus ? '#f59e0b' : '#475569',
+                            background: isCreate ? "var(--secondary)" : isRenew ? "var(--accent)" : isStatus ? "var(--secondary)" : "var(--secondary)",
+                            color: isCreate ? "var(--success)" : isRenew ? "var(--primary)" : isStatus ? "var(--warning)" : "var(--muted-foreground)",
                             fontWeight: '600',
                             fontFamily: 'monospace'
                           }}
@@ -205,26 +205,26 @@ export const AuditLogsViewer: React.FC = () => {
                         </span>
                       </td>
                       <td>
-                        <div style={{ fontWeight: '600', color: '#0f172a' }}>{log.userName}</div>
-                        <div style={{ fontSize: '11px', color: '#64748b' }}>{log.userEmail}</div>
+                        <div style={{ fontWeight: '600', color: "var(--foreground)" }}>{log.userName}</div>
+                        <div style={{ fontSize: '11px', color: "var(--muted-foreground)" }}>{log.userEmail}</div>
                       </td>
                       <td>
-                        <span style={{ fontSize: '12px', color: '#334155', fontWeight: '500' }}>
+                        <span style={{ fontSize: '12px', color: "var(--muted-foreground)", fontWeight: '500' }}>
                           {log.entityType} ({log.entityId?.slice(0, 12)}...)
                         </span>
                       </td>
                       <td>
-                        <span style={{ fontSize: '13px', color: '#334155' }}>
+                        <span style={{ fontSize: '13px', color: "var(--muted-foreground)" }}>
                           {log.schoolName || 'Platform Global'}
                         </span>
                       </td>
                       <td>
-                        <code style={{ fontSize: '12px', color: '#64748b' }}>
+                        <code style={{ fontSize: '12px', color: "var(--muted-foreground)" }}>
                           {log.ipAddress || '127.0.0.1'}
                         </code>
                       </td>
                       <td>
-                        <div style={{ fontSize: '12px', color: '#64748b' }}>
+                        <div style={{ fontSize: '12px', color: "var(--muted-foreground)" }}>
                           {log.createdAt ? new Date(log.createdAt).toLocaleString('en-IN') : 'Recent'}
                         </div>
                       </td>
@@ -252,17 +252,17 @@ export const AuditLogsViewer: React.FC = () => {
           <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '700', color: '#0f172a' }}>
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '700', color: "var(--foreground)" }}>
                   Audit Event Payload: {inspectLog.action}
                 </h3>
-                <div style={{ fontSize: '12px', color: '#64748b' }}>
+                <div style={{ fontSize: '12px', color: "var(--muted-foreground)" }}>
                   Event ID: {inspectLog.id} · {new Date(inspectLog.createdAt).toLocaleString()}
                 </div>
               </div>
               <button
                 className="close-btn"
                 onClick={() => setInspectLog(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#64748b' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: "var(--muted-foreground)" }}
               >
                 &times;
               </button>
@@ -271,10 +271,10 @@ export const AuditLogsViewer: React.FC = () => {
             <div className="modal-body" style={{ padding: '16px 0' }}>
               <pre
                 style={{
-                  background: '#0f172a',
-                  color: '#e2e8f0',
+                  background: "var(--card)",
+                  color: "var(--background)",
                   padding: '16px',
-                  borderRadius: '8px',
+                  borderRadius: '4px',
                   fontSize: '12px',
                   lineHeight: '1.5',
                   overflowX: 'auto',
@@ -285,7 +285,7 @@ export const AuditLogsViewer: React.FC = () => {
               </pre>
             </div>
 
-            <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+            <div className="modal-footer" style={{ borderTop: "1px solid var(--border)", paddingTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
               <button className="btn-secondary" onClick={() => setInspectLog(null)}>
                 Close Inspector
               </button>

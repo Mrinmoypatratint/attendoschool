@@ -11,6 +11,7 @@ import { sendPasswordResetEmail } from '../services/emailService';
 import { queueEmailNotification } from '../services/notificationService';
 import { validatePasswordStrength } from '../utils/passwordPolicy';
 import { loginRateLimit, clearLoginAttempts } from '../middleware/security';
+import { loginAccountGate } from '../rbac/middleware';
 import { isFirebaseConfigured, collections, firestore } from '../firebase';
 import { findFirestoreUserByEmail, getFirestoreSchools, getFirestoreSchoolById } from '../services/firestoreService';
 
@@ -277,7 +278,7 @@ function roleMatches(userRole: string, expectedRole?: string): boolean {
 }
 
 // POST /api/auth/login - Multi-tenant login supporting Firestore, PostgreSQL, and Demo fallback
-router.post('/login', loginRateLimit, async (req, res) => {
+router.post('/login', loginRateLimit, loginAccountGate, async (req, res) => {
   const { instituteId, email, studentId, admissionNumber, admissionNo, password, role: expectedRole } = req.body ?? {};
   const rawIdentifier = String(admissionNumber || admissionNo || email || studentId || '').trim();
 
@@ -665,6 +666,9 @@ router.post('/login', loginRateLimit, async (req, res) => {
   }
 
   // 2. In-memory demo fallback store
+  // Security fix: in production, demo accounts are never synthesised and only their exact stored
+  // password is accepted (previously any password >= 4 chars produced a token, incl. SUPER_ADMIN).
+  const allowDemoSynthesis = process.env.NODE_ENV !== 'production';
   let demo = findDemoUser(rawIdentifier, resolvedInstituteId || instituteId, expectedRole);
 
   // If not found in demoUsers, check in-memory demoStudents from schoolData
@@ -728,7 +732,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
   }
 
     // If still not found and role is STUDENT, dynamically resolve or synthesize for the school in local fallback mode!
-  if (!demo && (expectedRole === 'STUDENT' || isStudentLogin)) {
+  if (allowDemoSynthesis && !demo && (expectedRole === 'STUDENT' || isStudentLogin)) {
     const targetSid = resolvedInstituteId || instituteId || '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3';
     const norm = rawIdentifier.toLowerCase().trim();
     const existingSchoolStudent = getAllDemoUsers().find(u => u.role === 'STUDENT' && u.schoolId && isSameSchool(u.schoolId, targetSid));
@@ -747,7 +751,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
   }
 
   // If still not found and role is TEACHER, dynamically resolve or synthesize for the school in local fallback mode!
-  if (!demo && (expectedRole === 'TEACHER')) {
+  if (allowDemoSynthesis && !demo && (expectedRole === 'TEACHER')) {
     const targetSid = resolvedInstituteId || instituteId || '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3';
     const norm = rawIdentifier.toLowerCase().trim();
     const existingSchoolTeacher = getAllDemoUsers().find(u => u.role === 'TEACHER' && u.schoolId && isSameSchool(u.schoolId, targetSid));
@@ -766,7 +770,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
   }
 
   // If still not found and role is SCHOOL_ADMIN, dynamically resolve or synthesize for the school in local fallback mode!
-  if (!demo && (expectedRole === 'SCHOOL_ADMIN')) {
+  if (allowDemoSynthesis && !demo && (expectedRole === 'SCHOOL_ADMIN')) {
     const targetSid = resolvedInstituteId || instituteId || '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3';
     const norm = rawIdentifier.toLowerCase().trim();
     const existingAdmin = getAllDemoUsers().find(u => u.role === 'SCHOOL_ADMIN' && u.schoolId && isSameSchool(u.schoolId, targetSid));
@@ -786,8 +790,8 @@ router.post('/login', loginRateLimit, async (req, res) => {
   const isAcceptedPassword = demo ? (
     password === demo.password ||
     (await bcrypt.compare(password, demo.password).catch(() => false)) ||
-    ['ChangeMe123!', 'Teacher@123', 'Teacher@1234', 'Student@123', 'Student@1234', 'Dav@123', 'Dav@1234', 'dav123', 'Admin@123', 'Admin@1234', 'admin123', 'password', 'password123', '123456', '12345678', 'admin', 'teacher', 'student'].includes(password) ||
-    (typeof password === 'string' && password.trim().length >= 4)
+    (allowDemoSynthesis && ['ChangeMe123!', 'Teacher@123', 'Teacher@1234', 'Student@123', 'Student@1234', 'Dav@123', 'Dav@1234', 'dav123', 'Admin@123', 'Admin@1234', 'admin123', 'password', 'password123', '123456', '12345678', 'admin', 'teacher', 'student'].includes(password)) ||
+    (allowDemoSynthesis && typeof password === 'string' && password.trim().length >= 4)
   ) : false;
 
   if (demo && isAcceptedPassword) {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   FileCheck, ArrowLeft, Send, CheckCircle2, Clock, Paperclip, Calendar,
   Upload, X, Download, Eye, FileText, AlertCircle, Loader2, Search, Edit3, RotateCcw,
-  Image
+  Image, BookOpen
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { studentApi, Assignment, AssignmentAttachment } from '../../services/studentApi';
@@ -68,7 +68,7 @@ const getFileIcon = (fileName?: string, mimeType?: string) => {
   const lowerMime = (mimeType || '').toLowerCase();
 
   if (lowerMime === 'application/pdf' || lowerName.endsWith('.pdf')) {
-    return <FileText size={18} color="#dc2626" />;
+    return <FileText size={18} color="#d32f2f" />;
   }
   if (
     lowerMime.startsWith('image/') ||
@@ -78,15 +78,15 @@ const getFileIcon = (fileName?: string, mimeType?: string) => {
     lowerName.endsWith('.webp') ||
     lowerName.endsWith('.gif')
   ) {
-    return <Image size={18} color="#2563eb" />;
+    return <Image size={18} color="#e11d55" />;
   }
   if (lowerName.endsWith('.doc') || lowerName.endsWith('.docx')) {
-    return <FileText size={18} color="#2563eb" />;
+    return <FileText size={18} color="#e11d55" />;
   }
   if (lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx') || lowerName.endsWith('.csv')) {
-    return <FileCheck size={18} color="#16a34a" />;
+    return <FileCheck size={18} color="#03806a" />;
   }
-  return <Paperclip size={18} color="#2563eb" />;
+  return <Paperclip size={18} color="#e11d55" />;
 };
 
 const isPreviewableFile = (fileName?: string, mimeType?: string) => {
@@ -551,27 +551,127 @@ export function StudentAssignments() {
       </div>
 
       {/* Tabs */}
-      <div className="student-tab-bar">
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          borderBottom: "2px solid var(--border, var(--border))",
+          marginBottom: 16,
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
+        }}
+        className="no-scrollbar pb-px [&::-webkit-scrollbar]:hidden"
+      >
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'ALL' ? 'active' : ''}`}
           onClick={() => setActiveTab('ALL')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'ALL' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'ALL' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+            fontWeight: activeTab === 'ALL' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          All ({assignments.length})
+          <BookOpen size={18} />
+          <span>All</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 4,
+              background: activeTab === 'ALL' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'ALL' ? "var(--primary)" : "var(--muted-foreground)",
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {assignments.length}
+          </span>
         </button>
+
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'PENDING' ? 'active' : ''}`}
           onClick={() => setActiveTab('PENDING')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'PENDING' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'PENDING' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+            fontWeight: activeTab === 'PENDING' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          Pending ({assignments.filter((a) => a.submission_status === 'PENDING').length})
+          <Clock size={18} />
+          <span>Pending</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 4,
+              background: activeTab === 'PENDING' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'PENDING' ? "var(--primary)" : "var(--muted-foreground)",
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {assignments.filter((a) => a.submission_status === 'PENDING').length}
+          </span>
         </button>
+
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'SUBMITTED' ? 'active' : ''}`}
           onClick={() => setActiveTab('SUBMITTED')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'SUBMITTED' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'SUBMITTED' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+            fontWeight: activeTab === 'SUBMITTED' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          Submitted ({assignments.filter((a) => a.submission_status !== 'PENDING').length})
+          <CheckCircle2 size={18} />
+          <span>Submitted</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 4,
+              background: activeTab === 'SUBMITTED' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'SUBMITTED' ? "var(--primary)" : "var(--muted-foreground)",
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {assignments.filter((a) => a.submission_status !== 'PENDING').length}
+          </span>
         </button>
       </div>
 
@@ -782,7 +882,7 @@ export function StudentAssignments() {
                       type="button"
                       onClick={() => handleOpenSubmitModal(a)}
                       className="student-btn-primary"
-                      style={{ background: '#4f46e5', borderColor: '#4f46e5', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                      style={{ background: "var(--primary)", borderColor: "var(--border)", display: 'inline-flex', alignItems: 'center', gap: 6 }}
                     >
                       <Edit3 size={14} /> Edit / Resubmit Work
                     </button>
@@ -823,7 +923,7 @@ export function StudentAssignments() {
 
               {/* Informational banner if editing a graded submission */}
               {activeModal.submission_status === 'GRADED' && (
-                <div style={{ margin: '8px 0 12px', padding: '10px 12px', borderRadius: 6, background: '#fef3c7', border: '1px solid #fde68a', color: '#92400e', fontSize: 12.5 }}>
+                <div style={{ margin: '8px 0 12px', padding: '10px 12px', borderRadius: 4, background: "var(--secondary)", border: "1px solid var(--border)", color: "var(--warning)", fontSize: 12.5 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, marginBottom: 2 }}>
                     <AlertCircle size={15} />
                     <span>Graded Submission Notice</span>
@@ -914,10 +1014,10 @@ export function StudentAssignments() {
               {activeModal.attachments && activeModal.attachments.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted, #64748b)' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: "var(--text-muted, var(--muted-foreground))" }}>
                       Current Submitted Attachments:
                     </span>
-                    <span style={{ fontSize: 11, color: '#64748b' }}>
+                    <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
                       {activeModal.attachments.filter(a => !removedAttachmentIds.includes(a.id)).length} kept / {activeModal.attachments.length} total
                     </span>
                   </div>
@@ -933,9 +1033,9 @@ export function StudentAssignments() {
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             padding: '8px 12px',
-                            borderRadius: 6,
-                            border: `1px solid ${isRemoved ? '#fca5a5' : 'var(--border, #cbd5e1)'}`,
-                            background: isRemoved ? '#fef2f2' : 'var(--card-subtle, #f8fafc)',
+                            borderRadius: 4,
+                            border: `1px solid ${isRemoved ? "var(--border)" : "var(--border, var(--border))"}`,
+                            background: isRemoved ? "var(--card)" : "var(--card-subtle, var(--card))",
                             opacity: isRemoved ? 0.65 : 1,
                             gap: 10
                           }}
@@ -945,7 +1045,7 @@ export function StudentAssignments() {
                               width: 30,
                               height: 30,
                               borderRadius: 4,
-                              backgroundColor: isRemoved ? '#fecaca' : '#eff6ff',
+                              backgroundColor: isRemoved ? "var(--secondary)" : "var(--card)",
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -959,7 +1059,7 @@ export function StudentAssignments() {
                                   fontSize: 12.5,
                                   fontWeight: 600,
                                   textDecoration: isRemoved ? 'line-through' : 'none',
-                                  color: isRemoved ? '#991b1b' : 'var(--text, #1e293b)',
+                                  color: isRemoved ? "var(--destructive)" : "var(--text, var(--foreground))",
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
                                   whiteSpace: 'nowrap'
@@ -967,7 +1067,7 @@ export function StudentAssignments() {
                               >
                                 {att.file_name}
                               </div>
-                              <span style={{ color: '#94a3b8', fontSize: 11 }}>
+                              <span style={{ color: "var(--muted-foreground)", fontSize: 11 }}>
                                 {formatBytes(att.file_size)}
                               </span>
                             </div>
@@ -986,9 +1086,9 @@ export function StudentAssignments() {
                                       gap: 3,
                                       padding: '3px 8px',
                                       borderRadius: 4,
-                                      border: '1px solid #bfdbfe',
-                                      backgroundColor: '#eff6ff',
-                                      color: '#2563eb',
+                                      border: "1px solid var(--border)",
+                                      backgroundColor: "var(--card)",
+                                      color: "var(--primary)",
                                       fontSize: 11,
                                       fontWeight: 600,
                                       cursor: 'pointer'
@@ -1007,8 +1107,8 @@ export function StudentAssignments() {
                                     padding: '3px 8px',
                                     borderRadius: 4,
                                     border: 'none',
-                                    backgroundColor: '#2563eb',
-                                    color: '#ffffff',
+                                    backgroundColor: "var(--primary)",
+                                    color: "var(--background)",
                                     fontSize: 11,
                                     fontWeight: 600,
                                     cursor: 'pointer'
@@ -1020,10 +1120,10 @@ export function StudentAssignments() {
                                   type="button"
                                   onClick={() => handleToggleRemoveExistingAttachment(att.id)}
                                   style={{
-                                    border: '1px solid #fecaca',
+                                    border: "1px solid var(--border)",
                                     borderRadius: 4,
-                                    background: '#fee2e2',
-                                    color: '#dc2626',
+                                    background: "var(--secondary)",
+                                    color: "var(--destructive)",
                                     padding: '3px 8px',
                                     fontSize: 11,
                                     cursor: 'pointer',
@@ -1042,10 +1142,10 @@ export function StudentAssignments() {
                                 type="button"
                                 onClick={() => handleToggleRemoveExistingAttachment(att.id)}
                                 style={{
-                                  border: '1px solid #cbd5e1',
+                                  border: "1px solid var(--border)",
                                   borderRadius: 4,
-                                  background: '#f1f5f9',
-                                  color: '#334155',
+                                  background: "var(--secondary)",
+                                  color: "var(--muted-foreground)",
                                   padding: '3px 8px',
                                   fontSize: 11,
                                   cursor: 'pointer',
@@ -1067,7 +1167,7 @@ export function StudentAssignments() {
 
               {/* Attachments Section */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 2 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginBottom: 2 }}>
                   Attach Document / File
                 </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -1077,10 +1177,10 @@ export function StudentAssignments() {
                       alignItems: 'center',
                       gap: 6,
                       padding: '7px 14px',
-                      borderRadius: 6,
-                      border: '1px dashed var(--border, #cbd5e1)',
-                      backgroundColor: 'var(--card-subtle, #f8fafc)',
-                      color: 'var(--text, #334155)',
+                      borderRadius: 4,
+                      border: "1px dashed var(--border, var(--border))",
+                      backgroundColor: "var(--card-subtle, var(--card))",
+                      color: "var(--text, var(--muted-foreground))",
                       fontSize: 13,
                       fontWeight: 500,
                       cursor: 'pointer',
@@ -1088,7 +1188,7 @@ export function StudentAssignments() {
                     }}
                     title="Attach files to your submission"
                   >
-                    <Paperclip size={15} color="#2563eb" />
+                    <Paperclip size={15} color="#e11d55" />
                     <span>{selectedFiles.length > 0 ? 'Attach More Files' : 'Attach Document / File'}</span>
                     <input
                       id="assignment-file-input"
@@ -1100,7 +1200,7 @@ export function StudentAssignments() {
                       disabled={((activeModal.attachments || []).filter(a => !removedAttachmentIds.includes(a.id)).length + selectedFiles.length) >= MAX_FILE_COUNT}
                     />
                   </label>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                  <span style={{ fontSize: 12, color: "var(--text-muted, var(--muted-foreground))" }}>
                     {((activeModal.attachments || []).filter(a => !removedAttachmentIds.includes(a.id)).length + selectedFiles.length)} / {MAX_FILE_COUNT} files (Max 10MB each, 25MB total)
                   </span>
                 </div>
@@ -1118,9 +1218,9 @@ export function StudentAssignments() {
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             padding: '8px 12px',
-                            borderRadius: 6,
-                            background: 'var(--card, #ffffff)',
-                            border: '1px solid var(--border, #cbd5e1)',
+                            borderRadius: 4,
+                            background: "var(--card, var(--card))",
+                            border: "1px solid var(--border, var(--border))",
                             gap: 10
                           }}
                         >
@@ -1129,7 +1229,7 @@ export function StudentAssignments() {
                               width: 28,
                               height: 28,
                               borderRadius: 4,
-                              backgroundColor: '#eff6ff',
+                              backgroundColor: "var(--card)",
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -1138,10 +1238,10 @@ export function StudentAssignments() {
                               {getFileIcon(f.name, f.file.type)}
                             </div>
                             <div style={{ minWidth: 0 }}>
-                              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text, #1e293b)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text, var(--foreground))", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {f.name}
                               </span>
-                              <span style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 11, marginLeft: 6 }}>
+                              <span style={{ color: "var(--text-muted, var(--muted-foreground))", fontSize: 11, marginLeft: 6 }}>
                                 ({formatBytes(f.size)})
                               </span>
                             </div>
@@ -1157,9 +1257,9 @@ export function StudentAssignments() {
                                   gap: 3,
                                   padding: '3px 8px',
                                   borderRadius: 4,
-                                  border: '1px solid #bfdbfe',
-                                  backgroundColor: '#eff6ff',
-                                  color: '#2563eb',
+                                  border: "1px solid var(--border)",
+                                  backgroundColor: "var(--card)",
+                                  color: "var(--primary)",
                                   fontSize: 11,
                                   fontWeight: 600,
                                   cursor: 'pointer'
@@ -1176,7 +1276,7 @@ export function StudentAssignments() {
                                 border: 'none',
                                 background: 'none',
                                 cursor: 'pointer',
-                                color: '#ef4444',
+                                color: "var(--destructive)",
                                 padding: 2,
                                 display: 'inline-flex',
                                 alignItems: 'center'
@@ -1234,13 +1334,13 @@ export function StudentAssignments() {
           <div className="student-preview-modal">
             <div className="student-preview-modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                <Paperclip size={16} color="var(--text-muted, #64748b)" />
+                <Paperclip size={16} color="var(--text-muted, #696e79)" />
                 <h3
                   style={{
                     margin: 0,
                     fontSize: 15,
                     fontWeight: 700,
-                    color: 'var(--text, #0f172a)',
+                    color: "var(--text, var(--foreground))",
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap'
@@ -1265,7 +1365,7 @@ export function StudentAssignments() {
                     border: 'none',
                     background: 'none',
                     cursor: 'pointer',
-                    color: 'var(--text-muted, #64748b)',
+                    color: "var(--text-muted, var(--muted-foreground))",
                     padding: 4
                   }}
                 >
@@ -1276,12 +1376,12 @@ export function StudentAssignments() {
 
             <div className="student-preview-modal-body">
               {previewState.loading ? (
-                <div style={{ textAlign: 'center', color: '#64748b' }}>
+                <div style={{ textAlign: 'center', color: "var(--muted-foreground)" }}>
                   <Loader2 size={32} className="animate-spin" style={{ margin: '0 auto 8px' }} />
                   <p style={{ margin: 0, fontSize: 14 }}>Loading preview securely...</p>
                 </div>
               ) : previewState.error ? (
-                <div style={{ textAlign: 'center', color: '#ef4444', padding: 20 }}>
+                <div style={{ textAlign: 'center', color: "var(--destructive)", padding: 20 }}>
                   <AlertCircle size={32} style={{ margin: '0 auto 8px' }} />
                   <p style={{ margin: 0, fontSize: 14 }}>{previewState.error}</p>
                 </div>
@@ -1298,10 +1398,10 @@ export function StudentAssignments() {
                   style={{ width: '100%', height: '100%', border: 'none', borderRadius: 4 }}
                 />
               ) : (
-                <div style={{ textAlign: 'center', padding: 30, color: '#475569' }}>
-                  <FileText size={48} color="#94a3b8" style={{ margin: '0 auto 12px' }} />
+                <div style={{ textAlign: 'center', padding: 30, color: "var(--muted-foreground)" }}>
+                  <FileText size={48} color="#94969f" style={{ margin: '0 auto 12px' }} />
                   <h4 style={{ margin: '0 0 6px', fontSize: 16 }}>Inline preview not supported for this file type</h4>
-                  <p style={{ margin: '0 0 16px', fontSize: 13, color: '#64748b' }}>
+                  <p style={{ margin: '0 0 16px', fontSize: 13, color: "var(--muted-foreground)" }}>
                     Word and Excel documents can be downloaded to view with your preferred software.
                   </p>
                   <button
@@ -1309,9 +1409,9 @@ export function StudentAssignments() {
                     onClick={handlePreviewDownload}
                     style={{
                       padding: '8px 16px',
-                      borderRadius: 6,
-                      background: '#2563eb',
-                      color: '#fff',
+                      borderRadius: 4,
+                      background: "var(--primary)",
+                      color: "var(--background)",
                       border: 'none',
                       fontWeight: 600,
                       cursor: 'pointer',

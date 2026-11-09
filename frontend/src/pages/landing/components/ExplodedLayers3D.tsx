@@ -32,7 +32,7 @@ const LAYERS: LayerData[] = [
       'Engineered with dedicated schema-level PostgreSQL isolation, ensuring student and institutional data is strictly partitioned. Compliant with 256-bit encryption standards and automated daily snapshots.',
     metrics: ['PostgreSQL Schema Isolation', 'Daily Automated Backups', 'Zero Cross-Tenant Leakage'],
     icon: <Database size={18} />,
-    accentColor: '#1D4ED8',
+    accentColor: '#c0174a',
     depthZ: 0
   },
   {
@@ -43,7 +43,7 @@ const LAYERS: LayerData[] = [
       'Automates multi-term sessions, clash-free teacher allocations, room scheduling, and official holiday calendars. Streamlines end-of-year promotions with 1-click batch processing.',
     metrics: ['Conflict-Free Schedules', 'Working Day Calculator', 'Bulk Student Promotion'],
     icon: <Calendar size={18} />,
-    accentColor: '#0284C7',
+    accentColor: '#5c6bc0',
     depthZ: 60
   },
   {
@@ -54,7 +54,7 @@ const LAYERS: LayerData[] = [
       'Processes hundreds of student gate card taps per minute with zero bottleneck. Reconciles early checkouts, late morning arrivals, and teacher period rolls automatically.',
     metrics: ['Sub-Second RFID Sync', '1-Tap Teacher Roll Call', 'Automated Leave Reconciliation'],
     icon: <ClipboardCheck size={18} />,
-    accentColor: '#059669',
+    accentColor: '#03806a',
     depthZ: 120
   },
   {
@@ -65,7 +65,7 @@ const LAYERS: LayerData[] = [
       'Instantaneously delivers verified gate check-in alerts to parents via SMS and push notifications. Enables campus-wide emergency broadcasts and verifiable delivery audit logs.',
     metrics: ['Instant Parent SMS', 'Broadcast Announcements', '100% Delivery Audit Trail'],
     icon: <Bell size={18} />,
-    accentColor: '#6366F1',
+    accentColor: '#e11d55',
     depthZ: 180
   }
 ];
@@ -120,7 +120,7 @@ export const ExplodedLayers3D: React.FC = () => {
               alignItems: 'center',
               gap: 8,
               padding: '8px 16px',
-              borderRadius: 8,
+              borderRadius: 4,
               fontSize: 13,
               fontWeight: 600,
               fontFamily: 'inherit',
@@ -129,7 +129,7 @@ export const ExplodedLayers3D: React.FC = () => {
               borderColor: activeLayer === l.id ? l.accentColor : 'var(--lp-border-subtle)',
               background: activeLayer === l.id ? '#FFFFFF' : 'var(--lp-bg-warm)',
               color: activeLayer === l.id ? 'var(--lp-text-primary)' : 'var(--lp-text-muted)',
-              boxShadow: activeLayer === l.id ? '0 4px 12px rgba(15, 23, 42, 0.08)' : 'none',
+              boxShadow: activeLayer === l.id ? '0 4px 12px rgba(28, 31, 46, 0.08)' : 'none',
               transition: 'all 0.2s ease'
             }}
           >
@@ -163,8 +163,8 @@ export const ExplodedLayers3D: React.FC = () => {
                 borderLeft: `4px solid ${layer.accentColor}`,
                 backgroundColor: isSelected ? '#FFFFFF' : '#FAFBFC',
                 boxShadow: isSelected
-                  ? `0 24px 50px -10px rgba(15, 23, 42, 0.16), 0 0 0 1px ${layer.accentColor}`
-                  : '0 8px 24px -4px rgba(15, 23, 42, 0.06)',
+                  ? `0 24px 50px -10px rgba(28, 31, 46, 0.16), 0 0 0 1px ${layer.accentColor}`
+                  : '0 8px 24px -4px rgba(28, 31, 46, 0.06)',
                 cursor: 'pointer'
               }}
             >

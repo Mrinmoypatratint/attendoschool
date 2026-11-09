@@ -41,7 +41,7 @@ export const FeaturePreviewScreens: React.FC<FeaturePreviewProps> = ({ activeFea
                 style={{
                   width: 34,
                   height: 34,
-                  borderRadius: 8,
+                  borderRadius: 4,
                   background: 'var(--lp-brand-green-subtle)',
                   color: 'var(--lp-brand-green)',
                   display: 'flex',
@@ -60,7 +60,7 @@ export const FeaturePreviewScreens: React.FC<FeaturePreviewProps> = ({ activeFea
                 </div>
               </div>
             </div>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#047857', background: '#ECFDF5', padding: '3px 8px', borderRadius: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#02604f', background: '#e6f2f0', padding: '3px 8px', borderRadius: 4 }}>
               38 / 40 Present (95.0%)
             </span>
           </div>
@@ -80,11 +80,11 @@ export const FeaturePreviewScreens: React.FC<FeaturePreviewProps> = ({ activeFea
 
             {/* Live Telemetry Table with Masked Data */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 11.5, color: '#B45309', fontWeight: 600 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 11.5, color: '#8f5c12', fontWeight: 600 }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                   <Lock size={12} /> Student PII Masked (**) for Confidentiality
                 </span>
-                <span style={{ color: '#047857' }}>Auto-SMS Dispatched</span>
+                <span style={{ color: '#02604f' }}>Auto-SMS Dispatched</span>
               </div>
 
               <table className="lp-flat-table">
@@ -102,7 +102,7 @@ export const FeaturePreviewScreens: React.FC<FeaturePreviewProps> = ({ activeFea
                     <td className="lp-masked-data">Aa**av Sh**ma</td>
                     <td style={{ fontFamily: 'monospace' }}>08:14 AM</td>
                     <td style={{ textAlign: 'right' }}>
-                      <span style={{ color: '#047857', background: '#ECFDF5', padding: '2px 7px', borderRadius: 4, fontWeight: 700, fontSize: 11 }}>
+                      <span style={{ color: '#02604f', background: '#e6f2f0', padding: '2px 7px', borderRadius: 4, fontWeight: 700, fontSize: 11 }}>
                         ✓ Present
                       </span>
                     </td>
@@ -112,7 +112,7 @@ export const FeaturePreviewScreens: React.FC<FeaturePreviewProps> = ({ activeFea
                     <td className="lp-masked-data">An**ya Mu*****ee</td>
                     <td style={{ fontFamily: 'monospace' }}>08:16 AM</td>
                     <td style={{ textAlign: 'right' }}>
-                      <span style={{ color: '#047857', background: '#ECFDF5', padding: '2px 7px', borderRadius: 4, fontWeight: 700, fontSize: 11 }}>
+                      <span style={{ color: '#02604f', background: '#e6f2f0', padding: '2px 7px', borderRadius: 4, fontWeight: 700, fontSize: 11 }}>
                         ✓ Present
                       </span>
                     </td>
@@ -120,9 +120,9 @@ export const FeaturePreviewScreens: React.FC<FeaturePreviewProps> = ({ activeFea
                   <tr>
                     <td className="lp-masked-data">10*</td>
                     <td className="lp-masked-data">Ka**r S*n</td>
-                    <td style={{ color: '#B91C1C' }}>—</td>
+                    <td style={{ color: '#a82424' }}>—</td>
                     <td style={{ textAlign: 'right' }}>
-                      <span style={{ color: '#B91C1C', background: '#FEF2F2', padding: '2px 7px', borderRadius: 4, fontWeight: 700, fontSize: 11 }}>
+                      <span style={{ color: '#a82424', background: '#fbeaea', padding: '2px 7px', borderRadius: 4, fontWeight: 700, fontSize: 11 }}>
                         ✕ Absent (SMS Sent)
                       </span>
                     </td>
@@ -152,7 +152,7 @@ export const FeaturePreviewScreens: React.FC<FeaturePreviewProps> = ({ activeFea
                 style={{
                   width: 34,
                   height: 34,
-                  borderRadius: 8,
+                  borderRadius: 4,
                   background: 'var(--lp-brand-green-subtle)',
                   color: 'var(--lp-brand-green)',
                   display: 'flex',
@@ -171,7 +171,7 @@ export const FeaturePreviewScreens: React.FC<FeaturePreviewProps> = ({ activeFea
                 </div>
               </div>
             </div>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#047857', background: '#ECFDF5', padding: '3px 8px', borderRadius: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#02604f', background: '#e6f2f0', padding: '3px 8px', borderRadius: 4 }}>
               Active Enrollment
             </span>
           </div>
@@ -190,21 +190,21 @@ export const FeaturePreviewScreens: React.FC<FeaturePreviewProps> = ({ activeFea
 
             {/* Dossier Card with Masked PII */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, fontSize: 12.5 }}>
-              <div style={{ background: 'var(--lp-bg-warm)', padding: 10, borderRadius: 6 }}>
+              <div style={{ background: 'var(--lp-bg-warm)', padding: 10, borderRadius: 4 }}>
                 <div style={{ fontSize: 10.5, color: 'var(--lp-text-muted)', fontWeight: 600 }}>STUDENT NAME (MASKED)</div>
                 <div className="lp-masked-data" style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>Aa**av Sh**ma</div>
               </div>
-              <div style={{ background: 'var(--lp-bg-warm)', padding: 10, borderRadius: 6 }}>
+              <div style={{ background: 'var(--lp-bg-warm)', padding: 10, borderRadius: 4 }}>
                 <div style={{ fontSize: 10.5, color: 'var(--lp-text-muted)', fontWeight: 600 }}>CLASS & SECTION</div>
                 <div style={{ fontWeight: 700, marginTop: 2 }}>Class 10 - Section A (Roll 10*)</div>
               </div>
-              <div style={{ background: 'var(--lp-bg-warm)', padding: 10, borderRadius: 6 }}>
+              <div style={{ background: 'var(--lp-bg-warm)', padding: 10, borderRadius: 4 }}>
                 <div style={{ fontSize: 10.5, color: 'var(--lp-text-muted)', fontWeight: 600 }}>GUARDIAN CONTACT</div>
                 <div className="lp-masked-data" style={{ fontWeight: 600, marginTop: 2 }}>Dr. R. Sh**ma (+91 98310 *****)</div>
               </div>
-              <div style={{ background: 'var(--lp-bg-warm)', padding: 10, borderRadius: 6 }}>
+              <div style={{ background: 'var(--lp-bg-warm)', padding: 10, borderRadius: 4 }}>
                 <div style={{ fontSize: 10.5, color: 'var(--lp-text-muted)', fontWeight: 600 }}>ATTENDANCE RATE</div>
-                <div style={{ fontWeight: 700, color: '#047857', marginTop: 2 }}>98.4% (Eligible for Board Exams)</div>
+                <div style={{ fontWeight: 700, color: '#02604f', marginTop: 2 }}>98.4% (Eligible for Board Exams)</div>
               </div>
             </div>
           </div>
@@ -229,7 +229,7 @@ export const FeaturePreviewScreens: React.FC<FeaturePreviewProps> = ({ activeFea
                 style={{
                   width: 34,
                   height: 34,
-                  borderRadius: 8,
+                  borderRadius: 4,
                   background: 'var(--lp-brand-green-subtle)',
                   color: 'var(--lp-brand-green)',
                   display: 'flex',
@@ -248,7 +248,7 @@ export const FeaturePreviewScreens: React.FC<FeaturePreviewProps> = ({ activeFea
                 </div>
               </div>
             </div>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#047857', background: '#ECFDF5', padding: '3px 8px', borderRadius: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#02604f', background: '#e6f2f0', padding: '3px 8px', borderRadius: 4 }}>
               78 / 82 On Duty Today
             </span>
           </div>
@@ -279,12 +279,12 @@ export const FeaturePreviewScreens: React.FC<FeaturePreviewProps> = ({ activeFea
                   <tr>
                     <td className="lp-masked-data">Dr. M. R**</td>
                     <td>Senior PGT Physics</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#047857' }}>Class 12-B</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#02604f' }}>Class 12-B</td>
                   </tr>
                   <tr>
                     <td className="lp-masked-data">Prof. A. Ba******</td>
                     <td>HOD Mathematics</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#047857' }}>Class 10-A</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#02604f' }}>Class 10-A</td>
                   </tr>
                   <tr>
                     <td className="lp-masked-data">P. Se******</td>
@@ -316,7 +316,7 @@ export const FeaturePreviewScreens: React.FC<FeaturePreviewProps> = ({ activeFea
                 style={{
                   width: 34,
                   height: 34,
-                  borderRadius: 8,
+                  borderRadius: 4,
                   background: 'var(--lp-brand-green-subtle)',
                   color: 'var(--lp-brand-green)',
                   display: 'flex',
@@ -333,28 +333,28 @@ export const FeaturePreviewScreens: React.FC<FeaturePreviewProps> = ({ activeFea
                 <div style={{ fontSize: 12, color: 'var(--lp-text-muted)' }}>Class 10-A · D.A.V. Weekly Period Schedule</div>
               </div>
             </div>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#047857', background: '#ECFDF5', padding: '3px 8px', borderRadius: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#02604f', background: '#e6f2f0', padding: '3px 8px', borderRadius: 4 }}>
               Regular Schedule
             </span>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
-            <div style={{ background: 'var(--lp-bg-warm)', border: '1px solid var(--lp-border-subtle)', padding: 12, borderRadius: 8 }}>
+            <div style={{ background: 'var(--lp-bg-warm)', border: '1px solid var(--lp-border-subtle)', padding: 12, borderRadius: 4 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--lp-brand-green)' }}>P1 · 08:30 - 09:15</div>
               <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--lp-text-primary)' }}>Physics Theory</div>
               <div className="lp-masked-data" style={{ fontSize: 11, color: 'var(--lp-text-muted)' }}>Dr. M. R** · Rm 20*</div>
             </div>
-            <div style={{ background: 'var(--lp-bg-warm)', border: '1px solid var(--lp-border-subtle)', padding: 12, borderRadius: 8 }}>
+            <div style={{ background: 'var(--lp-bg-warm)', border: '1px solid var(--lp-border-subtle)', padding: 12, borderRadius: 4 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--lp-brand-green)' }}>P2 · 09:15 - 10:00</div>
               <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--lp-text-primary)' }}>Mathematics</div>
               <div className="lp-masked-data" style={{ fontSize: 11, color: 'var(--lp-text-muted)' }}>Prof. A. Ba****** · Rm 20*</div>
             </div>
-            <div style={{ background: 'var(--lp-bg-warm)', border: '1px solid var(--lp-border-subtle)', padding: 12, borderRadius: 8 }}>
+            <div style={{ background: 'var(--lp-bg-warm)', border: '1px solid var(--lp-border-subtle)', padding: 12, borderRadius: 4 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--lp-brand-green)' }}>P3 · 10:15 - 11:00</div>
               <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--lp-text-primary)' }}>Chemistry Lab</div>
               <div className="lp-masked-data" style={{ fontSize: 11, color: 'var(--lp-text-muted)' }}>Dr. K. D** · Lab 2</div>
             </div>
-            <div style={{ background: 'var(--lp-bg-warm)', border: '1px solid var(--lp-border-subtle)', padding: 12, borderRadius: 8 }}>
+            <div style={{ background: 'var(--lp-bg-warm)', border: '1px solid var(--lp-border-subtle)', padding: 12, borderRadius: 4 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--lp-brand-green)' }}>P4 · 11:00 - 11:45</div>
               <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--lp-text-primary)' }}>English Lit</div>
               <div className="lp-masked-data" style={{ fontSize: 11, color: 'var(--lp-text-muted)' }}>P. Se****** · Rm 20*</div>
@@ -381,7 +381,7 @@ export const FeaturePreviewScreens: React.FC<FeaturePreviewProps> = ({ activeFea
                 style={{
                   width: 34,
                   height: 34,
-                  borderRadius: 8,
+                  borderRadius: 4,
                   background: 'var(--lp-brand-green-subtle)',
                   color: 'var(--lp-brand-green)',
                   display: 'flex',
@@ -398,25 +398,25 @@ export const FeaturePreviewScreens: React.FC<FeaturePreviewProps> = ({ activeFea
                 <div style={{ fontSize: 12, color: 'var(--lp-text-muted)' }}>D.A.V. Senior Secondary Sector 14 Campus</div>
               </div>
             </div>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#047857', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#02604f', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
               <FileSpreadsheet size={14} /> CBSE Excel Export Ready
             </span>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-            <div style={{ background: 'var(--lp-bg-warm)', padding: 14, borderRadius: 8, border: '1px solid var(--lp-border-subtle)' }}>
+            <div style={{ background: 'var(--lp-bg-warm)', padding: 14, borderRadius: 4, border: '1px solid var(--lp-border-subtle)' }}>
               <div style={{ fontSize: 11, color: 'var(--lp-text-muted)', fontWeight: 600 }}>ANNUAL ATTENDANCE</div>
               <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--lp-text-primary)' }}>96.8%</div>
-              <div style={{ fontSize: 11.5, color: '#047857', fontWeight: 600 }}>+1.4% improvement</div>
+              <div style={{ fontSize: 11.5, color: '#02604f', fontWeight: 600 }}>+1.4% improvement</div>
             </div>
-            <div style={{ background: 'var(--lp-bg-warm)', padding: 14, borderRadius: 8, border: '1px solid var(--lp-border-subtle)' }}>
+            <div style={{ background: 'var(--lp-bg-warm)', padding: 14, borderRadius: 4, border: '1px solid var(--lp-border-subtle)' }}>
               <div style={{ fontSize: 11, color: 'var(--lp-text-muted)', fontWeight: 600 }}>CHRONIC ABSENTEEISM</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#B91C1C' }}>1.2%</div>
-              <div style={{ fontSize: 11.5, color: '#047857', fontWeight: 600 }}>Follow-up active</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: '#a82424' }}>1.2%</div>
+              <div style={{ fontSize: 11.5, color: '#02604f', fontWeight: 600 }}>Follow-up active</div>
             </div>
-            <div style={{ background: 'var(--lp-bg-warm)', padding: 14, borderRadius: 8, border: '1px solid var(--lp-border-subtle)' }}>
+            <div style={{ background: 'var(--lp-bg-warm)', padding: 14, borderRadius: 4, border: '1px solid var(--lp-border-subtle)' }}>
               <div style={{ fontSize: 11, color: 'var(--lp-text-muted)', fontWeight: 600 }}>CBSE REGISTER AUDIT</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#047857' }}>100%</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: '#02604f' }}>100%</div>
               <div style={{ fontSize: 11.5, color: 'var(--lp-text-muted)' }}>Form 14 Compliant</div>
             </div>
           </div>
@@ -441,7 +441,7 @@ export const FeaturePreviewScreens: React.FC<FeaturePreviewProps> = ({ activeFea
                 style={{
                   width: 34,
                   height: 34,
-                  borderRadius: 8,
+                  borderRadius: 4,
                   background: 'var(--lp-brand-green-subtle)',
                   color: 'var(--lp-brand-green)',
                   display: 'flex',
@@ -458,12 +458,12 @@ export const FeaturePreviewScreens: React.FC<FeaturePreviewProps> = ({ activeFea
                 <div style={{ fontSize: 12, color: 'var(--lp-text-muted)' }}>Official Announcements & Emergency Alerts</div>
               </div>
             </div>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#047857', background: '#ECFDF5', padding: '3px 8px', borderRadius: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#02604f', background: '#e6f2f0', padding: '3px 8px', borderRadius: 4 }}>
               SMS Gateway Active
             </span>
           </div>
 
-          <div style={{ background: 'var(--lp-bg-warm)', padding: 14, borderRadius: 8, border: '1px solid var(--lp-border-subtle)' }}>
+          <div style={{ background: 'var(--lp-bg-warm)', padding: 14, borderRadius: 4, border: '1px solid var(--lp-border-subtle)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 12 }}>
               <span style={{ fontWeight: 700, color: 'var(--lp-text-primary)' }}>Urgent: D.A.V. Morning Bus Timing & Dense Fog Protocol</span>
               <span style={{ color: 'var(--lp-text-muted)' }}>Today at 07:15 AM</span>
@@ -471,7 +471,7 @@ export const FeaturePreviewScreens: React.FC<FeaturePreviewProps> = ({ activeFea
             <p style={{ margin: 0, fontSize: 13, color: 'var(--lp-text-secondary)', lineHeight: 1.5 }}>
               "Due to dense morning fog in the NCR region, all D.A.V. school bus routes are scheduled with a 30-minute delay buffer. Classes begin promptly at 09:00 AM."
             </p>
-            <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: 12, fontWeight: 600, color: '#047857' }}>
+            <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: 12, fontWeight: 600, color: '#02604f' }}>
               <span>✓ 1,284 SMS Dispatched</span>
               <span>✓ 100% Parent Portal Sync</span>
               <span>✓ Verified Audit Log #SMS-**84</span>

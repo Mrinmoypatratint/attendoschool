@@ -1,0 +1,4 @@
+/scripts/backup.sh text eol=lf
+/scripts/restore.sh text eol=lf
+/scripts/backup/*.sh text eol=lf
+/scripts/backup/tests/*.sh text eol=lf

@@ -127,7 +127,9 @@ jobs:
           username: ${{ secrets.HOSTINGER_VPS_USER }}
           key: ${{ secrets.HOSTINGER_VPS_SSH_KEY }}
           port: ${{ secrets.HOSTINGER_VPS_PORT || 22 }}
-          script_stop: true
+          # Bash set -e below handles required command failures. The SSH
+          # action's per-line guards break if/else error handling.
+          script_stop: false
           script: |
             set -e
             echo "===================================================================="
@@ -142,6 +144,15 @@ jobs:
               exit 1
             fi
             git checkout --detach "${{ env.DEPLOY_VERSION }}"
+            BACKUP_SETUP_READY=false
+            if [ -f scripts/backup/provision.cjs ]; then
+              echo "Preparing private backup folders, tools and paused schedule..."
+              if bash scripts/backup/install-tools.sh && node scripts/backup/provision.cjs prepare; then
+                BACKUP_SETUP_READY=true
+              else
+                echo "::warning::Backup setup is incomplete. Continuing the web/API deployment without starting or restarting backup workers. Review backup setup separately before relying on off-server backups."
+              fi
+            fi
             echo "📦 Installing Dependencies on VPS..."
             npm --prefix frontend install --include=dev --no-audit
             echo "🔨 Compiling Backend TypeScript..."
@@ -149,7 +160,11 @@ jobs:
             echo "🔨 Building Frontend React SPA with Vite..."
             npm --prefix frontend run build
             echo "⚡ Reloading PM2 backend cluster..."
-            pm2 reload ecosystem.config.cjs --env production
+            if [ "$BACKUP_SETUP_READY" = true ]; then
+              pm2 startOrReload ecosystem.config.cjs --env production
+            else
+              pm2 startOrReload ecosystem.config.cjs --only attendoschool-backend --env production
+            fi
             pm2 save
             echo "✅ Deployment completed on https://attendoschool.online"
 

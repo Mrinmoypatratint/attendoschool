@@ -1,0 +1,174 @@
+[
+  {
+    "role": "SCHOOL_ADMIN",
+    "desktop": {
+      "theme": "dark",
+      "body": "rgb(18, 18, 18)",
+      "main": "rgb(18, 18, 18)",
+      "topbar": "rgb(28, 28, 28)",
+      "topbarHeight": 64,
+      "topbarRadius": "0px"
+    },
+    "mobile": [
+      {
+        "route": "/dashboard",
+        "scroll": 360,
+        "client": 360,
+        "noOverflow": true
+      },
+      {
+        "route": "/students",
+        "scroll": 360,
+        "client": 360,
+        "noOverflow": true
+      },
+      {
+        "route": "/teachers",
+        "scroll": 360,
+        "client": 360,
+        "noOverflow": true
+      },
+      {
+        "route": "/classes",
+        "scroll": 360,
+        "client": 360,
+        "noOverflow": true
+      },
+      {
+        "route": "/permissions",
+        "scroll": 360,
+        "client": 360,
+        "noOverflow": true
+      },
+      {
+        "route": "/academic-years",
+        "scroll": 360,
+        "client": 360,
+        "noOverflow": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "role": "TEACHER",
+    "desktop": {
+      "theme": "dark",
+      "body": "rgb(18, 18, 18)",
+      "main": "rgb(18, 18, 18)",
+      "topbar": "rgb(28, 28, 28)",
+      "topbarHeight": 64,
+      "topbarRadius": "0px"
+    },
+    "mobile": [
+      {
+        "route": "/dashboard",
+        "scroll": 360,
+        "client": 360,
+        "noOverflow": true
+      },
+      {
+        "route": "/take-attendance",
+        "scroll": 360,
+        "client": 360,
+        "noOverflow": true
+      },
+      {
+        "route": "/timetable",
+        "scroll": 360,
+        "client": 360,
+        "noOverflow": true
+      },
+      {
+        "route": "/teacher/assignments",
+        "scroll": 360,
+        "client": 360,
+        "noOverflow": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "role": "PARENT",
+    "desktop": {
+      "theme": "dark",
+      "body": "rgb(18, 18, 18)",
+      "main": "rgb(18, 18, 18)",
+      "topbar": "rgb(28, 28, 28)",
+      "topbarHeight": 64,
+      "topbarRadius": "0px"
+    },
+    "mobile": [
+      {
+        "route": "/parent-portal",
+        "scroll": 360,
+        "client": 360,
+        "noOverflow": true
+      },
+      {
+        "route": "/parent-communication",
+        "scroll": 360,
+        "client": 360,
+        "noOverflow": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "role": "STUDENT",
+    "desktop": {
+      "theme": "dark",
+      "body": "rgb(18, 18, 18)",
+      "main": "rgb(18, 18, 18)",
+      "topbar": "rgb(28, 28, 28)",
+      "topbarHeight": 64,
+      "topbarRadius": "0px"
+    },
+    "mobile": [
+      {
+        "route": "/student/dashboard",
+        "scroll": 360,
+        "client": 360,
+        "noOverflow": true
+      },
+      {
+        "route": "/student/attendance",
+        "scroll": 360,
+        "client": 360,
+        "noOverflow": true
+      },
+      {
+        "route": "/student/timetable",
+        "scroll": 360,
+        "client": 360,
+        "noOverflow": true
+      },
+      {
+        "route": "/student/assignments",
+        "scroll": 360,
+        "client": 360,
+        "noOverflow": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "role": "SUPER_ADMIN",
+    "desktop": {
+      "theme": "dark",
+      "body": "rgb(18, 18, 18)",
+      "main": "rgb(18, 18, 18)",
+      "topbar": "rgb(28, 28, 28)",
+      "topbarHeight": 64,
+      "topbarRadius": "0px"
+    },
+    "mobile": [
+      {
+        "route": "/super-admin",
+        "scroll": 360,
+        "client": 360,
+        "noOverflow": true
+      }
+    ],
+    "errors": []
+  }
+]

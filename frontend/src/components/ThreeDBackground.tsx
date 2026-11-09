@@ -109,20 +109,20 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
 
     // Highly vibrant, luminous color palettes
     const darkPalette = [
-      'rgba(96, 165, 250, 0.95)',   // Radiant Sapphire
-      'rgba(56, 189, 248, 0.95)',   // Bright Sky Cyan
-      'rgba(52, 211, 153, 0.92)',   // Vivid Emerald
-      'rgba(192, 132, 252, 0.92)',  // Bright Purple
-      'rgba(251, 146, 60, 0.95)',   // Glowing Coral
-      'rgba(250, 204, 21, 0.95)'    // Golden Amber
+      'rgba(239, 90, 133, 0.95)',   // Radiant Sapphire
+      'rgba(127, 140, 205, 0.95)',   // Bright Sky Cyan
+      'rgba(51, 153, 136, 0.92)',   // Vivid Emerald
+      'rgba(127, 140, 205, 0.92)',  // Bright Purple
+      'rgba(237, 179, 95, 0.95)',   // Glowing Coral
+      'rgba(237, 179, 95, 0.95)'    // Golden Amber
     ];
 
     const lightPalette = [
-      'rgba(37, 99, 235, 0.85)',
-      'rgba(2, 132, 199, 0.85)',
-      'rgba(5, 150, 105, 0.85)',
-      'rgba(147, 51, 234, 0.85)',
-      'rgba(234, 88, 12, 0.85)'
+      'rgba(225, 29, 85, 0.85)',
+      'rgba(92, 107, 192, 0.85)',
+      'rgba(3, 128, 106, 0.85)',
+      'rgba(92, 107, 192, 0.85)',
+      'rgba(184, 120, 28, 0.85)'
     ];
 
     const currentPalette = dark ? darkPalette : lightPalette;
@@ -230,8 +230,8 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
             ctx.moveTo(a.projX, a.projY);
             ctx.lineTo(b.projX, b.projY);
             ctx.strokeStyle = dark
-              ? `rgba(165, 180, 252, ${alpha})`
-              : `rgba(37, 99, 235, ${alpha * 0.9})`;
+              ? `rgba(248, 150, 176, ${alpha})`
+              : `rgba(225, 29, 85, ${alpha * 0.9})`;
             ctx.lineWidth = Math.max(0.7, 1.6 * a.scale);
             ctx.stroke();
           }

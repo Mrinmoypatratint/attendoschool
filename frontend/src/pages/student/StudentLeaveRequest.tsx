@@ -73,7 +73,7 @@ export function StudentLeaveRequest() {
   };
 
   return (
-    <div className="student-subpage max-w-6xl mx-auto p-4 sm:p-6">
+    <div className="student-subpage">
       <div className="student-subpage-header flex justify-between items-center mb-6 flex-wrap gap-4">
         <div className="student-subpage-title-row">
           <Link to="/student/dashboard" className="student-back-link inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline mb-2">
@@ -101,7 +101,7 @@ export function StudentLeaveRequest() {
         </div>
       )}
 
-      <div className="student-card bg-white dark:bg-[#131b2e] rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm">
+      <div className="student-card bg-white dark:bg-[#1c1c1c] rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm">
         <div className="student-card-header flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100 dark:border-slate-800/80">
           <div className="student-card-title-wrap flex items-center gap-2.5 text-blue-600 dark:text-blue-400">
             <FileText size={18} />

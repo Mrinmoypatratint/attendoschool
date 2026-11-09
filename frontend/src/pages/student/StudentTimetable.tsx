@@ -51,7 +51,7 @@ export function StudentTimetable() {
   const dayEntries = entries.filter((e) => Number(e.day_of_week) === selectedDay);
 
   return (
-    <div className="student-subpage max-w-6xl mx-auto p-4 sm:p-6">
+    <div className="student-subpage">
       <div className="student-subpage-header mb-6">
         <div className="student-subpage-title-row">
           <Link to="/student/dashboard" className="student-back-link inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline mb-2">
@@ -81,24 +81,63 @@ export function StudentTimetable() {
       )}
 
       {/* Day Tabs */}
-      <div className="student-tab-bar flex items-center gap-1 border-b border-slate-200 dark:border-slate-800 pb-px overflow-x-auto">
-        {days.map((d) => (
-          <button
-            key={d.num}
-            type="button"
-            className={`student-tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-              selectedDay === d.num
-                ? 'active border-b-blue-600 text-blue-600 dark:text-blue-400 font-bold'
-                : 'border-b-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-            onClick={() => setSelectedDay(d.num)}
-          >
-            {d.name}
-          </button>
-        ))}
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          borderBottom: "2px solid var(--border, var(--border))",
+          marginBottom: 16,
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
+        }}
+        className="ui-timetable-days no-scrollbar pb-px [&::-webkit-scrollbar]:hidden"
+      >
+        {days.map((d) => {
+          const isSelected = selectedDay === d.num;
+          const dayCount = entries.filter((e) => Number(e.day_of_week) === d.num).length;
+          return (
+            <button
+              key={d.num}
+              type="button"
+              onClick={() => setSelectedDay(d.num)}
+              style={{
+                padding: '12px 20px',
+                background: 'none',
+                border: 'none',
+                borderBottom: isSelected ? "3px solid var(--primary)" : '3px solid transparent',
+                color: isSelected ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+                fontWeight: isSelected ? 700 : 500,
+                fontSize: 15,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: -2,
+                transition: 'all 0.15s ease',
+                whiteSpace: 'nowrap'
+              }}
+              className="hover:text-slate-900 dark:hover:text-slate-100"
+            >
+              <span>{d.name}</span>
+              <span
+                style={{
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  background: isSelected ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+                  color: isSelected ? "var(--primary)" : "var(--muted-foreground)",
+                  fontSize: 12,
+                  fontWeight: 700
+                }}
+              >
+                {dayCount}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      <div className="student-card bg-white dark:bg-[#131b2e] rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm mt-5">
+      <div className="student-card bg-white dark:bg-[#1c1c1c] rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm mt-5">
         <div className="student-card-header flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100 dark:border-slate-800/80">
           <div className="student-card-title-wrap flex items-center gap-2.5 text-blue-600 dark:text-blue-400">
             <Calendar size={18} />
@@ -115,7 +154,7 @@ export function StudentTimetable() {
             <p>No lectures scheduled for this day.</p>
           </div>
         ) : (
-          <div className="student-table-wrap overflow-x-auto">
+          <div className="student-table-wrap ui-period-grid overflow-x-auto">
             <table className="student-table w-full border-collapse text-left text-sm">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800">

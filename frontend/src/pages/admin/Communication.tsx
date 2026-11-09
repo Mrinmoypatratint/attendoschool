@@ -1006,14 +1006,14 @@ export default function Communication() {
     <div className="as-communication-page w-full max-w-full m-0 p-0 box-border" style={{ width: '100%', maxWidth: '100%', margin: 0, padding: 0, marginTop: -8, boxSizing: 'border-box' }}>
       <div className="as-communication-header-row flex flex-wrap items-center justify-between gap-3 mb-4" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 m-0" style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Announcement</h1>
-          <p className="muted text-xs md:text-sm text-slate-500 m-0 mt-1" style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 m-0" style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "var(--text, var(--foreground))" }}>Announcement</h1>
+          <p className="muted text-xs md:text-sm text-slate-500 m-0 mt-1" style={{ margin: '4px 0 0', fontSize: 13, color: "var(--text-muted, var(--muted-foreground))" }}>
             Multi-channel institutional announcements, role-based audience broadcasts, and threaded replies.
           </p>
         </div>
 
         {/* Tab switch */}
-        <div className="flex flex-wrap gap-2 bg-slate-100 p-1 rounded-lg" style={{ display: 'flex', gap: 8, backgroundColor: 'var(--card-subtle, #f1f5f9)', padding: 4, borderRadius: 8, flexWrap: 'wrap' }}>
+        <div className="flex flex-wrap gap-2 bg-slate-100 p-1 rounded-lg" style={{ display: 'flex', gap: 8, backgroundColor: "var(--card-subtle, var(--secondary))", padding: 4, borderRadius: 4, flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={() => setActiveTab('announcements')}
@@ -1022,12 +1022,12 @@ export default function Communication() {
               padding: '6px 14px',
               fontSize: 13,
               fontWeight: 600,
-              borderRadius: 6,
+              borderRadius: 4,
               border: 'none',
               cursor: 'pointer',
-              backgroundColor: activeTab === 'announcements' ? 'var(--bg-card, #ffffff)' : 'transparent',
-              color: activeTab === 'announcements' ? 'var(--text, #0f172a)' : 'var(--text-muted, #64748b)',
-              boxShadow: activeTab === 'announcements' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+              backgroundColor: activeTab === 'announcements' ? "var(--bg-card, var(--card))" : 'transparent',
+              color: activeTab === 'announcements' ? "var(--text, var(--foreground))" : "var(--text-muted, var(--muted-foreground))",
+              boxShadow: activeTab === 'announcements' ? "none" : 'none'
             }}
           >
             Announcements
@@ -1043,12 +1043,12 @@ export default function Communication() {
               padding: '6px 14px',
               fontSize: 13,
               fontWeight: 600,
-              borderRadius: 6,
+              borderRadius: 4,
               border: 'none',
               cursor: 'pointer',
-              backgroundColor: activeTab === 'all-replies' ? 'var(--bg-card, #ffffff)' : 'transparent',
-              color: activeTab === 'all-replies' ? 'var(--text, #0f172a)' : 'var(--text-muted, #64748b)',
-              boxShadow: activeTab === 'all-replies' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+              backgroundColor: activeTab === 'all-replies' ? "var(--bg-card, var(--card))" : 'transparent',
+              color: activeTab === 'all-replies' ? "var(--text, var(--foreground))" : "var(--text-muted, var(--muted-foreground))",
+              boxShadow: activeTab === 'all-replies' ? "none" : 'none'
             }}
           >
             Threaded Replies ({allReplies.length})
@@ -1060,10 +1060,10 @@ export default function Communication() {
         <div className="p-2.5 px-3.5 mb-4 rounded-md bg-blue-50 border border-blue-200 text-blue-800 text-xs md:text-sm flex justify-between items-center w-full box-border" style={{
           padding: '10px 14px',
           marginBottom: 16,
-          backgroundColor: '#eff6ff',
-          border: '1px solid #bfdbfe',
-          borderRadius: 6,
-          color: '#1e40af',
+          backgroundColor: "var(--card)",
+          border: "1px solid var(--border)",
+          borderRadius: 4,
+          color: "var(--primary)",
           fontSize: 13,
           display: 'flex',
           justifyContent: 'space-between',
@@ -1072,7 +1072,7 @@ export default function Communication() {
           width: '100%'
         }}>
           <span>{msg}</span>
-          <button onClick={() => setMsg('')} className="bg-transparent border-0 cursor-pointer text-blue-800 font-bold" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1e40af' }}>✕</button>
+          <button onClick={() => setMsg('')} className="bg-transparent border-0 cursor-pointer text-blue-800 font-bold" style={{ background: 'none', border: 'none', cursor: 'pointer', color: "var(--primary)" }}>✕</button>
         </div>
       )}
 
@@ -1080,19 +1080,19 @@ export default function Communication() {
         <>
           {/* New Announcement Form */}
           <div className="form-card as-announcement-card rounded-lg border border-slate-200 bg-white p-5 mb-6 shadow-sm w-full max-w-full box-border" style={{
-            backgroundColor: 'var(--bg-card, #ffffff)',
-            border: '1px solid var(--border, #e2e8f0)',
-            borderRadius: 8,
+            backgroundColor: "var(--bg-card, var(--card))",
+            border: "1px solid var(--border, var(--border))",
+            borderRadius: 4,
             padding: 20,
             marginBottom: 24,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+            boxShadow: 'none',
             width: '100%',
             maxWidth: '100%',
             minWidth: 0,
             boxSizing: 'border-box'
           }}>
-            <h3 className="text-base font-bold text-slate-900 m-0 mb-3.5 flex items-center gap-2" style={{ margin: '0 0 14px', fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <MessageSquare size={18} color="#2563eb" /> New Broadcast Announcement
+            <h3 className="text-base font-bold text-slate-900 m-0 mb-3.5 flex items-center gap-2" style={{ margin: '0 0 14px', fontSize: 16, fontWeight: 700, color: "var(--text, var(--foreground))", display: 'flex', alignItems: 'center', gap: 8 }}>
+              <MessageSquare size={18} color="#e11d55" /> New Broadcast Announcement
             </h3>
 
             <div style={{ display: 'grid', gap: 12, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
@@ -1105,10 +1105,10 @@ export default function Communication() {
                   maxWidth: '100%',
                   minWidth: 0,
                   padding: '10px 12px',
-                  borderRadius: 6,
-                  border: '1px solid var(--border, #cbd5e1)',
-                  backgroundColor: 'var(--bg, #ffffff)',
-                  color: 'var(--text, #0f172a)',
+                  borderRadius: 4,
+                  border: "1px solid var(--border, var(--border))",
+                  backgroundColor: "var(--bg, var(--card))",
+                  color: "var(--text, var(--foreground))",
                   fontSize: 14,
                   boxSizing: 'border-box'
                 }}
@@ -1125,10 +1125,10 @@ export default function Communication() {
                   maxWidth: '100%',
                   minWidth: 0,
                   padding: '10px 12px',
-                  borderRadius: 6,
-                  border: '1px solid var(--border, #cbd5e1)',
-                  backgroundColor: 'var(--bg, #ffffff)',
-                  color: 'var(--text, #0f172a)',
+                  borderRadius: 4,
+                  border: "1px solid var(--border, var(--border))",
+                  backgroundColor: "var(--bg, var(--card))",
+                  color: "var(--text, var(--foreground))",
                   fontSize: 13.5,
                   boxSizing: 'border-box',
                   fontFamily: 'inherit'
@@ -1144,10 +1144,10 @@ export default function Communication() {
                       alignItems: 'center',
                       gap: 6,
                       padding: '7px 14px',
-                      borderRadius: 6,
-                      border: '1px dashed var(--border, #cbd5e1)',
-                      backgroundColor: 'var(--card-subtle, #f8fafc)',
-                      color: 'var(--text, #334155)',
+                      borderRadius: 4,
+                      border: "1px dashed var(--border, var(--border))",
+                      backgroundColor: "var(--card-subtle, var(--card))",
+                      color: "var(--text, var(--muted-foreground))",
                       fontSize: 13,
                       fontWeight: 500,
                       cursor: 'pointer',
@@ -1155,7 +1155,7 @@ export default function Communication() {
                     }}
                     title="Attach a file to this announcement"
                   >
-                    <Paperclip size={15} color="#2563eb" />
+                    <Paperclip size={15} color="#e11d55" />
                     <span>Attach Document / File</span>
                     <input
                       type="file"
@@ -1171,19 +1171,19 @@ export default function Communication() {
                       alignItems: 'center',
                       gap: 8,
                       padding: '6px 12px',
-                      borderRadius: 6,
-                      border: '1px solid #bfdbfe',
-                      backgroundColor: '#eff6ff',
-                      color: '#1e40af',
+                      borderRadius: 4,
+                      border: "1px solid var(--border)",
+                      backgroundColor: "var(--card)",
+                      color: "var(--primary)",
                       fontSize: 12.5,
                       maxWidth: '100%',
                       boxSizing: 'border-box'
                     }}>
-                      <Paperclip size={14} color="#2563eb" />
+                      <Paperclip size={14} color="#e11d55" />
                       <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 280 }}>
                         {attachment.name}
                       </span>
-                      <span style={{ fontSize: 11, color: '#2563eb', backgroundColor: '#dbeafe', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
+                      <span style={{ fontSize: 11, color: "var(--primary)", backgroundColor: "var(--card)", padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
                         {(attachment.size / 1024).toFixed(1)} KB
                       </span>
                       <button
@@ -1194,7 +1194,7 @@ export default function Communication() {
                           background: 'none',
                           border: 'none',
                           cursor: 'pointer',
-                          color: '#ef4444',
+                          color: "var(--destructive)",
                           padding: 2,
                           display: 'inline-flex',
                           alignItems: 'center'
@@ -1204,14 +1204,14 @@ export default function Communication() {
                       </button>
                     </div>
                   ) : (
-                    <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                    <span style={{ fontSize: 12, color: "var(--text-muted, var(--muted-foreground))" }}>
                       Supports PDF, Word, Excel, images, or documents (max 10MB)
                     </span>
                   )}
                 </div>
 
                 {attachmentError && (
-                  <div style={{ fontSize: 12, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{ fontSize: 12, color: "var(--destructive)", display: 'flex', alignItems: 'center', gap: 4 }}>
                     <AlertTriangle size={13} /> {attachmentError}
                   </div>
                 )}
@@ -1220,7 +1220,7 @@ export default function Communication() {
               <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
                 {/* Extended Audience Selector */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 140px', minWidth: 0, maxWidth: '100%' }}>
-                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted, #64748b)', display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>AUDIENCE TYPE</label>
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))", display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>AUDIENCE TYPE</label>
                   <select
                     value={form.audienceType}
                     onChange={handleAudienceChange}
@@ -1228,10 +1228,10 @@ export default function Communication() {
                       width: '100%',
                       minWidth: 0,
                       padding: '8px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border, #cbd5e1)',
-                      backgroundColor: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #0f172a)',
+                      borderRadius: 4,
+                      border: "1px solid var(--border, var(--border))",
+                      backgroundColor: "var(--bg, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       fontSize: 13,
                       boxSizing: 'border-box'
                     }}
@@ -1253,10 +1253,10 @@ export default function Communication() {
                     alignItems: 'center',
                     gap: 3,
                     lineHeight: 1,
-                    color: (form.audienceType === 'CLASS' || form.audienceType === 'SECTION') ? '#3b82f6' : 'var(--text-muted, #64748b)'
+                    color: (form.audienceType === 'CLASS' || form.audienceType === 'SECTION') ? "var(--primary)" : "var(--text-muted, var(--muted-foreground))"
                   }}>
                     <span>CLASS</span>
-                    {(form.audienceType === 'CLASS' || form.audienceType === 'SECTION') && <span style={{ color: '#ef4444', fontWeight: 700 }}>*</span>}
+                    {(form.audienceType === 'CLASS' || form.audienceType === 'SECTION') && <span style={{ color: "var(--destructive)", fontWeight: 700 }}>*</span>}
                   </label>
                   <select
                     value={form.classId}
@@ -1265,12 +1265,12 @@ export default function Communication() {
                       width: '100%',
                       minWidth: 0,
                       padding: '8px 12px',
-                      borderRadius: 6,
-                      border: (form.audienceType === 'CLASS' || form.audienceType === 'SECTION') && !form.classId ? '1px solid #f87171' : '1px solid var(--border, #cbd5e1)',
+                      borderRadius: 4,
+                      border: (form.audienceType === 'CLASS' || form.audienceType === 'SECTION') && !form.classId ? "1px solid var(--border)" : "1px solid var(--border, var(--border))",
                       fontSize: 13,
                       boxSizing: 'border-box',
-                      backgroundColor: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #0f172a)'
+                      backgroundColor: "var(--bg, var(--card))",
+                      color: "var(--text, var(--foreground))"
                     }}
                   >
                     <option value="">{form.audienceType === 'CLASS' || form.audienceType === 'SECTION' ? 'Select Class (L-KG to 12)' : 'All Classes'}</option>
@@ -1290,10 +1290,10 @@ export default function Communication() {
                     alignItems: 'center',
                     gap: 3,
                     lineHeight: 1,
-                    color: form.audienceType === 'SECTION' ? '#3b82f6' : 'var(--text-muted, #64748b)'
+                    color: form.audienceType === 'SECTION' ? "var(--primary)" : "var(--text-muted, var(--muted-foreground))"
                   }}>
                     <span>SECTION</span>
-                    {form.audienceType === 'SECTION' && <span style={{ color: '#ef4444', fontWeight: 700 }}>*</span>}
+                    {form.audienceType === 'SECTION' && <span style={{ color: "var(--destructive)", fontWeight: 700 }}>*</span>}
                   </label>
                   <select
                     value={selectedSectionLetter}
@@ -1302,12 +1302,12 @@ export default function Communication() {
                       width: '100%',
                       minWidth: 0,
                       padding: '8px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border, #cbd5e1)',
+                      borderRadius: 4,
+                      border: "1px solid var(--border, var(--border))",
                       fontSize: 13,
                       boxSizing: 'border-box',
-                      backgroundColor: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #0f172a)'
+                      backgroundColor: "var(--bg, var(--card))",
+                      color: "var(--text, var(--foreground))"
                     }}
                   >
                     <option value="">All Sections</option>
@@ -1319,7 +1319,7 @@ export default function Communication() {
 
                 {/* Priority Selector with Emergency Multi-channel Callout */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 130px', minWidth: 0, maxWidth: '100%' }}>
-                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted, #64748b)', display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>PRIORITY</label>
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))", display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>PRIORITY</label>
                   <select
                     value={form.priority}
                     onChange={e => setForm({ ...form, priority: e.target.value })}
@@ -1327,12 +1327,12 @@ export default function Communication() {
                       width: '100%',
                       minWidth: 0,
                       padding: '8px 12px',
-                      borderRadius: 6,
-                      border: form.priority === 'EMERGENCY' ? '1px solid #ef4444' : '1px solid var(--border, #cbd5e1)',
+                      borderRadius: 4,
+                      border: form.priority === 'EMERGENCY' ? "1px solid var(--border)" : "1px solid var(--border, var(--border))",
                       fontSize: 13,
                       boxSizing: 'border-box',
-                      backgroundColor: form.priority === 'EMERGENCY' ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg, #ffffff)',
-                      color: form.priority === 'EMERGENCY' ? '#f87171' : 'var(--text, #0f172a)',
+                      backgroundColor: form.priority === 'EMERGENCY' ? "var(--secondary)" : "var(--bg, var(--card))",
+                      color: form.priority === 'EMERGENCY' ? "var(--destructive)" : "var(--text, var(--foreground))",
                       fontWeight: form.priority === 'EMERGENCY' ? 700 : 500
                     }}
                   >
@@ -1351,10 +1351,10 @@ export default function Communication() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: 6,
-                      backgroundColor: '#2563eb',
-                      color: '#ffffff',
+                      backgroundColor: "var(--primary)",
+                      color: "var(--background)",
                       padding: '9px 18px',
-                      borderRadius: 6,
+                      borderRadius: 4,
                       border: 'none',
                       fontSize: 13.5,
                       fontWeight: 600,
@@ -1371,10 +1371,10 @@ export default function Communication() {
               {/* Informative Real-time Target Audience Indicator */}
               <div style={{
                 padding: '10px 14px',
-                borderRadius: 6,
-                backgroundColor: form.audienceType === 'SECTION' ? 'rgba(147, 51, 234, 0.12)' : form.audienceType === 'CLASS' ? 'rgba(59, 130, 246, 0.12)' : 'var(--card-subtle, #f8fafc)',
-                border: form.audienceType === 'SECTION' ? '1px solid rgba(147, 51, 234, 0.3)' : form.audienceType === 'CLASS' ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid var(--border, #e2e8f0)',
-                color: form.audienceType === 'SECTION' ? '#c084fc' : form.audienceType === 'CLASS' ? '#60a5fa' : 'var(--text, #334155)',
+                borderRadius: 4,
+                backgroundColor: form.audienceType === 'SECTION' ? "var(--secondary)" : form.audienceType === 'CLASS' ? "var(--accent)" : "var(--card-subtle, var(--card))",
+                border: form.audienceType === 'SECTION' ? "1px solid var(--border)" : form.audienceType === 'CLASS' ? "1px solid var(--border)" : "1px solid var(--border, var(--border))",
+                color: form.audienceType === 'SECTION' ? "var(--info)" : form.audienceType === 'CLASS' ? "var(--primary)" : "var(--text, var(--muted-foreground))",
                 fontSize: 12.5,
                 display: 'flex',
                 alignItems: 'center',
@@ -1400,7 +1400,7 @@ export default function Communication() {
                     </span>
                   )
                 ) : form.audienceType === 'CLASS' ? (
-                  <span style={{ color: '#d97706' }}>
+                  <span style={{ color: "var(--warning)" }}>
                     Please select a target <b>Class (L-KG to Class 12)</b>.
                   </span>
                 ) : form.audienceType === 'TEACHER' ? (
@@ -1413,7 +1413,7 @@ export default function Communication() {
               </div>
 
               {form.priority === 'EMERGENCY' && (
-                <div style={{ fontSize: 12, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                <div style={{ fontSize: 12, color: "var(--destructive)", display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                   <AlertTriangle size={14} /> Emergency announcements automatically dispatch priority emails to all target audience accounts upon publication.
                 </div>
               )}
@@ -1422,11 +1422,11 @@ export default function Communication() {
 
           {/* Announcements Filter Bar */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text, #1e293b)' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
               Published & Draft Notices ({items.length})
             </div>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 12, color: "var(--text-muted, var(--muted-foreground))", display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Filter size={13} /> Filter:
               </span>
               {(['ALL', 'SCHOOL', 'TEACHER', 'STUDENT'] as const).map(f => (
@@ -1439,8 +1439,8 @@ export default function Communication() {
                     borderRadius: 4,
                     fontSize: 11.5,
                     fontWeight: tableFilter === f ? 700 : 500,
-                    backgroundColor: tableFilter === f ? 'var(--sidebar-accent, #2563eb)' : 'var(--card-subtle, #f1f5f9)',
-                    color: tableFilter === f ? '#ffffff' : 'var(--text-secondary, #475569)',
+                    backgroundColor: tableFilter === f ? "var(--sidebar-accent, var(--primary))" : "var(--card-subtle, var(--secondary))",
+                    color: tableFilter === f ? "var(--background)" : "var(--text-secondary, var(--muted-foreground))",
                     border: '1px solid var(--border, transparent)',
                     cursor: 'pointer'
                   }}
@@ -1452,19 +1452,19 @@ export default function Communication() {
           </div>
 
           {/* Announcements Table */}
-          <div className="table-wrap" style={{ border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, overflow: 'hidden', overflowX: 'hidden', backgroundColor: 'var(--bg-card, #ffffff)', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+          <div className="table-wrap" style={{ border: "1px solid var(--border, var(--border))", borderRadius: 4, overflow: 'hidden', overflowX: 'hidden', backgroundColor: "var(--bg-card, var(--card))", width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: 0 }}>
               <thead>
-                <tr style={{ backgroundColor: 'var(--table-header, var(--card-subtle))', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
-                  <th style={{ width: '25%', padding: '10px 12px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>TITLE</th>
-                  <th style={{ width: '12%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>AUDIENCE</th>
-                  <th style={{ width: '9%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>PRIORITY</th>
-                  <th style={{ width: '9%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>STATUS</th>
-                  <th style={{ width: '14%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>PUBLISHED AT</th>
-                  <th style={{ width: '7%', padding: '10px 4px', textAlign: 'center', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>RECIPIENTS</th>
-                  <th style={{ width: '6%', padding: '10px 4px', textAlign: 'center', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>READ</th>
-                  <th style={{ width: '9%', padding: '10px 4px', textAlign: 'center', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>REPLIES</th>
-                  <th style={{ width: '9%', padding: '10px 12px', textAlign: 'right', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>ACTION</th>
+                <tr style={{ backgroundColor: 'var(--table-header, var(--card-subtle))', borderBottom: "1px solid var(--border, var(--border))" }}>
+                  <th style={{ width: '25%', padding: '10px 12px', textAlign: 'left', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600, boxSizing: 'border-box' }}>TITLE</th>
+                  <th style={{ width: '12%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600, boxSizing: 'border-box' }}>AUDIENCE</th>
+                  <th style={{ width: '9%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600, boxSizing: 'border-box' }}>PRIORITY</th>
+                  <th style={{ width: '9%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600, boxSizing: 'border-box' }}>STATUS</th>
+                  <th style={{ width: '14%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600, boxSizing: 'border-box' }}>PUBLISHED AT</th>
+                  <th style={{ width: '7%', padding: '10px 4px', textAlign: 'center', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600, boxSizing: 'border-box' }}>RECIPIENTS</th>
+                  <th style={{ width: '6%', padding: '10px 4px', textAlign: 'center', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600, boxSizing: 'border-box' }}>READ</th>
+                  <th style={{ width: '9%', padding: '10px 4px', textAlign: 'center', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600, boxSizing: 'border-box' }}>REPLIES</th>
+                  <th style={{ width: '9%', padding: '10px 12px', textAlign: 'right', fontSize: 11.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600, boxSizing: 'border-box' }}>ACTION</th>
                 </tr>
               </thead>
               <tbody>
@@ -1497,7 +1497,7 @@ export default function Communication() {
                     }
 
                     return (
-                      <tr key={x.id} style={{ borderBottom: '1px solid var(--border, #f1f5f9)' }}>
+                      <tr key={x.id} style={{ borderBottom: "1px solid var(--border, var(--border))" }}>
                         <td
                           style={{ padding: '10px 12px', verticalAlign: 'middle', overflow: 'hidden', textAlign: 'left' }}
                         >
@@ -1530,7 +1530,7 @@ export default function Communication() {
                                 style={{
                                   fontWeight: 600,
                                   fontSize: 13,
-                                  color: 'var(--text, #0f172a)',
+                                  color: "var(--text, var(--foreground))",
                                   whiteSpace: 'nowrap',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
@@ -1543,7 +1543,7 @@ export default function Communication() {
                                 style={{
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  color: '#3b82f6',
+                                  color: "var(--primary)",
                                   opacity: 0.85,
                                   flexShrink: 0
                                 }}
@@ -1563,8 +1563,8 @@ export default function Communication() {
                                   padding: '1px 5px',
                                   borderRadius: 4,
                                   fontSize: 11,
-                                  backgroundColor: 'rgba(37, 99, 235, 0.08)',
-                                  color: '#2563eb',
+                                  backgroundColor: "var(--accent)",
+                                  color: "var(--primary)",
                                   fontWeight: 500,
                                   flexShrink: 0
                                 }}
@@ -1586,18 +1586,18 @@ export default function Communication() {
                             fontSize: 11,
                             fontWeight: 600,
                             backgroundColor:
-                              x.audience_type === 'TEACHER' ? '#f0fdf4' :
-                              x.audience_type === 'STUDENT' ? '#eff6ff' :
-                              x.audience_type === 'PARENTS' ? '#fef3c7' :
-                              x.audience_type === 'SECTION' ? '#f5f3ff' :
-                              x.audience_type === 'CLASS' ? '#f0f9ff' : 'var(--card-subtle, #f1f5f9)',
+                              x.audience_type === 'TEACHER' ? "var(--secondary)" :
+                              x.audience_type === 'STUDENT' ? "var(--card)" :
+                              x.audience_type === 'PARENTS' ? "var(--secondary)" :
+                              x.audience_type === 'SECTION' ? "var(--card)" :
+                              x.audience_type === 'CLASS' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
                             color:
-                              x.audience_type === 'TEACHER' ? '#166534' :
-                              x.audience_type === 'STUDENT' ? '#1e40af' :
-                              x.audience_type === 'PARENTS' ? '#92400e' :
-                              x.audience_type === 'SECTION' ? '#6b21a8' :
-                              x.audience_type === 'CLASS' ? '#0369a1' : 'var(--text-secondary, #334155)',
-                            border: x.audience_type === 'SECTION' ? '1px solid #ddd6fe' : x.audience_type === 'CLASS' ? '1px solid #bae6fd' : 'none'
+                              x.audience_type === 'TEACHER' ? "var(--success)" :
+                              x.audience_type === 'STUDENT' ? "var(--primary)" :
+                              x.audience_type === 'PARENTS' ? "var(--warning)" :
+                              x.audience_type === 'SECTION' ? "var(--info)" :
+                              x.audience_type === 'CLASS' ? "var(--info)" : "var(--text-secondary, var(--muted-foreground))",
+                            border: x.audience_type === 'SECTION' ? "1px solid var(--border)" : x.audience_type === 'CLASS' ? "1px solid var(--border)" : 'none'
                           }} title={audienceBadgeText}>
                             {audienceBadgeText}
                           </span>
@@ -1611,8 +1611,8 @@ export default function Communication() {
                             borderRadius: 4,
                             fontSize: 11,
                             fontWeight: 700,
-                            backgroundColor: x.priority === 'EMERGENCY' ? '#fee2e2' : x.priority === 'HIGH' ? '#ffedd5' : 'var(--card-subtle, #f1f5f9)',
-                            color: x.priority === 'EMERGENCY' ? '#b91c1c' : x.priority === 'HIGH' ? '#c2410c' : 'var(--text-secondary, #475569)'
+                            backgroundColor: x.priority === 'EMERGENCY' ? "var(--secondary)" : x.priority === 'HIGH' ? "var(--secondary)" : "var(--card-subtle, var(--secondary))",
+                            color: x.priority === 'EMERGENCY' ? "var(--destructive)" : x.priority === 'HIGH' ? "var(--warning)" : "var(--text-secondary, var(--muted-foreground))"
                           }}>
                             {x.priority === 'EMERGENCY' && <AlertTriangle size={11} />}
                             {x.priority}
@@ -1625,8 +1625,8 @@ export default function Communication() {
                             borderRadius: 4,
                             fontSize: 11,
                             fontWeight: 600,
-                            backgroundColor: x.status === 'PUBLISHED' ? '#ecfdf5' : 'var(--card-subtle, #f8fafc)',
-                            color: x.status === 'PUBLISHED' ? '#047857' : 'var(--text-muted, #64748b)'
+                            backgroundColor: x.status === 'PUBLISHED' ? "var(--secondary)" : "var(--card-subtle, var(--card))",
+                            color: x.status === 'PUBLISHED' ? "var(--success)" : "var(--text-muted, var(--muted-foreground))"
                           }}>
                             {x.status}
                           </span>
@@ -1638,27 +1638,27 @@ export default function Communication() {
                             if (isPub && pubStamp) {
                               return (
                                 <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
-                                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text, #1e293b)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    <Clock size={11} style={{ color: '#10b981' }} />
+                                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text, var(--foreground))", display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <Clock size={11} style={{ color: "var(--success)" }} />
                                     {formatPublishDate(pubStamp)}
                                   </span>
-                                  <span style={{ fontSize: 11, color: 'var(--text-muted, #64748b)', paddingLeft: 15 }}>
+                                  <span style={{ fontSize: 11, color: "var(--text-muted, var(--muted-foreground))", paddingLeft: 15 }}>
                                     {formatPublishTime(pubStamp)}
                                   </span>
                                 </div>
                               );
                             }
                             return (
-                              <span style={{ fontSize: 11.5, color: 'var(--text-muted, #94a3b8)', fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ fontSize: 11.5, color: "var(--text-muted, var(--muted-foreground))", fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                                 <Clock size={11} style={{ opacity: 0.4 }} /> —
                               </span>
                             );
                           })()}
                         </td>
-                        <td style={{ padding: '10px 4px', textAlign: 'center', verticalAlign: 'middle', fontSize: 12.5, color: 'var(--text-secondary, #334155)', fontWeight: 500 }}>
+                        <td style={{ padding: '10px 4px', textAlign: 'center', verticalAlign: 'middle', fontSize: 12.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 500 }}>
                           {x.recipient_count || 0}
                         </td>
-                        <td style={{ padding: '10px 4px', textAlign: 'center', verticalAlign: 'middle', fontSize: 12.5, color: 'var(--text-secondary, #334155)', fontWeight: 500 }}>
+                        <td style={{ padding: '10px 4px', textAlign: 'center', verticalAlign: 'middle', fontSize: 12.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 500 }}>
                           {x.read_count || 0}
                         </td>
                         <td style={{ padding: '10px 4px', textAlign: 'center', verticalAlign: 'middle' }}>
@@ -1669,12 +1669,12 @@ export default function Communication() {
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: 4,
-                              backgroundColor: 'var(--card-subtle, #f8fafc)',
-                              border: '1px solid var(--border, #cbd5e1)',
+                              backgroundColor: "var(--card-subtle, var(--card))",
+                              border: "1px solid var(--border, var(--border))",
                               padding: '3px 7px',
-                              borderRadius: 5,
+                              borderRadius: 4,
                               fontSize: 11,
-                              color: '#3b82f6',
+                              color: "var(--primary)",
                               fontWeight: 600,
                               cursor: 'pointer',
                               whiteSpace: 'nowrap'
@@ -1695,8 +1695,8 @@ export default function Communication() {
                                   alignItems: 'center',
                                   gap: 3,
                                   padding: '4px 8px',
-                                  backgroundColor: '#2563eb',
-                                  color: '#ffffff',
+                                  backgroundColor: "var(--primary)",
+                                  color: "var(--background)",
                                   borderRadius: 4,
                                   border: 'none',
                                   fontSize: 11,
@@ -1717,7 +1717,7 @@ export default function Communication() {
                                 border: 'none',
                                 padding: 0,
                                 fontSize: 11.5,
-                                color: '#10b981',
+                                color: "var(--success)",
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: 4,
@@ -1735,7 +1735,7 @@ export default function Communication() {
                   })}
                 {!items.length && (
                   <tr>
-                    <td colSpan={9} style={{ padding: 32, textAlign: 'center', color: '#94a3b8' }}>
+                    <td colSpan={9} style={{ padding: 32, textAlign: 'center', color: "var(--muted-foreground)" }}>
                       No announcements published yet.
                     </td>
                   </tr>
@@ -1758,7 +1758,7 @@ export default function Communication() {
                 zIndex: 10050,
                 position: 'fixed',
                 inset: 0,
-                background: 'rgba(15, 23, 42, 0.65)',
+                background: "var(--card)",
                 backdropFilter: 'blur(8px)',
                 WebkitBackdropFilter: 'blur(8px)',
                 display: 'flex',
@@ -1773,10 +1773,10 @@ export default function Communication() {
                   width: isNoticeMaximized ? 'min(1280px, 98vw)' : 'min(640px, 95vw)',
                   height: isNoticeMaximized ? '94vh' : 'auto',
                   maxHeight: '94vh',
-                  background: 'var(--bg-card, #ffffff)',
-                  border: '1px solid var(--border, #e2e8f0)',
+                  background: "var(--bg-card, var(--card))",
+                  border: "1px solid var(--border, var(--border))",
                   borderRadius: isNoticeMaximized ? 12 : 16,
-                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                  boxShadow: 'none',
                   display: 'flex',
                   flexDirection: 'column',
                   overflow: 'hidden',
@@ -1787,8 +1787,8 @@ export default function Communication() {
                 {/* Modal Header */}
                 <div style={{
                   padding: isNoticeMaximized ? '16px 24px' : '18px 24px',
-                  borderBottom: '1px solid var(--border, #e2e8f0)',
-                  background: 'var(--card-subtle, #f8fafc)',
+                  borderBottom: "1px solid var(--border, var(--border))",
+                  background: "var(--card-subtle, var(--card))",
                   display: 'flex',
                   alignItems: 'flex-start',
                   justifyContent: 'space-between',
@@ -1798,9 +1798,9 @@ export default function Communication() {
                     <div style={{
                       width: 42,
                       height: 42,
-                      borderRadius: 10,
-                      background: viewingNotice.status === 'PUBLISHED' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(37, 99, 235, 0.12)',
-                      color: viewingNotice.status === 'PUBLISHED' ? '#10b981' : '#2563eb',
+                      borderRadius: 4,
+                      background: viewingNotice.status === 'PUBLISHED' ? "var(--secondary)" : "var(--accent)",
+                      color: viewingNotice.status === 'PUBLISHED' ? "var(--success)" : "var(--primary)",
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1819,9 +1819,9 @@ export default function Communication() {
                           borderRadius: 4,
                           fontSize: 11,
                           fontWeight: 700,
-                          backgroundColor: viewingNotice.status === 'PUBLISHED' ? '#ecfdf5' : '#f8fafc',
-                          color: viewingNotice.status === 'PUBLISHED' ? '#047857' : '#64748b',
-                          border: viewingNotice.status === 'PUBLISHED' ? '1px solid #a7f3d0' : '1px solid #e2e8f0'
+                          backgroundColor: viewingNotice.status === 'PUBLISHED' ? "var(--secondary)" : "var(--card)",
+                          color: viewingNotice.status === 'PUBLISHED' ? "var(--success)" : "var(--muted-foreground)",
+                          border: viewingNotice.status === 'PUBLISHED' ? "1px solid var(--border)" : "1px solid var(--border)"
                         }}>
                           {viewingNotice.status === 'PUBLISHED' ? <CheckCircle2 size={12} /> : <FileText size={12} />}
                           {viewingNotice.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT'}
@@ -1836,8 +1836,8 @@ export default function Communication() {
                           borderRadius: 4,
                           fontSize: 11,
                           fontWeight: 700,
-                          backgroundColor: viewingNotice.priority === 'EMERGENCY' ? '#fee2e2' : viewingNotice.priority === 'HIGH' ? '#ffedd5' : 'var(--card-subtle, #f1f5f9)',
-                          color: viewingNotice.priority === 'EMERGENCY' ? '#b91c1c' : viewingNotice.priority === 'HIGH' ? '#c2410c' : 'var(--text-secondary, #475569)'
+                          backgroundColor: viewingNotice.priority === 'EMERGENCY' ? "var(--secondary)" : viewingNotice.priority === 'HIGH' ? "var(--secondary)" : "var(--card-subtle, var(--secondary))",
+                          color: viewingNotice.priority === 'EMERGENCY' ? "var(--destructive)" : viewingNotice.priority === 'HIGH' ? "var(--warning)" : "var(--text-secondary, var(--muted-foreground))"
                         }}>
                           {viewingNotice.priority === 'EMERGENCY' && <AlertTriangle size={11} />}
                           {viewingNotice.priority}
@@ -1849,9 +1849,9 @@ export default function Communication() {
                           fontWeight: 600,
                           padding: '2px 8px',
                           borderRadius: 4,
-                          backgroundColor: '#eff6ff',
-                          color: '#1d4ed8',
-                          border: '1px solid #bfdbfe'
+                          backgroundColor: "var(--card)",
+                          color: "var(--primary)",
+                          border: "1px solid var(--border)"
                         }}>
                           {getAudienceBadgeText(viewingNotice)}
                         </span>
@@ -1861,7 +1861,7 @@ export default function Communication() {
                         margin: 0,
                         fontSize: isNoticeMaximized ? 20 : 17,
                         fontWeight: 700,
-                        color: 'var(--text, #0f172a)',
+                        color: "var(--text, var(--foreground))",
                         lineHeight: 1.35,
                         wordBreak: 'break-word'
                       }}>
@@ -1877,10 +1877,10 @@ export default function Communication() {
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: 'var(--text-muted, #64748b)',
+                        color: "var(--text-muted, var(--muted-foreground))",
                         cursor: 'pointer',
                         padding: 4,
-                        borderRadius: 6,
+                        borderRadius: 4,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -1901,10 +1901,10 @@ export default function Communication() {
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: 'var(--text-muted, #64748b)',
+                        color: "var(--text-muted, var(--muted-foreground))",
                         cursor: 'pointer',
                         padding: 4,
-                        borderRadius: 6,
+                        borderRadius: 4,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -1936,13 +1936,13 @@ export default function Communication() {
                     justifyContent: 'space-between',
                     gap: 12,
                     padding: '10px 14px',
-                    borderRadius: 8,
-                    backgroundColor: 'var(--card-subtle, #f8fafc)',
-                    border: '1px solid var(--border, #e2e8f0)',
+                    borderRadius: 4,
+                    backgroundColor: "var(--card-subtle, var(--card))",
+                    border: "1px solid var(--border, var(--border))",
                     fontSize: 12
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary, #475569)' }}>
-                      <Clock size={14} style={{ color: viewingNotice.status === 'PUBLISHED' ? '#10b981' : '#64748b' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: "var(--text-secondary, var(--muted-foreground))" }}>
+                      <Clock size={14} style={{ color: viewingNotice.status === 'PUBLISHED' ? "var(--success)" : "var(--muted-foreground)" }} />
                       {viewingNotice.status === 'PUBLISHED' ? (
                         <span>
                           Published on <b>{formatPublishDate(viewingNotice.published_at || viewingNotice.created_at)}</b> at <b>{formatPublishTime(viewingNotice.published_at || viewingNotice.created_at)}</b>
@@ -1955,14 +1955,14 @@ export default function Communication() {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <span style={{ color: 'var(--text-muted, #64748b)' }}>
-                        Recipients: <strong style={{ color: 'var(--text, #0f172a)' }}>{viewingNotice.recipient_count || 0}</strong>
+                      <span style={{ color: "var(--text-muted, var(--muted-foreground))" }}>
+                        Recipients: <strong style={{ color: "var(--text, var(--foreground))" }}>{viewingNotice.recipient_count || 0}</strong>
                       </span>
-                      <span style={{ color: 'var(--text-muted, #64748b)' }}>
-                        Read: <strong style={{ color: 'var(--text, #0f172a)' }}>{viewingNotice.read_count || 0}</strong>
+                      <span style={{ color: "var(--text-muted, var(--muted-foreground))" }}>
+                        Read: <strong style={{ color: "var(--text, var(--foreground))" }}>{viewingNotice.read_count || 0}</strong>
                       </span>
-                      <span style={{ color: 'var(--text-muted, #64748b)' }}>
-                        Replies: <strong style={{ color: '#2563eb' }}>{viewingNotice.reply_count || 0}</strong>
+                      <span style={{ color: "var(--text-muted, var(--muted-foreground))" }}>
+                        Replies: <strong style={{ color: "var(--primary)" }}>{viewingNotice.reply_count || 0}</strong>
                       </span>
                     </div>
                   </div>
@@ -1975,20 +1975,20 @@ export default function Communication() {
                       fontWeight: 700,
                       textTransform: 'uppercase',
                       letterSpacing: '0.04em',
-                      color: 'var(--text-muted, #64748b)',
+                      color: "var(--text-muted, var(--muted-foreground))",
                       marginBottom: 8
                     }}>
                       Announcement Message
                     </label>
                     <div style={{
-                      backgroundColor: 'var(--bg-card, #ffffff)',
-                      border: '1px solid var(--border, #cbd5e1)',
-                      borderLeft: viewingNotice.status === 'PUBLISHED' ? '4px solid #10b981' : '4px solid #2563eb',
-                      borderRadius: 8,
+                      backgroundColor: "var(--bg-card, var(--card))",
+                      border: "1px solid var(--border, var(--border))",
+                      borderLeft: viewingNotice.status === 'PUBLISHED' ? "4px solid var(--border)" : "4px solid var(--border)",
+                      borderRadius: 4,
                       padding: isNoticeMaximized ? '20px 22px' : '16px 18px',
                       fontSize: 14,
                       lineHeight: 1.7,
-                      color: 'var(--text, #1e293b)',
+                      color: "var(--text, var(--foreground))",
                       whiteSpace: 'pre-wrap',
                       wordBreak: 'break-word',
                       maxHeight: isNoticeMaximized ? 'calc(94vh - 360px)' : 280,
@@ -1998,7 +1998,7 @@ export default function Communication() {
                       {viewingNotice.message ? (
                         viewingNotice.message
                       ) : (
-                        <span style={{ color: 'var(--text-muted, #94a3b8)', fontStyle: 'italic' }}>
+                        <span style={{ color: "var(--text-muted, var(--muted-foreground))", fontStyle: 'italic' }}>
                           No message content available.
                         </span>
                       )}
@@ -2013,7 +2013,7 @@ export default function Communication() {
                         fontWeight: 700,
                         textTransform: 'uppercase',
                         letterSpacing: '0.04em',
-                        color: 'var(--text-muted, #64748b)',
+                        color: "var(--text-muted, var(--muted-foreground))",
                         marginBottom: 8
                       }}>
                         Attached Document
@@ -2023,9 +2023,9 @@ export default function Communication() {
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         padding: '12px 16px',
-                        borderRadius: 8,
-                        backgroundColor: 'var(--card-subtle, #f8fafc)',
-                        border: '1px solid var(--border, #cbd5e1)',
+                        borderRadius: 4,
+                        backgroundColor: "var(--card-subtle, var(--card))",
+                        border: "1px solid var(--border, var(--border))",
                         gap: 12,
                         flexWrap: 'wrap'
                       }}>
@@ -2033,9 +2033,9 @@ export default function Communication() {
                           <div style={{
                             width: 36,
                             height: 36,
-                            borderRadius: 6,
-                            backgroundColor: '#eff6ff',
-                            color: '#2563eb',
+                            borderRadius: 4,
+                            backgroundColor: "var(--card)",
+                            color: "var(--primary)",
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -2047,7 +2047,7 @@ export default function Communication() {
                             <div style={{
                               fontWeight: 600,
                               fontSize: 13.5,
-                              color: 'var(--text, #0f172a)',
+                              color: "var(--text, var(--foreground))",
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
                               whiteSpace: 'nowrap'
@@ -2055,7 +2055,7 @@ export default function Communication() {
                               {viewingNotice.attachment_name || 'Attached File'}
                             </div>
                             {viewingNotice.attachment_size ? (
-                              <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>
+                              <div style={{ fontSize: 11.5, color: "var(--text-muted, var(--muted-foreground))" }}>
                                 {(viewingNotice.attachment_size / 1024).toFixed(1)} KB
                               </div>
                             ) : null}
@@ -2072,14 +2072,14 @@ export default function Communication() {
                                 alignItems: 'center',
                                 gap: 6,
                                 padding: '7px 14px',
-                                borderRadius: 6,
-                                backgroundColor: '#eff6ff',
-                                color: '#2563eb',
-                                border: '1px solid #bfdbfe',
+                                borderRadius: 4,
+                                backgroundColor: "var(--card)",
+                                color: "var(--primary)",
+                                border: "1px solid var(--border)",
                                 fontSize: 12.5,
                                 fontWeight: 600,
                                 cursor: 'pointer',
-                                boxShadow: '0 1px 2px rgba(37,99,235,0.08)',
+                                boxShadow: 'none',
                                 transition: 'all 0.15s ease'
                               }}
                             >
@@ -2096,13 +2096,13 @@ export default function Communication() {
                               alignItems: 'center',
                               gap: 6,
                               padding: '7px 14px',
-                              borderRadius: 6,
-                              backgroundColor: '#2563eb',
-                              color: '#ffffff',
+                              borderRadius: 4,
+                              backgroundColor: "var(--primary)",
+                              color: "var(--background)",
                               fontSize: 12.5,
                               fontWeight: 600,
                               textDecoration: 'none',
-                              boxShadow: '0 1px 2px rgba(37,99,235,0.2)'
+                              boxShadow: 'none'
                             }}
                           >
                             <Download size={14} /> Download File
@@ -2116,8 +2116,8 @@ export default function Communication() {
                 {/* Modal Footer */}
                 <div style={{
                   padding: '14px 24px',
-                  borderTop: '1px solid var(--border, #e2e8f0)',
-                  background: 'var(--card-subtle, #f8fafc)',
+                  borderTop: "1px solid var(--border, var(--border))",
+                  background: "var(--card-subtle, var(--card))",
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
@@ -2138,13 +2138,13 @@ export default function Communication() {
                           alignItems: 'center',
                           gap: 6,
                           padding: '7px 14px',
-                          borderRadius: 6,
+                          borderRadius: 4,
                           fontSize: 12.5,
                           fontWeight: 600,
                           cursor: 'pointer',
-                          border: '1px solid #bfdbfe',
-                          backgroundColor: '#eff6ff',
-                          color: '#1d4ed8'
+                          border: "1px solid var(--border)",
+                          backgroundColor: "var(--card)",
+                          color: "var(--primary)"
                         }}
                       >
                         <MessageCircle size={14} />
@@ -2168,13 +2168,13 @@ export default function Communication() {
                           alignItems: 'center',
                           gap: 6,
                           padding: '8px 16px',
-                          borderRadius: 6,
+                          borderRadius: 4,
                           fontSize: 13,
                           fontWeight: 600,
                           cursor: 'pointer',
-                          border: '1px solid var(--border, #cbd5e1)',
-                          backgroundColor: 'var(--bg-card, #ffffff)',
-                          color: 'var(--text, #0f172a)'
+                          border: "1px solid var(--border, var(--border))",
+                          backgroundColor: "var(--bg-card, var(--card))",
+                          color: "var(--text, var(--foreground))"
                         }}
                       >
                         <Edit3 size={14} />
@@ -2190,14 +2190,14 @@ export default function Communication() {
                       }}
                       style={{
                         padding: '8px 20px',
-                        borderRadius: 6,
+                        borderRadius: 4,
                         fontSize: 13,
                         fontWeight: 600,
                         cursor: 'pointer',
                         border: 'none',
-                        backgroundColor: '#2563eb',
-                        color: '#ffffff',
-                        boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)'
+                        backgroundColor: "var(--primary)",
+                        color: "var(--background)",
+                        boxShadow: 'none'
                       }}
                     >
                       Close
@@ -2211,18 +2211,18 @@ export default function Communication() {
       ) : (
         /* Administrator Console: Threaded Replies Grouped by Notice */
         <div style={{ display: 'grid', gap: 16 }}>
-          <div style={{ fontSize: 14, color: 'var(--text-secondary, #475569)', marginBottom: 4 }}>
+          <div style={{ fontSize: 14, color: "var(--text-secondary, var(--muted-foreground))", marginBottom: 4 }}>
             Threaded parent and student responses grouped across all published notices:
           </div>
           {allReplies.map(r => (
             <div
               key={r.id}
               style={{
-                backgroundColor: 'var(--bg-card, #ffffff)',
-                border: '1px solid var(--border, #e2e8f0)',
-                borderRadius: 8,
+                backgroundColor: "var(--bg-card, var(--card))",
+                border: "1px solid var(--border, var(--border))",
+                borderRadius: 4,
                 padding: 18,
-                boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                boxShadow: 'none'
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
@@ -2232,41 +2232,41 @@ export default function Communication() {
                     fontWeight: 700,
                     padding: '2px 7px',
                     borderRadius: 4,
-                    backgroundColor: r.author_role === 'PARENT' ? '#eff6ff' : '#f0fdf4',
-                    color: r.author_role === 'PARENT' ? '#1d4ed8' : '#15803d',
+                    backgroundColor: r.author_role === 'PARENT' ? "var(--card)" : "var(--secondary)",
+                    color: r.author_role === 'PARENT' ? "var(--primary)" : "var(--success)",
                     marginRight: 8
                   }}>
                     {r.author_role}
                   </span>
-                  <span style={{ fontWeight: 700, color: 'var(--text, #0f172a)', fontSize: 14 }}>{r.author_name}</span>
-                  {r.author_email && <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', marginLeft: 6 }}>({r.author_email})</span>}
+                  <span style={{ fontWeight: 700, color: "var(--text, var(--foreground))", fontSize: 14 }}>{r.author_name}</span>
+                  {r.author_email && <span style={{ fontSize: 12, color: "var(--text-muted, var(--muted-foreground))", marginLeft: 6 }}>({r.author_email})</span>}
                 </div>
-                <span style={{ fontSize: 11.5, color: 'var(--text-muted, #94a3b8)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 11.5, color: "var(--text-muted, var(--muted-foreground))", display: 'flex', alignItems: 'center', gap: 4 }}>
                   <Clock size={12} /> {r.created_at ? new Date(r.created_at).toLocaleString() : ''}
                 </span>
               </div>
 
               {/* Linked Student academic placement context */}
               {r.student_name && (
-                <div style={{ fontSize: 12.5, color: 'var(--text-secondary, #475569)', backgroundColor: 'var(--card-subtle, #f8fafc)', padding: '6px 10px', borderRadius: 4, marginBottom: 10 }}>
+                <div style={{ fontSize: 12.5, color: "var(--text-secondary, var(--muted-foreground))", backgroundColor: "var(--card-subtle, var(--card))", padding: '6px 10px', borderRadius: 4, marginBottom: 10 }}>
                   Linked Student: <PersonProfileLink kind="student" name={r.student_name} person={r as any}><b>{r.student_name}</b></PersonProfileLink>{(r.class_name || r.section_name) ? ` · ${[r.class_name, r.section_name].filter(Boolean).join(' - ')}` : ''}{r.student_roll ? ` (Roll #${r.student_roll})` : ''}
                 </div>
               )}
 
               {/* Reply message */}
-              <div style={{ fontSize: 13.5, color: 'var(--text, #1e293b)', lineHeight: 1.5, whiteSpace: 'pre-wrap', backgroundColor: 'var(--card-subtle, #f8fafc)', padding: 12, borderRadius: 6, borderLeft: '3px solid #2563eb' }}>
+              <div style={{ fontSize: 13.5, color: "var(--text, var(--foreground))", lineHeight: 1.5, whiteSpace: 'pre-wrap', backgroundColor: "var(--card-subtle, var(--card))", padding: 12, borderRadius: 4, borderLeft: "3px solid var(--border)" }}>
                 {r.reply_text}
               </div>
 
               {r.announcement_title && (
-                <div style={{ marginTop: 10, fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>
+                <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--text-muted, var(--muted-foreground))" }}>
                   In response to notice: <b>{r.announcement_title}</b>
                 </div>
               )}
             </div>
           ))}
           {!allReplies.length && (
-            <div style={{ padding: 40, textAlign: 'center', backgroundColor: 'var(--bg-card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, color: 'var(--text-secondary, #94a3b8)' }}>
+            <div style={{ padding: 40, textAlign: 'center', backgroundColor: "var(--bg-card, var(--card))", border: "1px solid var(--border, var(--border))", borderRadius: 4, color: "var(--text-secondary, var(--muted-foreground))" }}>
               No threaded replies received from parents or students yet.
             </div>
           )}
@@ -2281,7 +2281,7 @@ export default function Communication() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.7)',
+          backgroundColor: "var(--card)",
           display: 'flex',
           justifyContent: 'flex-end',
           zIndex: 1000
@@ -2289,61 +2289,61 @@ export default function Communication() {
           <div style={{
             width: '100%',
             maxWidth: 580,
-            backgroundColor: 'var(--bg-card, #ffffff)',
-            color: 'var(--text, #0f172a)',
+            backgroundColor: "var(--bg-card, var(--card))",
+            color: "var(--text, var(--foreground))",
             height: '100%',
             overflowY: 'auto',
             padding: 24,
             boxSizing: 'border-box',
-            boxShadow: '-4px 0 20px rgba(0,0,0,0.3)',
+            boxShadow: 'none',
             display: 'flex',
             flexDirection: 'column'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border, #e2e8f0)', paddingBottom: 16, marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: "1px solid var(--border, var(--border))", paddingBottom: 16, marginBottom: 16 }}>
               <div>
                 <span style={{
                   fontSize: 11,
                   fontWeight: 700,
                   padding: '2px 7px',
                   borderRadius: 4,
-                  backgroundColor: 'var(--card-subtle, #f1f5f9)',
-                  color: 'var(--text-secondary, #475569)'
+                  backgroundColor: "var(--card-subtle, var(--secondary))",
+                  color: "var(--text-secondary, var(--muted-foreground))"
                 }}>
                   {selectedNoticeForReplies.audience_type}
                 </span>
-                <h2 style={{ margin: '6px 0 0', fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                <h2 style={{ margin: '6px 0 0', fontSize: 18, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
                   {selectedNoticeForReplies.title}
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedNoticeForReplies(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: "var(--text-muted, var(--muted-foreground))" }}
               >
                 <X size={20} />
               </button>
             </div>
 
             {/* Notice Message Card */}
-            <div style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', padding: 14, borderRadius: 6, marginBottom: 20, fontSize: 13, color: 'var(--text, #334155)', border: '1px solid var(--border, #e2e8f0)' }}>
-              <div style={{ fontWeight: 600, color: 'var(--text-muted, #64748b)', fontSize: 11, marginBottom: 4 }}>NOTICE BODY</div>
+            <div style={{ backgroundColor: "var(--card-subtle, var(--card))", padding: 14, borderRadius: 4, marginBottom: 20, fontSize: 13, color: "var(--text, var(--muted-foreground))", border: "1px solid var(--border, var(--border))" }}>
+              <div style={{ fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))", fontSize: 11, marginBottom: 4 }}>NOTICE BODY</div>
               {selectedNoticeForReplies.message}
             </div>
 
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text, #0f172a)', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <MessageCircle size={16} color="#2563eb" /> Threaded Responses ({noticeReplies.length})
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text, var(--foreground))", margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <MessageCircle size={16} color="#e11d55" /> Threaded Responses ({noticeReplies.length})
             </h3>
 
             {loadingReplies ? (
-              <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>Loading replies...</div>
+              <div style={{ padding: 24, textAlign: 'center', color: "var(--text-muted, var(--muted-foreground))" }}>Loading replies...</div>
             ) : noticeReplies.length === 0 ? (
-              <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted, #94a3b8)', border: '1px dashed var(--border, #cbd5e1)', borderRadius: 6 }}>
+              <div style={{ padding: 32, textAlign: 'center', color: "var(--text-muted, var(--muted-foreground))", border: "1px dashed var(--border, var(--border))", borderRadius: 4 }}>
                 No replies from parents or students for this notice yet.
               </div>
             ) : (
               <div style={{ display: 'grid', gap: 14, overflowY: 'auto', flex: 1 }}>
                 {noticeReplies.map(r => (
-                  <div key={r.id} style={{ border: '1px solid var(--border, #e2e8f0)', borderRadius: 6, padding: 12, backgroundColor: 'var(--card-subtle, #ffffff)' }}>
+                  <div key={r.id} style={{ border: "1px solid var(--border, var(--border))", borderRadius: 4, padding: 12, backgroundColor: "var(--card-subtle, var(--card))" }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                       <div>
                         <span style={{
@@ -2351,26 +2351,26 @@ export default function Communication() {
                           fontWeight: 700,
                           padding: '2px 6px',
                           borderRadius: 3,
-                          backgroundColor: r.author_role === 'PARENT' ? '#eff6ff' : '#f0fdf4',
-                          color: r.author_role === 'PARENT' ? '#1d4ed8' : '#15803d',
+                          backgroundColor: r.author_role === 'PARENT' ? "var(--card)" : "var(--secondary)",
+                          color: r.author_role === 'PARENT' ? "var(--primary)" : "var(--success)",
                           marginRight: 6
                         }}>
                           {r.author_role}
                         </span>
-                        <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text, #0f172a)' }}>{r.author_name}</span>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: "var(--text, var(--foreground))" }}>{r.author_name}</span>
                       </div>
-                      <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>
+                      <span style={{ fontSize: 11, color: "var(--text-muted, var(--muted-foreground))" }}>
                         {r.created_at ? new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                       </span>
                     </div>
 
                     {r.student_name && (
-                      <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)', marginBottom: 8 }}>
+                      <div style={{ fontSize: 11.5, color: "var(--text-muted, var(--muted-foreground))", marginBottom: 8 }}>
                         Student: <PersonProfileLink kind="student" name={r.student_name} person={r as any} />{(r.class_name || r.section_name) ? ` (${[r.class_name, r.section_name].filter(Boolean).join(' - ')})` : ''}
                       </div>
                     )}
 
-                    <div style={{ fontSize: 13, color: 'var(--text, #1e293b)', backgroundColor: 'var(--bg-muted, #f8fafc)', padding: 10, borderRadius: 5 }}>
+                    <div style={{ fontSize: 13, color: "var(--text, var(--foreground))", backgroundColor: "var(--bg-muted, var(--card))", padding: 10, borderRadius: 4 }}>
                       {r.reply_text}
                     </div>
                   </div>
@@ -2427,7 +2427,7 @@ export default function Communication() {
             zIndex: 10050,
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
+            background: "var(--card)",
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
             display: 'flex',
@@ -2442,10 +2442,10 @@ export default function Communication() {
               width: 'min(640px, 95vw)',
               maxHeight: '90vh',
               overflowY: 'auto',
-              background: 'var(--bg-card, #ffffff)',
-              border: '1px solid var(--border, #e2e8f0)',
-              borderRadius: 14,
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              background: "var(--bg-card, var(--card))",
+              border: "1px solid var(--border, var(--border))",
+              borderRadius: 4,
+              boxShadow: 'none',
               display: 'flex',
               flexDirection: 'column'
             }}
@@ -2453,8 +2453,8 @@ export default function Communication() {
             {/* Modal Header */}
             <div style={{
               padding: '18px 24px',
-              borderBottom: '1px solid var(--border, #e2e8f0)',
-              background: 'var(--card-subtle, #f8fafc)',
+              borderBottom: "1px solid var(--border, var(--border))",
+              background: "var(--card-subtle, var(--card))",
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'
@@ -2463,9 +2463,9 @@ export default function Communication() {
                 <div style={{
                   width: 36,
                   height: 36,
-                  borderRadius: 8,
-                  background: 'rgba(37, 99, 235, 0.15)',
-                  color: '#2563eb',
+                  borderRadius: 4,
+                  background: "var(--accent)",
+                  color: "var(--primary)",
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -2474,10 +2474,10 @@ export default function Communication() {
                   <Edit3 size={18} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
                     Edit Draft Announcement
                   </h3>
-                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: "var(--text-muted, var(--muted-foreground))" }}>
                     Update details, target audience, or publish directly
                   </p>
                 </div>
@@ -2486,7 +2486,7 @@ export default function Communication() {
                 type="button"
                 onClick={() => setEditingDraft(null)}
                 disabled={editSaving}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)', padding: 4 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: "var(--text-muted, var(--muted-foreground))", padding: 4 }}
               >
                 <X size={20} />
               </button>
@@ -2497,10 +2497,10 @@ export default function Communication() {
               {editError && (
                 <div style={{
                   padding: '10px 14px',
-                  borderRadius: 6,
-                  backgroundColor: '#fef2f2',
-                  border: '1px solid #fecaca',
-                  color: '#991b1b',
+                  borderRadius: 4,
+                  backgroundColor: "var(--card)",
+                  border: "1px solid var(--border)",
+                  color: "var(--destructive)",
                   fontSize: 13,
                   display: 'flex',
                   alignItems: 'center',
@@ -2513,8 +2513,8 @@ export default function Communication() {
 
               {/* Title Field */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>
-                  ANNOUNCEMENT TITLE <span style={{ color: '#ef4444' }}>*</span>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))" }}>
+                  ANNOUNCEMENT TITLE <span style={{ color: "var(--destructive)" }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -2524,10 +2524,10 @@ export default function Communication() {
                   style={{
                     width: '100%',
                     padding: '9px 12px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border, #cbd5e1)',
-                    backgroundColor: 'var(--bg, #ffffff)',
-                    color: 'var(--text, #0f172a)',
+                    borderRadius: 4,
+                    border: "1px solid var(--border, var(--border))",
+                    backgroundColor: "var(--bg, var(--card))",
+                    color: "var(--text, var(--foreground))",
                     fontSize: 13.5,
                     boxSizing: 'border-box'
                   }}
@@ -2536,8 +2536,8 @@ export default function Communication() {
 
               {/* Message Details Field */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>
-                  BROADCAST DETAILS & INSTRUCTIONS <span style={{ color: '#ef4444' }}>*</span>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))" }}>
+                  BROADCAST DETAILS & INSTRUCTIONS <span style={{ color: "var(--destructive)" }}>*</span>
                 </label>
                 <AutoExpandingTextarea
                   value={editForm.message}
@@ -2548,10 +2548,10 @@ export default function Communication() {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border, #cbd5e1)',
-                    backgroundColor: 'var(--bg, #ffffff)',
-                    color: 'var(--text, #0f172a)',
+                    borderRadius: 4,
+                    border: "1px solid var(--border, var(--border))",
+                    backgroundColor: "var(--bg, var(--card))",
+                    color: "var(--text, var(--foreground))",
                     fontSize: 13,
                     boxSizing: 'border-box'
                   }}
@@ -2560,7 +2560,7 @@ export default function Communication() {
 
               {/* Attachment Option in Edit Draft */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))" }}>
                   ATTACHMENT
                 </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -2570,10 +2570,10 @@ export default function Communication() {
                       alignItems: 'center',
                       gap: 6,
                       padding: '7px 14px',
-                      borderRadius: 6,
-                      border: '1px dashed var(--border, #cbd5e1)',
-                      backgroundColor: 'var(--card-subtle, #f8fafc)',
-                      color: 'var(--text, #334155)',
+                      borderRadius: 4,
+                      border: "1px dashed var(--border, var(--border))",
+                      backgroundColor: "var(--card-subtle, var(--card))",
+                      color: "var(--text, var(--muted-foreground))",
                       fontSize: 13,
                       fontWeight: 500,
                       cursor: 'pointer',
@@ -2581,7 +2581,7 @@ export default function Communication() {
                     }}
                     title="Attach a file to this announcement"
                   >
-                    <Paperclip size={15} color="#2563eb" />
+                    <Paperclip size={15} color="#e11d55" />
                     <span>{editAttachment ? 'Change File' : 'Attach File'}</span>
                     <input
                       type="file"
@@ -2597,19 +2597,19 @@ export default function Communication() {
                       alignItems: 'center',
                       gap: 8,
                       padding: '6px 12px',
-                      borderRadius: 6,
-                      border: '1px solid #bfdbfe',
-                      backgroundColor: '#eff6ff',
-                      color: '#1e40af',
+                      borderRadius: 4,
+                      border: "1px solid var(--border)",
+                      backgroundColor: "var(--card)",
+                      color: "var(--primary)",
                       fontSize: 12.5,
                       maxWidth: '100%',
                       boxSizing: 'border-box'
                     }}>
-                      <Paperclip size={14} color="#2563eb" />
+                      <Paperclip size={14} color="#e11d55" />
                       <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 240 }}>
                         {editAttachment.name}
                       </span>
-                      <span style={{ fontSize: 11, color: '#2563eb', backgroundColor: '#dbeafe', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
+                      <span style={{ fontSize: 11, color: "var(--primary)", backgroundColor: "var(--card)", padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
                         {(editAttachment.size / 1024).toFixed(1)} KB
                       </span>
                       <button
@@ -2620,7 +2620,7 @@ export default function Communication() {
                           background: 'none',
                           border: 'none',
                           cursor: 'pointer',
-                          color: '#ef4444',
+                          color: "var(--destructive)",
                           padding: 2,
                           display: 'inline-flex',
                           alignItems: 'center'
@@ -2633,7 +2633,7 @@ export default function Communication() {
                 </div>
 
                 {editAttachmentError && (
-                  <div style={{ fontSize: 12, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{ fontSize: 12, color: "var(--destructive)", display: 'flex', alignItems: 'center', gap: 4 }}>
                     <AlertTriangle size={13} /> {editAttachmentError}
                   </div>
                 )}
@@ -2642,17 +2642,17 @@ export default function Communication() {
               {/* Targeting Controls */}
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 140px', minWidth: 0 }}>
-                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted, #64748b)', display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>AUDIENCE TYPE</label>
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))", display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>AUDIENCE TYPE</label>
                   <select
                     value={editForm.audienceType}
                     onChange={handleEditAudienceChange}
                     style={{
                       width: '100%',
                       padding: '8px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border, #cbd5e1)',
-                      backgroundColor: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #0f172a)',
+                      borderRadius: 4,
+                      border: "1px solid var(--border, var(--border))",
+                      backgroundColor: "var(--bg, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       fontSize: 13,
                       boxSizing: 'border-box'
                     }}
@@ -2673,10 +2673,10 @@ export default function Communication() {
                     alignItems: 'center',
                     gap: 3,
                     lineHeight: 1,
-                    color: (editForm.audienceType === 'CLASS' || editForm.audienceType === 'SECTION') ? '#3b82f6' : 'var(--text-muted, #64748b)'
+                    color: (editForm.audienceType === 'CLASS' || editForm.audienceType === 'SECTION') ? "var(--primary)" : "var(--text-muted, var(--muted-foreground))"
                   }}>
                     <span>CLASS</span>
-                    {(editForm.audienceType === 'CLASS' || editForm.audienceType === 'SECTION') && <span style={{ color: '#ef4444', fontWeight: 700 }}>*</span>}
+                    {(editForm.audienceType === 'CLASS' || editForm.audienceType === 'SECTION') && <span style={{ color: "var(--destructive)", fontWeight: 700 }}>*</span>}
                   </label>
                   <select
                     value={editForm.classId}
@@ -2684,10 +2684,10 @@ export default function Communication() {
                     style={{
                       width: '100%',
                       padding: '8px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border, #cbd5e1)',
-                      backgroundColor: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #0f172a)',
+                      borderRadius: 4,
+                      border: "1px solid var(--border, var(--border))",
+                      backgroundColor: "var(--bg, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       fontSize: 13,
                       boxSizing: 'border-box'
                     }}
@@ -2708,10 +2708,10 @@ export default function Communication() {
                     alignItems: 'center',
                     gap: 3,
                     lineHeight: 1,
-                    color: editForm.audienceType === 'SECTION' ? '#3b82f6' : 'var(--text-muted, #64748b)'
+                    color: editForm.audienceType === 'SECTION' ? "var(--primary)" : "var(--text-muted, var(--muted-foreground))"
                   }}>
                     <span>SECTION</span>
-                    {editForm.audienceType === 'SECTION' && <span style={{ color: '#ef4444', fontWeight: 700 }}>*</span>}
+                    {editForm.audienceType === 'SECTION' && <span style={{ color: "var(--destructive)", fontWeight: 700 }}>*</span>}
                   </label>
                   <select
                     value={editSelectedSectionLetter}
@@ -2719,10 +2719,10 @@ export default function Communication() {
                     style={{
                       width: '100%',
                       padding: '8px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border, #cbd5e1)',
-                      backgroundColor: 'var(--bg, #ffffff)',
-                      color: 'var(--text, #0f172a)',
+                      borderRadius: 4,
+                      border: "1px solid var(--border, var(--border))",
+                      backgroundColor: "var(--bg, var(--card))",
+                      color: "var(--text, var(--foreground))",
                       fontSize: 13,
                       boxSizing: 'border-box'
                     }}
@@ -2735,19 +2735,19 @@ export default function Communication() {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 130px', minWidth: 0 }}>
-                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>PRIORITY</label>
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-muted, var(--muted-foreground))" }}>PRIORITY</label>
                   <select
                     value={editForm.priority}
                     onChange={e => setEditForm({ ...editForm, priority: e.target.value })}
                     style={{
                       width: '100%',
                       padding: '8px 12px',
-                      borderRadius: 6,
-                      border: editForm.priority === 'EMERGENCY' ? '1px solid #ef4444' : '1px solid var(--border, #cbd5e1)',
+                      borderRadius: 4,
+                      border: editForm.priority === 'EMERGENCY' ? "1px solid var(--border)" : "1px solid var(--border, var(--border))",
                       fontSize: 13,
                       boxSizing: 'border-box',
-                      backgroundColor: editForm.priority === 'EMERGENCY' ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg, #ffffff)',
-                      color: editForm.priority === 'EMERGENCY' ? '#f87171' : 'var(--text, #0f172a)',
+                      backgroundColor: editForm.priority === 'EMERGENCY' ? "var(--secondary)" : "var(--bg, var(--card))",
+                      color: editForm.priority === 'EMERGENCY' ? "var(--destructive)" : "var(--text, var(--foreground))",
                       fontWeight: editForm.priority === 'EMERGENCY' ? 700 : 500
                     }}
                   >
@@ -2759,7 +2759,7 @@ export default function Communication() {
               </div>
 
               {editForm.priority === 'EMERGENCY' && (
-                <div style={{ fontSize: 12, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ fontSize: 12, color: "var(--destructive)", display: 'flex', alignItems: 'center', gap: 6 }}>
                   <AlertTriangle size={14} /> Emergency announcements automatically dispatch priority emails to all target audience accounts upon publication.
                 </div>
               )}
@@ -2768,8 +2768,8 @@ export default function Communication() {
             {/* Modal Footer */}
             <div style={{
               padding: '14px 24px',
-              borderTop: '1px solid var(--border, #e2e8f0)',
-              background: 'var(--card-subtle, #f8fafc)',
+              borderTop: "1px solid var(--border, var(--border))",
+              background: "var(--card-subtle, var(--card))",
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'flex-end',
@@ -2782,13 +2782,13 @@ export default function Communication() {
                 className="btn-secondary"
                 style={{
                   padding: '8px 16px',
-                  borderRadius: 6,
+                  borderRadius: 4,
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: editSaving ? 'not-allowed' : 'pointer',
-                  border: '1px solid var(--border, #cbd5e1)',
+                  border: "1px solid var(--border, var(--border))",
                   background: 'transparent',
-                  color: 'var(--text, #334155)'
+                  color: "var(--text, var(--muted-foreground))"
                 }}
               >
                 Cancel
@@ -2803,13 +2803,13 @@ export default function Communication() {
                   alignItems: 'center',
                   gap: 6,
                   padding: '8px 16px',
-                  borderRadius: 6,
+                  borderRadius: 4,
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: editSaving ? 'not-allowed' : 'pointer',
-                  border: '1px solid var(--border, #cbd5e1)',
-                  background: 'var(--bg-card, #ffffff)',
-                  color: 'var(--text, #0f172a)'
+                  border: "1px solid var(--border, var(--border))",
+                  background: "var(--bg-card, var(--card))",
+                  color: "var(--text, var(--foreground))"
                 }}
               >
                 {editSaving ? 'Saving…' : 'Save as Draft'}
@@ -2824,14 +2824,14 @@ export default function Communication() {
                   alignItems: 'center',
                   gap: 6,
                   padding: '8px 20px',
-                  borderRadius: 6,
+                  borderRadius: 4,
                   fontSize: 13,
                   fontWeight: 700,
                   cursor: editSaving ? 'not-allowed' : 'pointer',
                   border: 'none',
-                  backgroundColor: '#10b981',
-                  color: '#ffffff',
-                  boxShadow: '0 2px 6px rgba(16, 185, 129, 0.35)'
+                  backgroundColor: "var(--success)",
+                  color: "var(--background)",
+                  boxShadow: 'none'
                 }}
               >
                 <Send size={14} />
@@ -2848,7 +2848,7 @@ export default function Communication() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.75)',
+            background: "var(--card)",
             backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
@@ -2862,19 +2862,19 @@ export default function Communication() {
               width: '100%',
               maxWidth: 900,
               height: '85vh',
-              background: 'var(--panel, #ffffff)',
-              borderRadius: 14,
-              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+              background: "var(--panel, var(--card))",
+              borderRadius: 4,
+              boxShadow: 'none',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
-              border: '1px solid var(--border, #cbd5e1)'
+              border: "1px solid var(--border, var(--border))"
             }}
           >
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card-subtle, #f8fafc)' }}>
+            <div style={{ padding: '14px 20px', borderBottom: "1px solid var(--border, var(--border))", display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: "var(--card-subtle, var(--card))" }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                <Eye size={18} style={{ color: '#2563eb' }} />
-                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <Eye size={18} style={{ color: "var(--primary)" }} />
+                <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text, var(--foreground))", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {attachmentPreview.fileName}
                 </span>
               </div>
@@ -2884,10 +2884,10 @@ export default function Communication() {
                   onClick={handlePreviewDownload}
                   style={{
                     padding: '6px 12px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border, #cbd5e1)',
-                    background: '#ffffff',
-                    color: 'var(--text, #1e293b)',
+                    borderRadius: 4,
+                    border: "1px solid var(--border, var(--border))",
+                    background: "var(--card)",
+                    color: "var(--text, var(--foreground))",
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -2901,7 +2901,7 @@ export default function Communication() {
                 <button
                   type="button"
                   onClick={closeAttachmentPreview}
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)', padding: 4 }}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: "var(--text-muted, var(--muted-foreground))", padding: 4 }}
                   aria-label="Close preview"
                 >
                   <X size={20} />
@@ -2909,14 +2909,14 @@ export default function Communication() {
               </div>
             </div>
 
-            <div style={{ flex: 1, overflow: 'hidden', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ flex: 1, overflow: 'hidden', background: "var(--card)", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {attachmentPreview.loading ? (
-                <div style={{ textAlign: 'center', color: '#cbd5e1' }}>
+                <div style={{ textAlign: 'center', color: "var(--muted-foreground)" }}>
                   <Loader2 size={32} className="animate-spin" style={{ margin: '0 auto 12px' }} />
                   <p style={{ margin: 0, fontSize: 14 }}>Loading preview securely...</p>
                 </div>
               ) : attachmentPreview.error ? (
-                <div style={{ textAlign: 'center', color: '#f87171', padding: 24 }}>
+                <div style={{ textAlign: 'center', color: "var(--destructive)", padding: 24 }}>
                   <AlertCircle size={32} style={{ margin: '0 auto 12px' }} />
                   <p style={{ margin: 0, fontSize: 14 }}>{attachmentPreview.error}</p>
                 </div>
@@ -2933,10 +2933,10 @@ export default function Communication() {
                   style={{ width: '100%', height: '100%', border: 'none' }}
                 />
               ) : (
-                <div style={{ textAlign: 'center', color: '#e2e8f0', padding: 32 }}>
-                  <FileText size={48} style={{ color: '#94a3b8', margin: '0 auto 16px' }} />
+                <div style={{ textAlign: 'center', color: "var(--background)", padding: 32 }}>
+                  <FileText size={48} style={{ color: "var(--muted-foreground)", margin: '0 auto 16px' }} />
                   <h4 style={{ margin: '0 0 8px', fontSize: 16 }}>Inline preview not supported for this format</h4>
-                  <p style={{ margin: '0 0 16px', fontSize: 13, color: '#94a3b8' }}>
+                  <p style={{ margin: '0 0 16px', fontSize: 13, color: "var(--muted-foreground)" }}>
                     Document files (.doc, .docx, .xlsx) can be downloaded directly to view on your device.
                   </p>
                   <button
@@ -2944,10 +2944,10 @@ export default function Communication() {
                     onClick={handlePreviewDownload}
                     style={{
                       padding: '8px 16px',
-                      borderRadius: 6,
+                      borderRadius: 4,
                       border: 'none',
-                      background: '#2563eb',
-                      color: '#ffffff',
+                      background: "var(--primary)",
+                      color: "var(--background)",
                       fontWeight: 600,
                       fontSize: 13,
                       cursor: 'pointer',

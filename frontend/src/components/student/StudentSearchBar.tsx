@@ -203,7 +203,7 @@ export function StudentSearchBar() {
       title: a.title,
       subtitle: a.message?.slice(0, 75) + ((a.message?.length || 0) > 75 ? '...' : ''),
       badge: a.priority || 'Notice',
-      badgeColor: a.priority === 'URGENT' || a.priority === 'HIGH' ? '#dc2626' : '#2563eb',
+      badgeColor: a.priority === 'URGENT' || a.priority === 'HIGH' ? '#d32f2f' : '#e11d55',
       date: a.published_at ? new Date(a.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : undefined,
       to: `/student/announcements?q=${encodeURIComponent(a.title)}`,
       icon: Megaphone
@@ -219,7 +219,7 @@ export function StudentSearchBar() {
       title: asg.title,
       subtitle: `${asg.subject_name || 'Assignment'}${asg.due_date ? ` · Due: ${new Date(asg.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}`,
       badge: asg.submission_status,
-      badgeColor: asg.submission_status === 'PENDING' ? '#d97706' : asg.submission_status === 'OVERDUE' ? '#dc2626' : '#16a34a',
+      badgeColor: asg.submission_status === 'PENDING' ? '#b8781c' : asg.submission_status === 'OVERDUE' ? '#d32f2f' : '#03806a',
       to: `/student/assignments?q=${encodeURIComponent(asg.title)}`,
       icon: FileCheck
     }));
@@ -234,7 +234,7 @@ export function StudentSearchBar() {
       title: ex.title || ex.subject_name,
       subtitle: `${ex.subject_name}${ex.exam_date ? ` · Date: ${new Date(ex.exam_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}${ex.room ? ` (Room ${ex.room})` : ''}`,
       badge: ex.grade ? `Grade ${ex.grade}` : (ex.marks_obtained !== undefined ? `${ex.marks_obtained}/${ex.total_marks}` : 'Upcoming'),
-      badgeColor: '#7c3aed',
+      badgeColor: '#5c6bc0',
       to: '/student/exams',
       icon: GraduationCap
     }));
@@ -356,10 +356,10 @@ export function StudentSearchBar() {
           display: 'flex',
           alignItems: 'center',
           gap: 10,
-          background: 'var(--bg-subtle, #F1F5F9)',
-          border: isOpen ? '1px solid #3b82f6' : '1px solid var(--border, #E2E8F0)',
-          boxShadow: isOpen ? '0 0 0 3px rgba(59, 130, 246, 0.15)' : 'none',
-          borderRadius: 20,
+          background: 'var(--bg-subtle, #f5f5f6)',
+          border: isOpen ? '1px solid #e11d55' : '1px solid var(--border, #eaeaec)',
+          boxShadow: isOpen ? '0 0 0 3px rgba(225, 29, 85, 0.15)' : 'none',
+          borderRadius: 4,
           padding: '7px 14px',
           width: '100%',
           transition: 'all 0.18s ease',
@@ -369,7 +369,7 @@ export function StudentSearchBar() {
         <Search
           size={16}
           className="student-search-icon"
-          style={{ color: isOpen ? '#2563eb' : 'var(--text-secondary, #64748B)', flexShrink: 0 }}
+          style={{ color: isOpen ? '#e11d55' : 'var(--text-secondary, #696e79)', flexShrink: 0 }}
         />
         <input
           ref={inputRef}
@@ -388,7 +388,7 @@ export function StudentSearchBar() {
             border: 'none',
             outline: 'none',
             fontSize: 13,
-            color: 'var(--text, #0F172A)',
+            color: 'var(--text, #1c1f2e)',
             width: '100%',
             padding: 0
           }}
@@ -405,7 +405,7 @@ export function StudentSearchBar() {
               border: 'none',
               padding: 2,
               cursor: 'pointer',
-              color: 'var(--text-secondary, #64748B)',
+              color: 'var(--text-secondary, #696e79)',
               display: 'flex',
               alignItems: 'center',
               borderRadius: 999
@@ -431,9 +431,9 @@ export function StudentSearchBar() {
             maxHeight: 440,
             overflowY: 'auto',
             background: 'var(--card-bg, #ffffff)',
-            border: '1px solid var(--border, #cbd5e1)',
-            borderRadius: 14,
-            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08)',
+            border: '1px solid var(--border, #d4d5d9)',
+            borderRadius: 4,
+            boxShadow: 'none',
             zIndex: 1000,
             padding: '8px 0',
             backdropFilter: 'blur(12px)',
@@ -445,13 +445,13 @@ export function StudentSearchBar() {
             className="search-dropdown-header"
             style={{
               padding: '6px 14px 10px',
-              borderBottom: '1px solid var(--border, #f1f5f9)',
+              borderBottom: '1px solid var(--border, #f5f5f6)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
               fontSize: 11.5,
               fontWeight: 600,
-              color: 'var(--text-secondary, #64748B)'
+              color: 'var(--text-secondary, #696e79)'
             }}
           >
             <span>
@@ -460,7 +460,7 @@ export function StudentSearchBar() {
                 : 'Quick Shortcuts & Common Sections'}
             </span>
             {loadingData && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#2563eb' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#e11d55' }}>
                 <Loader2 size={11} style={{ animation: 'spinAnim 0.8s linear infinite' }} /> Indexing...
               </span>
             )}
@@ -474,20 +474,20 @@ export function StudentSearchBar() {
                   width: 44,
                   height: 44,
                   borderRadius: '50%',
-                  background: 'var(--bg-subtle, #f1f5f9)',
+                  background: 'var(--bg-subtle, #f5f5f6)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   margin: '0 auto 12px',
-                  color: 'var(--text-secondary, #64748B)'
+                  color: 'var(--text-secondary, #696e79)'
                 }}
               >
                 <Search size={22} />
               </div>
-              <h4 style={{ margin: '0 0 6px', fontSize: 14, fontWeight: 600, color: 'var(--text, #0f172a)' }}>
+              <h4 style={{ margin: '0 0 6px', fontSize: 14, fontWeight: 600, color: 'var(--text, #1c1f2e)' }}>
                 No matches found
               </h4>
-              <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-secondary, #64748B)' }}>
+              <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-secondary, #696e79)' }}>
                 No classes, subjects, or announcements matched <b>"{searchQuery}"</b>.
               </p>
               <div
@@ -508,12 +508,12 @@ export function StudentSearchBar() {
                       inputRef.current?.focus();
                     }}
                     style={{
-                      background: 'var(--bg-subtle, #f8fafc)',
-                      border: '1px solid var(--border, #e2e8f0)',
+                      background: 'var(--bg-subtle, #f9f9fa)',
+                      border: '1px solid var(--border, #eaeaec)',
                       padding: '3px 9px',
                       borderRadius: 100,
                       fontSize: 11.5,
-                      color: '#2563eb',
+                      color: '#e11d55',
                       cursor: 'pointer'
                     }}
                   >
@@ -534,7 +534,7 @@ export function StudentSearchBar() {
                       fontWeight: 700,
                       letterSpacing: '0.06em',
                       textTransform: 'uppercase',
-                      color: 'var(--text-muted, #94a3b8)'
+                      color: 'var(--text-muted, #94969f)'
                     }}
                   >
                     Navigation Pages ({filtered.pages.length})
@@ -554,7 +554,7 @@ export function StudentSearchBar() {
                           justifyContent: 'space-between',
                           padding: '8px 14px',
                           cursor: 'pointer',
-                          background: isSelected ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
+                          background: isSelected ? 'rgba(225, 29, 85, 0.08)' : 'transparent',
                           transition: 'background 0.12s ease'
                         }}
                       >
@@ -563,9 +563,9 @@ export function StudentSearchBar() {
                             style={{
                               width: 30,
                               height: 30,
-                              borderRadius: 8,
-                              background: isSelected ? '#2563eb' : 'var(--bg-subtle, #f1f5f9)',
-                              color: isSelected ? '#ffffff' : '#2563eb',
+                              borderRadius: 4,
+                              background: isSelected ? '#e11d55' : 'var(--bg-subtle, #f5f5f6)',
+                              color: isSelected ? '#ffffff' : '#e11d55',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -575,14 +575,14 @@ export function StudentSearchBar() {
                             <Icon size={15} />
                           </span>
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #0f172a)' }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #1c1f2e)' }}>
                               {item.title}
                             </div>
                             {item.subtitle && (
                               <div
                                 style={{
                                   fontSize: 11.5,
-                                  color: 'var(--text-secondary, #64748B)',
+                                  color: 'var(--text-secondary, #696e79)',
                                   whiteSpace: 'nowrap',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis'
@@ -593,7 +593,7 @@ export function StudentSearchBar() {
                             )}
                           </div>
                         </div>
-                        <span style={{ fontSize: 11, color: '#2563eb', fontWeight: 600, flexShrink: 0 }}>
+                        <span style={{ fontSize: 11, color: '#e11d55', fontWeight: 600, flexShrink: 0 }}>
                           Jump ↵
                         </span>
                       </div>
@@ -612,7 +612,7 @@ export function StudentSearchBar() {
                       fontWeight: 700,
                       letterSpacing: '0.06em',
                       textTransform: 'uppercase',
-                      color: 'var(--text-muted, #94a3b8)'
+                      color: 'var(--text-muted, #94969f)'
                     }}
                   >
                     Classes & Subjects ({filtered.subjects.length})
@@ -632,7 +632,7 @@ export function StudentSearchBar() {
                           justifyContent: 'space-between',
                           padding: '8px 14px',
                           cursor: 'pointer',
-                          background: isSelected ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
+                          background: isSelected ? 'rgba(225, 29, 85, 0.08)' : 'transparent',
                           transition: 'background 0.12s ease'
                         }}
                       >
@@ -641,9 +641,9 @@ export function StudentSearchBar() {
                             style={{
                               width: 30,
                               height: 30,
-                              borderRadius: 8,
-                              background: '#f0fdf4',
-                              color: '#16a34a',
+                              borderRadius: 4,
+                              background: '#e6f2f0',
+                              color: '#03806a',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -653,14 +653,14 @@ export function StudentSearchBar() {
                             <Icon size={15} />
                           </span>
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #0f172a)' }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #1c1f2e)' }}>
                               {item.title}
                             </div>
                             {item.subtitle && (
                               <div
                                 style={{
                                   fontSize: 11.5,
-                                  color: 'var(--text-secondary, #64748B)',
+                                  color: 'var(--text-secondary, #696e79)',
                                   whiteSpace: 'nowrap',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis'
@@ -676,8 +676,8 @@ export function StudentSearchBar() {
                             fontSize: 11,
                             padding: '2px 8px',
                             borderRadius: 100,
-                            background: '#dcfce7',
-                            color: '#15803d',
+                            background: '#cce6e1',
+                            color: '#02604f',
                             fontWeight: 600,
                             flexShrink: 0
                           }}
@@ -700,7 +700,7 @@ export function StudentSearchBar() {
                       fontWeight: 700,
                       letterSpacing: '0.06em',
                       textTransform: 'uppercase',
-                      color: 'var(--text-muted, #94a3b8)'
+                      color: 'var(--text-muted, #94969f)'
                     }}
                   >
                     Announcements & Notices ({filtered.announcements.length})
@@ -720,7 +720,7 @@ export function StudentSearchBar() {
                           justifyContent: 'space-between',
                           padding: '8px 14px',
                           cursor: 'pointer',
-                          background: isSelected ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
+                          background: isSelected ? 'rgba(225, 29, 85, 0.08)' : 'transparent',
                           transition: 'background 0.12s ease'
                         }}
                       >
@@ -729,9 +729,9 @@ export function StudentSearchBar() {
                             style={{
                               width: 30,
                               height: 30,
-                              borderRadius: 8,
-                              background: '#eff6ff',
-                              color: '#2563eb',
+                              borderRadius: 4,
+                              background: '#fff2f4',
+                              color: '#e11d55',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -741,14 +741,14 @@ export function StudentSearchBar() {
                             <Icon size={15} />
                           </span>
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #0f172a)' }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #1c1f2e)' }}>
                               {item.title}
                             </div>
                             {item.subtitle && (
                               <div
                                 style={{
                                   fontSize: 11.5,
-                                  color: 'var(--text-secondary, #64748B)',
+                                  color: 'var(--text-secondary, #696e79)',
                                   whiteSpace: 'nowrap',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis'
@@ -761,15 +761,15 @@ export function StudentSearchBar() {
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                           {item.date && (
-                            <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>{item.date}</span>
+                            <span style={{ fontSize: 11, color: 'var(--text-muted, #94969f)' }}>{item.date}</span>
                           )}
                           <span
                             style={{
                               fontSize: 10.5,
                               padding: '2px 7px',
                               borderRadius: 4,
-                              background: item.badgeColor ? `${item.badgeColor}18` : '#eff6ff',
-                              color: item.badgeColor || '#2563eb',
+                              background: item.badgeColor ? `${item.badgeColor}18` : '#fff2f4',
+                              color: item.badgeColor || '#e11d55',
                               fontWeight: 700
                             }}
                           >
@@ -792,7 +792,7 @@ export function StudentSearchBar() {
                       fontWeight: 700,
                       letterSpacing: '0.06em',
                       textTransform: 'uppercase',
-                      color: 'var(--text-muted, #94a3b8)'
+                      color: 'var(--text-muted, #94969f)'
                     }}
                   >
                     Homework & Assignments ({filtered.assignments.length})
@@ -812,7 +812,7 @@ export function StudentSearchBar() {
                           justifyContent: 'space-between',
                           padding: '8px 14px',
                           cursor: 'pointer',
-                          background: isSelected ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
+                          background: isSelected ? 'rgba(225, 29, 85, 0.08)' : 'transparent',
                           transition: 'background 0.12s ease'
                         }}
                       >
@@ -821,9 +821,9 @@ export function StudentSearchBar() {
                             style={{
                               width: 30,
                               height: 30,
-                              borderRadius: 8,
-                              background: '#fef3c7',
-                              color: '#b45309',
+                              borderRadius: 4,
+                              background: '#fbecd3',
+                              color: '#8f5c12',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -833,14 +833,14 @@ export function StudentSearchBar() {
                             <Icon size={15} />
                           </span>
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #0f172a)' }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #1c1f2e)' }}>
                               {item.title}
                             </div>
                             {item.subtitle && (
                               <div
                                 style={{
                                   fontSize: 11.5,
-                                  color: 'var(--text-secondary, #64748B)',
+                                  color: 'var(--text-secondary, #696e79)',
                                   whiteSpace: 'nowrap',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis'
@@ -856,8 +856,8 @@ export function StudentSearchBar() {
                             fontSize: 10.5,
                             padding: '2px 7px',
                             borderRadius: 4,
-                            background: item.badgeColor ? `${item.badgeColor}18` : '#fef3c7',
-                            color: item.badgeColor || '#b45309',
+                            background: item.badgeColor ? `${item.badgeColor}18` : '#fbecd3',
+                            color: item.badgeColor || '#8f5c12',
                             fontWeight: 700,
                             flexShrink: 0
                           }}
@@ -880,7 +880,7 @@ export function StudentSearchBar() {
                       fontWeight: 700,
                       letterSpacing: '0.06em',
                       textTransform: 'uppercase',
-                      color: 'var(--text-muted, #94a3b8)'
+                      color: 'var(--text-muted, #94969f)'
                     }}
                   >
                     Exams & Results ({filtered.exams.length})
@@ -900,7 +900,7 @@ export function StudentSearchBar() {
                           justifyContent: 'space-between',
                           padding: '8px 14px',
                           cursor: 'pointer',
-                          background: isSelected ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
+                          background: isSelected ? 'rgba(225, 29, 85, 0.08)' : 'transparent',
                           transition: 'background 0.12s ease'
                         }}
                       >
@@ -909,9 +909,9 @@ export function StudentSearchBar() {
                             style={{
                               width: 30,
                               height: 30,
-                              borderRadius: 8,
-                              background: '#f3e8ff',
-                              color: '#7e22ce',
+                              borderRadius: 4,
+                              background: '#dde1f2',
+                              color: '#48549a',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -921,14 +921,14 @@ export function StudentSearchBar() {
                             <Icon size={15} />
                           </span>
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #0f172a)' }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #1c1f2e)' }}>
                               {item.title}
                             </div>
                             {item.subtitle && (
                               <div
                                 style={{
                                   fontSize: 11.5,
-                                  color: 'var(--text-secondary, #64748B)',
+                                  color: 'var(--text-secondary, #696e79)',
                                   whiteSpace: 'nowrap',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis'
@@ -944,8 +944,8 @@ export function StudentSearchBar() {
                             fontSize: 10.5,
                             padding: '2px 7px',
                             borderRadius: 4,
-                            background: '#f3e8ff',
-                            color: '#7e22ce',
+                            background: '#dde1f2',
+                            color: '#48549a',
                             fontWeight: 700,
                             flexShrink: 0
                           }}
@@ -964,18 +964,18 @@ export function StudentSearchBar() {
           <div
             style={{
               padding: '8px 14px 4px',
-              borderTop: '1px solid var(--border, #f1f5f9)',
+              borderTop: '1px solid var(--border, #f5f5f6)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               fontSize: 11,
-              color: 'var(--text-muted, #94a3b8)'
+              color: 'var(--text-muted, #94969f)'
             }}
           >
             <span>
               Use <b>↑</b> <b>↓</b> to navigate · <b>↵ Enter</b> to select · <b>ESC</b> to close
             </span>
-            <span style={{ color: '#2563eb', fontWeight: 600 }}>AttendoSchool Search</span>
+            <span style={{ color: '#e11d55', fontWeight: 600 }}>AttendoSchool Search</span>
           </div>
         </div>
       )}

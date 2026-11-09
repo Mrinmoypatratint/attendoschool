@@ -213,7 +213,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
       {/* ─── 6 Stat Cards Row (Real Data) ─── */}
       <div className="sa-stats-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
         {/* Card 1: Total Schools */}
-        <div className="sa-stat-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
+        <div className="sa-stat-card rounded border border-border bg-card p-4">
           <div className="sa-stat-top">
             <div className="sa-stat-icon-wrap icon-blue">
               <School size={20} />
@@ -233,7 +233,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
         </div>
 
         {/* Card 2: Active Schools */}
-        <div className="sa-stat-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
+        <div className="sa-stat-card rounded border border-border bg-card p-4">
           <div className="sa-stat-top">
             <div className="sa-stat-icon-wrap icon-green">
               <CheckCircle2 size={20} />
@@ -253,7 +253,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
         </div>
 
         {/* Card 3: Expired / Attention */}
-        <div className="sa-stat-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
+        <div className="sa-stat-card rounded border border-border bg-card p-4">
           <div className="sa-stat-top">
             <div className="sa-stat-icon-wrap icon-amber">
               <Clock size={20} />
@@ -273,7 +273,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
         </div>
 
         {/* Card 4: Total Students */}
-        <div className="sa-stat-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
+        <div className="sa-stat-card rounded border border-border bg-card p-4">
           <div className="sa-stat-top">
             <div className="sa-stat-icon-wrap icon-purple">
               <GraduationCap size={20} />
@@ -293,7 +293,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
         </div>
 
         {/* Card 5: Platform Revenue */}
-        <div className="sa-stat-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
+        <div className="sa-stat-card rounded border border-border bg-card p-4">
           <div className="sa-stat-top">
             <div className="sa-stat-icon-wrap icon-amber">
               <span style={{ fontWeight: 800, fontSize: 18 }}>₹</span>
@@ -313,7 +313,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
         </div>
 
         {/* Card 6: Pending Collections */}
-        <div className="sa-stat-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
+        <div className="sa-stat-card rounded border border-border bg-card p-4">
           <div className="sa-stat-top">
             <div className="sa-stat-icon-wrap icon-slate">
               <CreditCard size={20} />
@@ -390,7 +390,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
               </button>
             </div>
             <div className="sa-inline-search">
-              <Search size={14} style={{ color: '#94a3b8' }} />
+              <Search size={14} style={{ color: "var(--muted-foreground)" }} />
               <input
                 type="text"
                 placeholder="Filter by name or code..."
@@ -401,7 +401,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
                 <button
                   type="button"
                   onClick={() => setTableSearch('')}
-                  style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0 }}
+                  style={{ border: 'none', background: 'none', cursor: 'pointer', color: "var(--muted-foreground)", padding: 0 }}
                 >
                   ×
                 </button>
@@ -733,22 +733,22 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
       {deleteSchool && (
         <div className="sa-modal-backdrop" onClick={() => !deleteBusy && setDeleteSchool(null)}>
           <div className="sa-modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: '490px' }}>
-            <div className="sa-modal-header" style={{ borderBottomColor: '#fecaca' }}>
+            <div className="sa-modal-header" style={{ borderBottomColor: "var(--border)" }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{
                   width: '36px',
                   height: '36px',
                   borderRadius: '50%',
-                  background: '#fef2f2',
+                  background: "var(--card)",
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#dc2626'
+                  color: "var(--destructive)"
                 }}>
                   <Trash2 size={18} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, color: '#991b1b', fontSize: '16px' }}>Delete School Institution</h3>
+                  <h3 style={{ margin: 0, color: "var(--destructive)", fontSize: '16px' }}>Delete School Institution</h3>
                   <span className="sa-modal-subtitle">Permanent & Irreversible Operation</span>
                 </div>
               </div>
@@ -756,22 +756,22 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
             </div>
             <div style={{ padding: '16px 0' }}>
               <div style={{
-                background: '#fff1f2',
-                border: '1px solid #fecdd3',
-                borderRadius: '8px',
+                background: "var(--card)",
+                border: "1px solid var(--border)",
+                borderRadius: '4px',
                 padding: '12px 14px',
                 marginBottom: '16px'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                  <AlertTriangle size={16} color="#e11d48" />
-                  <strong style={{ color: '#9f1239', fontSize: '13px' }}>Warning: Destructive Database Action</strong>
+                  <AlertTriangle size={16} color="#d32f2f" />
+                  <strong style={{ color: "var(--destructive)", fontSize: '13px' }}>Warning: Destructive Database Action</strong>
                 </div>
-                <p style={{ margin: 0, fontSize: '12.5px', color: '#881337', lineHeight: 1.5 }}>
+                <p style={{ margin: 0, fontSize: '12.5px', color: "var(--destructive)", lineHeight: 1.5 }}>
                   You are about to permanently delete <strong>{deleteSchool.name}</strong> ({deleteSchool.code}).
                   All associated records, including administrator logins, teachers, student rosters, classes, timetable routines, and attendance sessions will be completely purged from the database.
                 </p>
               </div>
-              <p style={{ fontSize: '13px', color: '#475569', margin: 0 }}>
+              <p style={{ fontSize: '13px', color: "var(--muted-foreground)", margin: 0 }}>
                 Are you sure you want to proceed with deleting this school?
               </p>
             </div>

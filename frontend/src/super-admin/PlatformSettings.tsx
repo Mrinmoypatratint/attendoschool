@@ -106,7 +106,7 @@ export const PlatformSettings: React.FC = () => {
       </div>
 
       {saveSuccess && (
-        <div style={{ margin: '14px 0', padding: '12px 16px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ margin: '14px 0', padding: '12px 16px', borderRadius: '4px', background: "var(--secondary)", color: "var(--success)", border: "1px solid var(--border)", fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="20 6 9 17 4 12" />
           </svg>
@@ -115,13 +115,13 @@ export const PlatformSettings: React.FC = () => {
       )}
 
       {error && (
-        <div className="error-banner" style={{ margin: '16px 0', padding: '12px 16px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+        <div className="error-banner" style={{ margin: '16px 0', padding: '12px 16px', borderRadius: '4px', background: "var(--secondary)", color: "var(--destructive)", border: "1px solid var(--border)" }}>
           {error}
         </div>
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '8px', margin: '20px 0', borderBottom: '1px solid #e2e8f0' }}>
+      <div style={{ display: 'flex', gap: '8px', margin: '20px 0', borderBottom: "1px solid var(--border)" }}>
         <button
           className="btn-tab"
           style={{
@@ -130,8 +130,8 @@ export const PlatformSettings: React.FC = () => {
             background: 'none',
             cursor: 'pointer',
             fontWeight: activeTab === 'general' ? '700' : '500',
-            color: activeTab === 'general' ? '#4f46e5' : '#64748b',
-            borderBottom: activeTab === 'general' ? '2px solid #4f46e5' : '2px solid transparent'
+            color: activeTab === 'general' ? "var(--primary)" : "var(--muted-foreground)",
+            borderBottom: activeTab === 'general' ? "2px solid var(--border)" : '2px solid transparent'
           }}
           onClick={() => setActiveTab('general')}
         >
@@ -145,8 +145,8 @@ export const PlatformSettings: React.FC = () => {
             background: 'none',
             cursor: 'pointer',
             fontWeight: activeTab === 'payment' ? '700' : '500',
-            color: activeTab === 'payment' ? '#4f46e5' : '#64748b',
-            borderBottom: activeTab === 'payment' ? '2px solid #4f46e5' : '2px solid transparent'
+            color: activeTab === 'payment' ? "var(--primary)" : "var(--muted-foreground)",
+            borderBottom: activeTab === 'payment' ? "2px solid var(--border)" : '2px solid transparent'
           }}
           onClick={() => setActiveTab('payment')}
         >
@@ -160,8 +160,8 @@ export const PlatformSettings: React.FC = () => {
             background: 'none',
             cursor: 'pointer',
             fontWeight: activeTab === 'sms' ? '700' : '500',
-            color: activeTab === 'sms' ? '#4f46e5' : '#64748b',
-            borderBottom: activeTab === 'sms' ? '2px solid #4f46e5' : '2px solid transparent'
+            color: activeTab === 'sms' ? "var(--primary)" : "var(--muted-foreground)",
+            borderBottom: activeTab === 'sms' ? "2px solid var(--border)" : '2px solid transparent'
           }}
           onClick={() => setActiveTab('sms')}
         >
@@ -175,8 +175,8 @@ export const PlatformSettings: React.FC = () => {
             background: 'none',
             cursor: 'pointer',
             fontWeight: activeTab === 'system' ? '700' : '500',
-            color: activeTab === 'system' ? '#4f46e5' : '#64748b',
-            borderBottom: activeTab === 'system' ? '2px solid #4f46e5' : '2px solid transparent'
+            color: activeTab === 'system' ? "var(--primary)" : "var(--muted-foreground)",
+            borderBottom: activeTab === 'system' ? "2px solid var(--border)" : '2px solid transparent'
           }}
           onClick={() => setActiveTab('system')}
         >
@@ -190,8 +190,8 @@ export const PlatformSettings: React.FC = () => {
             background: 'none',
             cursor: 'pointer',
             fontWeight: activeTab === 'smtp' ? '700' : '500',
-            color: activeTab === 'smtp' ? '#4f46e5' : '#64748b',
-            borderBottom: activeTab === 'smtp' ? '2px solid #4f46e5' : '2px solid transparent'
+            color: activeTab === 'smtp' ? "var(--primary)" : "var(--muted-foreground)",
+            borderBottom: activeTab === 'smtp' ? "2px solid var(--border)" : '2px solid transparent'
           }}
           onClick={() => setActiveTab('smtp')}
         >
@@ -202,13 +202,13 @@ export const PlatformSettings: React.FC = () => {
       <form onSubmit={handleSaveSettings}>
         <div className="card" style={{ padding: '24px' }}>
           {loading ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+            <div style={{ padding: '40px', textAlign: 'center', color: "var(--muted-foreground)" }}>
               Loading settings...
             </div>
           ) : activeTab === 'general' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', maxWidth: '640px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: "var(--muted-foreground)" }}>
                   Platform Company Legal Name
                 </label>
                 <input
@@ -221,7 +221,7 @@ export const PlatformSettings: React.FC = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: "var(--muted-foreground)" }}>
                     GSTIN Registration Number
                   </label>
                   <input
@@ -232,7 +232,7 @@ export const PlatformSettings: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: "var(--muted-foreground)" }}>
                     GST Rate Applied (%)
                   </label>
                   <input
@@ -245,7 +245,7 @@ export const PlatformSettings: React.FC = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: "var(--muted-foreground)" }}>
                   Official Registered Address
                 </label>
                 <textarea
@@ -258,7 +258,7 @@ export const PlatformSettings: React.FC = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: "var(--muted-foreground)" }}>
                     Support Contact Phone
                   </label>
                   <input
@@ -269,7 +269,7 @@ export const PlatformSettings: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: "var(--muted-foreground)" }}>
                     Support Email Address
                   </label>
                   <input
@@ -284,7 +284,7 @@ export const PlatformSettings: React.FC = () => {
           ) : activeTab === 'payment' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', maxWidth: '640px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: "var(--muted-foreground)" }}>
                   Razorpay Key ID
                 </label>
                 <input
@@ -296,7 +296,7 @@ export const PlatformSettings: React.FC = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: "var(--muted-foreground)" }}>
                   Razorpay Webhook Secret
                 </label>
                 <input
@@ -307,14 +307,14 @@ export const PlatformSettings: React.FC = () => {
                 />
               </div>
 
-              <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', color: '#64748b' }}>
+              <div style={{ padding: '14px', background: "var(--card)", borderRadius: '4px', border: "1px solid var(--border)", fontSize: '13px', color: "var(--muted-foreground)" }}>
                 Webhook listener active at: <code>http://localhost:5000/api/webhooks/razorpay</code>. Auto-verifies cryptographic HMAC SHA256 signatures before provisioning licenses.
               </div>
             </div>
           ) : activeTab === 'sms' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', maxWidth: '640px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: "var(--muted-foreground)" }}>
                   SMS Dispatch Provider
                 </label>
                 <select
@@ -329,7 +329,7 @@ export const PlatformSettings: React.FC = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: "var(--muted-foreground)" }}>
                   Default Approved Sender ID / Header
                 </label>
                 <input
@@ -339,7 +339,7 @@ export const PlatformSettings: React.FC = () => {
                   value={settings.smsSenderId}
                   onChange={(e) => setSettings({ ...settings, smsSenderId: e.target.value.toUpperCase() })}
                 />
-                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                <div style={{ fontSize: '12px', color: "var(--muted-foreground)", marginTop: '4px' }}>
                   Standard 6-character TRAI DLT approved principal entity header.
                 </div>
               </div>
@@ -348,7 +348,7 @@ export const PlatformSettings: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', maxWidth: '640px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: "var(--muted-foreground)" }}>
                     Session Inactivity Timeout (Minutes)
                   </label>
                   <input
@@ -360,7 +360,7 @@ export const PlatformSettings: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: "var(--muted-foreground)" }}>
                     Global Rate Limit (Req / Minute)
                   </label>
                   <input
@@ -380,7 +380,7 @@ export const PlatformSettings: React.FC = () => {
                   checked={settings.enforceStrongPasswords}
                   onChange={(e) => setSettings({ ...settings, enforceStrongPasswords: e.target.checked })}
                 />
-                <label htmlFor="enforcePw" style={{ fontSize: '14px', color: '#334155', fontWeight: '500' }}>
+                <label htmlFor="enforcePw" style={{ fontSize: '14px', color: "var(--muted-foreground)", fontWeight: '500' }}>
                   Enforce strong password policy for all school administrators & teachers
                 </label>
               </div>
@@ -392,7 +392,7 @@ export const PlatformSettings: React.FC = () => {
                   checked={settings.maintenanceMode}
                   onChange={(e) => setSettings({ ...settings, maintenanceMode: e.target.checked })}
                 />
-                <label htmlFor="maintenanceMode" style={{ fontSize: '14px', color: '#334155', fontWeight: '500' }}>
+                <label htmlFor="maintenanceMode" style={{ fontSize: '14px', color: "var(--muted-foreground)", fontWeight: '500' }}>
                   Platform Maintenance Mode (Restricts access to Super Admins only)
                 </label>
               </div>
@@ -403,11 +403,11 @@ export const PlatformSettings: React.FC = () => {
               
               {/* MASTER MAIL SERVICE ON/OFF TOGGLE BOX */}
               <div style={{
-                background: settings.emailEnabled !== false ? '#f0fdf4' : '#fff1f2',
-                borderRadius: '10px',
-                border: `1.5px solid ${settings.emailEnabled !== false ? '#86efac' : '#fecdd3'}`,
+                background: settings.emailEnabled !== false ? "var(--secondary)" : "var(--card)",
+                borderRadius: '4px',
+                border: `1.5px solid ${settings.emailEnabled !== false ? "var(--border)" : "var(--border)"}`,
                 padding: '20px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                boxShadow: 'none'
               }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: '280px' }}>
@@ -421,30 +421,30 @@ export const PlatformSettings: React.FC = () => {
                         fontSize: '12px',
                         fontWeight: '700',
                         letterSpacing: '0.03em',
-                        background: settings.emailEnabled !== false ? '#dcfce7' : '#ffe4e6',
-                        color: settings.emailEnabled !== false ? '#15803d' : '#be123c',
-                        border: `1px solid ${settings.emailEnabled !== false ? '#bbf7d0' : '#fecdd3'}`
+                        background: settings.emailEnabled !== false ? "var(--secondary)" : "var(--secondary)",
+                        color: settings.emailEnabled !== false ? "var(--success)" : "var(--destructive)",
+                        border: `1px solid ${settings.emailEnabled !== false ? "var(--border)" : "var(--border)"}`
                       }}>
                         <span style={{
                           display: 'inline-block',
                           width: '8px',
                           height: '8px',
                           borderRadius: '50%',
-                          background: settings.emailEnabled !== false ? '#22c55e' : '#f43f5e',
-                          boxShadow: settings.emailEnabled !== false ? '0 0 8px #22c55e' : 'none'
+                          background: settings.emailEnabled !== false ? "var(--success)" : "var(--destructive)",
+                          boxShadow: settings.emailEnabled !== false ? "none" : 'none'
                         }}></span>
                         {settings.emailEnabled !== false ? 'MAIL SERVICE IS ACTIVE' : 'MAIL SERVICE IS DISABLED / PAUSED'}
                       </span>
-                      <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '500' }}>
+                      <span style={{ fontSize: '11px', color: "var(--muted-foreground)", fontWeight: '500' }}>
                         (Superadmin Master Switch)
                       </span>
                     </div>
 
-                    <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: '700', color: settings.emailEnabled !== false ? '#166534' : '#9f1239' }}>
+                    <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: '700', color: settings.emailEnabled !== false ? "var(--success)" : "var(--destructive)" }}>
                       {settings.emailEnabled !== false ? 'Automated & Transactional Email Dispatch Enabled' : 'All Outbound Emails Suspended System-Wide'}
                     </h4>
 
-                    <p style={{ margin: 0, fontSize: '13px', color: settings.emailEnabled !== false ? '#14532d' : '#881337', lineHeight: '1.5' }}>
+                    <p style={{ margin: 0, fontSize: '13px', color: settings.emailEnabled !== false ? "var(--success)" : "var(--destructive)", lineHeight: '1.5' }}>
                       {settings.emailEnabled !== false
                         ? 'Student absence alerts, parent notifications, invoice payment receipts, account credentials, and password resets will be delivered automatically via your configured SMTP / Brevo relay.'
                         : 'No outbound emails will be dispatched to parents, teachers, students, or administrators. Notifications are safely bypassed without interrupting school workflows or throwing unhandled errors.'}
@@ -461,14 +461,14 @@ export const PlatformSettings: React.FC = () => {
                         alignItems: 'center',
                         gap: '8px',
                         padding: '9px 18px',
-                        borderRadius: '8px',
+                        borderRadius: '4px',
                         fontWeight: '600',
                         fontSize: '13px',
                         cursor: togglingMail ? 'not-allowed' : 'pointer',
                         border: 'none',
-                        color: '#ffffff',
-                        background: settings.emailEnabled !== false ? '#dc2626' : '#16a34a',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        color: "var(--background)",
+                        background: settings.emailEnabled !== false ? "var(--destructive)" : "var(--success)",
+                        boxShadow: 'none',
                         transition: 'all 0.2s ease'
                       }}
                     >
@@ -486,15 +486,15 @@ export const PlatformSettings: React.FC = () => {
                         </>
                       )}
                     </button>
-                    <span style={{ fontSize: '11px', color: '#64748b' }}>
+                    <span style={{ fontSize: '11px', color: "var(--muted-foreground)" }}>
                       Click for instant platform-wide toggle
                     </span>
                   </div>
                 </div>
 
                 {/* Explicit Radio Choice */}
-                <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: `1px solid ${settings.emailEnabled !== false ? '#bbf7d0' : '#fecdd3'}`, display: 'flex', gap: '20px', alignItems: 'center' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '600', color: '#1e293b', cursor: 'pointer' }}>
+                <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: `1px solid ${settings.emailEnabled !== false ? "var(--border)" : "var(--border)"}`, display: 'flex', gap: '20px', alignItems: 'center' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '600', color: "var(--foreground)", cursor: 'pointer' }}>
                     <input
                       type="radio"
                       name="emailMasterServiceStatus"
@@ -503,7 +503,7 @@ export const PlatformSettings: React.FC = () => {
                     />
                     <span>Active (Deliver Emails)</span>
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '600', color: '#1e293b', cursor: 'pointer' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '600', color: "var(--foreground)", cursor: 'pointer' }}>
                     <input
                       type="radio"
                       name="emailMasterServiceStatus"
@@ -515,19 +515,19 @@ export const PlatformSettings: React.FC = () => {
                 </div>
               </div>
 
-              <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', color: '#1e293b', fontWeight: '700', fontSize: '14px' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              <div style={{ background: "var(--card)", padding: '16px', borderRadius: '4px', border: "1px solid var(--border)" }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', color: "var(--foreground)", fontWeight: '700', fontSize: '14px' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e11d55" strokeWidth="2"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
                   Central SMTP Email Gateway (Restricted to Superadmin)
                 </div>
-                <p style={{ margin: 0, fontSize: '13px', color: '#64748b', lineHeight: '1.5' }}>
+                <p style={{ margin: 0, fontSize: '13px', color: "var(--muted-foreground)", lineHeight: '1.5' }}>
                   Only the <b>Superadmin</b> has access to view, update, and secure the underlying SMTP username and password credentials. School accounts use this central gateway to deliver automated student absence alerts while managing their own sender identities and notifications.
                 </p>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '14px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: "var(--muted-foreground)" }}>
                     SMTP Host Server
                   </label>
                   <input
@@ -539,7 +539,7 @@ export const PlatformSettings: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: "var(--muted-foreground)" }}>
                     Port
                   </label>
                   <input
@@ -551,7 +551,7 @@ export const PlatformSettings: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: "var(--muted-foreground)" }}>
                     Encryption
                   </label>
                   <select
@@ -568,8 +568,8 @@ export const PlatformSettings: React.FC = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
-                    SMTP Username / Login Email <span style={{ color: '#4f46e5' }}>*</span>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: "var(--muted-foreground)" }}>
+                    SMTP Username / Login Email <span style={{ color: "var(--primary)" }}>*</span>
                   </label>
                   <input
                     type="text"
@@ -580,8 +580,8 @@ export const PlatformSettings: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
-                    SMTP Password / App Password <span style={{ color: '#4f46e5' }}>*</span>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: "var(--muted-foreground)" }}>
+                    SMTP Password / App Password <span style={{ color: "var(--primary)" }}>*</span>
                   </label>
                   <div style={{ display: 'flex', gap: '6px' }}>
                     <input
@@ -606,7 +606,7 @@ export const PlatformSettings: React.FC = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: "var(--muted-foreground)" }}>
                     Default Sender Email Address
                   </label>
                   <input
@@ -618,7 +618,7 @@ export const PlatformSettings: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: "var(--muted-foreground)" }}>
                     Default Sender Display Name
                   </label>
                   <input
@@ -632,22 +632,22 @@ export const PlatformSettings: React.FC = () => {
               </div>
 
               {/* Brevo HTTPS Gateway (Port 443 — Render & Cloud Egress Immune) */}
-              <div style={{ background: '#f0fdf4', padding: '16px', borderRadius: '8px', border: '1px solid #bbf7d0', marginTop: '6px' }}>
+              <div style={{ background: "var(--secondary)", padding: '16px', borderRadius: '4px', border: "1px solid var(--border)", marginTop: '6px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
-                  <div style={{ fontWeight: '700', fontSize: '13.5px', color: '#166534', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e' }}></span>
+                  <div style={{ fontWeight: '700', fontSize: '13.5px', color: "var(--success)", display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: "var(--success)" }}></span>
                     HTTPS REST Email Gateway (Port 443 — Render Cloud Ready)
                   </div>
-                  <span style={{ fontSize: '11px', background: '#dcfce7', color: '#15803d', padding: '3px 8px', borderRadius: '4px', fontWeight: '600', border: '1px solid #86efac' }}>
+                  <span style={{ fontSize: '11px', background: "var(--secondary)", color: "var(--success)", padding: '3px 8px', borderRadius: '4px', fontWeight: '600', border: "1px solid var(--border)" }}>
                     ACTIVE (Bypasses Port 587/465 Cloud Blocks)
                   </span>
                 </div>
-                <p style={{ margin: '0 0 12px 0', fontSize: '12.5px', color: '#14532d', lineHeight: '1.45' }}>
+                <p style={{ margin: '0 0 12px 0', fontSize: '12.5px', color: "var(--success)", lineHeight: '1.45' }}>
                   Cloud deployment platforms like Render Free tier block outbound TCP on ports 25, 465, and 587. AttendoSchool automatically dispatches emails via <b>Brevo HTTPS REST API (Port 443)</b> with guaranteed deliverability, DKIM signing, and zero port blockage.
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px', color: '#166534' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px', color: "var(--success)" }}>
                       Brevo API Key (xkeysib-...)
                     </label>
                     <input
@@ -659,13 +659,13 @@ export const PlatformSettings: React.FC = () => {
                       style={{ fontSize: '13px' }}
                     />
                     {settings.brevoApiKey?.startsWith('xsmtpsib-') && (
-                      <div style={{ marginTop: '6px', padding: '8px 12px', background: '#fffbeb', border: '1px solid #fde047', borderRadius: '6px', fontSize: '12px', color: '#b45309', lineHeight: '1.45' }}>
+                      <div style={{ marginTop: '6px', padding: '8px 12px', background: "var(--card)", border: "1px solid var(--border)", borderRadius: '4px', fontSize: '12px', color: "var(--warning)", lineHeight: '1.45' }}>
                         ⚠️ <b>Brevo SMTP Key Detected:</b> You entered an SMTP password (starts with <code>xsmtpsib-</code>). For cloud HTTPS delivery on Render (Port 443), please generate an <b>API Key</b> (starts with <code>xkeysib-</code>) in Brevo &rarr; <b>SMTP & API</b> &rarr; <b>API Keys</b> tab.
                       </div>
                     )}
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px', color: '#166534' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px', color: "var(--success)" }}>
                       Verified Brevo Sender Email
                     </label>
                     <input
@@ -681,12 +681,12 @@ export const PlatformSettings: React.FC = () => {
               </div>
 
               {/* SMTP Test Console for Superadmin */}
-              <div style={{ background: '#f1f5f9', padding: '16px', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop: '10px' }}>
-                <div style={{ fontWeight: '600', fontSize: '13px', marginBottom: '8px', color: '#1e293b' }}>
+              <div style={{ background: "var(--secondary)", padding: '16px', borderRadius: '4px', border: "1px solid var(--border)", marginTop: '10px' }}>
+                <div style={{ fontWeight: '600', fontSize: '13px', marginBottom: '8px', color: "var(--foreground)" }}>
                   Superadmin Test SMTP Dispatch
                 </div>
                 {settings.emailEnabled === false && (
-                  <div style={{ margin: '0 0 12px 0', padding: '10px 12px', borderRadius: '6px', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ margin: '0 0 12px 0', padding: '10px 12px', borderRadius: '4px', background: "var(--card)", color: "var(--destructive)", border: "1px solid var(--border)", fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                     <span><b>Notice:</b> Mail service is currently set to DISABLED. Please toggle Mail Service to Active above to test verification email delivery.</span>
                   </div>
@@ -736,7 +736,7 @@ export const PlatformSettings: React.FC = () => {
                   </button>
                 </div>
                 {smtpTestMsg && (
-                  <div style={{ marginTop: '10px', fontSize: '13px', color: smtpTestMsg.success ? '#166534' : '#991b1b', fontWeight: '500' }}>
+                  <div style={{ marginTop: '10px', fontSize: '13px', color: smtpTestMsg.success ? "var(--success)" : "var(--destructive)", fontWeight: '500' }}>
                     {smtpTestMsg.success ? '✔ ' : '✖ '} {smtpTestMsg.message}
                   </div>
                 )}
@@ -744,7 +744,7 @@ export const PlatformSettings: React.FC = () => {
             </div>
           )}
 
-          <div style={{ marginTop: '28px', paddingTop: '16px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ marginTop: '28px', paddingTop: '16px', borderTop: "1px solid var(--border)", display: 'flex', justifyContent: 'flex-end' }}>
             <button
               type="submit"
               className="btn-primary"

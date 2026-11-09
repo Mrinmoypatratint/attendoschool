@@ -65,8 +65,8 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
       badge: 'Campus360',
       badgeClass: 'badge-blue',
       icon: Sparkles,
-      iconColor: '#0284C7',
-      iconBg: '#EFF6FF'
+      iconColor: '#5c6bc0',
+      iconBg: '#fff2f4'
     },
     {
       id: 'hrms',
@@ -75,8 +75,8 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
       badge: 'Live Suite',
       badgeClass: 'badge-green',
       icon: Briefcase,
-      iconColor: '#059669',
-      iconBg: '#ECFDF5'
+      iconColor: '#03806a',
+      iconBg: '#e6f2f0'
     },
     {
       id: 'roles',
@@ -85,8 +85,8 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
       badge: 'Multi-Role',
       badgeClass: 'badge-purple',
       icon: Users,
-      iconColor: '#7C3AED',
-      iconBg: '#F5F3FF'
+      iconColor: '#5c6bc0',
+      iconBg: '#eef0f9'
     },
     {
       id: 'flow',
@@ -95,8 +95,8 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
       badge: 'Automated',
       badgeClass: 'badge-amber',
       icon: Workflow,
-      iconColor: '#D97706',
-      iconBg: '#FFFBEB'
+      iconColor: '#b8781c',
+      iconBg: '#fdf5e9'
     },
     {
       id: 'trust',
@@ -105,8 +105,8 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
       badge: 'Encrypted',
       badgeClass: 'badge-blue',
       icon: ShieldCheck,
-      iconColor: '#2563EB',
-      iconBg: '#EFF6FF'
+      iconColor: '#e11d55',
+      iconBg: '#fff2f4'
     }
   ];
 
@@ -227,7 +227,7 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
                   rel="noopener noreferrer"
                   className="c360-dot-quick-link"
                 >
-                  <Briefcase size={13} style={{ color: '#0284C7' }} />
+                  <Briefcase size={13} style={{ color: '#5c6bc0' }} />
                   <span>HRMS</span>
                   <ExternalLink size={10} style={{ opacity: 0.55 }} />
                 </a>
@@ -237,7 +237,7 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
                   className="c360-dot-quick-link"
                   onClick={handleLoginClick}
                 >
-                  <UserCheck size={13} style={{ color: '#059669' }} />
+                  <UserCheck size={13} style={{ color: '#03806a' }} />
                   <span>Login</span>
                 </button>
 
@@ -246,7 +246,7 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
                   className="c360-dot-quick-link highlight"
                   onClick={() => handleNavClick('demo')}
                 >
-                  <ArrowRight size={13} style={{ color: '#2563EB' }} />
+                  <ArrowRight size={13} style={{ color: '#e11d55' }} />
                   <span>Demo</span>
                 </button>
               </div>

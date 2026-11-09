@@ -155,7 +155,7 @@ export const RolesPermissions: React.FC = () => {
       </div>
 
       {error && (
-        <div className="error-banner" style={{ margin: '16px 0', padding: '12px 16px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+        <div className="error-banner" style={{ margin: '16px 0', padding: '12px 16px', borderRadius: '4px', background: "var(--secondary)", color: "var(--destructive)", border: "1px solid var(--border)" }}>
           {error}
         </div>
       )}
@@ -170,8 +170,8 @@ export const RolesPermissions: React.FC = () => {
             background: 'none',
             cursor: 'pointer',
             fontWeight: activeTab === 'matrix' ? '700' : '500',
-            color: activeTab === 'matrix' ? 'var(--sidebar-accent, #3b82f6)' : 'var(--text-muted)',
-            borderBottom: activeTab === 'matrix' ? '2px solid var(--sidebar-accent, #3b82f6)' : '2px solid transparent'
+            color: activeTab === 'matrix' ? "var(--sidebar-accent, var(--primary))" : 'var(--text-muted)',
+            borderBottom: activeTab === 'matrix' ? "2px solid var(--sidebar-accent, var(--border))" : '2px solid transparent'
           }}
           onClick={() => setActiveTab('matrix')}
         >
@@ -185,8 +185,8 @@ export const RolesPermissions: React.FC = () => {
             background: 'none',
             cursor: 'pointer',
             fontWeight: activeTab === 'roles' ? '700' : '500',
-            color: activeTab === 'roles' ? 'var(--sidebar-accent, #3b82f6)' : 'var(--text-muted)',
-            borderBottom: activeTab === 'roles' ? '2px solid var(--sidebar-accent, #3b82f6)' : '2px solid transparent'
+            color: activeTab === 'roles' ? "var(--sidebar-accent, var(--primary))" : 'var(--text-muted)',
+            borderBottom: activeTab === 'roles' ? "2px solid var(--sidebar-accent, var(--border))" : '2px solid transparent'
           }}
           onClick={() => setActiveTab('roles')}
         >
@@ -217,35 +217,35 @@ export const RolesPermissions: React.FC = () => {
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {row.superAdmin ? (
-                        <span style={{ color: '#10b981', fontWeight: 'bold', fontSize: '16px' }}>&check;</span>
+                        <span style={{ color: "var(--success)", fontWeight: 'bold', fontSize: '16px' }}>&check;</span>
                       ) : (
                         <span style={{ color: 'var(--text-muted)', opacity: 0.5 }}>&mdash;</span>
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {row.schoolAdmin ? (
-                        <span style={{ color: '#10b981', fontWeight: 'bold', fontSize: '16px' }}>&check;</span>
+                        <span style={{ color: "var(--success)", fontWeight: 'bold', fontSize: '16px' }}>&check;</span>
                       ) : (
                         <span style={{ color: 'var(--text-muted)', opacity: 0.5 }}>&mdash;</span>
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {row.teacher ? (
-                        <span style={{ color: '#10b981', fontWeight: 'bold', fontSize: '16px' }}>&check;</span>
+                        <span style={{ color: "var(--success)", fontWeight: 'bold', fontSize: '16px' }}>&check;</span>
                       ) : (
                         <span style={{ color: 'var(--text-muted)', opacity: 0.5 }}>&mdash;</span>
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {row.student ? (
-                        <span style={{ color: '#10b981', fontWeight: 'bold', fontSize: '16px' }}>&check;</span>
+                        <span style={{ color: "var(--success)", fontWeight: 'bold', fontSize: '16px' }}>&check;</span>
                       ) : (
                         <span style={{ color: 'var(--text-muted)', opacity: 0.5 }}>&mdash;</span>
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {row.parent ? (
-                        <span style={{ color: '#10b981', fontWeight: 'bold', fontSize: '16px' }}>&check;</span>
+                        <span style={{ color: "var(--success)", fontWeight: 'bold', fontSize: '16px' }}>&check;</span>
                       ) : (
                         <span style={{ color: 'var(--text-muted)', opacity: 0.5 }}>&mdash;</span>
                       )}
@@ -273,7 +273,7 @@ export const RolesPermissions: React.FC = () => {
 
           <div className="card">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span className="badge" style={{ background: 'rgba(124, 58, 237, 0.12)', color: 'var(--purple-500, #a855f7)', border: '1px solid rgba(124, 58, 237, 0.25)' }}>SCHOOL_ADMIN</span>
+              <span className="badge" style={{ background: "var(--secondary)", color: "var(--purple-500, var(--info))", border: "1px solid var(--border)" }}>SCHOOL_ADMIN</span>
               <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text)' }}>School Principal / Admin</h3>
             </div>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
@@ -286,7 +286,7 @@ export const RolesPermissions: React.FC = () => {
 
           <div className="card">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span className="badge" style={{ background: 'rgba(37, 99, 235, 0.12)', color: 'var(--sidebar-accent, #3b82f6)', border: '1px solid rgba(37, 99, 235, 0.25)' }}>TEACHER</span>
+              <span className="badge" style={{ background: "var(--accent)", color: "var(--sidebar-accent, var(--primary))", border: "1px solid var(--border)" }}>TEACHER</span>
               <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text)' }}>Classroom Teacher</h3>
             </div>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
@@ -299,7 +299,7 @@ export const RolesPermissions: React.FC = () => {
 
           <div className="card">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span className="badge" style={{ background: 'rgba(148, 163, 184, 0.12)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>PARENT</span>
+              <span className="badge" style={{ background: "var(--secondary)", color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>PARENT</span>
               <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text)' }}>Parent</h3>
             </div>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>

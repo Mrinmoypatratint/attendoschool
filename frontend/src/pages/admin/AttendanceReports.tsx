@@ -920,10 +920,10 @@ export default function AttendanceReports({
                 position: 'absolute',
                 top: 'calc(100% + 4px)',
                 right: 0,
-                backgroundColor: 'var(--bg-card, #ffffff)',
-                border: '1px solid var(--border, #e2e8f0)',
-                borderRadius: 8,
-                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                backgroundColor: "var(--bg-card, var(--card))",
+                border: "1px solid var(--border, var(--border))",
+                borderRadius: 4,
+                boxShadow: 'none',
                 zIndex: 100,
                 minWidth: 200,
                 overflow: 'hidden'
@@ -940,17 +940,17 @@ export default function AttendanceReports({
                     border: 'none',
                     background: 'none',
                     fontSize: 13,
-                    color: 'var(--text, #1e293b)',
+                    color: "var(--text, var(--foreground))",
                     cursor: 'pointer',
                     textAlign: 'left'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--card-subtle, #f8fafc)'}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--card-subtle, #f9f9fa)'}
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
-                  <FileSpreadsheet size={16} color="#10b981" />
+                  <FileSpreadsheet size={16} color="#03806a" />
                   <span>{selectedStudentIds.size > 0 ? `Export (${selectedStudentIds.size} Selected) as Excel (.xlsx)` : 'Export as Excel (.xlsx)'}</span>
                 </button>
-                <div style={{ height: 1, backgroundColor: 'var(--border, #f1f5f9)' }} />
+                <div style={{ height: 1, backgroundColor: "var(--border, var(--secondary))" }} />
                 <button
                   type="button"
                   onClick={downloadCsv}
@@ -963,14 +963,14 @@ export default function AttendanceReports({
                     border: 'none',
                     background: 'none',
                     fontSize: 13,
-                    color: 'var(--text, #1e293b)',
+                    color: "var(--text, var(--foreground))",
                     cursor: 'pointer',
                     textAlign: 'left'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--card-subtle, #f8fafc)'}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--card-subtle, #f9f9fa)'}
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
-                  <Download size={16} color="#3b82f6" />
+                  <Download size={16} color="#e11d55" />
                   <span>{selectedStudentIds.size > 0 ? `Export (${selectedStudentIds.size} Selected) as CSV (.csv)` : 'Export as CSV (.csv)'}</span>
                 </button>
               </div>
@@ -985,12 +985,12 @@ export default function AttendanceReports({
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              background: '#10b981',
-              color: '#ffffff',
+              background: "var(--success)",
+              color: "var(--background)",
               fontSize: 13,
               fontWeight: 600,
               padding: '7px 14px',
-              borderRadius: 6,
+              borderRadius: 4,
               border: 'none',
               cursor: 'pointer'
             }}
@@ -1005,10 +1005,10 @@ export default function AttendanceReports({
         <div style={{
           padding: '10px 14px',
           marginBottom: 16,
-          backgroundColor: toastNotice.type === 'error' ? '#fef2f2' : '#f0fdf4',
-          border: `1px solid ${toastNotice.type === 'error' ? '#fecaca' : '#bbf7d0'}`,
-          borderRadius: 6,
-          color: toastNotice.type === 'error' ? '#991b1b' : '#166534',
+          backgroundColor: toastNotice.type === 'error' ? "var(--card)" : "var(--secondary)",
+          border: `1px solid ${toastNotice.type === 'error' ? "var(--border)" : "var(--border)"}`,
+          borderRadius: 4,
+          color: toastNotice.type === 'error' ? "var(--destructive)" : "var(--success)",
           fontSize: 13,
           display: 'flex',
           justifyContent: 'space-between',
@@ -1024,10 +1024,10 @@ export default function AttendanceReports({
         display: 'flex',
         flexDirection: 'column',
         gap: 12,
-        backgroundColor: 'var(--card-subtle, #f8fafc)',
+        backgroundColor: "var(--card-subtle, var(--card))",
         padding: '14px 16px',
-        borderRadius: 8,
-        border: '1px solid var(--border, #e2e8f0)',
+        borderRadius: 4,
+        border: "1px solid var(--border, var(--border))",
         marginBottom: 20
       }}>
         {/* Row 1: Session, Class Grade, Section, From Date, To Date */}
@@ -1038,12 +1038,12 @@ export default function AttendanceReports({
         }}>
         {/* Academic Session (Hidden for Class Mentor) */}
         {!embedded && (
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: "var(--text-secondary, var(--muted-foreground))" }}>
             <span>Academic Session</span>
             <select
               value={selectedSession}
               onChange={e => setSelectedSession(e.target.value)}
-              style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13, backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text, #0f172a)' }}
+              style={{ padding: '7px 10px', borderRadius: 4, border: "1px solid var(--border, var(--border))", fontSize: 13, backgroundColor: "var(--bg-card, var(--card))", color: "var(--text, var(--foreground))" }}
             >
               <option value="ALL">All Academic Sessions</option>
               {sessions.map(s => (
@@ -1055,12 +1055,12 @@ export default function AttendanceReports({
 
         {/* Class Grade (Read-Only Locked Badge for Class Mentor, Dropdown for Admin) */}
         {!embedded ? (
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: "var(--text-secondary, var(--muted-foreground))" }}>
             <span>Class Grade</span>
             <select
               value={selectedClass}
               onChange={e => setSelectedClass(e.target.value)}
-              style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13, backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text, #0f172a)' }}
+              style={{ padding: '7px 10px', borderRadius: 4, border: "1px solid var(--border, var(--border))", fontSize: 13, backgroundColor: "var(--bg-card, var(--card))", color: "var(--text, var(--foreground))" }}
             >
               <option value="ALL">All Classes</option>
               {classes.map(c => {
@@ -1073,23 +1073,23 @@ export default function AttendanceReports({
             </select>
           </label>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: "var(--text-secondary, var(--muted-foreground))" }}>
             <span>Class Grade</span>
             <div style={{
               padding: '7px 12px',
-              borderRadius: 6,
-              border: '1px solid var(--border, #cbd5e1)',
+              borderRadius: 4,
+              border: "1px solid var(--border, var(--border))",
               fontSize: 13,
               fontWeight: 600,
-              backgroundColor: 'var(--bg-muted, rgba(148, 163, 184, 0.08))',
-              color: 'var(--text, #0f172a)',
+              backgroundColor: "var(--bg-muted, var(--secondary))",
+              color: "var(--text, var(--foreground))",
               display: 'flex',
               alignItems: 'center',
               gap: 6,
               minHeight: 35,
               boxSizing: 'border-box'
             }}>
-              <Lock size={13} style={{ color: 'var(--text-muted, #94a3b8)' }} />
+              <Lock size={13} style={{ color: "var(--text-muted, var(--muted-foreground))" }} />
               <span>{displayClassLabel}</span>
             </div>
           </div>
@@ -1097,12 +1097,12 @@ export default function AttendanceReports({
 
         {/* Section (Read-Only Locked Badge for Class Mentor, Dropdown for Admin) */}
         {!embedded ? (
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: "var(--text-secondary, var(--muted-foreground))" }}>
             <span>Section</span>
             <select
               value={selectedSection}
               onChange={e => setSelectedSection(e.target.value)}
-              style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13, backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text, #0f172a)' }}
+              style={{ padding: '7px 10px', borderRadius: 4, border: "1px solid var(--border, var(--border))", fontSize: 13, backgroundColor: "var(--bg-card, var(--card))", color: "var(--text, var(--foreground))" }}
             >
               <option value="ALL">All Sections</option>
               {Array.from(new Set(['A', 'B', ...sections.map(s => String(s.name || s.section_name || '').replace(/^sec(tion)?[-_\s]*/i, '').trim().toUpperCase()).filter(Boolean)])).map(sec => (
@@ -1111,30 +1111,30 @@ export default function AttendanceReports({
             </select>
           </label>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: "var(--text-secondary, var(--muted-foreground))" }}>
             <span>Section</span>
             <div style={{
               padding: '7px 12px',
-              borderRadius: 6,
-              border: '1px solid var(--border, #cbd5e1)',
+              borderRadius: 4,
+              border: "1px solid var(--border, var(--border))",
               fontSize: 13,
               fontWeight: 600,
-              backgroundColor: 'var(--bg-muted, rgba(148, 163, 184, 0.08))',
-              color: 'var(--text, #0f172a)',
+              backgroundColor: "var(--bg-muted, var(--secondary))",
+              color: "var(--text, var(--foreground))",
               display: 'flex',
               alignItems: 'center',
               gap: 6,
               minHeight: 35,
               boxSizing: 'border-box'
             }}>
-              <Lock size={13} style={{ color: 'var(--text-muted, #94a3b8)' }} />
+              <Lock size={13} style={{ color: "var(--text-muted, var(--muted-foreground))" }} />
               <span>Section {displaySectionLabel}</span>
             </div>
           </div>
         )}
 
         {/* From Date */}
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: "var(--text-secondary, var(--muted-foreground))" }}>
           <span>From Date</span>
           <input
             type="date"
@@ -1143,12 +1143,12 @@ export default function AttendanceReports({
             value={from}
             onChange={e => setFrom(formatStrict4DigitDate(e.target.value))}
             onBlur={e => setFrom(formatStrict4DigitDate(e.target.value))}
-            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13, backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text, #0f172a)' }}
+            style={{ padding: '6px 10px', borderRadius: 4, border: "1px solid var(--border, var(--border))", fontSize: 13, backgroundColor: "var(--bg-card, var(--card))", color: "var(--text, var(--foreground))" }}
           />
         </label>
 
         {/* To Date */}
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: "var(--text-secondary, var(--muted-foreground))" }}>
           <span>To Date</span>
           <input
             type="date"
@@ -1157,13 +1157,13 @@ export default function AttendanceReports({
             value={toDate}
             onChange={e => setTo(formatStrict4DigitDate(e.target.value))}
             onBlur={e => setTo(formatStrict4DigitDate(e.target.value))}
-            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13, backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text, #0f172a)' }}
+            style={{ padding: '6px 10px', borderRadius: 4, border: "1px solid var(--border, var(--border))", fontSize: 13, backgroundColor: "var(--bg-card, var(--card))", color: "var(--text, var(--foreground))" }}
           />
         </label>
         </div>
 
         {/* Row 2: Search Student (Shifted to Next Line) */}
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)', width: '100%' }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: "var(--text-secondary, var(--muted-foreground))", width: '100%' }}>
           <span>Search Student</span>
           <div style={{ position: 'relative', width: '100%' }}>
             <input
@@ -1173,22 +1173,22 @@ export default function AttendanceReports({
               style={{
                 width: '100%',
                 padding: '8px 12px 8px 32px',
-                borderRadius: 6,
-                border: '1px solid var(--border, #cbd5e1)',
+                borderRadius: 4,
+                border: "1px solid var(--border, var(--border))",
                 fontSize: 13,
-                backgroundColor: 'var(--bg-card, #ffffff)',
-                color: 'var(--text, #0f172a)',
+                backgroundColor: "var(--bg-card, var(--card))",
+                color: "var(--text, var(--foreground))",
                 boxSizing: 'border-box'
               }}
             />
-            <Search size={15} color="#94a3b8" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
+            <Search size={15} color="#94969f" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
           </div>
         </label>
       </div>
 
       {/* Quick Date Presets */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', fontWeight: 600 }}>Quick Presets:</span>
+        <span style={{ fontSize: 12, color: "var(--text-muted, var(--muted-foreground))", fontWeight: 600 }}>Quick Presets:</span>
         {(['today', 'this_week', 'this_month', 'last_30'] as const).map(p => (
           <button
             key={p}
@@ -1198,9 +1198,9 @@ export default function AttendanceReports({
               padding: '3px 10px',
               fontSize: 12,
               borderRadius: 4,
-              border: '1px solid var(--border, #cbd5e1)',
-              backgroundColor: 'var(--card-subtle, #f8fafc)',
-              color: 'var(--text, #334155)',
+              border: "1px solid var(--border, var(--border))",
+              backgroundColor: "var(--card-subtle, var(--card))",
+              color: "var(--text, var(--muted-foreground))",
               cursor: 'pointer'
             }}
           >
@@ -1220,92 +1220,92 @@ export default function AttendanceReports({
       }}>
         {/* Present Card */}
         <div style={{
-          backgroundColor: 'var(--bg-card, #ffffff)',
-          borderRadius: 8,
-          border: '1px solid var(--border, #bbf7d0)',
-          borderLeft: '4px solid #10b981',
+          backgroundColor: "var(--bg-card, var(--card))",
+          borderRadius: 4,
+          border: "1px solid var(--border, var(--border))",
+          borderLeft: "4px solid var(--border)",
           padding: '16px 18px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+          boxShadow: 'none'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#10b981', letterSpacing: '0.04em' }}>PRESENT</span>
-            <CheckCircle2 size={18} color="#10b981" />
+            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--success)", letterSpacing: '0.04em' }}>PRESENT</span>
+            <CheckCircle2 size={18} color="#03806a" />
           </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{totalPresent}</div>
-          <span style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>Total present days recorded</span>
+          <div style={{ fontSize: 26, fontWeight: 800, color: "var(--text, var(--foreground))" }}>{totalPresent}</div>
+          <span style={{ fontSize: 11.5, color: "var(--text-muted, var(--muted-foreground))" }}>Total present days recorded</span>
         </div>
 
         {/* Absent Card */}
         <div style={{
-          backgroundColor: 'var(--bg-card, #ffffff)',
-          borderRadius: 8,
-          border: '1px solid var(--border, #fecaca)',
-          borderLeft: '4px solid #ef4444',
+          backgroundColor: "var(--bg-card, var(--card))",
+          borderRadius: 4,
+          border: "1px solid var(--border, var(--border))",
+          borderLeft: "4px solid var(--border)",
           padding: '16px 18px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+          boxShadow: 'none'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', letterSpacing: '0.04em' }}>ABSENT</span>
-            <AlertCircle size={18} color="#ef4444" />
+            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--destructive)", letterSpacing: '0.04em' }}>ABSENT</span>
+            <AlertCircle size={18} color="#d32f2f" />
           </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{totalAbsent}</div>
-          <span style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>Total absent days recorded</span>
+          <div style={{ fontSize: 26, fontWeight: 800, color: "var(--text, var(--foreground))" }}>{totalAbsent}</div>
+          <span style={{ fontSize: 11.5, color: "var(--text-muted, var(--muted-foreground))" }}>Total absent days recorded</span>
         </div>
 
         {/* Left Early Card */}
         <div style={{
-          backgroundColor: 'var(--bg-card, #ffffff)',
-          borderRadius: 8,
-          border: '1px solid var(--border, #fed7aa)',
-          borderLeft: '4px solid #f97316',
+          backgroundColor: "var(--bg-card, var(--card))",
+          borderRadius: 4,
+          border: "1px solid var(--border, var(--border))",
+          borderLeft: "4px solid var(--border)",
           padding: '16px 18px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+          boxShadow: 'none'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#f97316', letterSpacing: '0.04em' }}>LEFT EARLY</span>
-            <Clock size={18} color="#f97316" />
+            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--warning)", letterSpacing: '0.04em' }}>LEFT EARLY</span>
+            <Clock size={18} color="#e9a23b" />
           </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{totalLeftEarly}</div>
-          <span style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>Total early departures recorded</span>
+          <div style={{ fontSize: 26, fontWeight: 800, color: "var(--text, var(--foreground))" }}>{totalLeftEarly}</div>
+          <span style={{ fontSize: 11.5, color: "var(--text-muted, var(--muted-foreground))" }}>Total early departures recorded</span>
         </div>
 
         {/* Marked Attendance Card */}
         <div style={{
-          backgroundColor: 'var(--bg-card, #ffffff)',
-          borderRadius: 8,
-          border: '1px solid var(--border, #bae6fd)',
-          borderLeft: '4px solid #0284c7',
+          backgroundColor: "var(--bg-card, var(--card))",
+          borderRadius: 4,
+          border: "1px solid var(--border, var(--border))",
+          borderLeft: "4px solid var(--border)",
           padding: '16px 18px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+          boxShadow: 'none'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#0284c7', letterSpacing: '0.04em' }}>MARKED ATTENDANCE</span>
-            <Users size={18} color="#0284c7" />
+            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--info)", letterSpacing: '0.04em' }}>MARKED ATTENDANCE</span>
+            <Users size={18} color="#5c6bc0" />
           </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{totalMarked}</div>
-          <span style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>Total student sessions evaluated</span>
+          <div style={{ fontSize: 26, fontWeight: 800, color: "var(--text, var(--foreground))" }}>{totalMarked}</div>
+          <span style={{ fontSize: 11.5, color: "var(--text-muted, var(--muted-foreground))" }}>Total student sessions evaluated</span>
         </div>
 
         {/* Attendance % Card */}
         <div style={{
-          backgroundColor: 'var(--bg-card, #ffffff)',
-          borderRadius: 8,
-          border: '1px solid var(--border, #c7d2fe)',
-          borderLeft: '4px solid #6366f1',
+          backgroundColor: "var(--bg-card, var(--card))",
+          borderRadius: 4,
+          border: "1px solid var(--border, var(--border))",
+          borderLeft: "4px solid var(--border)",
           padding: '16px 18px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+          boxShadow: 'none'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#6366f1', letterSpacing: '0.04em' }}>ATTENDANCE %</span>
-            <BarChart3 size={18} color="#6366f1" />
+            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--primary)", letterSpacing: '0.04em' }}>ATTENDANCE %</span>
+            <BarChart3 size={18} color="#e11d55" />
           </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{overallPercentage}%</div>
-          <span style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>Overall institutional rate</span>
+          <div style={{ fontSize: 26, fontWeight: 800, color: "var(--text, var(--foreground))" }}>{overallPercentage}%</div>
+          <span style={{ fontSize: 11.5, color: "var(--text-muted, var(--muted-foreground))" }}>Overall institutional rate</span>
         </div>
       </div>
 
       {/* ─── Table with Sub-Toolbar & Pagination ─── */}
-      <div ref={tableTopRef} className="directory-box" style={{ border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, overflow: 'hidden', backgroundColor: 'var(--bg-card, #ffffff)', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+      <div ref={tableTopRef} className="directory-box" style={{ border: "1px solid var(--border, var(--border))", borderRadius: 4, overflow: 'hidden', backgroundColor: "var(--bg-card, var(--card))", boxShadow: 'none' }}>
         <TableSubToolbar
           onRefresh={load}
           loading={loading}
@@ -1325,12 +1325,12 @@ export default function AttendanceReports({
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '8px 14px',
-            backgroundColor: 'rgba(37, 99, 235, 0.08)',
-            border: '1px solid rgba(37, 99, 235, 0.25)',
-            borderRadius: 6,
+            backgroundColor: "var(--accent)",
+            border: "1px solid var(--border)",
+            borderRadius: 4,
             marginBottom: 10,
             fontSize: 13,
-            color: '#1d4ed8'
+            color: "var(--primary)"
           }}>
             <span style={{ fontWeight: 600 }}>
               {selectedStudentIds.size} of {filteredRows.length} students selected for export
@@ -1339,7 +1339,7 @@ export default function AttendanceReports({
               <button
                 type="button"
                 onClick={() => setSelectedStudentIds(new Set(filteredRows.map(r => r.student_id)))}
-                style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 600, cursor: 'pointer', fontSize: 12.5 }}
+                style={{ background: 'none', border: 'none', color: "var(--primary)", fontWeight: 600, cursor: 'pointer', fontSize: 12.5 }}
               >
                 Select All
               </button>
@@ -1347,7 +1347,7 @@ export default function AttendanceReports({
               <button
                 type="button"
                 onClick={() => setSelectedStudentIds(new Set())}
-                style={{ background: 'none', border: 'none', color: '#64748b', fontWeight: 600, cursor: 'pointer', fontSize: 12.5 }}
+                style={{ background: 'none', border: 'none', color: "var(--muted-foreground)", fontWeight: 600, cursor: 'pointer', fontSize: 12.5 }}
               >
                 Clear Selection
               </button>
@@ -1357,7 +1357,7 @@ export default function AttendanceReports({
         <div className="table-wrap" style={{ overflowX: 'auto', minHeight: 280 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ backgroundColor: 'var(--table-header, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
+            <tr style={{ backgroundColor: "var(--table-header, var(--card))", borderBottom: "1px solid var(--border, var(--border))" }}>
               <th style={{ width: 44, padding: '12px 12px', textAlign: 'center' }}>
                 <input
                   type="checkbox"
@@ -1368,15 +1368,15 @@ export default function AttendanceReports({
                   style={{ cursor: 'pointer', width: 16, height: 16 }}
                 />
               </th>
-              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>STUDENT</th>
-              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>ROLL</th>
-              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>CLASS</th>
-              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>SECTION</th>
-              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>PRESENT</th>
-              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>ABSENT</th>
-              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>LEFT EARLY</th>
-              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>MARKED</th>
-              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>ATTENDANCE %</th>
+              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>STUDENT</th>
+              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>ROLL</th>
+              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>CLASS</th>
+              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>SECTION</th>
+              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>PRESENT</th>
+              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>ABSENT</th>
+              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>LEFT EARLY</th>
+              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>MARKED</th>
+              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>ATTENDANCE %</th>
             </tr>
           </thead>
           <tbody>
@@ -1384,8 +1384,8 @@ export default function AttendanceReports({
               <tr
                 key={r.student_id || idx}
                 style={{
-                  borderBottom: '1px solid var(--border, #f1f5f9)',
-                  backgroundColor: selectedStudentIds.has(r.student_id) ? 'rgba(37, 99, 235, 0.04)' : undefined
+                  borderBottom: "1px solid var(--border, var(--border))",
+                  backgroundColor: selectedStudentIds.has(r.student_id) ? "var(--accent)" : undefined
                 }}
               >
                 <td style={{ width: 44, padding: '12px 12px', textAlign: 'center' }}>
@@ -1396,20 +1396,20 @@ export default function AttendanceReports({
                     style={{ cursor: 'pointer', width: 16, height: 16 }}
                   />
                 </td>
-                <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 600, color: 'var(--text, #1e293b)' }}><PersonProfileLink kind="student" id={r.student_id} name={r.student_name} person={{ ...r, roll_number: r.roll, roll: r.roll } as any} activeSession={sessions.find(s => s.id === selectedSession)?.name || sessions[0]?.name} mode="report" /></td>
-                <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>{r.roll}</td>
-                <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-secondary, #475569)' }}>{r.class_name || '-'}</td>
-                <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-secondary, #475569)' }}>{r.section_name || '-'}</td>
-                <td style={{ padding: '12px 14px', fontSize: 13, color: '#16a34a', fontWeight: 600 }}>{r.present_days}</td>
-                <td style={{ padding: '12px 14px', fontSize: 13, color: '#dc2626', fontWeight: 600 }}>{r.absent_days}</td>
-                <td style={{ padding: '12px 14px', fontSize: 13, color: '#ea580c', fontWeight: 600 }}>{r.left_early_days || 0}</td>
-                <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text, #334155)' }}>{r.marked_days}</td>
-                <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 700, color: 'var(--text, #0f172a)' }}>{r.attendance_percentage}%</td>
+                <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 600, color: "var(--text, var(--foreground))" }}><PersonProfileLink kind="student" id={r.student_id} name={r.student_name} person={{ ...r, roll_number: r.roll, roll: r.roll } as any} activeSession={sessions.find(s => s.id === selectedSession)?.name || sessions[0]?.name} mode="report" /></td>
+                <td style={{ padding: '12px 14px', fontSize: 13, color: "var(--text-muted, var(--muted-foreground))" }}>{r.roll}</td>
+                <td style={{ padding: '12px 14px', fontSize: 13, color: "var(--text-secondary, var(--muted-foreground))" }}>{r.class_name || '-'}</td>
+                <td style={{ padding: '12px 14px', fontSize: 13, color: "var(--text-secondary, var(--muted-foreground))" }}>{r.section_name || '-'}</td>
+                <td style={{ padding: '12px 14px', fontSize: 13, color: "var(--success)", fontWeight: 600 }}>{r.present_days}</td>
+                <td style={{ padding: '12px 14px', fontSize: 13, color: "var(--destructive)", fontWeight: 600 }}>{r.absent_days}</td>
+                <td style={{ padding: '12px 14px', fontSize: 13, color: "var(--warning)", fontWeight: 600 }}>{r.left_early_days || 0}</td>
+                <td style={{ padding: '12px 14px', fontSize: 13, color: "var(--text, var(--muted-foreground))" }}>{r.marked_days}</td>
+                <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 700, color: "var(--text, var(--foreground))" }}>{r.attendance_percentage}%</td>
               </tr>
             ))}
             {!filteredRows.length && !loading && (
               <tr>
-                <td colSpan={10} style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted, #94a3b8)' }}>
+                <td colSpan={10} style={{ padding: 32, textAlign: 'center', color: "var(--text-muted, var(--muted-foreground))" }}>
                   No attendance records found matching this criteria.
                 </td>
               </tr>
@@ -1451,9 +1451,9 @@ export default function AttendanceReports({
             gap: 6,
             fontSize: 13,
             padding: '8px 22px',
-            backgroundColor: '#2563eb',
-            color: '#ffffff',
-            borderRadius: 6,
+            backgroundColor: "var(--primary)",
+            color: "var(--background)",
+            borderRadius: 4,
             border: 'none',
             fontWeight: 600,
             cursor: 'pointer'
@@ -1474,7 +1474,7 @@ export default function AttendanceReports({
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          backgroundColor: "var(--card)",
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -1482,30 +1482,30 @@ export default function AttendanceReports({
           padding: 16
         }}>
           <div className="modal" style={{
-            backgroundColor: 'var(--bg-card, #ffffff)',
-            border: '1px solid var(--border, #e2e8f0)',
-            borderRadius: 10,
+            backgroundColor: "var(--bg-card, var(--card))",
+            border: "1px solid var(--border, var(--border))",
+            borderRadius: 4,
             maxWidth: 840,
             width: '100%',
             maxHeight: '90vh',
             overflowY: 'auto',
             padding: 24,
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+            boxShadow: 'none'
           }}>
             {/* Pop Screen Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 19, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                <h2 style={{ margin: 0, fontSize: 19, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
                   Attendance Report Submission Preview
                 </h2>
-                <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
+                <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: "var(--text-muted, var(--muted-foreground))" }}>
                   Review attendance counts and student breakdown before finalizing submission.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowSubmitPop(false)}
-                style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--text-muted, #94a3b8)', padding: 0 }}
+                style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: "var(--text-muted, var(--muted-foreground))", padding: 0 }}
               >
                 ×
               </button>
@@ -1516,25 +1516,25 @@ export default function AttendanceReports({
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
               gap: 10,
-              backgroundColor: 'var(--card-subtle, #f8fafc)',
-              border: '1px solid var(--border, #e2e8f0)',
-              borderRadius: 8,
+              backgroundColor: "var(--card-subtle, var(--card))",
+              border: "1px solid var(--border, var(--border))",
+              borderRadius: 4,
               padding: '12px 14px',
               marginBottom: 16
             }}>
               <div>
-                <span style={{ fontSize: 11, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', fontWeight: 600 }}>Period</span>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginTop: 2 }}>{from} to {toDate}</div>
+                <span style={{ fontSize: 11, color: "var(--text-muted, var(--muted-foreground))", textTransform: 'uppercase', fontWeight: 600 }}>Period</span>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginTop: 2 }}>{from} to {toDate}</div>
               </div>
               <div>
-                <span style={{ fontSize: 11, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', fontWeight: 600 }}>Academic Session</span>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginTop: 2 }}>
+                <span style={{ fontSize: 11, color: "var(--text-muted, var(--muted-foreground))", textTransform: 'uppercase', fontWeight: 600 }}>Academic Session</span>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginTop: 2 }}>
                   {selectedSession === 'ALL' ? 'All Sessions' : (sessions.find(s => s.id === selectedSession)?.name || selectedSession)}
                 </div>
               </div>
               <div>
-                <span style={{ fontSize: 11, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', fontWeight: 600 }}>Class & Section</span>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginTop: 2 }}>
+                <span style={{ fontSize: 11, color: "var(--text-muted, var(--muted-foreground))", textTransform: 'uppercase', fontWeight: 600 }}>Class & Section</span>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginTop: 2 }}>
                   {selectedClass === 'ALL' ? 'All Classes' : (classes.find(c => c.id === selectedClass)?.label || selectedClass)}
                   {' — '}
                   {selectedSection === 'ALL' ? 'All Sections' : `Sec ${selectedSection}`}
@@ -1551,96 +1551,96 @@ export default function AttendanceReports({
             }}>
               {/* Total Present Count */}
               <div style={{
-                backgroundColor: 'rgba(16, 185, 129, 0.12)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                borderRadius: 8,
+                backgroundColor: "var(--secondary)",
+                border: "1px solid var(--border)",
+                borderRadius: 4,
                 padding: '12px 14px',
                 textAlign: 'center'
               }}>
-                <div style={{ fontSize: 11.5, fontWeight: 700, color: '#10b981', letterSpacing: '0.04em' }}>PRESENT COUNT</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: '#10b981', marginTop: 2 }}>{totalPresent}</div>
-                <span style={{ fontSize: 11, color: '#10b981' }}>Total Present Days</span>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--success)", letterSpacing: '0.04em' }}>PRESENT COUNT</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: "var(--success)", marginTop: 2 }}>{totalPresent}</div>
+                <span style={{ fontSize: 11, color: "var(--success)" }}>Total Present Days</span>
               </div>
 
               {/* Total Absent Count */}
               <div style={{
-                backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                borderRadius: 8,
+                backgroundColor: "var(--secondary)",
+                border: "1px solid var(--border)",
+                borderRadius: 4,
                 padding: '12px 14px',
                 textAlign: 'center'
               }}>
-                <div style={{ fontSize: 11.5, fontWeight: 700, color: '#ef4444', letterSpacing: '0.04em' }}>ABSENT COUNT</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: '#ef4444', marginTop: 2 }}>{totalAbsent}</div>
-                <span style={{ fontSize: 11, color: '#ef4444' }}>Total Absent Days</span>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--destructive)", letterSpacing: '0.04em' }}>ABSENT COUNT</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: "var(--destructive)", marginTop: 2 }}>{totalAbsent}</div>
+                <span style={{ fontSize: 11, color: "var(--destructive)" }}>Total Absent Days</span>
               </div>
 
               {/* Total Marked Count */}
               <div style={{
-                backgroundColor: 'rgba(2, 132, 199, 0.12)',
-                border: '1px solid rgba(2, 132, 199, 0.3)',
-                borderRadius: 8,
+                backgroundColor: "var(--secondary)",
+                border: "1px solid var(--border)",
+                borderRadius: 4,
                 padding: '12px 14px',
                 textAlign: 'center'
               }}>
-                <div style={{ fontSize: 11.5, fontWeight: 700, color: '#0284c7', letterSpacing: '0.04em' }}>MARKED ATTENDANCE</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: '#0284c7', marginTop: 2 }}>{totalMarked}</div>
-                <span style={{ fontSize: 11, color: '#0284c7' }}>Total Recorded Instances</span>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--info)", letterSpacing: '0.04em' }}>MARKED ATTENDANCE</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: "var(--info)", marginTop: 2 }}>{totalMarked}</div>
+                <span style={{ fontSize: 11, color: "var(--info)" }}>Total Recorded Instances</span>
               </div>
 
               {/* Overall Attendance Percentage */}
               <div style={{
-                backgroundColor: 'rgba(99, 102, 241, 0.12)',
-                border: '1px solid rgba(99, 102, 241, 0.3)',
-                borderRadius: 8,
+                backgroundColor: "var(--accent)",
+                border: "1px solid var(--border)",
+                borderRadius: 4,
                 padding: '12px 14px',
                 textAlign: 'center'
               }}>
-                <div style={{ fontSize: 11.5, fontWeight: 700, color: '#6366f1', letterSpacing: '0.04em' }}>ATTENDANCE RATE</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: '#6366f1', marginTop: 2 }}>{overallPercentage}%</div>
-                <span style={{ fontSize: 11, color: '#6366f1' }}>Institutional Average</span>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--primary)", letterSpacing: '0.04em' }}>ATTENDANCE RATE</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: "var(--primary)", marginTop: 2 }}>{overallPercentage}%</div>
+                <span style={{ fontSize: 11, color: "var(--primary)" }}>Institutional Average</span>
               </div>
             </div>
 
             {/* Student Preview List in Pop Screen */}
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text, #0f172a)', marginBottom: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text, var(--foreground))", marginBottom: 8 }}>
               Student Attendance Records ({filteredRows.length} Enrolled)
             </div>
 
             <div style={{
               maxHeight: 260,
               overflowY: 'auto',
-              border: '1px solid var(--border, #e2e8f0)',
-              borderRadius: 6,
+              border: "1px solid var(--border, var(--border))",
+              borderRadius: 4,
               marginBottom: 20
             }}>
               <table style={{ width: '100%', fontSize: 12.5, borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ backgroundColor: 'var(--table-header, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)', position: 'sticky', top: 0 }}>
-                    <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-secondary, #475569)' }}>Student</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-secondary, #475569)' }}>Roll</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-secondary, #475569)' }}>Class</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-secondary, #475569)' }}>Section</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-secondary, #475569)' }}>Present</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-secondary, #475569)' }}>Absent</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-secondary, #475569)' }}>Rate</th>
+                  <tr style={{ backgroundColor: "var(--table-header, var(--card))", borderBottom: "1px solid var(--border, var(--border))", position: 'sticky', top: 0 }}>
+                    <th style={{ padding: '8px 12px', textAlign: 'left', color: "var(--text-secondary, var(--muted-foreground))" }}>Student</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'left', color: "var(--text-secondary, var(--muted-foreground))" }}>Roll</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'left', color: "var(--text-secondary, var(--muted-foreground))" }}>Class</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'left', color: "var(--text-secondary, var(--muted-foreground))" }}>Section</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'left', color: "var(--text-secondary, var(--muted-foreground))" }}>Present</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'left', color: "var(--text-secondary, var(--muted-foreground))" }}>Absent</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'left', color: "var(--text-secondary, var(--muted-foreground))" }}>Rate</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredRows.map((r, i) => (
-                    <tr key={r.student_id || i} style={{ borderBottom: '1px solid var(--border, #f1f5f9)' }}>
-                      <td style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--text, #0f172a)' }}><PersonProfileLink kind="student" id={r.student_id} name={r.student_name} person={{ ...r, roll_number: r.roll, roll: r.roll } as any} activeSession={sessions.find(s => s.id === selectedSession)?.name || sessions[0]?.name} mode="report" /></td>
-                      <td style={{ padding: '8px 12px', color: 'var(--text-muted, #64748b)' }}>{r.roll}</td>
-                      <td style={{ padding: '8px 12px', color: 'var(--text-secondary, #475569)' }}>{r.class_name || '-'}</td>
-                      <td style={{ padding: '8px 12px', color: 'var(--text-secondary, #475569)' }}>{r.section_name || '-'}</td>
-                      <td style={{ padding: '8px 12px', color: '#16a34a', fontWeight: 600 }}>{r.present_days}</td>
-                      <td style={{ padding: '8px 12px', color: '#dc2626', fontWeight: 600 }}>{r.absent_days}</td>
-                      <td style={{ padding: '8px 12px', fontWeight: 700, color: 'var(--text, #0f172a)' }}>{r.attendance_percentage}%</td>
+                    <tr key={r.student_id || i} style={{ borderBottom: "1px solid var(--border, var(--border))" }}>
+                      <td style={{ padding: '8px 12px', fontWeight: 600, color: "var(--text, var(--foreground))" }}><PersonProfileLink kind="student" id={r.student_id} name={r.student_name} person={{ ...r, roll_number: r.roll, roll: r.roll } as any} activeSession={sessions.find(s => s.id === selectedSession)?.name || sessions[0]?.name} mode="report" /></td>
+                      <td style={{ padding: '8px 12px', color: "var(--text-muted, var(--muted-foreground))" }}>{r.roll}</td>
+                      <td style={{ padding: '8px 12px', color: "var(--text-secondary, var(--muted-foreground))" }}>{r.class_name || '-'}</td>
+                      <td style={{ padding: '8px 12px', color: "var(--text-secondary, var(--muted-foreground))" }}>{r.section_name || '-'}</td>
+                      <td style={{ padding: '8px 12px', color: "var(--success)", fontWeight: 600 }}>{r.present_days}</td>
+                      <td style={{ padding: '8px 12px', color: "var(--destructive)", fontWeight: 600 }}>{r.absent_days}</td>
+                      <td style={{ padding: '8px 12px', fontWeight: 700, color: "var(--text, var(--foreground))" }}>{r.attendance_percentage}%</td>
                     </tr>
                   ))}
                   {!filteredRows.length && (
                     <tr>
-                      <td colSpan={7} style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted, #94a3b8)' }}>
+                      <td colSpan={7} style={{ padding: 24, textAlign: 'center', color: "var(--text-muted, var(--muted-foreground))" }}>
                         No attendance records for the selected period.
                       </td>
                     </tr>
@@ -1654,7 +1654,7 @@ export default function AttendanceReports({
               display: 'flex',
               justifyContent: 'flex-end',
               gap: 12,
-              borderTop: '1px solid var(--border, #e2e8f0)',
+              borderTop: "1px solid var(--border, var(--border))",
               paddingTop: 16
             }}>
               <button
@@ -1683,9 +1683,9 @@ export default function AttendanceReports({
                   gap: 6,
                   fontSize: 13,
                   padding: '9px 24px',
-                  backgroundColor: '#2563eb',
-                  color: '#ffffff',
-                  borderRadius: 6,
+                  backgroundColor: "var(--primary)",
+                  color: "var(--background)",
+                  borderRadius: 4,
                   border: 'none',
                   fontWeight: 600,
                   cursor: 'pointer'
@@ -1708,7 +1708,7 @@ export default function AttendanceReports({
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          backgroundColor: "var(--card)",
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -1716,28 +1716,28 @@ export default function AttendanceReports({
           padding: 16
         }}>
           <div className="modal" style={{
-            backgroundColor: 'var(--bg-card, #ffffff)',
-            border: '1px solid var(--border, #e2e8f0)',
-            borderRadius: 10,
+            backgroundColor: "var(--bg-card, var(--card))",
+            border: "1px solid var(--border, var(--border))",
+            borderRadius: 4,
             maxWidth: 780,
             width: '100%',
             maxHeight: '90vh',
             overflowY: 'auto',
             padding: 24,
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+            boxShadow: 'none'
           }}>
             {/* Modal Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Import Offline Attendance Spreadsheet</h2>
-                <p className="muted" style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--text-muted, #64748b)' }}>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "var(--text, var(--foreground))" }}>Import Offline Attendance Spreadsheet</h2>
+                <p className="muted" style={{ margin: '4px 0 0', fontSize: 12.5, color: "var(--text-muted, var(--muted-foreground))" }}>
                   Expected Columns: <code>Admission Number (or Roll Number), Student Name, Status (P, A, L, HD), Date (YYYY-MM-DD)</code>.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => { setImportOpen(false); setParsedRecords([]); setShowImportPreview(false); }}
-                style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--text-muted, #94a3b8)', padding: 0 }}
+                style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: "var(--text-muted, var(--muted-foreground))", padding: 0 }}
               >
                 ×
               </button>
@@ -1748,18 +1748,18 @@ export default function AttendanceReports({
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
               gap: 12,
-              backgroundColor: 'var(--card-subtle, #f8fafc)',
+              backgroundColor: "var(--card-subtle, var(--card))",
               padding: 14,
-              borderRadius: 8,
-              border: '1px solid var(--border, #e2e8f0)',
+              borderRadius: 4,
+              border: "1px solid var(--border, var(--border))",
               marginBottom: 16
             }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: "var(--text-secondary, var(--muted-foreground))" }}>
                 <span>Target Class</span>
                 <select
                   value={importClass}
                   onChange={e => setImportClass(e.target.value)}
-                  style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13, backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text, #0f172a)' }}
+                  style={{ padding: '7px 10px', borderRadius: 4, border: "1px solid var(--border, var(--border))", fontSize: 13, backgroundColor: "var(--bg-card, var(--card))", color: "var(--text, var(--foreground))" }}
                 >
                   {classes.map(c => (
                     <option key={c.id} value={c.id}>{c.label || `Class ${c.class_number}`}</option>
@@ -1767,25 +1767,25 @@ export default function AttendanceReports({
                 </select>
               </label>
 
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: "var(--text-secondary, var(--muted-foreground))" }}>
                 <span>Target Section</span>
                 <select
                   value={importSection}
                   onChange={e => setImportSection(e.target.value)}
-                  style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13, backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text, #0f172a)' }}
+                  style={{ padding: '7px 10px', borderRadius: 4, border: "1px solid var(--border, var(--border))", fontSize: 13, backgroundColor: "var(--bg-card, var(--card))", color: "var(--text, var(--foreground))" }}
                 >
                   <option value="A">Section A</option>
                   <option value="B">Section B</option>
                 </select>
               </label>
 
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: "var(--text-secondary, var(--muted-foreground))" }}>
                 <span>Default Attendance Date</span>
                 <input
                   type="date"
                   value={importDate}
                   onChange={e => setImportDate(e.target.value)}
-                  style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13, backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text, #0f172a)' }}
+                  style={{ padding: '6px 10px', borderRadius: 4, border: "1px solid var(--border, var(--border))", fontSize: 13, backgroundColor: "var(--bg-card, var(--card))", color: "var(--text, var(--foreground))" }}
                 />
               </label>
             </div>
@@ -1795,13 +1795,13 @@ export default function AttendanceReports({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              backgroundColor: 'rgba(37, 99, 235, 0.12)',
-              border: '1px solid rgba(59, 130, 246, 0.25)',
-              borderRadius: 8,
+              backgroundColor: "var(--accent)",
+              border: "1px solid var(--border)",
+              borderRadius: 4,
               padding: '10px 14px',
               marginBottom: 16
             }}>
-              <span style={{ fontSize: 12.5, color: 'var(--text, #1e40af)' }}>
+              <span style={{ fontSize: 12.5, color: "var(--text, var(--primary))" }}>
                 Need the standard offline spreadsheet layout?
               </span>
               <button
@@ -1820,11 +1820,11 @@ export default function AttendanceReports({
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              border: '2px dashed var(--border, #cbd5e1)',
-              borderRadius: 8,
+              border: "2px dashed var(--border, var(--border))",
+              borderRadius: 4,
               padding: '24px 16px',
               cursor: 'pointer',
-              backgroundColor: 'var(--card-subtle, #f8fafc)',
+              backgroundColor: "var(--card-subtle, var(--card))",
               marginBottom: 16,
               textAlign: 'center'
             }}>
@@ -1834,15 +1834,15 @@ export default function AttendanceReports({
                 onChange={handleOfflineFile}
                 style={{ display: 'none' }}
               />
-              <UploadCloud size={28} color="#0284c7" style={{ marginBottom: 8 }} />
-              <strong style={{ fontSize: 14, color: 'var(--text, #0f172a)' }}>Click to select offline attendance file</strong>
-              <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', marginTop: 4 }}>Supports Excel (.xlsx, .xls) and CSV (.csv)</span>
+              <UploadCloud size={28} color="#5c6bc0" style={{ marginBottom: 8 }} />
+              <strong style={{ fontSize: 14, color: "var(--text, var(--foreground))" }}>Click to select offline attendance file</strong>
+              <span style={{ fontSize: 12, color: "var(--text-muted, var(--muted-foreground))", marginTop: 4 }}>Supports Excel (.xlsx, .xls) and CSV (.csv)</span>
             </label>
 
             {/* ─── Interactive Staging Preview ─── */}
             {showImportPreview && parsedRecords.length > 0 && (
               <div style={{ marginTop: 14 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text, #0f172a)', marginBottom: 8 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text, var(--foreground))", marginBottom: 8 }}>
                   Attendance Breakdown Preview
                 </div>
 
@@ -1853,62 +1853,62 @@ export default function AttendanceReports({
                   gap: 8,
                   marginBottom: 14
                 }}>
-                  <div style={{ padding: '8px 10px', borderRadius: 6, backgroundColor: 'var(--card-subtle, #f1f5f9)', textAlign: 'center' }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>Total</div>
-                    <strong style={{ fontSize: 16, color: 'var(--text, #0f172a)' }}>{importBreakdown.total}</strong>
+                  <div style={{ padding: '8px 10px', borderRadius: 4, backgroundColor: "var(--card-subtle, var(--secondary))", textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 600 }}>Total</div>
+                    <strong style={{ fontSize: 16, color: "var(--text, var(--foreground))" }}>{importBreakdown.total}</strong>
                   </div>
-                  <div style={{ padding: '8px 10px', borderRadius: 6, backgroundColor: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', textAlign: 'center' }}>
-                    <div style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>Present (P)</div>
-                    <strong style={{ fontSize: 16, color: '#10b981' }}>{importBreakdown.present}</strong>
+                  <div style={{ padding: '8px 10px', borderRadius: 4, backgroundColor: "var(--secondary)", border: "1px solid var(--border)", textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: "var(--success)", fontWeight: 600 }}>Present (P)</div>
+                    <strong style={{ fontSize: 16, color: "var(--success)" }}>{importBreakdown.present}</strong>
                   </div>
-                  <div style={{ padding: '8px 10px', borderRadius: 6, backgroundColor: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', textAlign: 'center' }}>
-                    <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>Absent (A)</div>
-                    <strong style={{ fontSize: 16, color: '#ef4444' }}>{importBreakdown.absent}</strong>
+                  <div style={{ padding: '8px 10px', borderRadius: 4, backgroundColor: "var(--secondary)", border: "1px solid var(--border)", textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: "var(--destructive)", fontWeight: 600 }}>Absent (A)</div>
+                    <strong style={{ fontSize: 16, color: "var(--destructive)" }}>{importBreakdown.absent}</strong>
                   </div>
-                  <div style={{ padding: '8px 10px', borderRadius: 6, backgroundColor: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', textAlign: 'center' }}>
-                    <div style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>Late (L)</div>
-                    <strong style={{ fontSize: 16, color: '#f59e0b' }}>{importBreakdown.late}</strong>
+                  <div style={{ padding: '8px 10px', borderRadius: 4, backgroundColor: "var(--secondary)", border: "1px solid var(--border)", textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: "var(--warning)", fontWeight: 600 }}>Late (L)</div>
+                    <strong style={{ fontSize: 16, color: "var(--warning)" }}>{importBreakdown.late}</strong>
                   </div>
-                  <div style={{ padding: '8px 10px', borderRadius: 6, backgroundColor: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', textAlign: 'center' }}>
-                    <div style={{ fontSize: 11, color: '#a855f7', fontWeight: 600 }}>Half Day (HD)</div>
-                    <strong style={{ fontSize: 16, color: '#a855f7' }}>{importBreakdown.halfDay}</strong>
+                  <div style={{ padding: '8px 10px', borderRadius: 4, backgroundColor: "var(--secondary)", border: "1px solid var(--border)", textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: "var(--info)", fontWeight: 600 }}>Half Day (HD)</div>
+                    <strong style={{ fontSize: 16, color: "var(--info)" }}>{importBreakdown.halfDay}</strong>
                   </div>
                 </div>
 
                 {/* Staging Records Table */}
-                <div style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid var(--border, #e2e8f0)', borderRadius: 6, marginBottom: 16 }}>
+                <div style={{ maxHeight: 220, overflowY: 'auto', border: "1px solid var(--border, var(--border))", borderRadius: 4, marginBottom: 16 }}>
                   <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
                     <thead>
-                      <tr style={{ backgroundColor: 'var(--table-header, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)', position: 'sticky', top: 0 }}>
-                        <th style={{ padding: '8px 10px', textAlign: 'left', color: 'var(--text-secondary, #475569)' }}>#</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'left', color: 'var(--text-secondary, #475569)' }}>Adm / Roll</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'left', color: 'var(--text-secondary, #475569)' }}>Student Name</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'left', color: 'var(--text-secondary, #475569)' }}>Status</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'left', color: 'var(--text-secondary, #475569)' }}>Date</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'left', color: 'var(--text-secondary, #475569)' }}>Roster Match</th>
+                      <tr style={{ backgroundColor: "var(--table-header, var(--card))", borderBottom: "1px solid var(--border, var(--border))", position: 'sticky', top: 0 }}>
+                        <th style={{ padding: '8px 10px', textAlign: 'left', color: "var(--text-secondary, var(--muted-foreground))" }}>#</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left', color: "var(--text-secondary, var(--muted-foreground))" }}>Adm / Roll</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left', color: "var(--text-secondary, var(--muted-foreground))" }}>Student Name</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left', color: "var(--text-secondary, var(--muted-foreground))" }}>Status</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left', color: "var(--text-secondary, var(--muted-foreground))" }}>Date</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left', color: "var(--text-secondary, var(--muted-foreground))" }}>Roster Match</th>
                       </tr>
                     </thead>
                     <tbody>
                       {parsedRecords.map(r => (
-                        <tr key={r.rowNum} style={{ borderBottom: '1px solid var(--border, #f1f5f9)' }}>
-                          <td style={{ padding: '6px 10px', color: 'var(--text-muted, #64748b)' }}>{r.rowNum}</td>
-                          <td style={{ padding: '6px 10px', fontFamily: 'monospace', color: 'var(--text, #0f172a)' }}>{r.admissionNumber}</td>
-                          <td style={{ padding: '6px 10px', fontWeight: 600, color: 'var(--text, #0f172a)' }}><PersonProfileLink kind="student" id={r.studentId} name={r.studentName} person={r as any} /></td>
+                        <tr key={r.rowNum} style={{ borderBottom: "1px solid var(--border, var(--border))" }}>
+                          <td style={{ padding: '6px 10px', color: "var(--text-muted, var(--muted-foreground))" }}>{r.rowNum}</td>
+                          <td style={{ padding: '6px 10px', fontFamily: 'monospace', color: "var(--text, var(--foreground))" }}>{r.admissionNumber}</td>
+                          <td style={{ padding: '6px 10px', fontWeight: 600, color: "var(--text, var(--foreground))" }}><PersonProfileLink kind="student" id={r.studentId} name={r.studentName} person={r as any} /></td>
                           <td style={{ padding: '6px 10px' }}>
                             <span style={{
                               padding: '2px 6px',
                               borderRadius: 4,
                               fontSize: 11,
                               fontWeight: 700,
-                              backgroundColor: r.status === 'P' ? '#dcfce7' : r.status === 'A' ? '#fee2e2' : r.status === 'L' ? '#fef9c3' : '#f3e8ff',
-                              color: r.status === 'P' ? '#15803d' : r.status === 'A' ? '#b91c1c' : r.status === 'L' ? '#854d0e' : '#7e22ce'
+                              backgroundColor: r.status === 'P' ? "var(--secondary)" : r.status === 'A' ? "var(--secondary)" : r.status === 'L' ? "var(--secondary)" : "var(--secondary)",
+                              color: r.status === 'P' ? "var(--success)" : r.status === 'A' ? "var(--destructive)" : r.status === 'L' ? "var(--warning)" : "var(--info)"
                             }}>
                               {r.statusLabel} ({r.status})
                             </span>
                           </td>
-                          <td style={{ padding: '6px 10px', color: '#64748b' }}>{r.date}</td>
+                          <td style={{ padding: '6px 10px', color: "var(--muted-foreground)" }}>{r.date}</td>
                           <td style={{ padding: '6px 10px' }}>
-                            <span style={{ fontSize: 11, color: r.isMatched ? '#16a34a' : '#d97706' }}>
+                            <span style={{ fontSize: 11, color: r.isMatched ? "var(--success)" : "var(--warning)" }}>
                               {r.isMatched ? '✓ Enrolled' : '● Auto-map'}
                             </span>
                           </td>
@@ -1932,10 +1932,10 @@ export default function AttendanceReports({
                     onClick={submitOfflineAttendance}
                     disabled={importing}
                     style={{
-                      background: '#10b981',
-                      color: '#ffffff',
+                      background: "var(--success)",
+                      color: "var(--background)",
                       border: 'none',
-                      borderRadius: 6,
+                      borderRadius: 4,
                       padding: '8px 16px',
                       fontSize: 13,
                       fontWeight: 600,

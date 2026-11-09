@@ -486,7 +486,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               minWidth: 0 
             }}
           >
-            <div className="school-crest" style={{ width: 44, height: 44, borderRadius: 12, background: '#ffffff', border: '1px solid rgba(226, 232, 240, 0.85)', boxShadow: '0 4px 14px rgba(37, 99, 235, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, flexShrink: 0, overflow: 'hidden' }}>
+            <div className="school-crest" style={{ width: 44, height: 44, borderRadius: 4, background: '#ffffff', border: '1px solid rgba(234, 234, 236, 0.85)', boxShadow: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, flexShrink: 0, overflow: 'hidden' }}>
               <img
                 src={displaySchoolPhoto}
                 alt={displaySchoolName}
@@ -501,8 +501,8 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-              <span className="school-name student-sidebar-brand-name" style={{ fontSize: 15, fontWeight: 800, color: 'var(--text, #0f172a)', letterSpacing: '-0.01em', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displaySchoolName}</span>
-              <span className="school-meta" style={{ fontSize: 12, color: 'var(--text-secondary, #4b6b94)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, whiteSpace: 'nowrap' }}>
+              <span className="school-name student-sidebar-brand-name" style={{ fontSize: 15, fontWeight: 800, color: 'var(--text, #1c1f2e)', letterSpacing: '-0.01em', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displaySchoolName}</span>
+              <span className="school-meta" style={{ fontSize: 12, color: 'var(--text-secondary, #696e79)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, whiteSpace: 'nowrap' }}>
                 Code: {displaySchoolCode} · Affiliated
               </span>
             </div>
@@ -576,7 +576,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
       <div className="student-main-wrapper">
         {/* Topbar */}
         <header className="student-topbar">
-          <div className="student-topbar-left">
+          <div className="student-topbar-left" style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: '1 1 auto', maxWidth: 'none' }}>
             <button
               type="button"
               className="student-hamburger-btn mobile-only-menu-btn"
@@ -586,7 +586,80 @@ export function StudentLayout({ children }: StudentLayoutProps) {
             >
               <Menu size={20} />
             </button>
-            <StudentSearchBar />
+
+            {/* School Crest & Institutional Identity */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                minWidth: 0,
+                flexShrink: 0,
+                cursor: targetWebsiteUrl ? 'pointer' : 'default'
+              }}
+              onClick={handleOpenSchoolWebsite}
+              title={targetWebsiteUrl ? `Visit Official School Website: ${targetWebsiteUrl}` : displaySchoolName}
+            >
+              <div
+                className="school-crest"
+                style={{
+                  width: 34,
+                  height: 34,
+                  background: '#ffffff',
+                  border: '1px solid var(--border, #eaeaec)',
+                  padding: 2,
+                  borderRadius: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  overflow: 'hidden'
+                }}
+              >
+                <img
+                  src={displaySchoolPhoto}
+                  alt={displaySchoolName}
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    const fallback = isDav ? '/dav-logo.png' : '/attendo-school-logo.png';
+                    if (target.src !== fallback && !target.src.endsWith(fallback)) {
+                      target.src = fallback;
+                    }
+                  }}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    color: 'var(--text, #1c1f2e)',
+                    lineHeight: 1.2,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}
+                >
+                  {displaySchoolName}
+                </div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--text-muted, #696e79)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}
+                >
+                  {user?.name || 'Student'} · {studentClass || 'Student'}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ width: 360, maxWidth: 440, flex: '0 1 380px' }}>
+              <StudentSearchBar />
+            </div>
           </div>
 
           <div className="student-topbar-right">
@@ -597,7 +670,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, cursor: 'default' }}
                 title={`Enrolled Academic Session: ${academicSession}`}
               >
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#03806a', flexShrink: 0 }}></span>
                 <span>{`${academicSession} ACADEMIC SESSION`.toUpperCase()}</span>
               </div>
             )}
@@ -644,7 +717,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
                         type="button"
                         className="super-notif-readall-btn"
                         title="Announcements"
-                        style={{ color: '#d97706', background: '#fffbeb', borderColor: '#fde68a', cursor: 'pointer' }}
+                        style={{ color: '#b8781c', background: '#fdf5e9', borderColor: '#f6dcb2', cursor: 'pointer' }}
                         onClick={() => {
                           setStudentNotifOpen(false);
                           nav('/student/announcements');
@@ -663,7 +736,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
                       </div>
                     ) : studentNotifs.length === 0 ? (
                       <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                        <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+                        <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#e6f2f0', color: '#03806a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
                           <CheckCircle2 size={24} />
                         </div>
                         <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>All Caught Up!</div>
@@ -689,9 +762,9 @@ export function StudentLayout({ children }: StudentLayoutProps) {
                             <div
                               className="super-notif-icon-wrap"
                               style={{
-                                background: isTeacher ? '#ecfdf5' : '#eff6ff',
-                                color: isTeacher ? '#047857' : '#1d4ed8',
-                                borderRadius: 10,
+                                background: isTeacher ? '#e6f2f0' : '#fff2f4',
+                                color: isTeacher ? '#02604f' : '#c0174a',
+                                borderRadius: 4,
                                 width: 38,
                                 height: 38,
                                 display: 'flex',
@@ -721,9 +794,9 @@ export function StudentLayout({ children }: StudentLayoutProps) {
                                     fontWeight: 700,
                                     padding: '1.5px 6px',
                                     borderRadius: 4,
-                                    backgroundColor: '#ecfdf5',
-                                    color: '#047857',
-                                    border: '1px solid #a7f3d0',
+                                    backgroundColor: '#e6f2f0',
+                                    color: '#02604f',
+                                    border: '1px solid #99ccc3',
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     gap: 3.5
@@ -736,9 +809,9 @@ export function StudentLayout({ children }: StudentLayoutProps) {
                                     fontWeight: 700,
                                     padding: '1.5px 6px',
                                     borderRadius: 4,
-                                    backgroundColor: '#eff6ff',
-                                    color: '#1d4ed8',
-                                    border: '1px solid #bfdbfe',
+                                    backgroundColor: '#fff2f4',
+                                    color: '#c0174a',
+                                    border: '1px solid #fcc3d1',
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     gap: 3.5
@@ -788,7 +861,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
                       <button
                         type="button"
                         className="super-notif-footer-link"
-                        style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }}
+                        style={{ color: '#03806a', display: 'flex', alignItems: 'center', gap: 4 }}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleMarkAllRead();
@@ -820,7 +893,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               onClick={() => nav('/student/profile')} 
               title="View My Profile"
             >
-              <div className="user-avatar" style={{ background: '#2563eb', color: '#ffffff', fontWeight: 700, fontSize: 13, overflow: 'hidden', position: 'relative', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div className="user-avatar" style={{ background: '#e11d55', color: '#ffffff', fontWeight: 700, fontSize: 13, overflow: 'hidden', position: 'relative', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ position: 'absolute' }}>
                   {studentName ? studentName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'ST'}
                 </span>

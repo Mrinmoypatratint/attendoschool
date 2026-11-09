@@ -219,14 +219,14 @@ export const InvoicesManagement: React.FC = () => {
       </div>
 
       {toastMessage && (
-        <div className="toast-pill p-3 px-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs md:text-sm flex items-center gap-2 my-3.5" style={{ margin: '14px 0', padding: '12px 16px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="toast-pill p-3 px-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs md:text-sm flex items-center gap-2 my-3.5" style={{ margin: '14px 0', padding: '12px 16px', borderRadius: '4px', background: "var(--secondary)", color: "var(--success)", border: "1px solid var(--border)", fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <CheckCircle2 size={18} />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {error && (
-        <div className="error-banner p-3 px-4 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm my-4" style={{ margin: '16px 0', padding: '12px 16px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+        <div className="error-banner p-3 px-4 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm my-4" style={{ margin: '16px 0', padding: '12px 16px', borderRadius: '4px', background: "var(--secondary)", color: "var(--destructive)", border: "1px solid var(--border)" }}>
           <AlertCircle size={16} style={{ display: 'inline', marginRight: '6px' }} />
           {error}
         </div>
@@ -235,49 +235,49 @@ export const InvoicesManagement: React.FC = () => {
       {/* KPI Cards Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 my-5" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', margin: '20px 0' }}>
         <div className="card rounded-xl border border-slate-200 bg-white p-4 shadow-sm" style={{ padding: '18px' }}>
-          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500" style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500" style={{ fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Total Invoiced Amount
           </div>
-          <div className="text-2xl font-bold tracking-tight text-slate-900 mt-1.5" style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', marginTop: '6px' }}>
+          <div className="text-2xl font-bold tracking-tight text-slate-900 mt-1.5" style={{ fontSize: '24px', fontWeight: '800', color: "var(--foreground)", marginTop: '6px' }}>
             ₹{totalBilled.toLocaleString('en-IN')}
           </div>
-          <div className="text-xs text-slate-500 mt-1" style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+          <div className="text-xs text-slate-500 mt-1" style={{ fontSize: '12px', color: "var(--muted-foreground)", marginTop: '4px' }}>
             Across all billing cycles
           </div>
         </div>
 
         <div className="card rounded-xl border border-slate-200 bg-white p-4 shadow-sm" style={{ padding: '18px' }}>
-          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500" style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500" style={{ fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             GST Liability (18%)
           </div>
-          <div className="text-2xl font-bold tracking-tight text-blue-600 mt-1.5" style={{ fontSize: '24px', fontWeight: '800', color: '#2563eb', marginTop: '6px' }}>
+          <div className="text-2xl font-bold tracking-tight text-blue-600 mt-1.5" style={{ fontSize: '24px', fontWeight: '800', color: "var(--primary)", marginTop: '6px' }}>
             ₹{totalGst.toLocaleString('en-IN')}
           </div>
-          <div className="text-xs text-emerald-600 font-medium mt-1" style={{ fontSize: '12px', color: '#10b981', marginTop: '4px' }}>
+          <div className="text-xs text-emerald-600 font-medium mt-1" style={{ fontSize: '12px', color: "var(--success)", marginTop: '4px' }}>
             CGST (9%) + SGST (9%)
           </div>
         </div>
 
         <div className="card" style={{ padding: '18px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Settled Tax Invoices
           </div>
-          <div style={{ fontSize: '24px', fontWeight: '800', color: '#10b981', marginTop: '6px' }}>
+          <div style={{ fontSize: '24px', fontWeight: '800', color: "var(--success)", marginTop: '6px' }}>
             {paidCount} / {invoices.length}
           </div>
-          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+          <div style={{ fontSize: '12px', color: "var(--muted-foreground)", marginTop: '4px' }}>
             Settlement confirmed
           </div>
         </div>
 
         <div className="card" style={{ padding: '18px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             GSTIN Registered
           </div>
-          <div style={{ fontSize: '17px', fontWeight: '700', color: '#0f172a', marginTop: '8px', fontFamily: 'monospace' }}>
+          <div style={{ fontSize: '17px', fontWeight: '700', color: "var(--foreground)", marginTop: '8px', fontFamily: 'monospace' }}>
             19AAACB1234P1Z5
           </div>
-          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+          <div style={{ fontSize: '12px', color: "var(--muted-foreground)", marginTop: '4px' }}>
             AttendoSchool Technologies Inc.
           </div>
         </div>
@@ -300,7 +300,7 @@ export const InvoicesManagement: React.FC = () => {
               height="16"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#94a3b8"
+              stroke="#94969f"
               strokeWidth="2"
               style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}
             >
@@ -310,7 +310,7 @@ export const InvoicesManagement: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '500' }}>Status:</span>
+            <span style={{ fontSize: '13px', color: "var(--muted-foreground)", fontWeight: '500' }}>Status:</span>
             <select
               className="form-control"
               style={{ width: '130px' }}
@@ -357,14 +357,14 @@ export const InvoicesManagement: React.FC = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                    <div className="spinner" style={{ margin: '0 auto 12px', width: '28px', height: '28px', border: '3px solid #e2e8f0', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: "var(--muted-foreground)" }}>
+                    <div className="spinner" style={{ margin: '0 auto 12px', width: '28px', height: '28px', border: "3px solid var(--border)", borderTopColor: "var(--border)", borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
                     Loading tax invoices...
                   </td>
                 </tr>
               ) : filteredInvoices.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: "var(--muted-foreground)" }}>
                     No tax invoices found matching your query.
                   </td>
                 </tr>
@@ -375,28 +375,28 @@ export const InvoicesManagement: React.FC = () => {
                   return (
                     <tr key={inv.id}>
                       <td>
-                        <span style={{ fontWeight: '700', color: '#2563eb', fontFamily: 'monospace' }}>
+                        <span style={{ fontWeight: '700', color: "var(--primary)", fontFamily: 'monospace' }}>
                           {inv.invoice_number}
                         </span>
                       </td>
                       <td>
-                        <span style={{ fontSize: '12px', color: '#64748b', fontFamily: 'monospace' }}>
+                        <span style={{ fontSize: '12px', color: "var(--muted-foreground)", fontFamily: 'monospace' }}>
                           {inv.receipt_number || 'REC-AUTO'}
                         </span>
                       </td>
                       <td>
-                        <div style={{ fontWeight: '600', color: '#0f172a' }}>{inv.school_name}</div>
+                        <div style={{ fontWeight: '600', color: "var(--foreground)" }}>{inv.school_name}</div>
                         {inv.school_code && (
-                          <div style={{ fontSize: '11px', color: '#64748b' }}>{inv.school_code}</div>
+                          <div style={{ fontSize: '11px', color: "var(--muted-foreground)" }}>{inv.school_code}</div>
                         )}
                       </td>
                       <td>
-                        <span style={{ fontWeight: '700', color: '#0f172a' }}>
+                        <span style={{ fontWeight: '700', color: "var(--foreground)" }}>
                           ₹{Number(inv.amount || 0).toLocaleString('en-IN')}
                         </span>
                       </td>
                       <td>
-                        <span className="badge" style={{ background: '#f1f5f9', color: '#475569' }}>
+                        <span className="badge" style={{ background: "var(--secondary)", color: "var(--muted-foreground)" }}>
                           {inv.gst_rate || 18}% GST
                         </span>
                       </td>
@@ -406,7 +406,7 @@ export const InvoicesManagement: React.FC = () => {
                         </span>
                       </td>
                       <td>
-                        <div style={{ fontSize: '12px', color: '#64748b' }}>
+                        <div style={{ fontSize: '12px', color: "var(--muted-foreground)" }}>
                           {inv.issued_at ? new Date(inv.issued_at).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Recent'}
                         </div>
                       </td>
@@ -435,11 +435,11 @@ export const InvoicesManagement: React.FC = () => {
       {/* Modal: Receipt Breakdown Viewer with Company Logo & Actions */}
       {selectedInvoice && !emailModalOpen && !editModalOpen && (
         <div className="modal-backdrop" onClick={() => setSelectedInvoice(null)}>
-          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '680px', background: '#fff', borderRadius: '12px', overflow: 'hidden' }}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '680px', background: "var(--card)", borderRadius: '4px', overflow: 'hidden' }}>
             {/* Top Brand Accent Bar */}
-            <div style={{ height: '4px', background: 'linear-gradient(90deg, #1e40af, #3b82f6)' }} />
+            <div style={{ height: '4px', background: "var(--primary)" }} />
 
-            <div className="modal-header" style={{ borderBottom: '1px solid #e2e8f0', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="modal-header" style={{ borderBottom: "1px solid var(--border)", padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                 <img
                   src="/attendo-school-logo.png"
@@ -451,10 +451,10 @@ export const InvoicesManagement: React.FC = () => {
                   }}
                 />
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: "var(--foreground)" }}>
                     AttendoSchool Technologies Inc.
                   </h3>
-                  <div style={{ fontSize: '11px', color: '#64748b' }}>
+                  <div style={{ fontSize: '11px', color: "var(--muted-foreground)" }}>
                     GSTIN: 19AAACB1234P1Z5 · Campus 4, Tech Park Boulevard, Bengaluru
                   </div>
                 </div>
@@ -466,7 +466,7 @@ export const InvoicesManagement: React.FC = () => {
                 <button
                   className="close-btn"
                   onClick={() => setSelectedInvoice(null)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '22px', color: '#64748b' }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '22px', color: "var(--muted-foreground)" }}
                 >
                   &times;
                 </button>
@@ -475,71 +475,71 @@ export const InvoicesManagement: React.FC = () => {
 
             <div className="modal-body" style={{ padding: '24px', maxHeight: '72vh', overflowY: 'auto' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', gap: '20px' }}>
-                <div style={{ flex: 1, background: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#1e40af', fontWeight: '700', letterSpacing: '0.05em', marginBottom: '4px' }}>
+                <div style={{ flex: 1, background: "var(--card)", padding: '14px', borderRadius: '4px', border: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: '11px', textTransform: 'uppercase', color: "var(--primary)", fontWeight: '700', letterSpacing: '0.05em', marginBottom: '4px' }}>
                     Billed To (Institution)
                   </div>
-                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>
+                  <div style={{ fontSize: '15px', fontWeight: '700', color: "var(--foreground)" }}>
                     {selectedInvoice.school_name}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                  <div style={{ fontSize: '12px', color: "var(--muted-foreground)", marginTop: '2px' }}>
                     School Code: {selectedInvoice.school_code || 'GWIS-2025'}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                  <div style={{ fontSize: '12px', color: "var(--muted-foreground)", marginTop: '2px' }}>
                     Address: {selectedInvoice.billing_address || 'Main Campus Boulevard, India'}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                  <div style={{ fontSize: '12px', color: "var(--muted-foreground)", marginTop: '2px' }}>
                     GSTIN: {selectedInvoice.gstin || 'Institutional / Unregistered'}
                   </div>
                 </div>
 
-                <div style={{ flex: 1, background: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0', textAlign: 'right' }}>
-                  <div style={{ fontSize: '12px', fontWeight: '800', color: '#1e40af', letterSpacing: '0.05em' }}>
+                <div style={{ flex: 1, background: "var(--card)", padding: '14px', borderRadius: '4px', border: "1px solid var(--border)", textAlign: 'right' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '800', color: "var(--primary)", letterSpacing: '0.05em' }}>
                     TAX INVOICE & RECEIPT
                   </div>
-                  <div style={{ fontSize: '15px', fontWeight: '800', color: '#0f172a', fontFamily: 'monospace', marginTop: '2px' }}>
+                  <div style={{ fontSize: '15px', fontWeight: '800', color: "var(--foreground)", fontFamily: 'monospace', marginTop: '2px' }}>
                     {selectedInvoice.invoice_number}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                  <div style={{ fontSize: '12px', color: "var(--muted-foreground)", marginTop: '2px' }}>
                     Receipt Ref: {selectedInvoice.receipt_number || 'REC-AUTO'}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                  <div style={{ fontSize: '12px', color: "var(--muted-foreground)", marginTop: '2px' }}>
                     Date: {new Date(selectedInvoice.issued_at || Date.now()).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#10b981', fontWeight: '600', marginTop: '2px' }}>
+                  <div style={{ fontSize: '12px', color: "var(--success)", fontWeight: '600', marginTop: '2px' }}>
                     Payment Mode: {selectedInvoice.provider || 'Razorpay Gateway'}
                   </div>
                 </div>
               </div>
 
               {/* Line Items */}
-              <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', marginBottom: '20px' }}>
+              <div style={{ border: "1px solid var(--border)", borderRadius: '4px', overflow: 'hidden', marginBottom: '20px' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                   <thead>
-                    <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
-                      <th style={{ padding: '10px 14px', color: '#334155', fontWeight: '700' }}>Item Description</th>
-                      <th style={{ padding: '10px 14px', color: '#334155', fontWeight: '700', textAlign: 'center' }}>SAC</th>
-                      <th style={{ padding: '10px 14px', color: '#334155', fontWeight: '700', textAlign: 'right' }}>Taxable</th>
-                      <th style={{ padding: '10px 14px', color: '#334155', fontWeight: '700', textAlign: 'right' }}>GST ({selectedInvoice.gst_rate || 18}%)</th>
-                      <th style={{ padding: '10px 14px', color: '#334155', fontWeight: '700', textAlign: 'right' }}>Total</th>
+                    <tr style={{ background: "var(--secondary)", borderBottom: "1px solid var(--border)", textAlign: 'left' }}>
+                      <th style={{ padding: '10px 14px', color: "var(--muted-foreground)", fontWeight: '700' }}>Item Description</th>
+                      <th style={{ padding: '10px 14px', color: "var(--muted-foreground)", fontWeight: '700', textAlign: 'center' }}>SAC</th>
+                      <th style={{ padding: '10px 14px', color: "var(--muted-foreground)", fontWeight: '700', textAlign: 'right' }}>Taxable</th>
+                      <th style={{ padding: '10px 14px', color: "var(--muted-foreground)", fontWeight: '700', textAlign: 'right' }}>GST ({selectedInvoice.gst_rate || 18}%)</th>
+                      <th style={{ padding: '10px 14px', color: "var(--muted-foreground)", fontWeight: '700', textAlign: 'right' }}>Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td style={{ padding: '12px 14px', borderBottom: '1px solid #f1f5f9' }}>
-                        <div style={{ fontWeight: '600', color: '#0f172a' }}>School Attendance SaaS Subscription</div>
-                        <div style={{ fontSize: '11px', color: '#64748b' }}>Institutional license, multi-tenant portal, biometric sync & parent alerts</div>
+                      <td style={{ padding: '12px 14px', borderBottom: "1px solid var(--border)" }}>
+                        <div style={{ fontWeight: '600', color: "var(--foreground)" }}>School Attendance SaaS Subscription</div>
+                        <div style={{ fontSize: '11px', color: "var(--muted-foreground)" }}>Institutional license, multi-tenant portal, biometric sync & parent alerts</div>
                       </td>
-                      <td style={{ padding: '12px 14px', textAlign: 'center', color: '#64748b', borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '12px 14px', textAlign: 'center', color: "var(--muted-foreground)", borderBottom: "1px solid var(--border)" }}>
                         998313
                       </td>
-                      <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: "1px solid var(--border)" }}>
                         ₹{(Number(selectedInvoice.amount) * (100 / (100 + (Number(selectedInvoice.gst_rate) || 18)))).toFixed(2)}
                       </td>
-                      <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: "1px solid var(--border)" }}>
                         ₹{(Number(selectedInvoice.amount) * ((Number(selectedInvoice.gst_rate) || 18) / (100 + (Number(selectedInvoice.gst_rate) || 18)))).toFixed(2)}
                       </td>
-                      <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: '700', color: '#0f172a', borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: '700', color: "var(--foreground)", borderBottom: "1px solid var(--border)" }}>
                         ₹{Number(selectedInvoice.amount).toFixed(2)}
                       </td>
                     </tr>
@@ -549,24 +549,24 @@ export const InvoicesManagement: React.FC = () => {
 
               {/* Totals Summary */}
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <div style={{ width: '280px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px', background: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                <div style={{ width: '280px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px', background: "var(--card)", padding: '14px', borderRadius: '4px', border: "1px solid var(--border)" }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: "var(--muted-foreground)" }}>
                     <span>Taxable Subtotal:</span>
                     <span>₹{(Number(selectedInvoice.amount) * (100 / (100 + (Number(selectedInvoice.gst_rate) || 18)))).toFixed(2)}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: "var(--muted-foreground)" }}>
                     <span>CGST (9%):</span>
                     <span>₹{(Number(selectedInvoice.amount) * (0.09 / 1.18)).toFixed(2)}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: "var(--muted-foreground)" }}>
                     <span>SGST (9%):</span>
                     <span>₹{(Number(selectedInvoice.amount) * (0.09 / 1.18)).toFixed(2)}</span>
                   </div>
-                  <div style={{ borderTop: '2px solid #cbd5e1', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: '800', color: '#0f172a' }}>
+                  <div style={{ borderTop: "2px solid var(--border)", paddingTop: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: '800', color: "var(--foreground)" }}>
                     <span>Grand Total:</span>
-                    <span style={{ color: '#10b981' }}>₹{Number(selectedInvoice.amount).toFixed(2)}</span>
+                    <span style={{ color: "var(--success)" }}>₹{Number(selectedInvoice.amount).toFixed(2)}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: "var(--muted-foreground)", marginTop: '4px' }}>
                     <span>Payment Status:</span>
                     <span className={`badge ${selectedInvoice.status === 'PAID' ? 'badge-active' : 'badge-pending'}`}>{selectedInvoice.status}</span>
                   </div>
@@ -575,7 +575,7 @@ export const InvoicesManagement: React.FC = () => {
             </div>
 
             {/* Modal Actions Footer with all functions */}
-            <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa' }}>
+            <div className="modal-footer" style={{ borderTop: "1px solid var(--border)", padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: "var(--card)" }}>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
                   type="button"
@@ -627,17 +627,17 @@ export const InvoicesManagement: React.FC = () => {
       {/* Modal: Edit Invoice Option */}
       {editModalOpen && (
         <div className="modal-backdrop" onClick={() => !editSaving && setEditModalOpen(false)}>
-          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '580px', background: '#fff', borderRadius: '12px' }}>
-            <div className="modal-header" style={{ borderBottom: '1px solid #e2e8f0', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '580px', background: "var(--card)", borderRadius: '4px' }}>
+            <div className="modal-header" style={{ borderBottom: "1px solid var(--border)", padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#eff6ff', display: 'grid', placeItems: 'center', color: '#2563eb' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '4px', background: "var(--card)", display: 'grid', placeItems: 'center', color: "var(--primary)" }}>
                   <Pencil size={16} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: "var(--foreground)" }}>
                     Edit Tax Invoice & Receipt
                   </h3>
-                  <div style={{ fontSize: '11px', color: '#64748b' }}>
+                  <div style={{ fontSize: '11px', color: "var(--muted-foreground)" }}>
                     Update institutional invoice metadata, tax calculations, and status
                   </div>
                 </div>
@@ -647,7 +647,7 @@ export const InvoicesManagement: React.FC = () => {
                 className="close-btn"
                 disabled={editSaving}
                 onClick={() => setEditModalOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#64748b' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: "var(--muted-foreground)" }}
               >
                 &times;
               </button>
@@ -657,7 +657,7 @@ export const InvoicesManagement: React.FC = () => {
               <div className="modal-body" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", marginBottom: '4px' }}>
                       Invoice Number *
                     </label>
                     <input
@@ -670,7 +670,7 @@ export const InvoicesManagement: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", marginBottom: '4px' }}>
                       Receipt Reference
                     </label>
                     <input
@@ -685,7 +685,7 @@ export const InvoicesManagement: React.FC = () => {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", marginBottom: '4px' }}>
                       Institution / School Name *
                     </label>
                     <input
@@ -698,7 +698,7 @@ export const InvoicesManagement: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", marginBottom: '4px' }}>
                       School Code
                     </label>
                     <input
@@ -713,7 +713,7 @@ export const InvoicesManagement: React.FC = () => {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", marginBottom: '4px' }}>
                       Total Invoiced (₹) *
                     </label>
                     <input
@@ -727,7 +727,7 @@ export const InvoicesManagement: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", marginBottom: '4px' }}>
                       GST Rate (%)
                     </label>
                     <select
@@ -742,7 +742,7 @@ export const InvoicesManagement: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", marginBottom: '4px' }}>
                       Payment Status
                     </label>
                     <select
@@ -760,7 +760,7 @@ export const InvoicesManagement: React.FC = () => {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", marginBottom: '4px' }}>
                       Issue Date
                     </label>
                     <input
@@ -771,7 +771,7 @@ export const InvoicesManagement: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", marginBottom: '4px' }}>
                       Paid / Settlement Date
                     </label>
                     <input
@@ -784,7 +784,7 @@ export const InvoicesManagement: React.FC = () => {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: "var(--muted-foreground)", marginBottom: '4px' }}>
                     Billing Campus Address
                   </label>
                   <textarea
@@ -797,7 +797,7 @@ export const InvoicesManagement: React.FC = () => {
                 </div>
               </div>
 
-              <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', padding: '16px 24px', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: '#fafafa' }}>
+              <div className="modal-footer" style={{ borderTop: "1px solid var(--border)", padding: '16px 24px', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: "var(--card)" }}>
                 <button
                   type="button"
                   className="sa-btn-secondary"
@@ -822,11 +822,11 @@ export const InvoicesManagement: React.FC = () => {
       {/* Modal: Email Invoice */}
       {emailModalOpen && selectedInvoice && (
         <div className="modal-backdrop" onClick={() => !emailSending && setEmailModalOpen(false)}>
-          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '460px', background: '#fff', borderRadius: '12px' }}>
-            <div className="modal-header" style={{ borderBottom: '1px solid #e2e8f0', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '460px', background: "var(--card)", borderRadius: '4px' }}>
+            <div className="modal-header" style={{ borderBottom: "1px solid var(--border)", padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Mail size={18} color="#2563eb" />
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
+                <Mail size={18} color="#e11d55" />
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: "var(--foreground)" }}>
                   Email Tax Invoice {selectedInvoice.invoice_number}
                 </h3>
               </div>
@@ -834,17 +834,17 @@ export const InvoicesManagement: React.FC = () => {
                 className="close-btn"
                 disabled={emailSending}
                 onClick={() => setEmailModalOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#64748b' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: "var(--muted-foreground)" }}
               >
                 &times;
               </button>
             </div>
 
             <div className="modal-body" style={{ padding: '20px' }}>
-              <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 14px 0' }}>
+              <p style={{ fontSize: '13px', color: "var(--muted-foreground)", margin: '0 0 14px 0' }}>
                 Dispatch the official PDF tax receipt to the institutional administrator or finance desk.
               </p>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: "var(--muted-foreground)" }}>
                 Recipient Email Address *
               </label>
               <input
@@ -857,7 +857,7 @@ export const InvoicesManagement: React.FC = () => {
               />
             </div>
 
-            <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', padding: '14px 20px', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: '#fafafa' }}>
+            <div className="modal-footer" style={{ borderTop: "1px solid var(--border)", padding: '14px 20px', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: "var(--card)" }}>
               <button
                 type="button"
                 className="sa-btn-secondary"

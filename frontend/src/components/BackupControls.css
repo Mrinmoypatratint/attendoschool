@@ -1,0 +1,12 @@
+.backup-menu {
+  right: 0;
+  width: min(310px, calc(100vw - 32px));
+  padding: 16px;
+  box-sizing: border-box;
+}
+.backup-menu > button { display: flex; width: 100%; margin-top: 8px; }
+.backup-controls dialog { box-sizing: border-box; }
+.backup-controls dialog::backdrop { background: rgb(0 0 0 / 40%); }
+@media (max-width: 600px) {
+  .backup-menu { position: fixed; top: 72px; right: 16px; }
+}

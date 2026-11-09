@@ -9,7 +9,7 @@ import { InvoicesManagement } from './InvoicesManagement';
 import { MonitoringHealth } from './MonitoringHealth';
 import { PlatformAnalytics } from './PlatformAnalytics';
 import { PeopleDirectory } from './PeopleDirectory';
-import { RolesPermissions } from './RolesPermissions';
+import { FeatureManagement } from './FeatureManagement';
 import { SecurityCenter } from './SecurityCenter';
 import { AuditLogsViewer } from './AuditLogsViewer';
 import { PlatformSettings } from './PlatformSettings';
@@ -141,7 +141,7 @@ export const SuperAdminModule: React.FC = () => {
         return <PeopleDirectory />;
       case '/super-admin/permissions':
       case '/super-admin/roles':
-        return <RolesPermissions />;
+        return <FeatureManagement />;
       case '/super-admin/security':
         return <SecurityCenter />;
       case '/super-admin/audit-logs':

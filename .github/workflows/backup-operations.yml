@@ -1,0 +1,52 @@
+name: Backup operations and missed-run monitor
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Inspect safe metadata, prepare server settings, or check last encrypted release'
+        type: choice
+        options: [inspect, prepare, monitor, daily]
+        default: inspect
+  schedule:
+    - cron: '47 3 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: backup-operations
+  cancel-in-progress: false
+jobs:
+  backup-operation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Use existing VPS credentials for the selected backup operation
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          BACKUP_AGE_RECIPIENT: ${{ secrets.BACKUP_AGE_RECIPIENT }}
+          BACKUP_GH_TOKEN: ${{ secrets.BACKUP_GH_TOKEN }}
+        with:
+          host: ${{ secrets.HOSTINGER_VPS_HOST }}
+          username: ${{ secrets.HOSTINGER_VPS_USER }}
+          key: ${{ secrets.HOSTINGER_VPS_SSH_KEY }}
+          port: ${{ secrets.HOSTINGER_VPS_PORT || 22 }}
+          command_timeout: 10m
+          envs: BACKUP_AGE_RECIPIENT,BACKUP_GH_TOKEN
+          script: |
+            set -eu
+            cd /home/attendoschool/htdocs/attendoschool.online
+            case '${{ inputs.operation || 'daily' }}' in
+              inspect) node scripts/backup/provision.cjs inspect ;;
+              prepare)
+                bash scripts/backup/install-tools.sh
+                node scripts/backup/provision.cjs prepare
+                pm2 startOrReload ecosystem.config.cjs --env production
+                pm2 save
+                ;;
+              monitor) node scripts/backup/provision.cjs monitor ;;
+              daily)
+                if ! crontab -l 2>/dev/null | grep -q '# attendoschool-backup-managed'; then
+                  BACKUP_CONFIG_FILE="$PWD/backend/.backup-state/backup.env" bash scripts/backup/scheduled.sh
+                fi
+                node scripts/backup/provision.cjs monitor
+                ;;
+              *) exit 2 ;;
+            esac

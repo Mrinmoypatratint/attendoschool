@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { Can } from '../../rbac/AccessProvider';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -28,6 +29,8 @@ interface PhotoRequest {
   applicant_name: string;
   identifier?: string;
   detail?: string;
+  roll_number?: string;
+  admission_number?: string;
   current_photo_url?: string | null;
   photo_url: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -49,6 +52,16 @@ export default function PhotoApprove() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | 'STUDENT' | 'TEACHER'>(isTeacher ? 'STUDENT' : 'ALL');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const parseIdentifier = (identifier?: string) => {
+    if (!identifier) return { roll: '', adm: '' };
+    const rollMatch = identifier.match(/Roll:\s*([^·•\n\r|]+)/i);
+    const admMatch = identifier.match(/Adm:\s*([^·•\n\r|]+)/i);
+    return {
+      roll: rollMatch ? rollMatch[1].trim() : '',
+      adm: admMatch ? admMatch[1].trim() : ''
+    };
+  };
 
   const cleanIdentifier = (identifier?: string) => {
     if (!identifier) return '';
@@ -169,17 +182,17 @@ export default function PhotoApprove() {
   }, [isTeacher, counts, photos]);
 
   return (
-    <div className="student-subpage w-full max-w-none m-0 pb-10" style={{ width: '100%', paddingBottom: 40 }}>
+    <div className="student-subpage" style={{ width: '100%', paddingBottom: 40 }}>
       {/* ── Page Header (Matching screenshot style) ── */}
-      <div className="student-subpage-header mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="student-subpage-header" style={{ marginBottom: 20 }}>
         <div className="student-subpage-title-row">
-          <Link to="/dashboard" className="student-back-link inline-flex items-center gap-1.5 text-blue-600 font-semibold text-xs no-underline mb-1 hover:text-blue-700 transition-colors">
+          <Link to="/dashboard" className="student-back-link" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: "var(--primary)", fontWeight: 600, fontSize: 13, textDecoration: 'none', marginBottom: 4 }}>
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
-          <h1 className="student-subpage-title text-2xl font-extrabold text-slate-900 dark:text-white my-1">
+          <h1 className="student-subpage-title" style={{ fontSize: 24, fontWeight: 800, color: "var(--text, var(--foreground))", margin: '2px 0 4px' }}>
             {isTeacher ? 'Student Photo Approvals' : 'Photo Approve'}
           </h1>
-          <p className="student-subpage-desc text-sm text-slate-500 dark:text-slate-400 m-0">
+          <p className="student-subpage-desc" style={{ fontSize: 14, color: "var(--text-secondary, var(--muted-foreground))", margin: 0 }}>
             {isTeacher
               ? 'Review, verify, and approve submitted student profile photographs for your mentored class-section.'
               : 'Review, verify, and approve submitted student and staff profile photographs.'}
@@ -189,7 +202,8 @@ export default function PhotoApprove() {
         <button
           type="button"
           onClick={loadPhotos}
-          className="student-btn-secondary inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-semibold text-xs cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors"
+          className="student-btn-secondary"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 4, border: "1px solid var(--border, var(--border))", background: "var(--surface, var(--card))", cursor: 'pointer', fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))" }}
         >
           <RefreshCw size={14} className={loading ? 'spin' : ''} />
           <span>Refresh</span>
@@ -199,88 +213,218 @@ export default function PhotoApprove() {
       {/* Feedback banner */}
       {feedback && (
         <div
-          className={`flex items-center justify-between p-2.5 px-4 rounded-xl mb-4 text-sm border ${
-            feedback.type === 'success'
-              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
-              : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300'
-          }`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '10px 16px',
+            borderRadius: 4,
+            marginBottom: 16,
+            background: feedback.type === 'success' ? "var(--secondary)" : "var(--card)",
+            border: `1px solid ${feedback.type === 'success' ? "var(--border)" : "var(--border)"}`,
+            color: feedback.type === 'success' ? "var(--success)" : "var(--destructive)",
+            fontSize: 13.5
+          }}
         >
-          <div className="flex items-center gap-2">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {feedback.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
             <span>{feedback.message}</span>
           </div>
           <button
             onClick={() => setFeedback(null)}
-            className="bg-transparent border-0 cursor-pointer text-inherit p-0.5 hover:opacity-75 transition-opacity"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 2 }}
           >
             <X size={15} />
           </button>
         </div>
       )}
 
-      {/* ── 3 Tabs (Exactly matching user screenshot) ── */}
-      <div className="student-tab-bar flex gap-1.5 border-b border-slate-200 dark:border-slate-700 mb-5 overflow-x-auto pb-px">
+      {/* ── Status Tab Navigation ── */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          borderBottom: "2px solid var(--border, var(--border))",
+          marginBottom: 16,
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
+        }}
+        className="no-scrollbar pb-px [&::-webkit-scrollbar]:hidden"
+      >
         <button
           type="button"
-          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
-            activeTab === 'ALL'
-              ? 'border-blue-600 text-blue-600 dark:text-blue-400 active'
-              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
           onClick={() => setActiveTab('ALL')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'ALL' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'ALL' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+            fontWeight: activeTab === 'ALL' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          All ({displayCounts.all})
+          <Camera size={18} />
+          <span>All</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 4,
+              background: activeTab === 'ALL' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'ALL' ? "var(--primary)" : "var(--muted-foreground)",
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {displayCounts.all}
+          </span>
         </button>
+
         <button
           type="button"
-          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
-            activeTab === 'PENDING'
-              ? 'border-blue-600 text-blue-600 dark:text-blue-400 active'
-              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
           onClick={() => setActiveTab('PENDING')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'PENDING' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'PENDING' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+            fontWeight: activeTab === 'PENDING' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          Pending ({displayCounts.pending})
+          <Clock size={18} />
+          <span>Pending</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 4,
+              background: activeTab === 'PENDING' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'PENDING' ? "var(--primary)" : "var(--muted-foreground)",
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {displayCounts.pending}
+          </span>
         </button>
+
         <button
           type="button"
-          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
-            activeTab === 'APPROVED'
-              ? 'border-blue-600 text-blue-600 dark:text-blue-400 active'
-              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
           onClick={() => setActiveTab('APPROVED')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'APPROVED' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'APPROVED' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+            fontWeight: activeTab === 'APPROVED' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          Approved ({displayCounts.approved})
+          <CheckCircle2 size={18} />
+          <span>Approved</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 4,
+              background: activeTab === 'APPROVED' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'APPROVED' ? "var(--primary)" : "var(--muted-foreground)",
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {displayCounts.approved}
+          </span>
         </button>
+
         <button
           type="button"
-          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
-            activeTab === 'REJECTED'
-              ? 'border-rose-600 text-rose-600 dark:text-rose-400 active'
-              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
           onClick={() => setActiveTab('REJECTED')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'REJECTED' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'REJECTED' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+            fontWeight: activeTab === 'REJECTED' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          Rejected ({displayCounts.rejected})
+          <XCircle size={18} />
+          <span>Rejected</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 4,
+              background: activeTab === 'REJECTED' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'REJECTED' ? "var(--primary)" : "var(--muted-foreground)",
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {displayCounts.rejected}
+          </span>
         </button>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
-        <div className="relative min-w-[260px] flex-1 max-w-sm">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+        <div style={{ position: 'relative', minWidth: 260, flex: 1, maxWidth: 400 }}>
+          <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: "var(--muted-foreground)" }} />
           <input
             type="text"
             placeholder={isTeacher ? "Search by name or ID..." : "Search by name, roll no, or ID..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full py-2 pl-9 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            style={{
+              width: '100%',
+              padding: '8px 12px 8px 36px',
+              borderRadius: 4,
+              border: "1px solid var(--border, var(--border))",
+              background: "var(--surface, var(--card))",
+              fontSize: 13,
+              color: "var(--text, var(--foreground))"
+            }}
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 bg-transparent border-0 cursor-pointer text-slate-400 hover:text-slate-600 p-0.5"
+              style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: "var(--muted-foreground)" }}
             >
               <X size={14} />
             </button>
@@ -288,18 +432,23 @@ export default function PhotoApprove() {
         </div>
 
         {!isTeacher && (
-          <div className="flex items-center gap-2">
-            <Filter size={14} className="text-slate-500" />
-            <span className="text-sm text-slate-500 font-medium">Role:</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Filter size={14} style={{ color: "var(--muted-foreground)" }} />
+            <span style={{ fontSize: 13, color: "var(--muted-foreground)", fontWeight: 500 }}>Role:</span>
             {(['ALL', 'STUDENT', 'TEACHER'] as const).map((role) => (
               <button
                 key={role}
                 onClick={() => setRoleFilter(role)}
-                className={`py-1 px-2.5 rounded-md text-xs font-semibold cursor-pointer transition-colors ${
-                  roleFilter === role
-                    ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
-                    : 'bg-transparent text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
-                }`}
+                style={{
+                  background: roleFilter === role ? "var(--accent)" : 'transparent',
+                  color: roleFilter === role ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+                  border: roleFilter === role ? "1px solid var(--border)" : "1px solid var(--border, var(--border))",
+                  padding: '4px 10px',
+                  borderRadius: 4,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
               >
                 {role === 'ALL' ? 'All Roles' : role === 'STUDENT' ? 'Students' : 'Teachers'}
               </button>
@@ -310,20 +459,20 @@ export default function PhotoApprove() {
 
       {/* Main Content Area */}
       {loading ? (
-        <div className="text-center py-16 px-5 text-slate-500 text-sm">
-          <RefreshCw size={24} className="spin mb-3 inline-block text-blue-600" />
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: "var(--muted-foreground)", fontSize: 14 }}>
+          <RefreshCw size={24} className="spin" style={{ marginBottom: 12, display: 'inline-block', color: "var(--primary)" }} />
           <div>Loading photo approval requests...</div>
         </div>
       ) : filteredPhotos.length === 0 ? (
         /* Empty state matching the user's screenshot */
-        <div className="student-empty-state text-center py-16 px-5 text-slate-500 dark:text-slate-400 text-sm bg-white dark:bg-slate-800 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
-          <Camera size={36} className="text-slate-300 dark:text-slate-600 mb-3 mx-auto" />
-          <p className="m-0 font-medium text-base text-slate-700 dark:text-slate-300">
+        <div className="student-empty-state" style={{ textAlign: 'center', padding: '60px 20px', color: "var(--text-secondary, var(--muted-foreground))", fontSize: 14, background: "var(--surface, var(--card))", border: "1px dashed var(--border, var(--border))", borderRadius: 4 }}>
+          <Camera size={36} style={{ color: "var(--muted-foreground)", marginBottom: 12 }} />
+          <p style={{ margin: 0, fontWeight: 500, fontSize: 15, color: "var(--text, var(--muted-foreground))" }}>
             {isTeacher && counts.all === 0
               ? 'No student photo approval requests found for your mentored class-section.'
               : 'No photo submissions found in this category.'}
           </p>
-          <p className="text-xs text-slate-400 mt-1">
+          <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 4 }}>
             {isTeacher && counts.all === 0
               ? 'Photo approval duties are routed exclusively to assigned class mentors.'
               : activeTab === 'PENDING'
@@ -337,66 +486,120 @@ export default function PhotoApprove() {
         </div>
       ) : (
         /* Photos Grid */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+            gap: 20
+          }}
+        >
           {filteredPhotos.map((photo) => (
             <div
               key={photo.id}
-              className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden flex flex-col shadow-xs hover:shadow-md transition-all"
+              style={{
+                background: "var(--surface, var(--card))",
+                border: "1px solid var(--border, var(--border))",
+                borderRadius: 4,
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: 'none',
+                transition: 'box-shadow 0.2s, transform 0.2s'
+              }}
             >
               {/* Header: Status and Date */}
-              <div className="flex items-center justify-between p-3 px-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/40">
-                <div className="flex items-center gap-1.5">
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '12px 16px',
+                  borderBottom: "1px solid var(--border, var(--border))",
+                  background: "var(--bg-card-header, var(--card))"
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   {photo.status === 'PENDING' ? (
-                    <span className="inline-flex items-center gap-1 bg-amber-500/15 text-amber-600 dark:text-amber-400 py-0.5 px-2 rounded-full text-xs font-bold">
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: "var(--secondary)", color: "var(--warning)", padding: '3px 8px', borderRadius: 4, fontSize: 11.5, fontWeight: 700 }}>
                       <Clock size={12} /> Pending Review
                     </span>
                   ) : photo.status === 'APPROVED' ? (
-                    <span className="inline-flex items-center gap-1 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 py-0.5 px-2 rounded-full text-xs font-bold">
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: "var(--secondary)", color: "var(--success)", padding: '3px 8px', borderRadius: 4, fontSize: 11.5, fontWeight: 700 }}>
                       <CheckCircle2 size={12} /> Approved
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 bg-rose-500/15 text-rose-600 dark:text-rose-400 py-0.5 px-2 rounded-full text-xs font-bold">
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: "var(--secondary)", color: "var(--destructive)", padding: '3px 8px', borderRadius: 4, fontSize: 11.5, fontWeight: 700 }}>
                       <XCircle size={12} /> Rejected
                     </span>
                   )}
                 </div>
 
-                <span className="text-xs text-slate-500 dark:text-slate-400">
+                <span style={{ fontSize: 11.5, color: "var(--muted-foreground)" }}>
                   {photo.created_at ? new Date(photo.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
                 </span>
               </div>
 
               {/* Photo & Person Details */}
-              <div className="p-4 flex gap-3.5 flex-1">
+              <div style={{ padding: 16, display: 'flex', gap: 14, flex: 1 }}>
                 {/* Photo Thumbnail with Zoom */}
                 <div
-                  className="relative w-25 h-25 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-900 shrink-0 border border-slate-200 dark:border-slate-700 cursor-pointer group"
+                  style={{
+                    position: 'relative',
+                    width: 100,
+                    height: 100,
+                    borderRadius: 4,
+                    overflow: 'hidden',
+                    background: "var(--card-subtle, var(--secondary))",
+                    flexShrink: 0,
+                    border: "1px solid var(--border, var(--border))",
+                    cursor: 'pointer'
+                  }}
                   onClick={() => setPreviewPhoto(photo)}
                   title="Click to view full photo"
                 >
                   <img
                     src={photo.photo_url}
                     alt={photo.applicant_name}
-                    className="w-full h-full object-cover"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     onError={(e) => {
                       (e.target as any).src = 'https://via.placeholder.com/150?text=No+Photo';
                     }}
                   />
-                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: "var(--card)",
+                      opacity: 0,
+                      transition: 'opacity 0.15s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: "var(--background)"
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                    onMouseLeave={(e) => (e.currentTarget.style.opacity = '0')}
+                  >
                     <Maximize2 size={18} />
                   </div>
                 </div>
 
                 {/* Candidate Info */}
-                <div className="flex flex-col gap-1 flex-1 min-w-0">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
                   {!isTeacher && (
-                    <div className="flex items-center gap-1.5">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span
-                        className={`inline-flex items-center gap-1 text-[11px] font-bold py-0.5 px-1.5 rounded ${
-                          photo.applicant_type === 'STUDENT'
-                            ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400'
-                            : 'bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400'
-                        }`}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 3,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          background: photo.applicant_type === 'STUDENT' ? "var(--accent)" : "var(--secondary)",
+                          color: photo.applicant_type === 'STUDENT' ? "var(--primary)" : "var(--info)"
+                        }}
                       >
                         {photo.applicant_type === 'STUDENT' ? <User size={11} /> : <GraduationCap size={11} />}
                         {photo.applicant_type === 'STUDENT' ? 'Student' : 'Teacher'}
@@ -404,37 +607,52 @@ export default function PhotoApprove() {
                     </div>
                   )}
 
-                  <h3 className="m-0 mt-0.5 text-sm font-bold text-slate-900 dark:text-white truncate">
+                  <h3 style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 700, color: "var(--text, var(--foreground))", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     <PersonProfileLink kind={photo.applicant_type === 'TEACHER' ? 'teacher' : 'student'} id={photo.applicant_id} name={photo.applicant_name} person={photo as any} />
                   </h3>
 
-                  {isTeacher ? (
-                    cleanIdentifier(photo.identifier) ? (
-                      <div className="text-xs text-slate-500 dark:text-slate-400">
-                        Adm: <strong className="text-slate-700 dark:text-slate-300">{cleanIdentifier(photo.identifier).replace(/^Adm:\s*/i, '')}</strong>
-                      </div>
-                    ) : null
-                  ) : (
-                    photo.identifier && (
-                      <div className="text-xs text-slate-500 dark:text-slate-400">
-                        ID / Adm: <strong className="text-slate-700 dark:text-slate-300">{photo.identifier}</strong>
-                      </div>
-                    )
-                  )}
+                  {(() => {
+                    const parsed = parseIdentifier(photo.identifier);
+                    const rollVal = photo.roll_number || parsed.roll;
+                    const admVal = photo.admission_number || parsed.adm || (isTeacher ? cleanIdentifier(photo.identifier).replace(/^Adm:\s*/i, '') : '');
+
+                    if (rollVal || admVal) {
+                      return (
+                        <div style={{ fontSize: 12, color: "var(--text-secondary, var(--muted-foreground))", display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                          {rollVal && (
+                            <span>Roll: <strong style={{ color: "var(--text, var(--muted-foreground))" }}>{rollVal}</strong></span>
+                          )}
+                          {rollVal && admVal && <span style={{ color: "var(--muted-foreground)" }}>•</span>}
+                          {admVal && (
+                            <span>Adm: <strong style={{ color: "var(--text, var(--muted-foreground))" }}>{admVal}</strong></span>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    if (photo.identifier) {
+                      return (
+                        <div style={{ fontSize: 12, color: "var(--text-secondary, var(--muted-foreground))" }}>
+                          {photo.identifier}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
 
                   {photo.detail && (
-                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                    <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
                       {photo.detail}
                     </div>
                   )}
 
                   {photo.current_photo_url && (
-                    <div className="mt-1 flex items-center gap-1.5">
-                      <span className="text-[11px] text-slate-400">Current:</span>
+                    <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Current:</span>
                       <img
                         src={photo.current_photo_url}
                         alt="Current"
-                        className="w-5.5 h-5.5 rounded-full object-cover border border-slate-300 dark:border-slate-600"
+                        style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover', border: "1px solid var(--border)" }}
                       />
                     </div>
                   )}
@@ -443,25 +661,49 @@ export default function PhotoApprove() {
 
               {/* Status details / Rejection reason */}
               {photo.status === 'REJECTED' && photo.rejection_reason && (
-                <div className="mx-4 mb-3 p-2 px-3 bg-rose-500/10 rounded-lg border border-rose-500/25 text-xs text-rose-600 dark:text-rose-400">
+                <div style={{ margin: '0 16px 12px', padding: '8px 12px', background: "var(--secondary)", borderRadius: 4, border: "1px solid var(--border)", fontSize: 12, color: "var(--destructive)" }}>
                   <strong>Reason:</strong> {photo.rejection_reason}
                 </div>
               )}
 
               {photo.status === 'APPROVED' && photo.reviewed_by_name && (
-                <div className="mx-4 mb-3 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 p-1.5 px-2.5 rounded-md">
+                <div style={{ margin: '0 16px 12px', fontSize: 11.5, color: "var(--success)", background: "var(--secondary)", padding: '6px 10px', borderRadius: 4 }}>
                   Approved by {photo.reviewed_by_name} {photo.reviewed_at ? `on ${new Date(photo.reviewed_at).toLocaleDateString()}` : ''}
                 </div>
               )}
 
-              {/* Action Buttons for PENDING */}
-              {photo.status === 'PENDING' && (
-                <div className="flex gap-2.5 p-3 px-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/40">
+              {/* Action Buttons for PENDING (RBAC: hidden without photos.review) */}
+              {photo.status === 'PENDING' && (<Can perm="photos.review">
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 10,
+                    padding: '12px 16px',
+                    borderTop: "1px solid var(--border, var(--border))",
+                    background: "var(--bg-card-footer, var(--card))"
+                  }}
+                >
                   <button
                     type="button"
                     onClick={() => handleApprove(photo)}
                     disabled={actionLoading === photo.id}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white border-0 rounded-lg py-2 px-3 text-xs font-semibold cursor-pointer transition-colors shadow-xs"
+                    style={{
+                      flex: 1,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      background: "var(--success)",
+                      color: "var(--background)",
+                      border: 'none',
+                      borderRadius: 4,
+                      padding: '8px 12px',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      opacity: actionLoading === photo.id ? 0.7 : 1,
+                      transition: 'background 0.15s'
+                    }}
                   >
                     <Check size={15} />
                     <span>{actionLoading === photo.id ? 'Approving...' : 'Approve'}</span>
@@ -474,12 +716,26 @@ export default function PhotoApprove() {
                       setRejectReason('');
                     }}
                     disabled={actionLoading === photo.id}
-                    className="inline-flex items-center justify-center gap-1.5 bg-transparent text-rose-600 dark:text-rose-400 border border-rose-500/40 hover:bg-rose-500/10 rounded-lg py-2 px-3.5 text-xs font-semibold cursor-pointer transition-colors"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      background: 'transparent',
+                      color: "var(--destructive)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 4,
+                      padding: '8px 14px',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
                   >
                     <X size={15} />
                     <span>Reject</span>
                   </button>
-                </div>
+                </div></Can>
               )}
             </div>
           ))}
@@ -489,54 +745,76 @@ export default function PhotoApprove() {
       {/* ── Photo Preview Lightbox Modal ── */}
       {previewPhoto && (
         <div
-          className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-5"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: "var(--card)",
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 20
+          }}
           onClick={() => setPreviewPhoto(null)}
         >
           <div
-            className="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-700 relative animate-scale-up"
+            style={{
+              background: "var(--bg-card, var(--card))",
+              borderRadius: 4,
+              maxWidth: 520,
+              width: '100%',
+              overflow: 'hidden',
+              boxShadow: 'none',
+              border: '1px solid var(--border)',
+              position: 'relative'
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-3.5 px-4.5 border-b border-slate-200 dark:border-slate-700">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: "1px solid var(--border, var(--border))" }}>
               <div>
-                <h3 className="m-0 text-base font-bold text-slate-900 dark:text-white">
-                  <PersonProfileLink kind={previewPhoto.applicant_type === 'TEACHER' ? 'teacher' : 'student'} id={previewPhoto.applicant_id} name={previewPhoto.applicant_name} person={previewPhoto as any} />
-                </h3>
-                <span className="text-xs text-slate-500 dark:text-slate-400">
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text, var(--foreground))" }}><PersonProfileLink kind={previewPhoto.applicant_type === 'TEACHER' ? 'teacher' : 'student'} id={previewPhoto.applicant_id} name={previewPhoto.applicant_name} person={previewPhoto as any} /></h3>
+                <span style={{ fontSize: 12, color: "var(--text-secondary, var(--muted-foreground))" }}>
                   {previewPhoto.detail || (isTeacher ? cleanIdentifier(previewPhoto.identifier) : previewPhoto.identifier)}
                 </span>
               </div>
               <button
                 onClick={() => setPreviewPhoto(null)}
-                className="bg-transparent border-0 cursor-pointer text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: "var(--text-secondary, var(--muted-foreground))", padding: 4 }}
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="p-5 text-center bg-slate-100 dark:bg-slate-900/50">
+            <div style={{ padding: 20, textAlign: 'center', background: "var(--card-subtle, var(--card))" }}>
               <img
                 src={previewPhoto.photo_url}
                 alt={previewPhoto.applicant_name}
-                className="max-h-90 max-w-full rounded-xl shadow-md object-contain mx-auto"
+                style={{
+                  maxHeight: 360,
+                  maxWidth: '100%',
+                  borderRadius: 4,
+                  boxShadow: 'none',
+                  objectFit: 'contain'
+                }}
               />
             </div>
 
             {previewPhoto.status === 'PENDING' && (
-              <div className="flex gap-3 p-4 border-t border-slate-200 dark:border-slate-700 justify-end bg-white dark:bg-slate-800">
+              <div style={{ display: 'flex', gap: 12, padding: 16, borderTop: "1px solid var(--border, var(--border))", justifyContent: 'flex-end', background: "var(--bg-card, var(--card))" }}>
                 <button
                   type="button"
                   onClick={() => {
                     setRejectingPhoto(previewPhoto);
                     setRejectReason('');
                   }}
-                  className="inline-flex items-center gap-1.5 py-2 px-4 rounded-lg border border-rose-500/40 text-rose-600 dark:text-rose-400 bg-transparent font-semibold text-xs cursor-pointer hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 4, border: "1px solid var(--border)", color: "var(--destructive)", background: 'transparent', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
                 >
                   <X size={15} /> Reject
                 </button>
                 <button
                   type="button"
                   onClick={() => handleApprove(previewPhoto)}
-                  className="inline-flex items-center gap-1.5 py-2 px-4.5 rounded-lg border-0 text-white bg-emerald-600 hover:bg-emerald-700 font-semibold text-xs cursor-pointer shadow-xs transition-colors"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 4, border: 'none', color: "var(--background)", background: "var(--success)", fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
                 >
                   <Check size={15} /> Approve Photo
                 </button>
@@ -549,22 +827,39 @@ export default function PhotoApprove() {
       {/* ── Reject Reason Dialog Modal ── */}
       {rejectingPhoto && (
         <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-5"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: "var(--card)",
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: 20
+          }}
           onClick={() => setRejectingPhoto(null)}
         >
           <div
-            className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-5 border border-slate-200 dark:border-slate-700 shadow-2xl animate-scale-up"
+            style={{
+              background: "var(--bg-card, var(--card))",
+              borderRadius: 4,
+              maxWidth: 440,
+              width: '100%',
+              padding: 22,
+              border: '1px solid var(--border)',
+              boxShadow: 'none'
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="m-0 mb-2 text-base font-bold text-rose-600">
+            <h3 style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, color: "var(--destructive)" }}>
               Reject Photo Submission
             </h3>
-            <p className="m-0 mb-3.5 text-xs text-slate-500 dark:text-slate-400">
-              Please provide a reason for rejecting the photograph for <strong className="text-slate-800 dark:text-slate-200">{rejectingPhoto.applicant_name}</strong>.
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: "var(--text-secondary, var(--muted-foreground))" }}>
+              Please provide a reason for rejecting the photograph for <strong style={{ color: 'var(--text)' }}>{rejectingPhoto.applicant_name}</strong>.
             </p>
 
             {/* Quick Reason Chips */}
-            <div className="flex flex-wrap gap-1.5 mb-3">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
               {[
                 'Blurry / Low Resolution',
                 'Not Formal Portrait',
@@ -575,11 +870,15 @@ export default function PhotoApprove() {
                   key={chip}
                   type="button"
                   onClick={() => setRejectReason(chip)}
-                  className={`py-1 px-2 rounded-md text-xs cursor-pointer transition-colors ${
-                    rejectReason === chip
-                      ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/35'
-                      : 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600 hover:bg-slate-200/60'
-                  }`}
+                  style={{
+                    background: rejectReason === chip ? "var(--secondary)" : "var(--card-subtle, var(--card))",
+                    color: rejectReason === chip ? "var(--destructive)" : "var(--text-secondary, var(--muted-foreground))",
+                    border: rejectReason === chip ? "1px solid var(--border)" : '1px solid var(--border)',
+                    borderRadius: 4,
+                    padding: '4px 8px',
+                    fontSize: 11.5,
+                    cursor: 'pointer'
+                  }}
                 >
                   {chip}
                 </button>
@@ -591,14 +890,33 @@ export default function PhotoApprove() {
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               placeholder="Enter rejection reason or guidance for re-upload..."
-              className="w-full py-2.5 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs resize-none mb-4 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: 4,
+                border: "1px solid var(--border, var(--border))",
+                background: "var(--card-subtle, var(--card))",
+                color: "var(--text, var(--foreground))",
+                fontSize: 13,
+                resize: 'none',
+                marginBottom: 16
+              }}
             />
 
-            <div className="flex justify-end gap-2.5">
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <button
                 type="button"
                 onClick={() => setRejectingPhoto(null)}
-                className="py-2 px-3.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-transparent text-slate-600 dark:text-slate-400 font-semibold text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: 4,
+                  border: "1px solid var(--border, var(--border))",
+                  background: 'transparent',
+                  color: "var(--text-secondary, var(--muted-foreground))",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer'
+                }}
               >
                 Cancel
               </button>
@@ -606,7 +924,17 @@ export default function PhotoApprove() {
                 type="button"
                 onClick={handleRejectConfirm}
                 disabled={actionLoading === rejectingPhoto.id}
-                className="py-2 px-4 rounded-lg border-0 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs cursor-pointer shadow-xs transition-colors"
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 4,
+                  border: 'none',
+                  background: "var(--destructive)",
+                  color: "var(--background)",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  opacity: actionLoading === rejectingPhoto.id ? 0.7 : 1
+                }}
               >
                 Confirm Rejection
               </button>

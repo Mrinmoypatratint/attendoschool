@@ -313,9 +313,9 @@ export default function SmtpLogs() {
             borderRadius: 9999,
             fontSize: 12,
             fontWeight: 700,
-            background: '#dcfce7',
-            color: '#15803d',
-            border: '1px solid #bbf7d0'
+            background: "var(--secondary)",
+            color: "var(--success)",
+            border: "1px solid var(--border)"
           }}>
             <CheckCircle2 size={13} /> SENT
           </span>
@@ -330,9 +330,9 @@ export default function SmtpLogs() {
             borderRadius: 9999,
             fontSize: 12,
             fontWeight: 700,
-            background: '#fee2e2',
-            color: '#b91c1c',
-            border: '1px solid #fecaca'
+            background: "var(--secondary)",
+            color: "var(--destructive)",
+            border: "1px solid var(--border)"
           }}>
             <XCircle size={13} /> FAILED
           </span>
@@ -347,9 +347,9 @@ export default function SmtpLogs() {
             borderRadius: 9999,
             fontSize: 12,
             fontWeight: 700,
-            background: '#dbeafe',
-            color: '#1d4ed8',
-            border: '1px solid #bfdbfe'
+            background: "var(--card)",
+            color: "var(--primary)",
+            border: "1px solid var(--border)"
           }}>
             <Clock size={13} /> QUEUED
           </span>
@@ -364,9 +364,9 @@ export default function SmtpLogs() {
             borderRadius: 9999,
             fontSize: 12,
             fontWeight: 700,
-            background: '#ede9fe',
-            color: '#6d28d9',
-            border: '1px solid #ddd6fe'
+            background: "var(--secondary)",
+            color: "var(--info)",
+            border: "1px solid var(--border)"
           }}>
             <RefreshCw size={13} className="spin" /> PROCESSING
           </span>
@@ -381,9 +381,9 @@ export default function SmtpLogs() {
             borderRadius: 9999,
             fontSize: 12,
             fontWeight: 700,
-            background: '#fef3c7',
-            color: '#b45309',
-            border: '1px solid #fde68a'
+            background: "var(--secondary)",
+            color: "var(--warning)",
+            border: "1px solid var(--border)"
           }}>
             <RotateCcw size={13} /> RETRYING
           </span>
@@ -398,9 +398,9 @@ export default function SmtpLogs() {
             borderRadius: 9999,
             fontSize: 12,
             fontWeight: 700,
-            background: '#f1f5f9',
-            color: '#475569',
-            border: '1px solid #cbd5e1'
+            background: "var(--secondary)",
+            color: "var(--muted-foreground)",
+            border: "1px solid var(--border)"
           }}>
             <EyeOff size={13} /> UNSENT
           </span>
@@ -415,9 +415,9 @@ export default function SmtpLogs() {
             borderRadius: 9999,
             fontSize: 12,
             fontWeight: 700,
-            background: '#f1f5f9',
-            color: '#64748b',
-            border: '1px solid #e2e8f0'
+            background: "var(--secondary)",
+            color: "var(--muted-foreground)",
+            border: "1px solid var(--border)"
           }}>
             <EyeOff size={13} /> SKIPPED
           </span>
@@ -432,9 +432,9 @@ export default function SmtpLogs() {
             borderRadius: 9999,
             fontSize: 12,
             fontWeight: 600,
-            background: '#f1f5f9',
-            color: '#475569',
-            border: '1px solid #e2e8f0'
+            background: "var(--secondary)",
+            color: "var(--muted-foreground)",
+            border: "1px solid var(--border)"
           }}>
             {status}
           </span>
@@ -593,9 +593,9 @@ export default function SmtpLogs() {
 
       {/* ── Filter & Search Toolbar ── */}
       <div style={{
-        background: 'var(--bg-card, #ffffff)',
-        border: '1px solid var(--border, #e2e8f0)',
-        borderRadius: 12,
+        background: "var(--bg-card, var(--card))",
+        border: "1px solid var(--border, var(--border))",
+        borderRadius: 4,
         padding: '16px 20px',
         marginBottom: 20,
         display: 'flex',
@@ -603,11 +603,11 @@ export default function SmtpLogs() {
         justifyContent: 'space-between',
         flexWrap: 'wrap',
         gap: 14,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+        boxShadow: 'none'
       }}>
         {/* Search Bar */}
         <div style={{ position: 'relative', flex: '1 1 320px', maxWidth: 450 }}>
-          <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+          <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: "var(--muted-foreground)" }} />
           <input
             type="text"
             placeholder="Search by Admission No., Employee ID, Name, Mail ID..."
@@ -620,11 +620,11 @@ export default function SmtpLogs() {
               width: '100%',
               padding: '9px 12px 9px 36px',
               fontSize: 13.5,
-              borderRadius: 8,
-              border: '1px solid #cbd5e1',
+              borderRadius: 4,
+              border: "1px solid var(--border)",
               outline: 'none',
-              background: 'var(--bg, #f8fafc)',
-              color: 'var(--text, #0f172a)'
+              background: "var(--bg, var(--card))",
+              color: "var(--text, var(--foreground))"
             }}
           />
           {searchQuery && (
@@ -638,7 +638,7 @@ export default function SmtpLogs() {
                 transform: 'translateY(-50%)',
                 background: 'none',
                 border: 'none',
-                color: '#94a3b8',
+                color: "var(--muted-foreground)",
                 cursor: 'pointer',
                 padding: 4
               }}
@@ -657,15 +657,15 @@ export default function SmtpLogs() {
               alignItems: 'center',
               gap: 6,
               padding: '6px 12px',
-              borderRadius: 8,
-              border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--bg, #f8fafc)',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+              borderRadius: 4,
+              border: "1px solid var(--border, var(--border))",
+              background: "var(--bg, var(--card))",
+              boxShadow: 'none'
             }}
             title="Filter email activity logs by month"
           >
-            <Calendar size={14} color="#64748b" />
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary, #64748b)' }}>
+            <Calendar size={14} color="#696e79" />
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-secondary, var(--muted-foreground))" }}>
               Month:
             </span>
             <input
@@ -682,7 +682,7 @@ export default function SmtpLogs() {
                 background: 'transparent',
                 fontSize: 13,
                 fontWeight: 600,
-                color: 'var(--text, #0f172a)',
+                color: "var(--text, var(--foreground))",
                 cursor: 'pointer',
                 fontFamily: 'inherit'
               }}
@@ -697,7 +697,7 @@ export default function SmtpLogs() {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#2563eb',
+                  color: "var(--primary)",
                   fontSize: 12,
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -712,7 +712,7 @@ export default function SmtpLogs() {
 
           {/* Status Filter Pill Tabs */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: '#64748b', marginRight: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--muted-foreground)", marginRight: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
               <Filter size={13} /> Filter:
             </span>
             {[
@@ -734,12 +734,12 @@ export default function SmtpLogs() {
                   }}
                   style={{
                     padding: '6px 12px',
-                    borderRadius: 6,
+                    borderRadius: 4,
                     fontSize: 12.5,
                     fontWeight: isActive ? 700 : 500,
-                    border: isActive ? '1px solid #2563eb' : '1px solid #e2e8f0',
-                    background: isActive ? '#2563eb' : '#ffffff',
-                    color: isActive ? '#ffffff' : '#475569',
+                    border: isActive ? "1px solid var(--border)" : "1px solid var(--border)",
+                    background: isActive ? "var(--primary)" : "var(--card)",
+                    color: isActive ? "var(--background)" : "var(--muted-foreground)",
                     cursor: 'pointer',
                     transition: 'all 0.15s ease'
                   }}
@@ -754,20 +754,20 @@ export default function SmtpLogs() {
 
       {/* ── Main Data Table Card ── */}
       <div style={{
-        background: 'var(--bg-card, #ffffff)',
-        border: '1px solid var(--border, #e2e8f0)',
-        borderRadius: 12,
+        background: "var(--bg-card, var(--card))",
+        border: "1px solid var(--border, var(--border))",
+        borderRadius: 4,
         overflow: 'hidden',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+        boxShadow: 'none'
       }}>
         {/* Table Container */}
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: 950 }}>
             <thead>
               <tr style={{
-                background: '#f8fafc',
-                borderBottom: '1px solid #e2e8f0',
-                color: '#475569',
+                background: "var(--card)",
+                borderBottom: "1px solid var(--border)",
+                color: "var(--muted-foreground)",
                 fontSize: 12.5,
                 fontWeight: 700,
                 textTransform: 'uppercase',
@@ -788,8 +788,8 @@ export default function SmtpLogs() {
                 <tr>
                   <td colSpan={7} style={{ padding: '48px 24px', textAlign: 'center' }}>
                     <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-                      <RefreshCw size={26} className="spin" style={{ color: '#2563eb' }} />
-                      <span style={{ fontSize: 14, color: '#64748b', fontWeight: 500 }}>
+                      <RefreshCw size={26} className="spin" style={{ color: "var(--primary)" }} />
+                      <span style={{ fontSize: 14, color: "var(--muted-foreground)", fontWeight: 500 }}>
                         Fetching SMTP email logs from school database...
                       </span>
                     </div>
@@ -806,21 +806,21 @@ export default function SmtpLogs() {
                         width: 54,
                         height: 54,
                         borderRadius: '50%',
-                        background: '#f1f5f9',
+                        background: "var(--secondary)",
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: '#94a3b8'
+                        color: "var(--muted-foreground)"
                       }}>
                         <Mail size={26} />
                       </div>
                       <div style={{ maxWidth: 420 }}>
-                        <h4 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                        <h4 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
                           {searchQuery || statusFilter !== 'ALL' || monthFilter !== 'ALL'
                             ? 'No matching email activity records'
                             : 'No SMTP email activity logs found'}
                         </h4>
-                        <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>
+                        <p style={{ margin: 0, fontSize: 13, color: "var(--muted-foreground)" }}>
                           {searchQuery || statusFilter !== 'ALL' || monthFilter !== 'ALL'
                             ? 'No records match your search, status, or month filter. Try clearing filters to view all entries.'
                             : 'Automated SMTP notifications sent for student attendance absences or account invitations belonging to your school will appear here.'}
@@ -840,10 +840,10 @@ export default function SmtpLogs() {
                             padding: '6px 14px',
                             fontSize: 12.5,
                             fontWeight: 600,
-                            borderRadius: 6,
-                            border: '1px solid var(--border, #cbd5e1)',
-                            background: 'var(--bg-card, #ffffff)',
-                            color: '#2563eb',
+                            borderRadius: 4,
+                            border: "1px solid var(--border, var(--border))",
+                            background: "var(--bg-card, var(--card))",
+                            color: "var(--primary)",
                             cursor: 'pointer'
                           }}
                         >
@@ -884,10 +884,10 @@ export default function SmtpLogs() {
                   <tr
                     key={item.id}
                     style={{
-                      borderBottom: '1px solid var(--border, #f1f5f9)',
+                      borderBottom: "1px solid var(--border, var(--border))",
                       transition: 'background 0.15s ease'
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-hover, #f8fafc)')}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-hover, #f9f9fa)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >
                     {/* 1. Admission No. / Employee ID */}
@@ -898,16 +898,16 @@ export default function SmtpLogs() {
                           fontSize: 12.5,
                           fontWeight: 700,
                           padding: '3px 8px',
-                          borderRadius: 6,
-                          background: isEmployeeBadge ? 'rgba(37, 99, 235, 0.15)' : 'var(--card-subtle, #f1f5f9)',
-                          color: isEmployeeBadge ? '#3b82f6' : 'var(--text, #0f172a)',
-                          border: isEmployeeBadge ? '1px solid rgba(59, 130, 246, 0.35)' : '1px solid var(--border, #e2e8f0)',
+                          borderRadius: 4,
+                          background: isEmployeeBadge ? "var(--accent)" : "var(--card-subtle, var(--secondary))",
+                          color: isEmployeeBadge ? "var(--primary)" : "var(--text, var(--foreground))",
+                          border: isEmployeeBadge ? "1px solid var(--border)" : "1px solid var(--border, var(--border))",
                           display: 'inline-block'
                         }} title={isEmployeeBadge ? `Employee ID: ${displayedId}` : `Admission No: ${displayedId}`}>
                           {displayedId}
                         </span>
                       ) : (
-                        <span style={{ color: '#94a3b8', fontSize: 13, fontWeight: 500 }}>—</span>
+                        <span style={{ color: "var(--muted-foreground)", fontSize: 13, fontWeight: 500 }}>—</span>
                       )}
                     </td>
 
@@ -918,8 +918,8 @@ export default function SmtpLogs() {
                           width: 32,
                           height: 32,
                           borderRadius: '50%',
-                          background: isTeacher ? 'rgba(8, 145, 178, 0.15)' : (admNumber || isStudent ? 'rgba(37, 99, 235, 0.15)' : 'var(--card-subtle, #f1f5f9)'),
-                          color: isTeacher ? '#06b6d4' : (admNumber || isStudent ? '#3b82f6' : 'var(--text-secondary, #64748b)'),
+                          background: isTeacher ? "var(--secondary)" : (admNumber || isStudent ? "var(--accent)" : "var(--card-subtle, var(--secondary))"),
+                          color: isTeacher ? "var(--info)" : (admNumber || isStudent ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))"),
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -930,16 +930,16 @@ export default function SmtpLogs() {
                           {displayName ? displayName.charAt(0).toUpperCase() : <User size={14} />}
                         </div>
                         <div>
-                          <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text, #0f172a)' }}>
-                            {displayName || <span style={{ color: '#94a3b8' }}>—</span>}
+                          <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text, var(--foreground))" }}>
+                            {displayName || <span style={{ color: "var(--muted-foreground)" }}>—</span>}
                           </div>
-                          <div style={{ fontSize: 11, color: '#64748b', marginTop: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
                             {isTeacher ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: '#0891b2' }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: "var(--info)" }}>
                                 <Briefcase size={11} /> Teacher
                               </span>
                             ) : (admNumber || isStudent) ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: '#2563eb' }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: "var(--primary)" }}>
                                 <GraduationCap size={11} /> Student
                               </span>
                             ) : (
@@ -959,8 +959,8 @@ export default function SmtpLogs() {
                         <code style={{
                           fontSize: 12.5,
                           fontFamily: 'monospace',
-                          color: 'var(--text, #1e293b)',
-                          background: 'var(--card-subtle, #f8fafc)',
+                          color: "var(--text, var(--foreground))",
+                          background: "var(--card-subtle, var(--card))",
                           border: '1px solid var(--border, transparent)',
                           padding: '2px 6px',
                           borderRadius: 4
@@ -975,7 +975,7 @@ export default function SmtpLogs() {
                             background: 'none',
                             border: 'none',
                             cursor: 'pointer',
-                            color: copiedId === `email-${item.id}` ? '#16a34a' : '#94a3b8',
+                            color: copiedId === `email-${item.id}` ? "var(--success)" : "var(--muted-foreground)",
                             padding: 2,
                             display: 'flex',
                             alignItems: 'center'
@@ -996,28 +996,28 @@ export default function SmtpLogs() {
                       <div style={{
                         fontSize: 13,
                         fontWeight: 500,
-                        color: 'var(--text, #0f172a)',
+                        color: "var(--text, var(--foreground))",
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap'
                       }} title={item.subject || item.template_key}>
                         {item.subject || item.template_key}
                       </div>
-                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>
+                      <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 1 }}>
                         Template: <code style={{ fontSize: 10.5 }}>{item.template_key}</code>
                       </div>
                     </td>
 
                     {/* 6. Timestamp */}
                     <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
-                      <div style={{ fontSize: 12.5, color: 'var(--text-secondary, #334155)', fontWeight: 500 }}>
+                      <div style={{ fontSize: 12.5, color: "var(--text-secondary, var(--muted-foreground))", fontWeight: 500 }}>
                         {item.created_at ? new Date(item.created_at).toLocaleDateString(undefined, {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric'
                         }) : '—'}
                       </div>
-                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>
+                      <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 1 }}>
                         {item.created_at ? new Date(item.created_at).toLocaleTimeString(undefined, {
                           hour: '2-digit',
                           minute: '2-digit',
@@ -1040,10 +1040,10 @@ export default function SmtpLogs() {
                               padding: '5px 9px',
                               fontSize: 11.5,
                               fontWeight: 600,
-                              borderRadius: 6,
-                              background: '#fee2e2',
-                              color: '#b91c1c',
-                              border: '1px solid #fecaca',
+                              borderRadius: 4,
+                              background: "var(--secondary)",
+                              color: "var(--destructive)",
+                              border: "1px solid var(--border)",
                               cursor: retryingId === item.id ? 'not-allowed' : 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -1063,10 +1063,10 @@ export default function SmtpLogs() {
                             padding: '5px 10px',
                             fontSize: 12,
                             fontWeight: 600,
-                            borderRadius: 6,
-                            background: 'var(--card-subtle, #f8fafc)',
-                            color: 'var(--text-secondary, #334155)',
-                            border: '1px solid var(--border, #cbd5e1)',
+                            borderRadius: 4,
+                            background: "var(--card-subtle, var(--card))",
+                            color: "var(--text-secondary, var(--muted-foreground))",
+                            border: "1px solid var(--border, var(--border))",
                             cursor: 'pointer',
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -1093,10 +1093,10 @@ export default function SmtpLogs() {
             flexWrap: 'wrap',
             gap: 14,
             padding: '14px 20px',
-            borderTop: '1px solid #e2e8f0',
-            background: '#fafafa',
+            borderTop: "1px solid var(--border)",
+            background: "var(--card)",
             fontSize: 13,
-            color: '#64748b'
+            color: "var(--muted-foreground)"
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span>
@@ -1112,10 +1112,10 @@ export default function SmtpLogs() {
                   }}
                   style={{
                     padding: '3px 8px',
-                    borderRadius: 6,
-                    border: '1px solid #cbd5e1',
+                    borderRadius: 4,
+                    border: "1px solid var(--border)",
                     fontSize: 12.5,
-                    background: '#ffffff'
+                    background: "var(--card)"
                   }}
                 >
                   <option value={10}>10</option>
@@ -1134,10 +1134,10 @@ export default function SmtpLogs() {
                 disabled={safeCurrentPage === 1}
                 style={{
                   padding: '5px 10px',
-                  borderRadius: 6,
-                  border: '1px solid #cbd5e1',
-                  background: '#ffffff',
-                  color: safeCurrentPage === 1 ? '#94a3b8' : '#1e293b',
+                  borderRadius: 4,
+                  border: "1px solid var(--border)",
+                  background: "var(--card)",
+                  color: safeCurrentPage === 1 ? "var(--muted-foreground)" : "var(--foreground)",
                   cursor: safeCurrentPage === 1 ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -1149,7 +1149,7 @@ export default function SmtpLogs() {
                 <ChevronLeft size={14} /> Previous
               </button>
 
-              <span style={{ padding: '0 8px', fontWeight: 600, color: 'var(--text, #0f172a)' }}>
+              <span style={{ padding: '0 8px', fontWeight: 600, color: "var(--text, var(--foreground))" }}>
                 Page {safeCurrentPage} of {totalPages}
               </span>
 
@@ -1159,10 +1159,10 @@ export default function SmtpLogs() {
                 disabled={safeCurrentPage === totalPages}
                 style={{
                   padding: '5px 10px',
-                  borderRadius: 6,
-                  border: '1px solid #cbd5e1',
-                  background: '#ffffff',
-                  color: safeCurrentPage === totalPages ? '#94a3b8' : '#1e293b',
+                  borderRadius: 4,
+                  border: "1px solid var(--border)",
+                  background: "var(--card)",
+                  color: safeCurrentPage === totalPages ? "var(--muted-foreground)" : "var(--foreground)",
                   cursor: safeCurrentPage === totalPages ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -1186,7 +1186,7 @@ export default function SmtpLogs() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(15, 23, 42, 0.65)',
+          background: "var(--card)",
           backdropFilter: 'blur(4px)',
           display: 'flex',
           alignItems: 'center',
@@ -1195,14 +1195,14 @@ export default function SmtpLogs() {
           padding: 16
         }}>
           <div style={{
-            background: '#ffffff',
-            borderRadius: 14,
+            background: "var(--card)",
+            borderRadius: 4,
             maxWidth: 640,
             width: '100%',
             maxHeight: '90vh',
             overflowY: 'auto',
-            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
-            border: '1px solid #cbd5e1'
+            boxShadow: 'none',
+            border: "1px solid var(--border)"
           }}>
             {/* Modal Header */}
             <div style={{
@@ -1210,12 +1210,12 @@ export default function SmtpLogs() {
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '18px 24px',
-              borderBottom: '1px solid var(--border, #e2e8f0)',
-              background: 'var(--modal-header, #f8fafc)'
+              borderBottom: "1px solid var(--border, var(--border))",
+              background: "var(--modal-header, var(--card))"
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Mail size={20} color="#2563eb" />
-                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                <Mail size={20} color="#e11d55" />
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
                   Email Delivery Log Details
                 </h3>
               </div>
@@ -1225,7 +1225,7 @@ export default function SmtpLogs() {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: 'var(--text-muted, #64748b)',
+                  color: "var(--text-muted, var(--muted-foreground))",
                   cursor: 'pointer',
                   padding: 4,
                   display: 'flex',
@@ -1241,13 +1241,13 @@ export default function SmtpLogs() {
               {retryMessage && (
                 <div style={{
                   padding: '10px 14px',
-                  borderRadius: 8,
+                  borderRadius: 4,
                   marginBottom: 16,
                   fontSize: 13,
                   fontWeight: 500,
-                  background: retryMessage.type === 'success' ? '#dcfce7' : '#fee2e2',
-                  color: retryMessage.type === 'success' ? '#15803d' : '#b91c1c',
-                  border: retryMessage.type === 'success' ? '1px solid #bbf7d0' : '1px solid #fecaca'
+                  background: retryMessage.type === 'success' ? "var(--secondary)" : "var(--secondary)",
+                  color: retryMessage.type === 'success' ? "var(--success)" : "var(--destructive)",
+                  border: retryMessage.type === 'success' ? "1px solid var(--border)" : "1px solid var(--border)"
                 }}>
                   {retryMessage.text}
                 </div>
@@ -1264,9 +1264,9 @@ export default function SmtpLogs() {
                   const mLabel = mIsTeacher ? 'Employee ID' : 'Admission No.';
 
                   return (
-                    <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
-                      <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>{mLabel}</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text, #0f172a)', marginTop: 4, fontFamily: 'monospace' }}>
+                    <div style={{ background: "var(--card-subtle, var(--card))", padding: 12, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--muted-foreground)", textTransform: 'uppercase' }}>{mLabel}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text, var(--foreground))", marginTop: 4, fontFamily: 'monospace' }}>
                         {mId || '—'}
                       </div>
                     </div>
@@ -1274,25 +1274,25 @@ export default function SmtpLogs() {
                 })()}
 
                 {/* Status */}
-                <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Current Status</div>
+                <div style={{ background: "var(--card-subtle, var(--card))", padding: 12, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--muted-foreground)", textTransform: 'uppercase' }}>Current Status</div>
                   <div style={{ marginTop: 4 }}>
                     {renderStatusBadge(activeModalItem.status)}
                   </div>
                 </div>
 
                 {/* Recipient Name */}
-                <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Recipient Name</div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text, #0f172a)', marginTop: 4 }}>
+                <div style={{ background: "var(--card-subtle, var(--card))", padding: 12, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--muted-foreground)", textTransform: 'uppercase' }}>Recipient Name</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text, var(--foreground))", marginTop: 4 }}>
                     {activeModalItem.recipient_name || activeModalItem.student_name || '—'}
                   </div>
                 </div>
 
                 {/* Mail ID */}
-                <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Mail ID</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #0f172a)', marginTop: 4, wordBreak: 'break-all' }}>
+                <div style={{ background: "var(--card-subtle, var(--card))", padding: 12, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--muted-foreground)", textTransform: 'uppercase' }}>Mail ID</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text, var(--foreground))", marginTop: 4, wordBreak: 'break-all' }}>
                     {activeModalItem.recipient}
                   </div>
                 </div>
@@ -1305,18 +1305,18 @@ export default function SmtpLogs() {
                   alignItems: 'flex-start',
                   gap: 10,
                   padding: '12px 14px',
-                  borderRadius: 8,
+                  borderRadius: 4,
                   marginBottom: 16,
-                  background: '#f8fafc',
-                  border: '1px solid #cbd5e1',
-                  color: '#334155'
+                  background: "var(--card)",
+                  border: "1px solid var(--border)",
+                  color: "var(--muted-foreground)"
                 }}>
-                  <EyeOff size={18} style={{ color: '#64748b', marginTop: 1, flexShrink: 0 }} />
+                  <EyeOff size={18} style={{ color: "var(--muted-foreground)", marginTop: 1, flexShrink: 0 }} />
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>
                       External SMTP Dispatch Suppressed (Status: UNSENT)
                     </div>
-                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
                       This recipient has been detected as a synthetic, placeholder, or seeded demo address (e.g. <code>.local</code>, <code>admin@dav.com</code>, <code>student123@gmail.com</code>). Outbound SMTP transmission was suppressed to preserve relay quota.
                     </div>
                   </div>
@@ -1325,28 +1325,28 @@ export default function SmtpLogs() {
 
               {/* Subject */}
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>Subject</div>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text, #0f172a)', background: 'var(--card-subtle, #f8fafc)', padding: 10, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted-foreground)", textTransform: 'uppercase', marginBottom: 4 }}>Subject</div>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text, var(--foreground))", background: "var(--card-subtle, var(--card))", padding: 10, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}>
                   {activeModalItem.subject || '—'}
                 </div>
               </div>
 
               {/* Delivery Attempts & Timestamps */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
-                <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 10, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>Attempts</div>
+                <div style={{ background: "var(--card-subtle, var(--card))", padding: 10, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}>
+                  <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Attempts</div>
                   <div style={{ fontSize: 13, fontWeight: 700, marginTop: 2 }}>
                     {activeModalItem.attempts} / {activeModalItem.max_attempts}
                   </div>
                 </div>
-                <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 10, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>Created At</div>
+                <div style={{ background: "var(--card-subtle, var(--card))", padding: 10, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}>
+                  <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Created At</div>
                   <div style={{ fontSize: 12, fontWeight: 600, marginTop: 2 }}>
                     {activeModalItem.created_at ? new Date(activeModalItem.created_at).toLocaleTimeString() : '—'}
                   </div>
                 </div>
-                <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 10, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>Sent At</div>
+                <div style={{ background: "var(--card-subtle, var(--card))", padding: 10, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}>
+                  <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Sent At</div>
                   <div style={{ fontSize: 12, fontWeight: 600, marginTop: 2 }}>
                     {activeModalItem.sent_at ? new Date(activeModalItem.sent_at).toLocaleTimeString() : '—'}
                   </div>
@@ -1356,19 +1356,19 @@ export default function SmtpLogs() {
               {/* Error Details (if present) */}
               {activeModalItem.last_error && (
                 <div style={{
-                  background: '#fef2f2',
-                  border: '1px solid #fecaca',
-                  borderRadius: 8,
+                  background: "var(--card)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 4,
                   padding: 14,
                   marginBottom: 16
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#b91c1c', fontSize: 12.5, fontWeight: 700 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: "var(--destructive)", fontSize: 12.5, fontWeight: 700 }}>
                     <AlertTriangle size={15} /> Last Delivery Error
                   </div>
                   <pre style={{
                     margin: '6px 0 0',
                     fontSize: 12,
-                    color: '#991b1b',
+                    color: "var(--destructive)",
                     whiteSpace: 'pre-wrap',
                     wordBreak: 'break-word',
                     fontFamily: 'monospace'
@@ -1381,14 +1381,14 @@ export default function SmtpLogs() {
               {/* Message Body snippet */}
               {activeModalItem.message && (
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>Message Snippet</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted-foreground)", textTransform: 'uppercase', marginBottom: 4 }}>Message Snippet</div>
                   <div style={{
                     fontSize: 12.5,
-                    color: 'var(--text, #334155)',
-                    background: 'var(--card-subtle, #f8fafc)',
+                    color: "var(--text, var(--muted-foreground))",
+                    background: "var(--card-subtle, var(--card))",
                     padding: 12,
-                    borderRadius: 8,
-                    border: '1px solid var(--border, #e2e8f0)',
+                    borderRadius: 4,
+                    border: "1px solid var(--border, var(--border))",
                     maxHeight: 140,
                     overflowY: 'auto',
                     whiteSpace: 'pre-wrap'
@@ -1405,11 +1405,11 @@ export default function SmtpLogs() {
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '14px 24px',
-              borderTop: '1px solid #e2e8f0',
-              background: '#f8fafc'
+              borderTop: "1px solid var(--border)",
+              background: "var(--card)"
             }}>
               <div>
-                <code style={{ fontSize: 11, color: '#94a3b8' }}>ID: {activeModalItem.id}</code>
+                <code style={{ fontSize: 11, color: "var(--muted-foreground)" }}>ID: {activeModalItem.id}</code>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 {(activeModalItem.status === 'FAILED' || activeModalItem.status === 'RETRYING') && (
@@ -1421,9 +1421,9 @@ export default function SmtpLogs() {
                       padding: '7px 14px',
                       fontSize: 13,
                       fontWeight: 600,
-                      borderRadius: 8,
-                      background: '#2563eb',
-                      color: '#ffffff',
+                      borderRadius: 4,
+                      background: "var(--primary)",
+                      color: "var(--background)",
                       border: 'none',
                       cursor: retryingId === activeModalItem.id ? 'not-allowed' : 'pointer',
                       display: 'inline-flex',
@@ -1442,10 +1442,10 @@ export default function SmtpLogs() {
                     padding: '7px 16px',
                     fontSize: 13,
                     fontWeight: 600,
-                    borderRadius: 8,
-                    background: '#ffffff',
-                    color: '#475569',
-                    border: '1px solid #cbd5e1',
+                    borderRadius: 4,
+                    background: "var(--card)",
+                    color: "var(--muted-foreground)",
+                    border: "1px solid var(--border)",
                     cursor: 'pointer'
                   }}
                 >

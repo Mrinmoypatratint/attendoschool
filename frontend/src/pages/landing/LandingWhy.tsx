@@ -53,7 +53,7 @@ export const LandingWhy: React.FC = () => {
               <div className="lp-sms-body">
                 "Dear Parent, your ward <strong>Aa**av Sh**ma (Roll 10*, Class 10-A)</strong> has safely checked in at D.A.V. Public School at 08:14 AM. — AttendoSchool"
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 11.5, color: '#047857', fontWeight: 500 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 11.5, color: '#02604f', fontWeight: 500 }}>
                 <CheckCircle2 size={13} />
                 <span>Delivered via National SMS Gateway · Confidential student data masked (**)</span>
               </div>

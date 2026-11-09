@@ -53,17 +53,17 @@ const MONTH_NAMES = [
 function getHolidayCategoryStyle(type: string) {
   switch (type) {
     case 'NATIONAL':
-      return { bg: '#fee2e2', color: '#b91c1c', border: '#fca5a5', badgeBg: '#ef4444', label: 'National Holiday' };
+      return { bg: '#f7d5d5', color: '#a82424', border: '#e88d8d', badgeBg: '#d32f2f', label: 'National Holiday' };
     case 'FESTIVAL':
-      return { bg: '#f3e8ff', color: '#7e22ce', border: '#d8b4fe', badgeBg: '#a855f7', label: 'Festival & Celebration' };
+      return { bg: '#dde1f2', color: '#48549a', border: '#a3abda', badgeBg: '#5c6bc0', label: 'Festival & Celebration' };
     case 'GAZETTED':
-      return { bg: '#e0e7ff', color: '#3730a3', border: '#a5b4fc', badgeBg: '#6366f1', label: 'Gazetted Holiday' };
+      return { bg: '#ffe1e8', color: '#9a133c', border: '#f896b0', badgeBg: '#e11d55', label: 'Gazetted Holiday' };
     case 'REGIONAL':
-      return { bg: '#ccfbf1', color: '#0f766e', border: '#99f6e4', badgeBg: '#14b8a6', label: 'Regional Holiday' };
+      return { bg: '#cce6e1', color: '#02604f', border: '#99ccc3', badgeBg: '#03806a', label: 'Regional Holiday' };
     case 'INSTITUTIONAL':
-      return { bg: '#f1f5f9', color: '#334155', border: '#cbd5e1', badgeBg: '#64748b', label: 'Institutional Break' };
+      return { bg: '#f5f5f6', color: '#3e4152', border: '#d4d5d9', badgeBg: '#696e79', label: 'Institutional Break' };
     default:
-      return { bg: '#e2e8f0', color: '#475569', border: '#cbd5e1', badgeBg: '#94a3b8', label: type || 'Holiday' };
+      return { bg: '#eaeaec', color: '#535766', border: '#d4d5d9', badgeBg: '#94969f', label: type || 'Holiday' };
   }
 }
 
@@ -961,13 +961,13 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                           style={{
                             display: 'inline-block',
                             padding: '4px 10px',
-                            borderRadius: '12px',
+                            borderRadius: '4px',
                             fontWeight: 700,
                             fontSize: '0.75rem',
                             letterSpacing: '0.5px',
                             textTransform: 'uppercase',
-                            background: x.is_archived ? '#fee2e2' : x.is_active ? '#dcfce7' : '#f1f5f9',
-                            color: x.is_archived ? '#b91c1c' : x.is_active ? '#15803d' : '#475569'
+                            background: x.is_archived ? "var(--secondary)" : x.is_active ? "var(--secondary)" : "var(--secondary)",
+                            color: x.is_archived ? "var(--destructive)" : x.is_active ? "var(--success)" : "var(--muted-foreground)"
                           }}
                         >
                           {x.is_archived ? 'ARCHIVED' : x.is_active ? 'ACTIVE' : 'INACTIVE'}
@@ -979,11 +979,11 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                             type="button"
                             className="small-btn edit-btn"
                             style={{
-                              background: '#0284c7',
-                              color: '#fff',
+                              background: "var(--info)",
+                              color: "var(--background)",
                               border: 'none',
                               padding: '6px 14px',
-                              borderRadius: '6px',
+                              borderRadius: '4px',
                               cursor: 'pointer',
                               fontWeight: 600,
                               fontSize: '0.82rem',
@@ -1003,11 +1003,11 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                               type="button"
                               className="small-btn warning-btn"
                               style={{
-                                background: '#f59e0b',
-                                color: '#fff',
+                                background: "var(--warning)",
+                                color: "var(--background)",
                                 border: 'none',
                                 padding: '6px 14px',
-                                borderRadius: '6px',
+                                borderRadius: '4px',
                                 cursor: 'pointer',
                                 fontWeight: 600,
                                 fontSize: '0.82rem'
@@ -1021,11 +1021,11 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                               type="button"
                               className="small-btn"
                               style={{
-                                background: '#1e60dc',
-                                color: '#fff',
+                                background: "var(--info)",
+                                color: "var(--background)",
                                 border: 'none',
                                 padding: '6px 14px',
-                                borderRadius: '6px',
+                                borderRadius: '4px',
                                 cursor: 'pointer',
                                 fontWeight: 600,
                                 fontSize: '0.82rem'
@@ -1041,11 +1041,11 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                               type="button"
                               className="small-btn"
                               style={{
-                                background: '#059669',
-                                color: '#fff',
+                                background: "var(--success)",
+                                color: "var(--background)",
                                 border: 'none',
                                 padding: '6px 14px',
-                                borderRadius: '6px',
+                                borderRadius: '4px',
                                 cursor: 'pointer',
                                 fontWeight: 600,
                                 fontSize: '0.82rem'
@@ -1059,11 +1059,11 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                               type="button"
                               className="small-btn danger-btn"
                               style={{
-                                background: '#dc2626',
-                                color: '#fff',
+                                background: "var(--destructive)",
+                                color: "var(--background)",
                                 border: 'none',
                                 padding: '6px 14px',
-                                borderRadius: '6px',
+                                borderRadius: '4px',
                                 cursor: 'pointer',
                                 fontWeight: 600,
                                 fontSize: '0.82rem'
@@ -1097,15 +1097,15 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
       {activeTab === 'working-days' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {workingDaysMsg && (
-            <div className={workingDaysMsg.type === 'success' ? 'success' : 'error'} style={{ padding: 12, borderRadius: 8 }}>
+            <div className={workingDaysMsg.type === 'success' ? 'success' : 'error'} style={{ padding: 12, borderRadius: 4 }}>
               {workingDaysMsg.text}
             </div>
           )}
 
           {/* Presets Card */}
-          <div className="panel" style={{ padding: 20, borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
+          <div className="panel" style={{ padding: 20, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}>
             <h3 style={{ margin: '0 0 10px', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Layers size={18} style={{ color: '#2563eb' }} />
+              <Layers size={18} style={{ color: "var(--primary)" }} />
               Quick Working Week Presets
             </h3>
             <p className="muted" style={{ margin: '0 0 16px', fontSize: 13 }}>
@@ -1116,7 +1116,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 type="button"
                 className="secondary"
                 onClick={() => applyPreset('MON_SAT')}
-                style={{ fontSize: 13, padding: '8px 14px', borderRadius: 6 }}
+                style={{ fontSize: 13, padding: '8px 14px', borderRadius: 4 }}
               >
                 Mon – Sat (Standard 6-Day Institutional Week)
               </button>
@@ -1124,7 +1124,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 type="button"
                 className="secondary"
                 onClick={() => applyPreset('MON_FRI')}
-                style={{ fontSize: 13, padding: '8px 14px', borderRadius: 6 }}
+                style={{ fontSize: 13, padding: '8px 14px', borderRadius: 4 }}
               >
                 Mon – Fri (Standard 5-Day Institutional Week)
               </button>
@@ -1132,7 +1132,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 type="button"
                 className="secondary"
                 onClick={() => applyPreset('SUN_THU')}
-                style={{ fontSize: 13, padding: '8px 14px', borderRadius: 6 }}
+                style={{ fontSize: 13, padding: '8px 14px', borderRadius: 4 }}
               >
                 Sun – Thu (Middle Eastern Institutional Week)
               </button>
@@ -1140,9 +1140,9 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
           </div>
 
           {/* Day of Week Selector */}
-          <div className="panel" style={{ padding: 20, borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
+          <div className="panel" style={{ padding: 20, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}>
             <h3 style={{ margin: '0 0 10px', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Calendar size={18} style={{ color: '#2563eb' }} />
+              <Calendar size={18} style={{ color: "var(--primary)" }} />
               Weekly Operating Days
             </h3>
             <p className="muted" style={{ margin: '0 0 16px', fontSize: 13 }}>
@@ -1158,9 +1158,9 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                     onClick={() => toggleDay(d.day)}
                     style={{
                       padding: '14px 16px',
-                      borderRadius: 8,
-                      border: isWorking ? '2px solid #2563eb' : '1px solid var(--border, #e2e8f0)',
-                      background: isWorking ? 'rgba(37, 99, 235, 0.05)' : 'var(--bg-card, #ffffff)',
+                      borderRadius: 4,
+                      border: isWorking ? "2px solid var(--border)" : "1px solid var(--border, var(--border))",
+                      background: isWorking ? "var(--accent)" : "var(--bg-card, var(--card))",
                       cursor: 'pointer',
                       display: 'flex',
                       flexDirection: 'column',
@@ -1169,7 +1169,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontWeight: 700, fontSize: 15, color: isWorking ? '#2563eb' : 'var(--text-muted)' }}>
+                      <span style={{ fontWeight: 700, fontSize: 15, color: isWorking ? "var(--primary)" : 'var(--text-muted)' }}>
                         {d.short}
                       </span>
                       <input
@@ -1187,7 +1187,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                         marginTop: 4,
                         fontSize: 11,
                         fontWeight: 700,
-                        color: isWorking ? '#16a34a' : '#dc2626'
+                        color: isWorking ? "var(--success)" : "var(--destructive)"
                       }}
                     >
                       {isWorking ? '● WORKING' : '○ WEEKEND OFF'}
@@ -1199,9 +1199,9 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
           </div>
 
           {/* Saturday Rule Selector (TC-SET-002) */}
-          <div className="panel" style={{ padding: 20, borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
+          <div className="panel" style={{ padding: 20, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}>
             <h3 style={{ margin: '0 0 10px', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Clock size={18} style={{ color: '#2563eb' }} />
+              <Clock size={18} style={{ color: "var(--primary)" }} />
               Saturday Rule Configuration
             </h3>
             <p className="muted" style={{ margin: '0 0 16px', fontSize: 13 }}>
@@ -1242,9 +1242,9 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                     }}
                     style={{
                       padding: 16,
-                      borderRadius: 8,
-                      border: isSelected ? '2px solid #2563eb' : '1px solid var(--border, #e2e8f0)',
-                      background: isSelected ? 'rgba(37, 99, 235, 0.05)' : 'var(--bg-card, #ffffff)',
+                      borderRadius: 4,
+                      border: isSelected ? "2px solid var(--border)" : "1px solid var(--border, var(--border))",
+                      background: isSelected ? "var(--accent)" : "var(--bg-card, var(--card))",
                       cursor: 'pointer'
                     }}
                   >
@@ -1256,7 +1256,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                         onChange={() => {}}
                         style={{ cursor: 'pointer' }}
                       />
-                      <b style={{ color: isSelected ? '#2563eb' : 'inherit' }}>{opt.title}</b>
+                      <b style={{ color: isSelected ? "var(--primary)" : 'inherit' }}>{opt.title}</b>
                     </div>
                     <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-muted)' }}>
                       {opt.desc}
@@ -1286,15 +1286,15 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
       {activeTab === 'holidays' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {holidayMsg && (
-            <div className={holidayMsg.type === 'success' ? 'success' : 'error'} style={{ padding: 12, borderRadius: 8 }}>
+            <div className={holidayMsg.type === 'success' ? 'success' : 'error'} style={{ padding: 12, borderRadius: 4 }}>
               {holidayMsg.text}
             </div>
           )}
 
           {/* Add Holiday Card */}
-          <div className="panel" style={{ padding: 20, borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
+          <div className="panel" style={{ padding: 20, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}>
             <h3 style={{ margin: '0 0 10px', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Plus size={18} style={{ color: '#2563eb' }} />
+              <Plus size={18} style={{ color: "var(--primary)" }} />
               Declare New Gazetted / Institutional Holiday
             </h3>
             <p className="muted" style={{ margin: '0 0 16px', fontSize: 13 }}>
@@ -1371,11 +1371,11 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
               {holidayFromDate && holidayToDate && (
                 <div style={{ gridColumn: '1 / -1', marginTop: -4, display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
                   {holidayFromDate > holidayToDate ? (
-                    <span style={{ color: '#b91c1c', fontWeight: 600 }}>
+                    <span style={{ color: "var(--destructive)", fontWeight: 600 }}>
                       ⚠️ "To Date" cannot be earlier than "From Date"
                     </span>
                   ) : (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(37, 99, 235, 0.12)', color: '#3b82f6', padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(37, 99, 235, 0.25)', fontWeight: 600 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: "var(--accent)", color: "var(--primary)", padding: '4px 10px', borderRadius: 4, border: "1px solid var(--border)", fontWeight: 600 }}>
                       📅 <b>Duration:</b> {holidayDurationDays} {holidayDurationDays === 1 ? 'day (Single day)' : 'days (Multi-day holiday)'} ({holidayFromDate} to {holidayToDate})
                     </span>
                   )}
@@ -1395,7 +1395,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
           </div>
 
           {/* Holiday List Table */}
-          <div className="panel" style={{ padding: 20, borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
+          <div className="panel" style={{ padding: 20, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <h3 style={{ margin: 0, fontSize: 16 }}>
                 Configured School Holidays ({holidays.length})
@@ -1445,10 +1445,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                                 style={{
                                   marginLeft: 6,
                                   fontSize: 10.5,
-                                  background: '#fef3c7',
-                                  color: '#92400e',
+                                  background: "var(--secondary)",
+                                  color: "var(--warning)",
                                   padding: '2px 6px',
-                                  borderRadius: 6,
+                                  borderRadius: 4,
                                   fontWeight: 700,
                                   display: 'inline-block'
                                 }}
@@ -1465,11 +1465,11 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                               style={{
                                 display: 'inline-block',
                                 padding: '3px 8px',
-                                borderRadius: 10,
+                                borderRadius: 4,
                                 fontSize: 11,
                                 fontWeight: 700,
-                                background: '#e0e7ff',
-                                color: '#3730a3'
+                                background: "var(--card)",
+                                color: "var(--primary)"
                               }}
                             >
                               {h.holiday_type}
@@ -1482,7 +1482,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   gap: 4,
-                                  color: '#d97706',
+                                  color: "var(--warning)",
                                   fontSize: 12,
                                   fontWeight: 600
                                 }}
@@ -1499,11 +1499,11 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                               style={{
                                 display: 'inline-block',
                                 padding: '2px 8px',
-                                borderRadius: 10,
+                                borderRadius: 4,
                                 fontSize: 11,
                                 fontWeight: 700,
-                                background: h.is_active ? '#dcfce7' : '#fee2e2',
-                                color: h.is_active ? '#15803d' : '#b91c1c'
+                                background: h.is_active ? "var(--secondary)" : "var(--secondary)",
+                                color: h.is_active ? "var(--success)" : "var(--destructive)"
                               }}
                             >
                               {h.is_active ? 'ACTIVE' : 'INACTIVE'}
@@ -1517,11 +1517,11 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                                 title="Edit holiday details"
                                 onClick={() => openEditHolidayModal(h)}
                                 style={{
-                                  background: '#0284c7',
-                                  color: '#fff',
+                                  background: "var(--info)",
+                                  color: "var(--background)",
                                   border: 'none',
                                   padding: '4px 9px',
-                                  borderRadius: 6,
+                                  borderRadius: 4,
                                   cursor: 'pointer',
                                   fontSize: 11.5,
                                   fontWeight: 600,
@@ -1542,11 +1542,11 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                                     title="Delete only this specific date"
                                     onClick={() => handleDeleteHoliday(h.id, h.name, h.holiday_date, false)}
                                     style={{
-                                      background: '#ef4444',
-                                      color: '#fff',
+                                      background: "var(--destructive)",
+                                      color: "var(--background)",
                                       border: 'none',
                                       padding: '4px 8px',
-                                      borderRadius: 6,
+                                      borderRadius: 4,
                                       cursor: 'pointer',
                                       fontSize: 11,
                                       display: 'inline-flex',
@@ -1562,11 +1562,11 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                                     title="Delete all dates in this holiday series"
                                     onClick={() => handleDeleteHoliday(h.id, h.name, h.holiday_date, true)}
                                     style={{
-                                      background: '#b91c1c',
-                                      color: '#fff',
+                                      background: "var(--destructive)",
+                                      color: "var(--background)",
                                       border: 'none',
                                       padding: '4px 8px',
-                                      borderRadius: 6,
+                                      borderRadius: 4,
                                       cursor: 'pointer',
                                       fontSize: 11,
                                       fontWeight: 700,
@@ -1584,11 +1584,11 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                                   className="small-btn danger-btn"
                                   onClick={() => handleDeleteHoliday(h.id, h.name, h.holiday_date, false)}
                                   style={{
-                                    background: '#dc2626',
-                                    color: '#fff',
+                                    background: "var(--destructive)",
+                                    color: "var(--background)",
                                     border: 'none',
                                     padding: '4px 10px',
-                                    borderRadius: 6,
+                                    borderRadius: 4,
                                     cursor: 'pointer',
                                     fontSize: 12,
                                     display: 'inline-flex',
@@ -1618,9 +1618,9 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
       {activeTab === 'calculator' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Controls Bar */}
-          <div className="panel" style={{ padding: 20, borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
+          <div className="panel" style={{ padding: 20, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}>
             <h3 style={{ margin: '0 0 10px', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <CalendarDays size={18} style={{ color: '#2563eb' }} />
+              <CalendarDays size={18} style={{ color: "var(--primary)" }} />
               Live Working Day &amp; Weekend/Holiday Calculator
             </h3>
             <p className="muted" style={{ margin: '0 0 16px', fontSize: 13 }}>
@@ -1675,7 +1675,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
           </div>
 
           {calcError && (
-            <div className="error" style={{ padding: 12, borderRadius: 8 }}>
+            <div className="error" style={{ padding: 12, borderRadius: 4 }}>
               {calcError}
             </div>
           )}
@@ -1684,73 +1684,73 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
           {calcResult && (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 14 }}>
-                <div style={{ background: 'var(--bg-card, #f8fafc)', padding: 16, borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', fontWeight: 600, textTransform: 'uppercase' }}>Total Days</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text, #0f172a)', marginTop: 4 }}>
+                <div style={{ background: "var(--bg-card, var(--card))", padding: 16, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-muted, var(--muted-foreground))", fontWeight: 600, textTransform: 'uppercase' }}>Total Days</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: "var(--text, var(--foreground))", marginTop: 4 }}>
                     {calcResult.totalDays}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted, #64748b)', marginTop: 2 }}>Inclusive range</div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted, var(--muted-foreground))", marginTop: 2 }}>Inclusive range</div>
                 </div>
 
-                <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: 16, borderRadius: 10, border: '1px solid rgba(16, 185, 129, 0.3)' }}>
-                  <div style={{ fontSize: 12, color: '#10b981', fontWeight: 600, textTransform: 'uppercase' }}>Working Days</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: '#10b981', marginTop: 4 }}>
+                <div style={{ background: "var(--secondary)", padding: 16, borderRadius: 4, border: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: 12, color: "var(--success)", fontWeight: 600, textTransform: 'uppercase' }}>Working Days</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: "var(--success)", marginTop: 4 }}>
                     {calcResult.workingDays}
                   </div>
-                  <div style={{ fontSize: 11, color: '#10b981', marginTop: 2 }}>Instructional sessions</div>
+                  <div style={{ fontSize: 11, color: "var(--success)", marginTop: 2 }}>Instructional sessions</div>
                 </div>
 
-                <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: 16, borderRadius: 10, border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-                  <div style={{ fontSize: 12, color: '#ef4444', fontWeight: 600, textTransform: 'uppercase' }}>Non-Working Days</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: '#ef4444', marginTop: 4 }}>
+                <div style={{ background: "var(--secondary)", padding: 16, borderRadius: 4, border: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: 12, color: "var(--destructive)", fontWeight: 600, textTransform: 'uppercase' }}>Non-Working Days</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: "var(--destructive)", marginTop: 4 }}>
                     {calcResult.nonWorkingDays}
                   </div>
-                  <div style={{ fontSize: 11, color: '#ef4444', marginTop: 2 }}>Weekends + Holidays</div>
+                  <div style={{ fontSize: 11, color: "var(--destructive)", marginTop: 2 }}>Weekends + Holidays</div>
                 </div>
 
-                <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: 16, borderRadius: 10, border: '1px solid rgba(59, 130, 246, 0.3)' }}>
-                  <div style={{ fontSize: 12, color: '#3b82f6', fontWeight: 600, textTransform: 'uppercase' }}>Weekend Days</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: '#3b82f6', marginTop: 4 }}>
+                <div style={{ background: "var(--accent)", padding: 16, borderRadius: 4, border: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: 12, color: "var(--primary)", fontWeight: 600, textTransform: 'uppercase' }}>Weekend Days</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: "var(--primary)", marginTop: 4 }}>
                     {calcResult.weekendDays}
                   </div>
-                  <div style={{ fontSize: 11, color: '#3b82f6', marginTop: 2 }}>Per school calendar</div>
+                  <div style={{ fontSize: 11, color: "var(--primary)", marginTop: 2 }}>Per school calendar</div>
                 </div>
 
-                <div style={{ background: 'rgba(168, 85, 247, 0.1)', padding: 16, borderRadius: 10, border: '1px solid rgba(168, 85, 247, 0.3)' }}>
-                  <div style={{ fontSize: 12, color: '#a855f7', fontWeight: 600, textTransform: 'uppercase' }}>Holidays</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: '#a855f7', marginTop: 4 }}>
+                <div style={{ background: "var(--secondary)", padding: 16, borderRadius: 4, border: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: 12, color: "var(--info)", fontWeight: 600, textTransform: 'uppercase' }}>Holidays</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: "var(--info)", marginTop: 4 }}>
                     {calcResult.holidayDays}
                   </div>
-                  <div style={{ fontSize: 11, color: '#a855f7', marginTop: 2 }}>Gazetted &amp; Institutional</div>
+                  <div style={{ fontSize: 11, color: "var(--info)", marginTop: 2 }}>Gazetted &amp; Institutional</div>
                 </div>
 
-                <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: 16, borderRadius: 10, border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-                  <div style={{ fontSize: 12, color: '#f59e0b', fontWeight: 600, textTransform: 'uppercase' }}>Overlap Deduplicated</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: '#f59e0b', marginTop: 4 }}>
+                <div style={{ background: "var(--secondary)", padding: 16, borderRadius: 4, border: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: 12, color: "var(--warning)", fontWeight: 600, textTransform: 'uppercase' }}>Overlap Deduplicated</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: "var(--warning)", marginTop: 4 }}>
                     {calcResult.overlapDays}
                   </div>
-                  <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 2 }}>Zero double-counting</div>
+                  <div style={{ fontSize: 11, color: "var(--warning)", marginTop: 2 }}>Zero double-counting</div>
                 </div>
               </div>
 
               {/* Deduplication Invariant Banner */}
               <div style={{
-                background: 'var(--card-subtle, #f8fafc)',
-                border: '1px solid var(--border, #cbd5e1)',
-                borderRadius: 8,
+                background: "var(--card-subtle, var(--card))",
+                border: "1px solid var(--border, var(--border))",
+                borderRadius: 4,
                 padding: '12px 16px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12
               }}>
-                <CheckCircle2 size={18} style={{ color: '#16a34a', flexShrink: 0 }} />
-                <div style={{ fontSize: 13, color: 'var(--text, #334155)' }}>
+                <CheckCircle2 size={18} style={{ color: "var(--success)", flexShrink: 0 }} />
+                <div style={{ fontSize: 13, color: "var(--text, var(--muted-foreground))" }}>
                   <b>Mathematical Invariant Verified:</b> Total Days ({calcResult.totalDays}) = Working Days ({calcResult.workingDays}) + Non-Working Days ({calcResult.nonWorkingDays}). Non-Working Days = Weekend Days ({calcResult.weekendDays}) + Holidays ({calcResult.holidayDays}) − Overlap Days ({calcResult.overlapDays}) = <b>{calcResult.nonWorkingDays}</b>.
                 </div>
               </div>
 
               {/* Day-by-Day Breakdown Table */}
-              <div className="panel" style={{ padding: 20, borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
+              <div className="panel" style={{ padding: 20, borderRadius: 4, border: "1px solid var(--border, var(--border))" }}>
                 <h3 style={{ margin: '0 0 14px', fontSize: 16 }}>
                   Day-by-Day Calendar Breakdown ({calcResult.breakdown?.length} days)
                 </h3>
@@ -1765,20 +1765,20 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                     </thead>
                     <tbody>
                       {calcResult.breakdown?.map((day: any) => {
-                        let badgeStyle = { bg: '#dcfce7', text: '#15803d' };
+                        let badgeStyle = { bg: '#cce6e1', text: '#02604f' };
                         let label = 'WORKING DAY';
 
                         if (day.status === 'WEEKEND_AND_HOLIDAY') {
-                          badgeStyle = { bg: '#fef3c7', text: '#b45309' };
+                          badgeStyle = { bg: '#fbecd3', text: '#8f5c12' };
                           label = 'WEEKEND & HOLIDAY (OVERLAP)';
                         } else if (day.status === 'HOLIDAY') {
-                          badgeStyle = { bg: '#f3e8ff', text: '#6b21a8' };
+                          badgeStyle = { bg: '#dde1f2', text: '#363f73' };
                           label = 'HOLIDAY';
                         } else if (day.status === 'WEEKEND') {
-                          badgeStyle = { bg: '#fee2e2', text: '#b91c1c' };
+                          badgeStyle = { bg: '#f7d5d5', text: '#a82424' };
                           label = 'WEEKEND OFF';
                         } else if (day.status === 'HALF_DAY') {
-                          badgeStyle = { bg: '#e0f2fe', text: '#0369a1' };
+                          badgeStyle = { bg: '#dde1f2', text: '#48549a' };
                           label = 'HALF DAY';
                         }
 
@@ -1791,7 +1791,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                                 style={{
                                   display: 'inline-block',
                                   padding: '3px 8px',
-                                  borderRadius: 8,
+                                  borderRadius: 4,
                                   fontSize: 11,
                                   fontWeight: 700,
                                   background: badgeStyle.bg,
@@ -1807,7 +1807,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                               ) : day.isWeekend ? (
                                 <span style={{ color: 'var(--text-muted)' }}>Scheduled Weekend ({day.dayName})</span>
                               ) : day.isHalfDay ? (
-                                <span style={{ color: '#0369a1' }}>Saturday Half-Day Schedule</span>
+                                <span style={{ color: "var(--info)" }}>Saturday Half-Day Schedule</span>
                               ) : (
                                 <span style={{ color: 'var(--text-muted)' }}>Regular Instructional Day</span>
                               )}
@@ -1833,13 +1833,13 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
       {activeTab === 'academic-calendar' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Header & Controls Bar */}
-          <div className="panel" style={{ padding: '20px 24px', borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', background: 'var(--bg-card, #ffffff)' }}>
+          <div className="panel" style={{ padding: '20px 24px', borderRadius: 4, border: "1px solid var(--border, var(--border))", background: "var(--bg-card, var(--card))" }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Calendar size={20} style={{ color: '#2563eb' }} />
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--text, var(--foreground))", display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Calendar size={20} style={{ color: "var(--primary)" }} />
                   <span>Academic Holiday Calendar</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 12, background: '#dbeafe', color: '#1e40af' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: "var(--card)", color: "var(--primary)" }}>
                     {calFilteredHolidays.length} Holidays
                   </span>
                 </h3>
@@ -1855,11 +1855,11 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   className="small-btn primary-btn"
                   onClick={() => setActiveTab('holidays')}
                   style={{
-                    background: '#2563eb',
-                    color: '#fff',
+                    background: "var(--primary)",
+                    color: "var(--background)",
                     border: 'none',
                     padding: '8px 14px',
-                    borderRadius: 6,
+                    borderRadius: 4,
                     cursor: 'pointer',
                     fontSize: 12.5,
                     fontWeight: 600,
@@ -1910,13 +1910,13 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 </button>
 
                 {/* View switcher: Grid vs Agenda */}
-                <div style={{ display: 'inline-flex', borderRadius: 8, border: '1px solid var(--border, #cbd5e1)', overflow: 'hidden', marginLeft: 4 }}>
+                <div style={{ display: 'inline-flex', borderRadius: 4, border: "1px solid var(--border, var(--border))", overflow: 'hidden', marginLeft: 4 }}>
                   <button
                     type="button"
                     onClick={() => setCalViewMode('calendar')}
                     style={{
-                      background: calViewMode === 'calendar' ? '#2563eb' : 'var(--bg-card, #fff)',
-                      color: calViewMode === 'calendar' ? '#fff' : 'var(--text, #334155)',
+                      background: calViewMode === 'calendar' ? "var(--primary)" : "var(--bg-card, var(--card))",
+                      color: calViewMode === 'calendar' ? "var(--background)" : "var(--text, var(--muted-foreground))",
                       border: 'none',
                       padding: '6px 12px',
                       fontSize: 12,
@@ -1934,8 +1934,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                     type="button"
                     onClick={() => setCalViewMode('agenda')}
                     style={{
-                      background: calViewMode === 'agenda' ? '#2563eb' : 'var(--bg-card, #fff)',
-                      color: calViewMode === 'agenda' ? '#fff' : 'var(--text, #334155)',
+                      background: calViewMode === 'agenda' ? "var(--primary)" : "var(--bg-card, var(--card))",
+                      color: calViewMode === 'agenda' ? "var(--background)" : "var(--text, var(--muted-foreground))",
                       border: 'none',
                       padding: '6px 12px',
                       fontSize: 12,
@@ -1954,10 +1954,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
             </div>
 
             {/* Filter Bar */}
-            <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--border, #f1f5f9)', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--border, var(--border))", display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
               {/* Session Filter */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted, var(--muted-foreground))", textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                   Academic Session
                 </span>
                 <select
@@ -1968,10 +1968,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   }}
                   style={{
                     padding: '7px 12px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border, #cbd5e1)',
+                    borderRadius: 4,
+                    border: "1px solid var(--border, var(--border))",
                     fontSize: 13,
-                    background: 'var(--bg-card, #fff)',
+                    background: "var(--bg-card, var(--card))",
                     minWidth: 160
                   }}
                 >
@@ -1986,7 +1986,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
 
               {/* Year Filter */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted, var(--muted-foreground))", textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                   Calendar Year
                 </span>
                 <select
@@ -1997,10 +1997,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   }}
                   style={{
                     padding: '7px 12px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border, #cbd5e1)',
+                    borderRadius: 4,
+                    border: "1px solid var(--border, var(--border))",
                     fontSize: 13,
-                    background: 'var(--bg-card, #fff)',
+                    background: "var(--bg-card, var(--card))",
                     minWidth: 110
                   }}
                 >
@@ -2013,7 +2013,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
 
               {/* Category Filter */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted, var(--muted-foreground))", textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                   Category / Observance
                 </span>
                 <select
@@ -2021,10 +2021,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   onChange={e => setCalCategoryFilter(e.target.value)}
                   style={{
                     padding: '7px 12px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border, #cbd5e1)',
+                    borderRadius: 4,
+                    border: "1px solid var(--border, var(--border))",
                     fontSize: 13,
-                    background: 'var(--bg-card, #fff)',
+                    background: "var(--bg-card, var(--card))",
                     minWidth: 170
                   }}
                 >
@@ -2039,11 +2039,11 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
 
               {/* Search query */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 200px' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted, var(--muted-foreground))", textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                   Search Holidays
                 </span>
                 <div style={{ position: 'relative' }}>
-                  <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted, #94a3b8)' }} />
+                  <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: "var(--text-muted, var(--muted-foreground))" }} />
                   <input
                     type="text"
                     value={calSearchQuery}
@@ -2052,8 +2052,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                     style={{
                       width: '100%',
                       padding: '7px 12px 7px 32px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border, #cbd5e1)',
+                      borderRadius: 4,
+                      border: "1px solid var(--border, var(--border))",
                       fontSize: 13,
                       boxSizing: 'border-box'
                     }}
@@ -2085,78 +2085,78 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
           {/* KPI Summary Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14 }}>
             {/* Total Holidays Card */}
-            <div style={{ background: '#f8fafc', padding: '16px 18px', borderRadius: 10, border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <div style={{ background: "var(--card)", padding: '16px 18px', borderRadius: 4, border: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Total Annual Holidays
               </div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a', marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <div style={{ fontSize: 26, fontWeight: 800, color: "var(--foreground)", marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 6 }}>
                 <span>{calKpiStats.totalDays}</span>
-                <span style={{ fontSize: 12, fontWeight: 500, color: '#64748b' }}>days listed</span>
+                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)" }}>days listed</span>
               </div>
-              <div style={{ fontSize: 11, color: '#475569', marginTop: 3 }}>
+              <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 3 }}>
                 Configured in Holiday Manager
               </div>
             </div>
 
             {/* National Holidays Card */}
-            <div style={{ background: 'rgba(239, 68, 68, 0.06)', padding: '16px 18px', borderRadius: 10, border: '1px solid rgba(239, 68, 68, 0.25)' }}>
-              <div style={{ fontSize: 11, color: '#b91c1c', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <div style={{ background: "var(--secondary)", padding: '16px 18px', borderRadius: 4, border: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 11, color: "var(--destructive)", fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 🇮🇳 National Holidays
               </div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#dc2626', marginTop: 4 }}>
+              <div style={{ fontSize: 26, fontWeight: 800, color: "var(--destructive)", marginTop: 4 }}>
                 {calKpiStats.nationalHolidays}
               </div>
-              <div style={{ fontSize: 11, color: '#b91c1c', marginTop: 3 }}>
+              <div style={{ fontSize: 11, color: "var(--destructive)", marginTop: 3 }}>
                 Republic, Independence, Gandhi Jayanti
               </div>
             </div>
 
             {/* Cultural Festivals Card */}
-            <div style={{ background: 'rgba(168, 85, 247, 0.06)', padding: '16px 18px', borderRadius: 10, border: '1px solid rgba(168, 85, 247, 0.25)' }}>
-              <div style={{ fontSize: 11, color: '#7e22ce', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <div style={{ background: "var(--secondary)", padding: '16px 18px', borderRadius: 4, border: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 11, color: "var(--info)", fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 🪔 Festivals &amp; Cultural
               </div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#9333ea', marginTop: 4 }}>
+              <div style={{ fontSize: 26, fontWeight: 800, color: "var(--info)", marginTop: 4 }}>
                 {calKpiStats.festivalHolidays}
               </div>
-              <div style={{ fontSize: 11, color: '#7e22ce', marginTop: 3 }}>
+              <div style={{ fontSize: 11, color: "var(--info)", marginTop: 3 }}>
                 Durga Puja, Diwali, Holi, Kali Pujo
               </div>
             </div>
 
             {/* Gazetted / Institutional Card */}
-            <div style={{ background: 'rgba(59, 130, 246, 0.06)', padding: '16px 18px', borderRadius: 10, border: '1px solid rgba(59, 130, 246, 0.25)' }}>
-              <div style={{ fontSize: 11, color: '#1d4ed8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <div style={{ background: "var(--accent)", padding: '16px 18px', borderRadius: 4, border: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 11, color: "var(--primary)", fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 🏛️ Gazetted &amp; Institutional
               </div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#2563eb', marginTop: 4 }}>
+              <div style={{ fontSize: 26, fontWeight: 800, color: "var(--primary)", marginTop: 4 }}>
                 {calKpiStats.gazettedHolidays + calKpiStats.otherHolidays}
               </div>
-              <div style={{ fontSize: 11, color: '#1d4ed8', marginTop: 3 }}>
+              <div style={{ fontSize: 11, color: "var(--primary)", marginTop: 3 }}>
                 Good Friday, Christmas, Guru Nanak
               </div>
             </div>
 
             {/* Upcoming Holiday Countdown Card */}
-            <div style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)', padding: '16px 18px', borderRadius: 10, border: '1px solid #bfdbfe' }}>
-              <div style={{ fontSize: 11, color: '#1e40af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <Sparkles size={13} style={{ color: '#2563eb' }} />
+            <div style={{ background: "var(--card)", padding: '16px 18px', borderRadius: 4, border: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 11, color: "var(--primary)", fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Sparkles size={13} style={{ color: "var(--primary)" }} />
                 <span>Next Upcoming Holiday</span>
               </div>
               {calKpiStats.upcoming ? (
                 <>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', marginTop: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: "var(--foreground)", marginTop: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {calKpiStats.upcoming.name}
                   </div>
-                  <div style={{ fontSize: 11.5, color: '#15803d', fontWeight: 700, marginTop: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ fontSize: 11.5, color: "var(--success)", fontWeight: 700, marginTop: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span>{calKpiStats.upcoming.holiday_date}</span>
-                    <span style={{ background: '#dcfce7', padding: '1px 6px', borderRadius: 10 }}>
+                    <span style={{ background: "var(--secondary)", padding: '1px 6px', borderRadius: 4 }}>
                       {calKpiStats.daysUntilUpcoming === 0 ? 'Today!' : `in ${calKpiStats.daysUntilUpcoming} day${calKpiStats.daysUntilUpcoming === 1 ? '' : 's'}`}
                     </span>
                   </div>
                 </>
               ) : (
-                <div style={{ fontSize: 13, color: '#64748b', marginTop: 8 }}>
+                <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 8 }}>
                   No upcoming holidays scheduled
                 </div>
               )}
@@ -2164,26 +2164,26 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
           </div>
 
           {/* Legend Bar */}
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', padding: '10px 16px', background: 'var(--card-subtle, #f8fafc)', borderRadius: 8, fontSize: 12 }}>
-            <span style={{ fontWeight: 700, color: 'var(--text, #334155)' }}>Legend:</span>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', padding: '10px 16px', background: "var(--card-subtle, var(--card))", borderRadius: 4, fontSize: 12 }}>
+            <span style={{ fontWeight: 700, color: "var(--text, var(--muted-foreground))" }}>Legend:</span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444' }} />
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: "var(--destructive)" }} />
               <span>National Holiday</span>
             </span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#a855f7' }} />
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: "var(--info)" }} />
               <span>Cultural Festival</span>
             </span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#6366f1' }} />
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: "var(--primary)" }} />
               <span>Gazetted Holiday</span>
             </span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#14b8a6' }} />
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: "var(--success)" }} />
               <span>Regional / Institutional</span>
             </span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, background: '#e2e8f0' }} />
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: "var(--secondary)" }} />
               <span>Weekend (Sun/Off Sat)</span>
             </span>
           </div>
@@ -2199,13 +2199,13 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                     onClick={() => setCalMonthViewMode('all-months')}
                     style={{
                       padding: '5px 12px',
-                      borderRadius: 6,
+                      borderRadius: 4,
                       fontSize: 12,
                       fontWeight: 600,
                       cursor: 'pointer',
-                      border: '1px solid var(--border, #cbd5e1)',
-                      background: calMonthViewMode === 'all-months' ? '#2563eb' : 'var(--bg-card, #fff)',
-                      color: calMonthViewMode === 'all-months' ? '#fff' : 'var(--text, #334155)'
+                      border: "1px solid var(--border, var(--border))",
+                      background: calMonthViewMode === 'all-months' ? "var(--primary)" : "var(--bg-card, var(--card))",
+                      color: calMonthViewMode === 'all-months' ? "var(--background)" : "var(--text, var(--muted-foreground))"
                     }}
                   >
                     Full Year (12 Months)
@@ -2215,13 +2215,13 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                     onClick={() => setCalMonthViewMode('single-month')}
                     style={{
                       padding: '5px 12px',
-                      borderRadius: 6,
+                      borderRadius: 4,
                       fontSize: 12,
                       fontWeight: 600,
                       cursor: 'pointer',
-                      border: '1px solid var(--border, #cbd5e1)',
-                      background: calMonthViewMode === 'single-month' ? '#2563eb' : 'var(--bg-card, #fff)',
-                      color: calMonthViewMode === 'single-month' ? '#fff' : 'var(--text, #334155)'
+                      border: "1px solid var(--border, var(--border))",
+                      background: calMonthViewMode === 'single-month' ? "var(--primary)" : "var(--bg-card, var(--card))",
+                      color: calMonthViewMode === 'single-month' ? "var(--background)" : "var(--text, var(--muted-foreground))"
                     }}
                   >
                     Single Month View
@@ -2279,36 +2279,36 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                       <div
                         key={mName}
                         style={{
-                          background: 'var(--bg-card, #ffffff)',
-                          border: monthHolidays.length > 0 ? '1px solid #bfdbfe' : '1px solid var(--border, #e2e8f0)',
-                          borderRadius: 10,
+                          background: "var(--bg-card, var(--card))",
+                          border: monthHolidays.length > 0 ? "1px solid var(--border)" : "1px solid var(--border, var(--border))",
+                          borderRadius: 4,
                           padding: 14,
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                          boxShadow: 'none'
                         }}
                       >
                         {/* Month Header */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
                             {mName}
                           </span>
                           {monthHolidays.length > 0 ? (
-                            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: '#dbeafe', color: '#1e40af' }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: "var(--card)", color: "var(--primary)" }}>
                               {monthHolidays.length} holiday{monthHolidays.length === 1 ? '' : 's'}
                             </span>
                           ) : (
-                            <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>0 holidays</span>
+                            <span style={{ fontSize: 11, color: "var(--text-muted, var(--muted-foreground))" }}>0 holidays</span>
                           )}
                         </div>
 
                         {/* Calendar Day Labels */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text-muted, #64748b)', marginBottom: 4 }}>
+                        <div className="ui-calendar-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, textAlign: 'center', fontSize: 10, fontWeight: 700, color: "var(--text-muted, var(--muted-foreground))", marginBottom: 4 }}>
                           {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d, i) => (
-                            <div key={d} style={{ padding: '2px 0', color: i === 0 ? '#ef4444' : 'inherit' }}>{d}</div>
+                            <div key={d} style={{ padding: '2px 0', color: i === 0 ? "var(--destructive)" : 'inherit' }}>{d}</div>
                           ))}
                         </div>
 
                         {/* Calendar Day Matrix */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+                        <div className="ui-calendar-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
                           {Array.from({ length: firstDayOfWeek }).map((_, i) => (
                             <div key={'empty-' + i} style={{ height: 32 }} />
                           ))}
@@ -2332,7 +2332,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                                   flexDirection: 'column',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  borderRadius: 5,
+                                  borderRadius: 4,
                                   fontSize: 11,
                                   fontWeight: dayHolidays ? 800 : isWeekend ? 600 : 500,
                                   cursor: dayHolidays ? 'pointer' : 'default',
@@ -2340,13 +2340,13 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                                   background: styleInfo
                                     ? styleInfo.bg
                                     : isWeekend
-                                      ? 'var(--card-subtle, #f1f5f9)'
+                                      ? "var(--card-subtle, var(--secondary))"
                                       : 'transparent',
                                   color: styleInfo
                                     ? styleInfo.color
                                     : isWeekend
-                                      ? '#64748b'
-                                      : 'var(--text, #1e293b)',
+                                      ? "var(--muted-foreground)"
+                                      : "var(--text, var(--foreground))",
                                   border: styleInfo ? `1px solid ${styleInfo.border}` : '1px solid transparent',
                                   transition: 'transform 0.1s'
                                 }}
@@ -2365,10 +2365,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 </div>
               ) : (
                 /* SINGLE MONTH DETAILED VIEW */
-                <div style={{ background: 'var(--bg-card, #fff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 12, padding: 20 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, textAlign: 'center', fontSize: 13, fontWeight: 700, marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ background: "var(--bg-card, var(--card))", border: "1px solid var(--border, var(--border))", borderRadius: 4, padding: 20 }}>
+                  <div className="ui-calendar-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, textAlign: 'center', fontSize: 13, fontWeight: 700, marginBottom: 8, paddingBottom: 8, borderBottom: "1px solid var(--border)" }}>
                     {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d, i) => (
-                      <div key={d} style={{ color: i === 0 ? '#ef4444' : 'var(--text, #334155)' }}>{d}</div>
+                      <div key={d} style={{ color: i === 0 ? "var(--destructive)" : "var(--text, var(--muted-foreground))" }}>{d}</div>
                     ))}
                   </div>
 
@@ -2391,9 +2391,9 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                     });
 
                     return (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8 }}>
+                      <div className="ui-calendar-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8 }}>
                         {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-                          <div key={'empty-' + i} style={{ minHeight: 90, background: 'var(--card-subtle, #f8fafc)', borderRadius: 8, border: '1px dashed #e2e8f0' }} />
+                          <div key={'empty-' + i} style={{ minHeight: 90, background: "var(--card-subtle, var(--card))", borderRadius: 4, border: "1px dashed var(--border)" }} />
                         ))}
 
                         {Array.from({ length: totalDaysInMonth }).map((_, i) => {
@@ -2407,20 +2407,20 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                               key={dayNum}
                               style={{
                                 minHeight: 90,
-                                background: dayHolidays ? '#fefce8' : isWeekend ? 'var(--card-subtle, #f8fafc)' : 'var(--bg-card, #ffffff)',
-                                border: dayHolidays ? '1px solid #fde047' : '1px solid var(--border, #e2e8f0)',
-                                borderRadius: 8,
+                                background: dayHolidays ? "var(--card)" : isWeekend ? "var(--card-subtle, var(--card))" : "var(--bg-card, var(--card))",
+                                border: dayHolidays ? "1px solid var(--border)" : "1px solid var(--border, var(--border))",
+                                borderRadius: 4,
                                 padding: 8,
                                 display: 'flex',
                                 flexDirection: 'column'
                               }}
                             >
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                                <span style={{ fontSize: 13, fontWeight: dayHolidays ? 800 : 600, color: dayHolidays ? '#b45309' : isWeekend ? '#64748b' : 'var(--text)' }}>
+                                <span style={{ fontSize: 13, fontWeight: dayHolidays ? 800 : 600, color: dayHolidays ? "var(--warning)" : isWeekend ? "var(--muted-foreground)" : 'var(--text)' }}>
                                   {dayNum}
                                 </span>
                                 {isWeekend && !dayHolidays && (
-                                  <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>Weekend</span>
+                                  <span style={{ fontSize: 10, color: "var(--muted-foreground)", fontWeight: 600 }}>Weekend</span>
                                 )}
                               </div>
 
@@ -2435,7 +2435,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                                         background: cStyle.bg,
                                         border: `1px solid ${cStyle.border}`,
                                         color: cStyle.color,
-                                        borderRadius: 5,
+                                        borderRadius: 4,
                                         padding: '4px 6px',
                                         fontSize: 11,
                                         fontWeight: 700,
@@ -2464,8 +2464,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
           {calViewMode === 'agenda' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               {Object.keys(calHolidaysByMonth).length === 0 ? (
-                <div className="panel" style={{ padding: 40, textAlign: 'center', borderRadius: 12, border: '1px solid var(--border, #e2e8f0)' }}>
-                  <Calendar size={36} style={{ color: '#94a3b8', marginBottom: 12 }} />
+                <div className="panel" style={{ padding: 40, textAlign: 'center', borderRadius: 4, border: "1px solid var(--border, var(--border))" }}>
+                  <Calendar size={36} style={{ color: "var(--muted-foreground)", marginBottom: 12 }} />
                   <h4 style={{ margin: 0, fontSize: 16 }}>No Holidays Found in Selected Filters</h4>
                   <p className="muted" style={{ margin: '6px 0 16px', fontSize: 13 }}>
                     No holidays match the selected academic session, calendar year, or search query.
@@ -2484,14 +2484,14 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   const monthName = MONTH_NAMES[Number(mStr) - 1];
 
                   return (
-                    <div key={monthKey} style={{ background: 'var(--bg-card, #ffffff)', borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', overflow: 'hidden' }}>
+                    <div key={monthKey} style={{ background: "var(--bg-card, var(--card))", borderRadius: 4, border: "1px solid var(--border, var(--border))", overflow: 'hidden' }}>
                       {/* Month Header Banner */}
-                      <div style={{ padding: '12px 20px', background: 'var(--card-subtle, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <Calendar size={16} style={{ color: '#2563eb' }} />
+                      <div style={{ padding: '12px 20px', background: "var(--card-subtle, var(--card))", borderBottom: "1px solid var(--border, var(--border))", display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "var(--text, var(--foreground))", display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Calendar size={16} style={{ color: "var(--primary)" }} />
                           <span>{monthName} {yStr}</span>
                         </h4>
-                        <span style={{ fontSize: 11.5, fontWeight: 700, padding: '2px 8px', borderRadius: 12, background: '#e0e7ff', color: '#3730a3' }}>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: "var(--card)", color: "var(--primary)" }}>
                           {monthItems.length} holiday{monthItems.length === 1 ? '' : 's'}
                         </span>
                       </div>
@@ -2518,7 +2518,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                               key={h.id}
                               style={{
                                 padding: '14px 20px',
-                                borderBottom: hIdx < monthItems.length - 1 ? '1px solid #f1f5f9' : 'none',
+                                borderBottom: hIdx < monthItems.length - 1 ? "1px solid var(--border)" : 'none',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
@@ -2534,7 +2534,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                                   style={{
                                     width: 52,
                                     height: 52,
-                                    borderRadius: 8,
+                                    borderRadius: 4,
                                     background: cStyle.bg,
                                     border: `1px solid ${cStyle.border}`,
                                     color: cStyle.color,
@@ -2552,7 +2552,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                                 {/* Holiday Name & Metadata */}
                                 <div>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                    <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                                    <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
                                       {h.name}
                                     </span>
 
@@ -2561,10 +2561,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                                       <span
                                         style={{
                                           fontSize: 10.5,
-                                          background: '#fef3c7',
-                                          color: '#92400e',
+                                          background: "var(--secondary)",
+                                          color: "var(--warning)",
                                           padding: '2px 7px',
-                                          borderRadius: 6,
+                                          borderRadius: 4,
                                           fontWeight: 700
                                         }}
                                       >
@@ -2577,7 +2577,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                                       style={{
                                         fontSize: 11,
                                         padding: '2px 8px',
-                                        borderRadius: 10,
+                                        borderRadius: 4,
                                         background: cStyle.bg,
                                         color: cStyle.color,
                                         fontWeight: 700,
@@ -2593,9 +2593,9 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                                         style={{
                                           fontSize: 11,
                                           padding: '2px 8px',
-                                          borderRadius: 10,
-                                          background: '#f1f5f9',
-                                          color: '#475569',
+                                          borderRadius: 4,
+                                          background: "var(--secondary)",
+                                          color: "var(--muted-foreground)",
                                           fontWeight: 600
                                         }}
                                       >
@@ -2605,15 +2605,15 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                                   </div>
 
                                   {/* Description & weekend overlap */}
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4, flexWrap: 'wrap', fontSize: 12, color: "var(--text-muted, var(--muted-foreground))" }}>
                                     <span>{h.holiday_date} ({dayName})</span>
                                     <span>•</span>
                                     {isWeekend ? (
-                                      <span style={{ color: '#d97706', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                      <span style={{ color: "var(--warning)", fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                                         <Info size={13} /> Falls on {dayName} (Deduplicated)
                                       </span>
                                     ) : (
-                                      <span style={{ color: '#15803d', fontWeight: 600 }}>Instructional Day Off (Weekday)</span>
+                                      <span style={{ color: "var(--success)", fontWeight: 600 }}>Instructional Day Off (Weekday)</span>
                                     )}
                                     {h.description && (
                                       <>
@@ -2632,11 +2632,11 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                                   className="small-btn edit-btn"
                                   onClick={() => openEditHolidayModal(h)}
                                   style={{
-                                    background: '#0284c7',
-                                    color: '#fff',
+                                    background: "var(--info)",
+                                    color: "var(--background)",
                                     border: 'none',
                                     padding: '5px 10px',
-                                    borderRadius: 6,
+                                    borderRadius: 4,
                                     cursor: 'pointer',
                                     fontSize: 11.5,
                                     fontWeight: 600,
@@ -2670,7 +2670,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: 'rgba(15, 23, 42, 0.65)',
+                backgroundColor: "var(--card)",
                 backdropFilter: 'blur(3px)',
                 display: 'flex',
                 alignItems: 'center',
@@ -2682,19 +2682,19 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
             >
               <div
                 style={{
-                  background: 'var(--bg-card, #ffffff)',
-                  borderRadius: 12,
-                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+                  background: "var(--bg-card, var(--card))",
+                  borderRadius: 4,
+                  boxShadow: 'none',
                   width: '100%',
                   maxWidth: 440,
                   overflow: 'hidden',
-                  border: '1px solid var(--border, #cbd5e1)'
+                  border: "1px solid var(--border, var(--border))"
                 }}
                 onClick={e => e.stopPropagation()}
               >
-                <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', background: 'var(--card-subtle, #f8fafc)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Calendar size={16} style={{ color: '#2563eb' }} />
+                <div style={{ padding: '16px 20px', borderBottom: "1px solid var(--border)", background: "var(--card-subtle, var(--card))", display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text, var(--foreground))", display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Calendar size={16} style={{ color: "var(--primary)" }} />
                     <span>Holiday Inspection</span>
                   </h3>
                   <button type="button" onClick={() => setCalInspectHoliday(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 4 }}>
@@ -2703,7 +2703,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 </div>
 
                 <div style={{ padding: 20 }}>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text, #0f172a)' }}>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text, var(--foreground))" }}>
                     {calInspectHoliday.name}
                   </div>
 
@@ -2711,24 +2711,24 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                     {(() => {
                       const c = getHolidayCategoryStyle(calInspectHoliday.holiday_type);
                       return (
-                        <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, background: c.bg, color: c.color, fontWeight: 700, border: `1px solid ${c.border}` }}>
+                        <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 4, background: c.bg, color: c.color, fontWeight: 700, border: `1px solid ${c.border}` }}>
                           {c.label}
                         </span>
                       );
                     })()}
 
-                    <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, background: calInspectHoliday.is_active ? '#dcfce7' : '#fee2e2', color: calInspectHoliday.is_active ? '#15803d' : '#b91c1c', fontWeight: 700 }}>
+                    <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 4, background: calInspectHoliday.is_active ? "var(--secondary)" : "var(--secondary)", color: calInspectHoliday.is_active ? "var(--success)" : "var(--destructive)", fontWeight: 700 }}>
                       {calInspectHoliday.is_active ? 'ACTIVE' : 'INACTIVE'}
                     </span>
                   </div>
 
                   <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <div style={{ background: '#f8fafc', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Date</div>
+                    <div style={{ background: "var(--card)", padding: 10, borderRadius: 4, border: "1px solid var(--border)" }}>
+                      <div style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 600 }}>Date</div>
                       <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>{calInspectHoliday.holiday_date}</div>
                     </div>
-                    <div style={{ background: '#f8fafc', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Day of Week</div>
+                    <div style={{ background: "var(--card)", padding: 10, borderRadius: 4, border: "1px solid var(--border)" }}>
+                      <div style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 600 }}>Day of Week</div>
                       <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>
                         {(() => {
                           const [y, m, d] = calInspectHoliday.holiday_date.split('-').map(Number);
@@ -2740,8 +2740,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
 
                   {calInspectHoliday.description && (
                     <div style={{ marginTop: 14 }}>
-                      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>Description / Note</div>
-                      <div style={{ fontSize: 13, color: '#334155', background: '#f8fafc', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 600, marginBottom: 4 }}>Description / Note</div>
+                      <div style={{ fontSize: 13, color: "var(--muted-foreground)", background: "var(--card)", padding: 10, borderRadius: 4, border: "1px solid var(--border)" }}>
                         {calInspectHoliday.description}
                       </div>
                     </div>
@@ -2768,10 +2768,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                         padding: '7px 16px',
                         fontSize: 12.5,
                         fontWeight: 600,
-                        background: '#0284c7',
-                        color: '#fff',
+                        background: "var(--info)",
+                        color: "var(--background)",
                         border: 'none',
-                        borderRadius: 6,
+                        borderRadius: 4,
                         cursor: 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -2817,7 +2817,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backgroundColor: "var(--card)",
             backdropFilter: 'blur(3px)',
             display: 'flex',
             alignItems: 'center',
@@ -2829,13 +2829,13 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
         >
           <div
             style={{
-              background: 'var(--bg-card, #ffffff)',
-              borderRadius: 12,
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
+              background: "var(--bg-card, var(--card))",
+              borderRadius: 4,
+              boxShadow: 'none',
               width: '100%',
               maxWidth: 480,
               overflow: 'hidden',
-              border: '1px solid var(--border, #cbd5e1)'
+              border: "1px solid var(--border, var(--border))"
             }}
             onClick={e => e.stopPropagation()}
           >
@@ -2843,19 +2843,19 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
             <div
               style={{
                 padding: '16px 20px',
-                borderBottom: '1px solid var(--border, #e2e8f0)',
+                borderBottom: "1px solid var(--border, var(--border))",
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                background: 'var(--card-subtle, #f8fafc)'
+                background: "var(--card-subtle, var(--card))"
               }}
             >
               <div>
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Edit2 size={16} style={{ color: '#0284c7' }} />
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text, var(--foreground))", display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Edit2 size={16} style={{ color: "var(--info)" }} />
                   <span>Edit Academic Session</span>
                 </h3>
-                <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                <p style={{ margin: '3px 0 0', fontSize: 12, color: "var(--text-muted, var(--muted-foreground))" }}>
                   Update session name and date ranges
                 </p>
               </div>
@@ -2868,8 +2868,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   border: 'none',
                   cursor: 'pointer',
                   padding: 4,
-                  borderRadius: 6,
-                  color: 'var(--text-muted, #64748b)',
+                  borderRadius: 4,
+                  color: "var(--text-muted, var(--muted-foreground))",
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
@@ -2886,10 +2886,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   style={{
                     marginBottom: 16,
                     padding: '10px 12px',
-                    borderRadius: 8,
-                    background: '#fef2f2',
-                    border: '1px solid #fecaca',
-                    color: '#b91c1c',
+                    borderRadius: 4,
+                    background: "var(--card)",
+                    border: "1px solid var(--border)",
+                    color: "var(--destructive)",
                     fontSize: 13,
                     display: 'flex',
                     alignItems: 'center',
@@ -2903,8 +2903,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
-                    Session Name <span style={{ color: '#ef4444' }}>*</span>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: "var(--text, var(--muted-foreground))" }}>
+                    Session Name <span style={{ color: "var(--destructive)" }}>*</span>
                   </label>
                   <input
                     type="text"
@@ -2916,21 +2916,21 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                     style={{
                       width: '100%',
                       padding: '8px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border, #cbd5e1)',
+                      borderRadius: 4,
+                      border: "1px solid var(--border, var(--border))",
                       fontSize: 13.5,
                       boxSizing: 'border-box'
                     }}
                   />
-                  <div style={{ fontSize: 11, color: 'var(--text-muted, #64748b)', marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-muted, var(--muted-foreground))", marginTop: 4 }}>
                     Must follow <b>YYYY-YYYY</b> format (e.g. 2028-2029)
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
-                      Start Date <span style={{ color: '#ef4444' }}>*</span>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: "var(--text, var(--muted-foreground))" }}>
+                      Start Date <span style={{ color: "var(--destructive)" }}>*</span>
                     </label>
                     <input
                       type="date"
@@ -2942,8 +2942,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                       style={{
                         width: '100%',
                         padding: '8px 10px',
-                        borderRadius: 6,
-                        border: '1px solid var(--border, #cbd5e1)',
+                        borderRadius: 4,
+                        border: "1px solid var(--border, var(--border))",
                         fontSize: 13,
                         boxSizing: 'border-box'
                       }}
@@ -2951,8 +2951,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
-                      End Date <span style={{ color: '#ef4444' }}>*</span>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: "var(--text, var(--muted-foreground))" }}>
+                      End Date <span style={{ color: "var(--destructive)" }}>*</span>
                     </label>
                     <input
                       type="date"
@@ -2964,8 +2964,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                       style={{
                         width: '100%',
                         padding: '8px 10px',
-                        borderRadius: 6,
-                        border: '1px solid var(--border, #cbd5e1)',
+                        borderRadius: 4,
+                        border: "1px solid var(--border, var(--border))",
                         fontSize: 13,
                         boxSizing: 'border-box'
                       }}
@@ -2989,10 +2989,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   disabled={editModal.loading}
                   style={{
                     padding: '8px 16px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--bg-card, #ffffff)',
-                    color: 'var(--text, #334155)',
+                    borderRadius: 4,
+                    border: "1px solid var(--border, var(--border))",
+                    background: "var(--bg-card, var(--card))",
+                    color: "var(--text, var(--muted-foreground))",
                     fontSize: 13,
                     fontWeight: 600,
                     cursor: editModal.loading ? 'not-allowed' : 'pointer'
@@ -3005,10 +3005,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   disabled={editModal.loading}
                   style={{
                     padding: '8px 18px',
-                    borderRadius: 6,
+                    borderRadius: 4,
                     border: 'none',
-                    background: '#0284c7',
-                    color: '#ffffff',
+                    background: "var(--info)",
+                    color: "var(--background)",
                     fontSize: 13,
                     fontWeight: 600,
                     cursor: editModal.loading ? 'not-allowed' : 'pointer',
@@ -3042,7 +3042,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backgroundColor: "var(--card)",
             backdropFilter: 'blur(3px)',
             display: 'flex',
             alignItems: 'center',
@@ -3054,13 +3054,13 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
         >
           <div
             style={{
-              background: 'var(--bg-card, #ffffff)',
-              borderRadius: 12,
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
+              background: "var(--bg-card, var(--card))",
+              borderRadius: 4,
+              boxShadow: 'none',
               width: '100%',
               maxWidth: 480,
               overflow: 'hidden',
-              border: '1px solid var(--border, #cbd5e1)'
+              border: "1px solid var(--border, var(--border))"
             }}
             onClick={e => e.stopPropagation()}
           >
@@ -3068,19 +3068,19 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
             <div
               style={{
                 padding: '16px 20px',
-                borderBottom: '1px solid var(--border, #e2e8f0)',
+                borderBottom: "1px solid var(--border, var(--border))",
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                background: 'var(--card-subtle, #f8fafc)'
+                background: "var(--card-subtle, var(--card))"
               }}
             >
               <div>
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Edit2 size={16} style={{ color: '#0284c7' }} />
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text, var(--foreground))", display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Edit2 size={16} style={{ color: "var(--info)" }} />
                   <span>Edit School Holiday</span>
                 </h3>
-                <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                <p style={{ margin: '3px 0 0', fontSize: 12, color: "var(--text-muted, var(--muted-foreground))" }}>
                   Update holiday name, date, category, and status
                 </p>
               </div>
@@ -3093,8 +3093,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   border: 'none',
                   cursor: 'pointer',
                   padding: 4,
-                  borderRadius: 6,
-                  color: 'var(--text-muted, #64748b)',
+                  borderRadius: 4,
+                  color: "var(--text-muted, var(--muted-foreground))",
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
@@ -3111,10 +3111,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   style={{
                     marginBottom: 16,
                     padding: '10px 12px',
-                    borderRadius: 8,
-                    background: '#fef2f2',
-                    border: '1px solid #fecaca',
-                    color: '#b91c1c',
+                    borderRadius: 4,
+                    background: "var(--card)",
+                    border: "1px solid var(--border)",
+                    color: "var(--destructive)",
                     fontSize: 13,
                     display: 'flex',
                     alignItems: 'center',
@@ -3128,8 +3128,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
-                    Holiday Name <span style={{ color: '#ef4444' }}>*</span>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: "var(--text, var(--muted-foreground))" }}>
+                    Holiday Name <span style={{ color: "var(--destructive)" }}>*</span>
                   </label>
                   <input
                     type="text"
@@ -3140,8 +3140,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                     style={{
                       width: '100%',
                       padding: '8px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border, #cbd5e1)',
+                      borderRadius: 4,
+                      border: "1px solid var(--border, var(--border))",
                       fontSize: 13.5,
                       boxSizing: 'border-box'
                     }}
@@ -3150,8 +3150,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
-                      Holiday Date <span style={{ color: '#ef4444' }}>*</span>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: "var(--text, var(--muted-foreground))" }}>
+                      Holiday Date <span style={{ color: "var(--destructive)" }}>*</span>
                     </label>
                     <input
                       type="date"
@@ -3163,8 +3163,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                       style={{
                         width: '100%',
                         padding: '8px 10px',
-                        borderRadius: 6,
-                        border: '1px solid var(--border, #cbd5e1)',
+                        borderRadius: 4,
+                        border: "1px solid var(--border, var(--border))",
                         fontSize: 13,
                         boxSizing: 'border-box'
                       }}
@@ -3172,7 +3172,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: "var(--text, var(--muted-foreground))" }}>
                       Category / Type
                     </label>
                     <select
@@ -3181,8 +3181,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                       style={{
                         width: '100%',
                         padding: '8px 10px',
-                        borderRadius: 6,
-                        border: '1px solid var(--border, #cbd5e1)',
+                        borderRadius: 4,
+                        border: "1px solid var(--border, var(--border))",
                         fontSize: 13,
                         boxSizing: 'border-box'
                       }}
@@ -3198,7 +3198,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: "var(--text, var(--muted-foreground))" }}>
                       Status
                     </label>
                     <select
@@ -3207,8 +3207,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                       style={{
                         width: '100%',
                         padding: '8px 10px',
-                        borderRadius: 6,
-                        border: '1px solid var(--border, #cbd5e1)',
+                        borderRadius: 4,
+                        border: "1px solid var(--border, var(--border))",
                         fontSize: 13,
                         boxSizing: 'border-box'
                       }}
@@ -3219,7 +3219,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: "var(--text, var(--muted-foreground))" }}>
                       Description (Optional)
                     </label>
                     <input
@@ -3230,8 +3230,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                       style={{
                         width: '100%',
                         padding: '8px 10px',
-                        borderRadius: 6,
-                        border: '1px solid var(--border, #cbd5e1)',
+                        borderRadius: 4,
+                        border: "1px solid var(--border, var(--border))",
                         fontSize: 13,
                         boxSizing: 'border-box'
                       }}
@@ -3255,10 +3255,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   disabled={editHolidayModal.loading}
                   style={{
                     padding: '8px 16px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--bg-card, #ffffff)',
-                    color: 'var(--text, #334155)',
+                    borderRadius: 4,
+                    border: "1px solid var(--border, var(--border))",
+                    background: "var(--bg-card, var(--card))",
+                    color: "var(--text, var(--muted-foreground))",
                     fontSize: 13,
                     fontWeight: 600,
                     cursor: editHolidayModal.loading ? 'not-allowed' : 'pointer'
@@ -3271,10 +3271,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   disabled={editHolidayModal.loading}
                   style={{
                     padding: '8px 18px',
-                    borderRadius: 6,
+                    borderRadius: 4,
                     border: 'none',
-                    background: '#0284c7',
-                    color: '#ffffff',
+                    background: "var(--info)",
+                    color: "var(--background)",
                     fontSize: 13,
                     fontWeight: 600,
                     cursor: editHolidayModal.loading ? 'not-allowed' : 'pointer',

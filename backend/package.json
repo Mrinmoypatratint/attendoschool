@@ -16,6 +16,7 @@
     "notification-worker": "tsx src/workers/notificationWorker.ts",
     "worker:production": "tsx src/workers/productionWorker.ts",
     "test": "tsx tests/comprehensive-test-suite.ts",
+    "test:backups": "npm run build && node --test tests/backup-routes.test.cjs",
     "test:student": "tsx tests/student-portal-e2e.ts",
     "test:integration-smoke": "tsx ../scripts/integration-smoke.ts",
     "test:api-smoke": "tsx ../scripts/api-smoke.ts",

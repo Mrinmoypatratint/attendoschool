@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../hooks/useAuth';
 import { SidebarToggle } from '../components/SidebarToggle';
+import BackupControls from '../components/BackupControls';
 import {
   LayoutDashboard, School, CreditCard, FileText, Eye, BarChart3,
   Users, Shield, ShieldCheck, Database, Settings, Moon, Sun,
@@ -212,7 +213,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
       title: 'ACCESS & SECURITY',
       items: [
         { path: '/super-admin/people', label: 'People', icon: Users },
-        { path: '/super-admin/permissions', label: 'Roles & Permissions', icon: ShieldCheck },
+        { path: '/super-admin/permissions', label: 'Features & Permissions', icon: ShieldCheck },
         { path: '/super-admin/security', label: 'Security', icon: Shield },
         { path: '/super-admin/audit-logs', label: 'Audit Logs', icon: Database }
       ]
@@ -367,11 +368,11 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
             <div className="sa-search-trigger" onClick={() => setSearchOpen(true)}>
               <Search size={16} className="sa-search-trigger-icon" />
               <span className="sa-search-trigger-text">Search schools, users, payments, invoices...</span>
-              <kbd className="sa-search-kbd">Ctrl K</kbd>
             </div>
           </div>
 
           <div className="sa-topbar-right">
+            <BackupControls />
             {/* Academic Session Selector */}
             <div className="sa-session-wrap" ref={sessionRef}>
               <div
@@ -380,7 +381,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
                 title="Academic Session"
                 style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
               >
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: "var(--success)", flexShrink: 0 }}></span>
                 <span>{(() => {
                   const clean = String(activeSession || '').replace(/\b(academic\s+)?sessions?\b/gi, '').trim() || '2026–27';
                   return `${clean} ACADEMIC SESSION`.toUpperCase();
