@@ -4591,7 +4591,16 @@ function TeacherHome() {
     return localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year') || '';
   });
   const [teacherHolidays, setTeacherHolidays] = useState<any[]>([]);
+  const [calendarViewDate, setCalendarViewDate] = useState<Date>(() => new Date());
   const [selectedTeacherDate, setSelectedTeacherDate] = useState<Date>(() => new Date());
+
+  const extractHolidaysList = (resData: any): any[] => {
+    if (!resData) return [];
+    if (Array.isArray(resData)) return resData;
+    if (Array.isArray(resData.data)) return resData.data;
+    if (Array.isArray(resData.holidays)) return resData.holidays;
+    return [];
+  };
 
   // 1-second interval timer for live digital clock widget with cleanup on unmount
   useEffect(() => {
@@ -4604,11 +4613,11 @@ function TeacherHome() {
     const handleHolidaysUpdate = () => {
       api.get('/calendar/holidays')
         .then(res => {
-          const h = Array.isArray(res.data) ? res.data : (res.data?.holidays || []);
-          setTeacherHolidays(h);
+          setTeacherHolidays(extractHolidaysList(res.data));
         })
         .catch(() => {});
     };
+    handleHolidaysUpdate();
     window.addEventListener('calendarHolidaysChanged', handleHolidaysUpdate);
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'attendo_holidays_updated_at') {
@@ -4636,7 +4645,7 @@ function TeacherHome() {
         api.get('/calendar/holidays').catch(() => ({ data: [] }))
       ]);
 
-      const hData = Array.isArray(holidaysRes.data) ? holidaysRes.data : (holidaysRes.data?.holidays || []);
+      const hData = extractHolidaysList(holidaysRes.data);
       setTeacherHolidays(hData);
 
       const secData = Array.isArray(authSecRes.data?.sections) ? authSecRes.data.sections : [];
@@ -4898,20 +4907,62 @@ function TeacherHome() {
   const teacherHolidayMap = useMemo(() => {
     const map = new Map<string, any>();
     teacherHolidays.forEach((h: any) => {
-      if (h && h.is_active !== false && h.holiday_date) {
-        const dateKey = String(h.holiday_date).slice(0, 10);
-        map.set(dateKey, h);
+      if (h && h.is_active !== false) {
+        const dateKey = String(h.holiday_date || h.date || h.startDate || '').slice(0, 10);
+        if (dateKey) {
+          map.set(dateKey, h);
+        }
       }
     });
     return map;
   }, [teacherHolidays]);
 
-  // Weekdays for Today at a Glance with holiday detection & clickable dates
+  // Monthly Calendar Calculations (Synchronized with Academic Holidays)
   const todayDate = new Date();
-  const currentDayOfWeek = todayDate.getDay(); // 0 = Sun
-  const weekDays = [];
-  const startOfWeek = new Date(todayDate);
-  startOfWeek.setDate(todayDate.getDate() - currentDayOfWeek);
+  const calYear = calendarViewDate.getFullYear();
+  const calMonth = calendarViewDate.getMonth();
+
+  const calMonthName = calendarViewDate.toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric'
+  });
+
+  const handlePrevMonth = () => {
+    setCalendarViewDate(new Date(calYear, calMonth - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCalendarViewDate(new Date(calYear, calMonth + 1, 1));
+  };
+
+  const handleResetToday = () => {
+    const now = new Date();
+    setCalendarViewDate(now);
+    setSelectedTeacherDate(now);
+  };
+
+  const isViewingCurrentMonth =
+    calYear === todayDate.getFullYear() && calMonth === todayDate.getMonth();
+
+  // First day of current month (0 = Sunday, 1 = Monday, etc.)
+  const firstDayOfWeek = new Date(calYear, calMonth, 1).getDay();
+  const daysInCurrentMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const daysInPrevMonth = new Date(calYear, calMonth, 0).getDate();
+
+  // Previous month trailing padding days
+  const prevMonthDays: number[] = [];
+  for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+    prevMonthDays.push(daysInPrevMonth - i);
+  }
+
+  // Next month leading padding days (fill consistent 35 or 42 grid cells)
+  const totalOccupied = prevMonthDays.length + daysInCurrentMonth;
+  const targetTotalCells = totalOccupied <= 35 ? 35 : 42;
+  const nextMonthDaysCount = targetTotalCells - totalOccupied;
+  const nextMonthDays: number[] = [];
+  for (let i = 1; i <= nextMonthDaysCount; i++) {
+    nextMonthDays.push(i);
+  }
 
   const formatYmd = (d: Date) => {
     const y = d.getFullYear();
@@ -4926,24 +4977,12 @@ function TeacherHome() {
   const selectedDayHoliday = teacherHolidayMap.get(selectedDateKey);
   const isSelectedSunday = selectedTeacherDate.getDay() === 0;
 
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(startOfWeek);
-    d.setDate(startOfWeek.getDate() + i);
-    const dateKey = formatYmd(d);
-    const holiday = teacherHolidayMap.get(dateKey);
-    weekDays.push({
-      date: d,
-      dateKey,
-      dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i],
-      dayNum: d.getDate(),
-      isToday: dateKey === todayDateKey,
-      isSelected: dateKey === selectedDateKey,
-      holiday
-    });
-  }
-
-  const formattedTodayDateString = todayDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-  const formattedSelectedDateString = selectedTeacherDate.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' });
+  const formattedSelectedDateString = selectedTeacherDate.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
 
   // Time ago formatter for updates
   const formatTimeAgo = (dateStr: string) => {
@@ -5411,168 +5450,254 @@ function TeacherHome() {
               )}
             </div>
 
-            {/* Today at a Glance */}
-            <div className="td-section-card">
-              <div className="td-section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <h3 className="td-section-title">
+            {/* Calendar & Today at a Glance */}
+            <div className="td-section-card student-calendar-card">
+              <div className="student-calendar-header">
+                <div className="student-calendar-title-wrap">
                   <Calendar size={18} style={{ color: '#e11d55' }} />
-                  {isViewingToday ? 'Today at a glance' : 'Schedule at a glance'}
-                </h3>
-                {!isViewingToday && (
+                  <span className="student-calendar-month">{calMonthName}</span>
+                </div>
+                <div className="student-calendar-nav">
+                  {!isViewingCurrentMonth && (
+                    <button
+                      type="button"
+                      onClick={handleResetToday}
+                      className="student-cal-today-btn"
+                      title="Jump to today"
+                    >
+                      Today
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setSelectedTeacherDate(new Date())}
-                    style={{
-                      fontSize: 11.5,
-                      fontWeight: 600,
-                      padding: '3px 9px',
-                      borderRadius: 6,
-                      background: 'rgba(225, 29, 85, 0.1)',
-                      color: '#e11d55',
-                      border: '1px solid rgba(225, 29, 85, 0.25)',
-                      cursor: 'pointer'
-                    }}
+                    onClick={handlePrevMonth}
+                    aria-label="Previous month"
+                    title="Previous month"
                   >
-                    Back to Today
+                    <ChevronLeft size={16} />
                   </button>
-                )}
-              </div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 12 }}>
-                {isViewingToday ? formattedTodayDateString : formattedSelectedDateString}
+                  <button
+                    type="button"
+                    onClick={handleNextMonth}
+                    aria-label="Next month"
+                    title="Next month"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
               </div>
 
-              {/* Weekday Strip */}
-              <div className="td-calendar-strip">
-                {weekDays.map((wd, i) => (
+              {/* Monthly Calendar Grid */}
+              <div className="student-calendar-grid">
+                <div className="cal-day-header">Sun</div>
+                <div className="cal-day-header">Mon</div>
+                <div className="cal-day-header">Tue</div>
+                <div className="cal-day-header">Wed</div>
+                <div className="cal-day-header">Thu</div>
+                <div className="cal-day-header">Fri</div>
+                <div className="cal-day-header">Sat</div>
+
+                {/* Previous month padding days */}
+                {prevMonthDays.map((d) => (
                   <div
-                    key={i}
-                    className={`td-day-col ${wd.isSelected ? 'active' : ''} ${wd.holiday ? 'has-holiday' : ''}`}
-                    onClick={() => setSelectedTeacherDate(wd.date)}
+                    key={`prev-${d}`}
+                    className="cal-date muted cursor-pointer"
+                    onClick={() => {
+                      const newD = new Date(calYear, calMonth - 1, d);
+                      setCalendarViewDate(newD);
+                      setSelectedTeacherDate(newD);
+                    }}
                     style={{ cursor: 'pointer' }}
-                    title={wd.holiday ? `${wd.holiday.name} (${wd.holiday.holiday_type || 'Holiday'})` : (wd.isToday ? 'Today' : wd.dayName)}
                   >
-                    <span className="td-day-name">{wd.dayName}</span>
-                    <span className="td-day-num">{wd.dayNum}</span>
-                    {wd.holiday && <span className="td-day-holiday-dot" />}
+                    {d}
+                  </div>
+                ))}
+
+                {/* Current month days */}
+                {Array.from({ length: daysInCurrentMonth }, (_, idx) => {
+                  const dayNum = idx + 1;
+                  const isToday =
+                    todayDate.getFullYear() === calYear &&
+                    todayDate.getMonth() === calMonth &&
+                    todayDate.getDate() === dayNum;
+                  const isSelected =
+                    selectedTeacherDate.getFullYear() === calYear &&
+                    selectedTeacherDate.getMonth() === calMonth &&
+                    selectedTeacherDate.getDate() === dayNum;
+
+                  const dayDateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                  const dayHoliday = teacherHolidayMap.get(dayDateStr);
+
+                  const isActive = isSelected;
+
+                  let dotClass = '';
+                  if (dayHoliday) {
+                    dotClass = 'dot-holiday is-holiday';
+                  }
+
+                  const classes = [
+                    'cal-date',
+                    'cursor-pointer',
+                    isActive ? 'active-date' : '',
+                    isToday && !isActive ? 'today-date' : '',
+                    dotClass
+                  ].filter(Boolean).join(' ');
+
+                  const tooltip = dayHoliday
+                    ? `${dayNum} ${calMonthName} · 🎉 ${dayHoliday.name} (${dayHoliday.holiday_type || 'Holiday'})`
+                    : isToday
+                    ? `Today (${dayNum} ${calMonthName})`
+                    : `${dayNum} ${calMonthName}`;
+
+                  return (
+                    <div
+                      key={dayNum}
+                      className={classes}
+                      onClick={() => setSelectedTeacherDate(new Date(calYear, calMonth, dayNum))}
+                      title={tooltip}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {dayNum}
+                    </div>
+                  );
+                })}
+
+                {/* Next month padding days */}
+                {nextMonthDays.map((d) => (
+                  <div
+                    key={`next-${d}`}
+                    className="cal-date muted cursor-pointer"
+                    onClick={() => {
+                      const newD = new Date(calYear, calMonth + 1, d);
+                      setCalendarViewDate(newD);
+                      setSelectedTeacherDate(newD);
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {d}
                   </div>
                 ))}
               </div>
 
-              {/* Status / Holiday / Next Class Card */}
-              {selectedDayHoliday ? (
-                <div className="td-holiday-box">
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: '50%',
-                        background: '#fef3c7',
-                        color: '#d97706',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0
-                      }}>
-                        <PartyPopper size={20} />
+              {/* Selected Date Details Panel (Beneath Calendar) */}
+              <div style={{ marginTop: 14 }}>
+                {selectedDayHoliday ? (
+                  <div className="td-holiday-box">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: '50%',
+                          background: '#fef3c7',
+                          color: '#d97706',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          <PartyPopper size={20} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#b45309', letterSpacing: '0.04em' }}>
+                            {formattedSelectedDateString} · Official Holiday
+                          </div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text, #1c1f2e)' }}>
+                            {selectedDayHoliday.name}
+                          </div>
+                        </div>
+                      </div>
+                      {(() => {
+                        const catStyle = getHolidayCategoryBadgeStyle(selectedDayHoliday.holiday_type);
+                        return (
+                          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, ...catStyle }}>
+                            {catStyle.label || selectedDayHoliday.holiday_type || 'Holiday'}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                    {selectedDayHoliday.description && (
+                      <div style={{ fontSize: 12.5, color: 'var(--text-secondary, #475569)', lineHeight: 1.4, paddingLeft: 44 }}>
+                        {selectedDayHoliday.description}
+                      </div>
+                    )}
+                    <div style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: '#d97706',
+                      background: 'rgba(245, 158, 11, 0.12)',
+                      padding: '6px 12px',
+                      borderRadius: 8,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}>
+                      <span>🎉</span> Declared School Holiday · No regular classes or periods scheduled.
+                    </div>
+                  </div>
+                ) : isSelectedSunday ? (
+                  <div className="td-next-class-box" style={{ justifyContent: 'center', textAlign: 'center' }}>
+                    <div>
+                      <Calendar size={24} style={{ color: '#64748b', margin: '0 auto 6px' }} />
+                      <div className="td-next-class-name">{formattedSelectedDateString}</div>
+                      <div className="td-next-sub" style={{ color: '#e11d55', fontWeight: 600 }}>
+                        Sunday · Weekly Off (School is closed)
+                      </div>
+                    </div>
+                  </div>
+                ) : !isViewingToday ? (
+                  <div className="td-next-class-box" style={{ justifyContent: 'center', textAlign: 'center' }}>
+                    <div>
+                      <CheckCircle2 size={24} style={{ color: '#03806a', margin: '0 auto 6px' }} />
+                      <div className="td-next-class-name">{formattedSelectedDateString}</div>
+                      <div className="td-next-sub">
+                        Academic Working Day · Regular school periods scheduled.
+                      </div>
+                    </div>
+                  </div>
+                ) : nextClass ? (
+                  <div className="td-next-class-box">
+                    <div className="td-next-timer">
+                      <div className="td-timer-icon">
+                        <Clock size={20} />
                       </div>
                       <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#b45309', letterSpacing: '0.04em' }}>
-                          Official Holiday
+                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                          Status
                         </div>
-                        <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text, #1c1f2e)' }}>
-                          {selectedDayHoliday.name}
+                        <div style={{ fontSize: 16, fontWeight: 800, color: '#5c6bc0' }}>
+                          {getNextClassTimerText(nextClass)}
                         </div>
                       </div>
                     </div>
-                    {(() => {
-                      const catStyle = getHolidayCategoryBadgeStyle(selectedDayHoliday.holiday_type);
-                      return (
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, ...catStyle }}>
-                          {catStyle.label || selectedDayHoliday.holiday_type || 'Holiday'}
-                        </span>
-                      );
-                    })()}
-                  </div>
-                  {selectedDayHoliday.description && (
-                    <div style={{ fontSize: 12.5, color: 'var(--text-secondary, #475569)', lineHeight: 1.4, paddingLeft: 44 }}>
-                      {selectedDayHoliday.description}
-                    </div>
-                  )}
-                  <div style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: '#d97706',
-                    background: 'rgba(245, 158, 11, 0.12)',
-                    padding: '6px 12px',
-                    borderRadius: 8,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6
-                  }}>
-                    <span>🎉</span> Declared School Holiday · No regular classes or periods scheduled.
-                  </div>
-                </div>
-              ) : isSelectedSunday ? (
-                <div className="td-next-class-box" style={{ justifyContent: 'center', textAlign: 'center' }}>
-                  <div>
-                    <Calendar size={24} style={{ color: '#64748b', margin: '0 auto 6px' }} />
-                    <div className="td-next-class-name">Sunday · Weekly Off</div>
-                    <div className="td-next-sub">School is closed. No routine periods or classes scheduled.</div>
-                  </div>
-                </div>
-              ) : !isViewingToday ? (
-                <div className="td-next-class-box" style={{ justifyContent: 'center', textAlign: 'center' }}>
-                  <div>
-                    <CheckCircle2 size={24} style={{ color: '#03806a', margin: '0 auto 6px' }} />
-                    <div className="td-next-class-name">Academic Working Day</div>
-                    <div className="td-next-sub">
-                      Viewing schedule for {selectedTeacherDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                    <div className="td-next-details">
+                      <div className="td-next-class-name">
+                        Class {nextClass.class_number}-{nextClass.section_name}
+                      </div>
+                      <div className="td-next-sub">
+                        {nextClass.subject_name} · {fmt(nextClass.start_time)} - {fmt(nextClass.end_time)}
+                      </div>
+                      {nextClass.room && (
+                        <div className="td-next-sub">Room {nextClass.room}</div>
+                      )}
                     </div>
                   </div>
-                </div>
-              ) : nextClass ? (
-                <div className="td-next-class-box">
-                  <div className="td-next-timer">
-                    <div className="td-timer-icon">
-                      <Clock size={20} />
-                    </div>
+                ) : (
+                  <div className="td-next-class-box" style={{ justifyContent: 'center', textAlign: 'center' }}>
                     <div>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                        Status
+                      <CheckCircle2 size={24} style={{ color: '#03806a', margin: '0 auto 6px' }} />
+                      <div className="td-next-class-name">
+                        {r.length === 0 ? 'No classes scheduled today' : 'All classes completed for today'}
                       </div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: '#5c6bc0' }}>
-                        {getNextClassTimerText(nextClass)}
+                      <div className="td-next-sub">
+                        {r.length === 0
+                          ? (todayDate.getDay() === 0 ? 'Sunday is a weekend off. No routine periods scheduled.' : 'No routine periods assigned for today.')
+                          : 'Great job! No more upcoming routine periods.'}
                       </div>
                     </div>
                   </div>
-                  <div className="td-next-details">
-                    <div className="td-next-class-name">
-                      Class {nextClass.class_number}-{nextClass.section_name}
-                    </div>
-                    <div className="td-next-sub">
-                      {nextClass.subject_name} · {fmt(nextClass.start_time)} - {fmt(nextClass.end_time)}
-                    </div>
-                    {nextClass.room && (
-                      <div className="td-next-sub">Room {nextClass.room}</div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="td-next-class-box" style={{ justifyContent: 'center', textAlign: 'center' }}>
-                  <div>
-                    <CheckCircle2 size={24} style={{ color: '#03806a', margin: '0 auto 6px' }} />
-                    <div className="td-next-class-name">
-                      {r.length === 0 ? 'No classes scheduled today' : 'All classes completed for today'}
-                    </div>
-                    <div className="td-next-sub">
-                      {r.length === 0
-                        ? (currentDayOfWeek === 0 ? 'Sunday is a weekend off. No routine periods scheduled.' : 'No routine periods assigned for today.')
-                        : 'Great job! No more upcoming routine periods.'}
-                    </div>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
           </div>
