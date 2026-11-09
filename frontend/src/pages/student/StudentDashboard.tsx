@@ -308,22 +308,20 @@ export function StudentDashboard() {
           </div>
         </Link>
 
-        {/* Exams KPI — commented out from frontend; backend preserved for future */}
-        {/*
-        <Link to="/student/exams" className="student-kpi-card exams-kpi">
+        {/* Result KPI */}
+        <Link to="/student/results" className="student-kpi-card exams-kpi">
           <div className="student-kpi-card-top">
             <div className="student-kpi-icon-wrap coral-icon">
-              <GraduationCap size={20} />
+              <Award size={20} />
             </div>
-            <span className="student-kpi-label">Exams</span>
+            <span className="student-kpi-label">Result</span>
             <ChevronRight size={15} className="student-kpi-chevron" />
           </div>
           <div className="student-kpi-body">
-            <div className="student-kpi-value student-kpi-value-sm">Next: {kpis?.upcomingExamTitle?.split('-')[0]?.trim() || 'Maths'}</div>
-            <div className="student-kpi-sub">{kpis?.upcomingExamTitle?.includes('-') ? kpis.upcomingExamTitle.split('-')[1].trim() : (kpis?.upcomingExamTitle || 'No upcoming exam scheduled')}</div>
+            <div className="student-kpi-value student-kpi-value-sm">Marksheet &amp; Grades</div>
+            <div className="student-kpi-sub">Official academic evaluation</div>
           </div>
         </Link>
-        */}
 
         {/* Announcements KPI */}
         <Link to="/student/announcements" className="student-kpi-card announcements-kpi">

@@ -36,6 +36,8 @@ export const PATH_PERMISSIONS: Record<string, string> = {
   '/student/attendance': 'attendance.view',
   '/student/timetable': 'timetable.view',
   '/student/assignments': 'student.assignments.view',
+  '/student/results': 'student.portal.view',
+  '/student/exams': 'student.portal.view',
   '/student/announcements': 'announcements.view',
   '/student/leave-request': 'student.leave.apply',
 };
