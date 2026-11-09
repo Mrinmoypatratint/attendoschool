@@ -7212,6 +7212,73 @@ header {
   background: #7C3AED;
 }
 
+.cal-date.dot-holiday::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #f59e0b;
+}
+
+.cal-date.is-holiday {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .cal-date.is-holiday {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+}
+
+.cal-date.is-holiday.active-date {
+  background: #f59e0b;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+/* ─── Student Calendar Selected Day Panel ─── */
+.student-selected-day-panel {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border, #e2e8f0);
+  background: var(--card-subtle, #f8fafc);
+  transition: all 0.2s ease;
+}
+
+[data-theme="dark"] .student-selected-day-panel {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(51, 65, 85, 0.8);
+}
+
+.student-selected-day-panel.holiday-day {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+[data-theme="dark"] .student-selected-day-panel.holiday-day {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.student-selected-day-panel.weekend-day {
+  background: rgba(100, 116, 139, 0.06);
+  border-color: rgba(100, 116, 139, 0.2);
+}
+
+.student-selected-day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 /* ─── Recent Attendance Widget ─── */
 .student-recent-attendance-list {
   display: flex;
@@ -13167,6 +13234,17 @@ header {
   padding: 6px 1px;
   border-radius: 8px;
   min-width: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.td-day-col:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+}
+
+[data-theme="dark"] .td-day-col:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .td-day-name {
@@ -13186,11 +13264,48 @@ header {
   align-items: center;
   justify-content: center;
   color: var(--text, #0f172a);
+  transition: all 0.15s ease;
 }
 
 .td-day-col.active .td-day-num {
   background: #2563eb;
   color: #ffffff;
+  box-shadow: 0 2px 5px rgba(37, 99, 235, 0.35);
+}
+
+.td-day-col.has-holiday .td-day-num {
+  border: 1.5px solid #f59e0b;
+}
+
+.td-day-col.has-holiday.active .td-day-num {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: #ffffff;
+}
+
+.td-day-holiday-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #f59e0b;
+  margin-top: -2px;
+}
+
+.td-holiday-box {
+  padding: 16px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+[data-theme="dark"] .td-holiday-box {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.4);
 }
 
 .td-next-class-box {

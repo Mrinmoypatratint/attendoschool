@@ -49,7 +49,7 @@ import {
   Search, ArrowRight, Activity, Zap, EyeOff, ArrowLeft, Building2,
   Menu, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar, Globe, Lock, AlertTriangle, Pencil, HelpCircle, Check, AlertCircle, KeyRound, X, Loader2,
   History as HistoryIcon, DoorOpen, UserCheck, UserX, Info, Maximize2, Minimize2,
-  Camera, CalendarCheck, CalendarPlus, Award, PenLine
+  Camera, CalendarCheck, CalendarPlus, Award, PenLine, PartyPopper
 } from 'lucide-react';
 import { studentApi, Institute } from './services/studentApi';
 import { listAssignments } from './services/temporaryAssignmentApi';
@@ -4878,6 +4878,23 @@ function AdminHome() {
   );
 }
 
+function getHolidayCategoryBadgeStyle(type?: string) {
+  switch (type) {
+    case 'NATIONAL':
+      return { background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', label: 'National Holiday' };
+    case 'FESTIVAL':
+      return { background: '#f3e8ff', color: '#7e22ce', border: '1px solid #d8b4fe', label: 'Festival Holiday' };
+    case 'GAZETTED':
+      return { background: '#e0e7ff', color: '#3730a3', border: '1px solid #a5b4fc', label: 'Gazetted Holiday' };
+    case 'REGIONAL':
+      return { background: '#ccfbf1', color: '#0f766e', border: '1px solid #99f6e4', label: 'Regional Holiday' };
+    case 'INSTITUTIONAL':
+      return { background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', label: 'Institutional Break' };
+    default:
+      return { background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', label: type || 'Holiday' };
+  }
+}
+
 function TeacherHome() {
   const { user } = useAuth();
   const nav = useNavigate();
@@ -4915,6 +4932,8 @@ function TeacherHome() {
   const [activeSession, setActiveSession] = useState<string>(() => {
     return localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year') || '';
   });
+  const [teacherHolidays, setTeacherHolidays] = useState<any[]>([]);
+  const [selectedTeacherDate, setSelectedTeacherDate] = useState<Date>(() => new Date());
 
   // 1-second interval timer for live digital clock widget with cleanup on unmount
   useEffect(() => {
@@ -4922,18 +4941,45 @@ function TeacherHome() {
     return () => clearInterval(timer);
   }, []);
 
+  // Listen for real-time academic holiday updates from Admin or other tabs
+  useEffect(() => {
+    const handleHolidaysUpdate = () => {
+      api.get('/calendar/holidays')
+        .then(res => {
+          const h = Array.isArray(res.data) ? res.data : (res.data?.holidays || []);
+          setTeacherHolidays(h);
+        })
+        .catch(() => {});
+    };
+    window.addEventListener('calendarHolidaysChanged', handleHolidaysUpdate);
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'attendo_holidays_updated_at') {
+        handleHolidaysUpdate();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('calendarHolidaysChanged', handleHolidaysUpdate);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
   async function loadSchedule(showSpinner = true, sessionOverride?: string) {
     if (showSpinner) setLoading(true);
     try {
       const currentSession = sessionOverride || activeSession || localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year') || '';
 
-      const [routineRes, historyRes, noticesRes, authSecRes, routineWeekRes] = await Promise.all([
+      const [routineRes, historyRes, noticesRes, authSecRes, routineWeekRes, holidaysRes] = await Promise.all([
         api.get('/teacher/routine/today').catch(() => ({ data: [] })),
         api.get('/teacher/attendance/history').catch(() => ({ data: [] })),
         api.get('/communication/teacher/inbox').catch(() => ({ data: [] })),
         api.get('/teacher/attendance/authorized-sections').catch(() => ({ data: { sections: [], schoolDate: '' } })),
-        api.get('/teacher/routine/week').catch(() => ({ data: [] }))
+        api.get('/teacher/routine/week').catch(() => ({ data: [] })),
+        api.get('/calendar/holidays').catch(() => ({ data: [] }))
       ]);
+
+      const hData = Array.isArray(holidaysRes.data) ? holidaysRes.data : (holidaysRes.data?.holidays || []);
+      setTeacherHolidays(hData);
 
       const secData = Array.isArray(authSecRes.data?.sections) ? authSecRes.data.sections : [];
       setAuthorizedSections(secData);
@@ -5190,24 +5236,56 @@ function TeacherHome() {
     return `Next class in ${hrs}h ${mins}m`;
   };
 
-  // Weekdays for Today at a Glance
+  // Holidays Map for quick lookup
+  const teacherHolidayMap = useMemo(() => {
+    const map = new Map<string, any>();
+    teacherHolidays.forEach((h: any) => {
+      if (h && h.is_active !== false && h.holiday_date) {
+        const dateKey = String(h.holiday_date).slice(0, 10);
+        map.set(dateKey, h);
+      }
+    });
+    return map;
+  }, [teacherHolidays]);
+
+  // Weekdays for Today at a Glance with holiday detection & clickable dates
   const todayDate = new Date();
   const currentDayOfWeek = todayDate.getDay(); // 0 = Sun
   const weekDays = [];
   const startOfWeek = new Date(todayDate);
   startOfWeek.setDate(todayDate.getDate() - currentDayOfWeek);
 
+  const formatYmd = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const selectedDateKey = formatYmd(selectedTeacherDate);
+  const todayDateKey = formatYmd(todayDate);
+  const isViewingToday = selectedDateKey === todayDateKey;
+  const selectedDayHoliday = teacherHolidayMap.get(selectedDateKey);
+  const isSelectedSunday = selectedTeacherDate.getDay() === 0;
+
   for (let i = 0; i < 7; i++) {
     const d = new Date(startOfWeek);
     d.setDate(startOfWeek.getDate() + i);
+    const dateKey = formatYmd(d);
+    const holiday = teacherHolidayMap.get(dateKey);
     weekDays.push({
+      date: d,
+      dateKey,
       dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i],
       dayNum: d.getDate(),
-      isToday: i === currentDayOfWeek
+      isToday: dateKey === todayDateKey,
+      isSelected: dateKey === selectedDateKey,
+      holiday
     });
   }
 
   const formattedTodayDateString = todayDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const formattedSelectedDateString = selectedTeacherDate.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' });
 
   // Time ago formatter for updates
   const formatTimeAgo = (dateStr: string) => {
@@ -5677,28 +5755,125 @@ function TeacherHome() {
 
             {/* Today at a Glance */}
             <div className="td-section-card">
-              <div className="td-section-header">
+              <div className="td-section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <h3 className="td-section-title">
                   <Calendar size={18} style={{ color: '#2563eb' }} />
-                  Today at a glance
+                  {isViewingToday ? 'Today at a glance' : 'Schedule at a glance'}
                 </h3>
+                {!isViewingToday && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTeacherDate(new Date())}
+                    style={{
+                      fontSize: 11.5,
+                      fontWeight: 600,
+                      padding: '3px 9px',
+                      borderRadius: 6,
+                      background: 'rgba(37, 99, 235, 0.1)',
+                      color: '#2563eb',
+                      border: '1px solid rgba(37, 99, 235, 0.25)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Back to Today
+                  </button>
+                )}
               </div>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 12 }}>
-                {formattedTodayDateString}
+                {isViewingToday ? formattedTodayDateString : formattedSelectedDateString}
               </div>
 
               {/* Weekday Strip */}
               <div className="td-calendar-strip">
                 {weekDays.map((wd, i) => (
-                  <div key={i} className={`td-day-col ${wd.isToday ? 'active' : ''}`}>
+                  <div
+                    key={i}
+                    className={`td-day-col ${wd.isSelected ? 'active' : ''} ${wd.holiday ? 'has-holiday' : ''}`}
+                    onClick={() => setSelectedTeacherDate(wd.date)}
+                    style={{ cursor: 'pointer' }}
+                    title={wd.holiday ? `${wd.holiday.name} (${wd.holiday.holiday_type || 'Holiday'})` : (wd.isToday ? 'Today' : wd.dayName)}
+                  >
                     <span className="td-day-name">{wd.dayName}</span>
                     <span className="td-day-num">{wd.dayNum}</span>
+                    {wd.holiday && <span className="td-day-holiday-dot" />}
                   </div>
                 ))}
               </div>
 
-              {/* Next Class Box */}
-              {nextClass ? (
+              {/* Status / Holiday / Next Class Card */}
+              {selectedDayHoliday ? (
+                <div className="td-holiday-box">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: '50%',
+                        background: '#fef3c7',
+                        color: '#d97706',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <PartyPopper size={20} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#b45309', letterSpacing: '0.04em' }}>
+                          Official Holiday
+                        </div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text, #0f172a)' }}>
+                          {selectedDayHoliday.name}
+                        </div>
+                      </div>
+                    </div>
+                    {(() => {
+                      const catStyle = getHolidayCategoryBadgeStyle(selectedDayHoliday.holiday_type);
+                      return (
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, ...catStyle }}>
+                          {catStyle.label || selectedDayHoliday.holiday_type || 'Holiday'}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  {selectedDayHoliday.description && (
+                    <div style={{ fontSize: 12.5, color: 'var(--text-secondary, #475569)', lineHeight: 1.4, paddingLeft: 44 }}>
+                      {selectedDayHoliday.description}
+                    </div>
+                  )}
+                  <div style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: '#d97706',
+                    background: 'rgba(245, 158, 11, 0.12)',
+                    padding: '6px 12px',
+                    borderRadius: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}>
+                    <span>🎉</span> Declared School Holiday · No regular classes or periods scheduled.
+                  </div>
+                </div>
+              ) : isSelectedSunday ? (
+                <div className="td-next-class-box" style={{ justifyContent: 'center', textAlign: 'center' }}>
+                  <div>
+                    <Calendar size={24} style={{ color: '#64748b', margin: '0 auto 6px' }} />
+                    <div className="td-next-class-name">Sunday · Weekly Off</div>
+                    <div className="td-next-sub">School is closed. No routine periods or classes scheduled.</div>
+                  </div>
+                </div>
+              ) : !isViewingToday ? (
+                <div className="td-next-class-box" style={{ justifyContent: 'center', textAlign: 'center' }}>
+                  <div>
+                    <CheckCircle2 size={24} style={{ color: '#2563eb', margin: '0 auto 6px' }} />
+                    <div className="td-next-class-name">Academic Working Day</div>
+                    <div className="td-next-sub">
+                      Viewing schedule for {selectedTeacherDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                    </div>
+                  </div>
+                </div>
+              ) : nextClass ? (
                 <div className="td-next-class-box">
                   <div className="td-next-timer">
                     <div className="td-timer-icon">
