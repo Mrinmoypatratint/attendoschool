@@ -55,7 +55,7 @@ async function openNative(value: string, name?: string): Promise<void> {
 export async function initializeNativeApp(): Promise<void> {
   if (!Capacitor.isNativePlatform()) return;
   if (Capacitor.getPlatform() === 'android') {
-    await App.addListener('backButton', ({ canGoBack }) => {
+    await App.addListener('backButton', ({ canGoBack }: { canGoBack: boolean }) => {
       if (canGoBack) window.history.back();
       else void App.minimizeApp();
     });

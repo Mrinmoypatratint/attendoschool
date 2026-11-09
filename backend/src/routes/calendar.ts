@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { requireRoles } from '../middleware/auth';
+import { canonicalSchoolId } from '../utils/tenant';
 import {
   getSchoolWorkingDays,
   updateSchoolWorkingDays,
@@ -18,21 +19,22 @@ const router = Router();
 function getAuthenticatedSchoolId(req: Request): string | null {
   const user = (req as any).user;
   if (!user) return null;
+  let rawSid = user.schoolId || user.school_id || null;
   // Super admin can specify ?schoolId= or default to their assigned school
   if (user.role === 'SUPER_ADMIN') {
-    return (req.query.schoolId as string) || (req.body?.schoolId as string) || user.schoolId || '00000000-0000-0000-0000-000000000001';
+    rawSid = (req.query.schoolId as string) || (req.body?.schoolId as string) || rawSid || '00000000-0000-0000-0000-000000000001';
   }
-  return user.schoolId || null;
+  return canonicalSchoolId(rawSid) || rawSid;
 }
 
 const adminOnly = requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN');
-const staffOrAdmin = requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER');
+const anySchoolUser = requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STUDENT', 'PARENT');
 
 /**
  * GET /api/calendar/working-days
  * Get configured working days and weekend rules for the school
  */
-router.get('/working-days', staffOrAdmin, async (req: Request, res: Response) => {
+router.get('/working-days', anySchoolUser, async (req: Request, res: Response) => {
   const schoolId = getAuthenticatedSchoolId(req);
   if (!schoolId) {
     return res.status(403).json({ success: false, message: 'Institutional school context required.' });
@@ -92,7 +94,7 @@ router.put('/working-days', adminOnly, async (req: Request, res: Response) => {
  * GET /api/calendar/holidays
  * List declared holidays for the school
  */
-router.get('/holidays', staffOrAdmin, async (req: Request, res: Response) => {
+router.get('/holidays', anySchoolUser, async (req: Request, res: Response) => {
   const schoolId = getAuthenticatedSchoolId(req);
   if (!schoolId) {
     return res.status(403).json({ success: false, message: 'Institutional school context required.' });
@@ -258,7 +260,7 @@ router.delete('/holidays/:id', adminOnly, async (req: Request, res: Response) =>
  * GET /api/calendar/calculate
  * Calculate working days, weekend dates, and holidays with strict deduplication
  */
-router.get('/calculate', staffOrAdmin, async (req: Request, res: Response) => {
+router.get('/calculate', anySchoolUser, async (req: Request, res: Response) => {
   const schoolId = getAuthenticatedSchoolId(req);
   if (!schoolId) {
     return res.status(403).json({ success: false, message: 'Institutional school context required.' });
@@ -290,7 +292,7 @@ router.get('/calculate', staffOrAdmin, async (req: Request, res: Response) => {
  * GET /api/calendar/check-date
  * Check if a date is instructional or non-instructional (Weekend/Holiday Guard for TC-ATT-010)
  */
-router.get('/check-date', staffOrAdmin, async (req: Request, res: Response) => {
+router.get('/check-date', anySchoolUser, async (req: Request, res: Response) => {
   const schoolId = getAuthenticatedSchoolId(req);
   if (!schoolId) {
     return res.status(403).json({ success: false, message: 'Institutional school context required.' });
