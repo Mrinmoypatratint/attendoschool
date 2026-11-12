@@ -422,18 +422,18 @@ export function StudentResults() {
         </div>
       </div>
 
-      {/* ── Tab Navigation (Theme Red) ── */}
+      {/* ── Tab Navigation (Matches ClassMentorWorkspace Tab UI) ── */}
       <div
         style={{
           display: 'flex',
           gap: 12,
           borderBottom: '2px solid var(--border, #e2e8f0)',
-          marginBottom: 16,
+          marginBottom: 20,
           overflowX: 'auto',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none'
         }}
-        className="student-tabs-nav no-print no-scrollbar pb-px [&::-webkit-scrollbar]:hidden"
+        className="no-print no-scrollbar [&::-webkit-scrollbar]:hidden"
       >
         {/* Tab 1: Published Results */}
         <button
@@ -443,8 +443,8 @@ export function StudentResults() {
             padding: '12px 20px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'RESULTS' ? '3px solid #e11d48' : '3px solid transparent',
-            color: activeTab === 'RESULTS' ? '#e11d48' : 'var(--text-secondary, #64748b)',
+            borderBottom: activeTab === 'RESULTS' ? '3px solid var(--border, #e2e8f0)' : '3px solid transparent',
+            color: activeTab === 'RESULTS' ? 'var(--primary, #e11d48)' : 'var(--text-secondary, var(--muted-foreground, #64748b))',
             fontWeight: activeTab === 'RESULTS' ? 700 : 500,
             fontSize: 15,
             cursor: 'pointer',
@@ -455,9 +455,8 @@ export function StudentResults() {
             transition: 'all 0.15s ease',
             whiteSpace: 'nowrap'
           }}
-          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          <Award size={18} style={{ color: activeTab === 'RESULTS' ? '#e11d48' : undefined }} />
+          <Award size={18} />
           <span>Published Results</span>
           <span
             style={{
@@ -481,8 +480,8 @@ export function StudentResults() {
             padding: '12px 20px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'MARKSHEET' ? '3px solid #e11d48' : '3px solid transparent',
-            color: activeTab === 'MARKSHEET' ? '#e11d48' : 'var(--text-secondary, #64748b)',
+            borderBottom: activeTab === 'MARKSHEET' ? '3px solid var(--border, #e2e8f0)' : '3px solid transparent',
+            color: activeTab === 'MARKSHEET' ? 'var(--primary, #e11d48)' : 'var(--text-secondary, var(--muted-foreground, #64748b))',
             fontWeight: activeTab === 'MARKSHEET' ? 700 : 500,
             fontSize: 15,
             cursor: 'pointer',
@@ -493,9 +492,8 @@ export function StudentResults() {
             transition: 'all 0.15s ease',
             whiteSpace: 'nowrap'
           }}
-          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
-          <FileText size={18} style={{ color: activeTab === 'MARKSHEET' ? '#e11d48' : undefined }} />
+          <FileText size={18} />
           <span>Official Marksheet</span>
         </button>
       </div>

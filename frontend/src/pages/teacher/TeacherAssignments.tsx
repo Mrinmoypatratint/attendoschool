@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
-  BookOpen, GraduationCap, Plus, FileText, CheckCircle2, Clock, AlertTriangle, AlertCircle,
+  ArrowLeft, BookOpen, GraduationCap, Plus, FileText, CheckCircle2, Clock, AlertTriangle, AlertCircle,
   Loader2, RefreshCw, Send, Eye, X, Award, Search, Paperclip, Download, Upload,
   Maximize2, Minimize2, Edit, Trash2, Calendar, Check, FileCheck, Image
 } from 'lucide-react';
@@ -790,10 +791,17 @@ export function TeacherAssignments() {
   }, [currentList, searchQuery, filterClass]);
 
   return (
-    <div className="teacher-assignments-page" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0', fontFamily: 'inherit' }}>
+    <div className="teacher-assignments-page" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '24px 24px 48px', fontFamily: 'inherit', boxSizing: 'border-box' }}>
       {/* Header Bar */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 24 }}>
         <div>
+          <Link
+            to="/dashboard"
+            className="student-back-link inline-flex items-center gap-1.5 text-xs font-semibold mb-2"
+            style={{ color: '#e11d48', textDecoration: 'none' }}
+          >
+            <ArrowLeft size={16} /> <span>Dashboard</span>
+          </Link>
           <h1 style={{ margin: '0 0 6px', fontSize: 24, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
             Assignment Management
           </h1>

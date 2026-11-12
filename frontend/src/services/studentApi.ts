@@ -5,6 +5,7 @@ export interface Institute {
   name: string;
   code: string;
   address?: string;
+  photoUrl?: string;
 }
 
 export interface StudentProfile {

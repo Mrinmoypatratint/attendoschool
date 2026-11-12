@@ -6633,7 +6633,7 @@ header {
 
 /* ─── Student Page Container ─── */
 .student-page-container {
-  padding: 0 36px 48px;
+  padding: 28px 36px 48px;
   flex: 1;
 }
 
@@ -12806,6 +12806,8 @@ header {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  padding-top: 24px;
+  padding-bottom: 24px;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -13575,18 +13577,21 @@ header {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: #ffffff;
   opacity: 1;
   transform: scale(1);
-  transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: all;
   user-select: none;
 }
 
+[data-theme="dark"] .as-welcome-overlay,
+.dark .as-welcome-overlay {
+  background: #0f172a;
+}
+
 [data-theme="light"] .as-welcome-overlay {
-  background: transparent;
+  background: #ffffff;
 }
 
 .as-welcome-overlay.as-welcome-fade-out {
