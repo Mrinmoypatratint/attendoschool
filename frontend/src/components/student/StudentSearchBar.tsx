@@ -8,6 +8,7 @@ import {
   Calendar,
   FileCheck,
   GraduationCap,
+  Award,
   Megaphone,
   FileText,
   User as UserIcon,
@@ -75,18 +76,16 @@ const PAGE_ITEMS: (SearchItem & { keywords: string[] })[] = [
     to: '/student/assignments',
     icon: FileCheck
   },
-  /*
   {
-    id: 'page-exams',
+    id: 'page-results',
     category: 'page',
     categoryLabel: 'Navigation',
-    title: 'Exams & Results',
-    subtitle: 'Exam dates, passing criteria, marks obtained & report cards',
-    keywords: ['exams', 'tests', 'results', 'marks', 'grades', 'score', 'report card'],
-    to: '/student/exams',
-    icon: GraduationCap
+    title: 'Result',
+    subtitle: 'Exam dates, marks obtained, subject grades & official report cards',
+    keywords: ['result', 'results', 'exams', 'tests', 'marks', 'grades', 'score', 'report card'],
+    to: '/student/results',
+    icon: Award
   },
-  */
   {
     id: 'page-announcements',
     category: 'page',
@@ -230,13 +229,13 @@ export function StudentSearchBar() {
     return exams.map((ex) => ({
       id: `ex-${ex.id}`,
       category: 'exam',
-      categoryLabel: 'Exams & Results',
+      categoryLabel: 'Result',
       title: ex.title || ex.subject_name,
       subtitle: `${ex.subject_name}${ex.exam_date ? ` · Date: ${new Date(ex.exam_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}${ex.room ? ` (Room ${ex.room})` : ''}`,
       badge: ex.grade ? `Grade ${ex.grade}` : (ex.marks_obtained !== undefined ? `${ex.marks_obtained}/${ex.total_marks}` : 'Upcoming'),
       badgeColor: '#5c6bc0',
-      to: '/student/exams',
-      icon: GraduationCap
+      to: '/student/results',
+      icon: Award
     }));
   }, [exams]);
 
@@ -883,7 +882,7 @@ export function StudentSearchBar() {
                       color: 'var(--text-muted, #94969f)'
                     }}
                   >
-                    Exams & Results ({filtered.exams.length})
+                    Result ({filtered.exams.length})
                   </div>
                   {filtered.exams.map((item) => {
                     const itemIdx = cumulativeIndex++;

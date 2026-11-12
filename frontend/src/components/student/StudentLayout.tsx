@@ -9,6 +9,7 @@ import {
   BookOpen,
   FileCheck,
   GraduationCap,
+  Award,
   Megaphone,
   FileText,
   User as UserIcon,
@@ -395,7 +396,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     { to: '/student/timetable', label: 'Timetable', icon: Calendar },
     // { to: '/student/homework', label: 'Homework', icon: BookOpen }, // Merged with Assignments
     { to: '/student/assignments', label: 'Assignments', icon: FileCheck },
-    // { to: '/student/exams', label: 'Exams & Results', icon: GraduationCap }, // Temporarily disabled on frontend; backend preserved for future implementation
+    { to: '/student/results', label: 'Result', icon: Award },
     { to: '/student/announcements', label: 'Announcements', icon: Megaphone },
     { to: '/student/leave-request', label: 'Leave Request', icon: FileText },
     { to: '/student/profile', label: 'Profile', icon: UserIcon },

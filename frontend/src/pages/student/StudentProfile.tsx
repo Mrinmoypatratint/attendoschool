@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Lock, ArrowLeft, CheckCircle2, ShieldCheck, School, Users, Camera, Trash2, Loader2, AlertCircle, Edit3, Save, X, Clock, Calendar, Globe, ExternalLink, Eye, EyeOff } from 'lucide-react';
+import { User, Lock, ArrowLeft, CheckCircle2, ShieldCheck, School, Users, Camera, Trash2, Loader2, AlertCircle, Edit3, Save, X, Clock, Calendar, Globe, ExternalLink, Eye, EyeOff, Award } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { studentApi, StudentProfile as IStudentProfile } from '../../services/studentApi';
+import { studentApi, StudentProfile as IStudentProfile, Exam } from '../../services/studentApi';
 import { useAuth } from '../../hooks/useAuth';
 import { validatePassword } from '../../utils/passwordPolicy';
 import { formatGender } from '../../utils/gender';
@@ -149,6 +149,7 @@ export function StudentProfile() {
   const [editEmail, setEditEmail] = useState('');
   const [savingDetails, setSavingDetails] = useState(false);
   const [detailsMsg, setDetailsMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [exams, setExams] = useState<Exam[]>([]);
 
   useEffect(() => {
     studentApi
@@ -167,6 +168,13 @@ export function StudentProfile() {
       .catch(() => {
         setLoading(false);
       });
+
+    studentApi
+      .getExams()
+      .then((res) => {
+        if (Array.isArray(res)) setExams(res);
+      })
+      .catch(() => {});
     const handleProfileUpdated = (e: any) => {
       if (e.detail?.website !== undefined) {
         setProfile((prev: IStudentProfile | null) => prev ? { ...prev, schoolWebsite: e.detail.website, school_website: e.detail.website, website: e.detail.website } : prev);
@@ -890,6 +898,114 @@ export function StudentProfile() {
             </button>
           </form>
         </div>
+      </div>
+
+      {/* Academic Performance & Verified Results Section */}
+      <div className="student-card rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-700/60 mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+              <Award size={18} />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white m-0">
+                Academic Performance &amp; Published Results
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 m-0">
+                Official marks and grades recorded by Class Mentor.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/student/results"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800 transition-colors"
+          >
+            <ExternalLink size={13} />
+            <span>View Full Marksheet &amp; Report Card</span>
+          </Link>
+        </div>
+
+        {(() => {
+          const resultsList = exams.filter((e) => (e.marks_obtained !== undefined && e.marks_obtained !== null) || (e.grade && e.grade.trim() !== ''));
+          if (resultsList.length === 0) {
+            return (
+              <div className="py-8 text-center text-sm text-slate-400 dark:text-slate-500">
+                <Award size={32} className="mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+                <p className="font-semibold text-slate-700 dark:text-slate-300 m-0 mb-1">
+                  No Academic Results Published Yet
+                </p>
+                <p className="text-xs m-0">
+                  Once your Class Mentor publishes assessment marks, your evaluations and subject grades will appear here.
+                </p>
+              </div>
+            );
+          }
+
+          const totalMax = resultsList.reduce((acc, r) => acc + (Number(r.total_marks) || 100), 0);
+          const totalObt = resultsList.reduce((acc, r) => acc + (Number(r.marks_obtained) || 0), 0);
+          const pct = totalMax > 0 ? ((totalObt / totalMax) * 100).toFixed(1) : '0';
+
+          return (
+            <div>
+              <div className="flex items-center gap-4 mb-4 flex-wrap text-xs">
+                <div className="px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                  <span className="text-slate-400 mr-1.5">Evaluated Subjects:</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{resultsList.length}</span>
+                </div>
+                <div className="px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                  <span className="text-slate-400 mr-1.5">Cumulative Evaluation:</span>
+                  <span className="font-bold text-blue-600 dark:text-blue-400">{totalObt > 0 ? `${totalObt} / ${totalMax} (${pct}%)` : `${resultsList.length} subjects graded`}</span>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 font-bold text-slate-700 dark:text-slate-300">
+                      <th className="p-2.5">SUBJECT</th>
+                      <th className="p-2.5">ASSESSMENT</th>
+                      <th className="p-2.5 text-right">SCORE / EVALUATION</th>
+                      <th className="p-2.5 text-center">GRADE</th>
+                      <th className="p-2.5">REMARKS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resultsList.map((r) => {
+                      const passM = Number(r.passing_marks) || 40;
+                      const obt = Number(r.marks_obtained) || 0;
+                      const isPassed = obt >= passM;
+                      return (
+                        <tr key={r.id} className="border-b border-slate-100 dark:border-slate-700/60">
+                          <td className="p-2.5 font-bold text-slate-900 dark:text-white">{r.subject_name}</td>
+                          <td className="p-2.5 text-slate-600 dark:text-slate-400">{r.title}</td>
+                          <td className="p-2.5 text-right font-mono font-semibold text-slate-900 dark:text-white">
+                            {r.grading_system === 'GRADE'
+                              ? `Grade ${r.grade || '—'}`
+                              : r.grading_system === 'CGPA'
+                              ? `${r.marks_obtained} / ${r.total_marks} CGPA`
+                              : `${r.marks_obtained} / ${r.total_marks}`}
+                          </td>
+                          <td className="p-2.5 text-center">
+                            <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${
+                              isPassed
+                                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                : 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                            }`}>
+                              {r.grade || (isPassed ? 'P' : 'F')}
+                            </span>
+                          </td>
+                          <td className="p-2.5 text-slate-500 dark:text-slate-400 max-w-xs truncate">
+                            {r.remarks || '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

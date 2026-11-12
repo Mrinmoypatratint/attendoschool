@@ -6,20 +6,22 @@ import * as attendanceSvc from '../services/attendanceReportService';
 
 const router = Router();
 
-// Require authenticated user with active school on mentor routes
-router.use(['/admin/mentors', '/teacher/mentor'], requireAuth, (req: AuthRequest, res: Response, next) => {
+// Guard helpers applied per-route so unmatched /api/* paths fall through to 404
+const requireSchoolContext = (req: AuthRequest, res: Response, next: any) => {
   if (!req.user?.schoolId) {
     return res.status(403).json({ message: 'Institutional school context required' });
   }
   next();
-});
+};
+const mentorAdmin = [requireAuth, requireSchoolContext, requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN')];
+const mentorTeacher = [requireAuth, requireSchoolContext, requireRoles('TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN')];
 
 // ──────────────────────────────────────────
 // SCHOOL ADMIN MENTOR MANAGEMENT ENDPOINTS
 // ──────────────────────────────────────────
 
 // GET /api/admin/mentors - List all class-sections and assigned mentors for the school
-router.get('/admin/mentors', requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response) => {
+router.get(['/admin/mentors', '/mentors'], ...mentorAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const list = await mentorSvc.getAllClassMentors(req.user!.schoolId!, req.query);
     res.json(list);
@@ -29,7 +31,7 @@ router.get('/admin/mentors', requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN'), async 
 });
 
 // POST /api/admin/mentors - Assign or change mentor for a class-section
-router.post('/admin/mentors', requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response) => {
+router.post(['/admin/mentors', '/mentors'], ...mentorAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { class_id, classId, section_id, sectionId, teacher_id, teacherId } = req.body || {};
     const cId = String(class_id || classId || '').trim();
@@ -48,7 +50,7 @@ router.post('/admin/mentors', requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN'), async
 });
 
 // DELETE /api/admin/mentors - Remove mentor assignment from a class-section
-router.delete('/admin/mentors', requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response) => {
+router.delete(['/admin/mentors', '/mentors'], ...mentorAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { class_id, classId, section_id, sectionId } = req.body || req.query || {};
     const cId = String(class_id || classId || '').trim();
@@ -70,7 +72,7 @@ router.delete('/admin/mentors', requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN'), asy
 // ──────────────────────────────────────────
 
 // GET /api/teacher/mentor/my-classes - List sections mentored by logged-in teacher
-router.get('/teacher/mentor/my-classes', requireRoles('TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response) => {
+router.get(['/teacher/mentor/my-classes', '/my-classes'], ...mentorTeacher, async (req: AuthRequest, res: Response) => {
   try {
     const list = await mentorSvc.getMentoredClasses(req.user!.schoolId!, req.user!.id);
     res.json(list);
@@ -80,7 +82,7 @@ router.get('/teacher/mentor/my-classes', requireRoles('TEACHER', 'SCHOOL_ADMIN',
 });
 
 // GET /api/teacher/mentor/teacher-assignments - Get subject teachers & assignment count for mentored section
-router.get('/teacher/mentor/teacher-assignments', requireRoles('TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response) => {
+router.get(['/teacher/mentor/teacher-assignments', '/teacher-assignments'], ...mentorTeacher, async (req: AuthRequest, res: Response) => {
   try {
     const classId = String(req.query.class_id || req.query.classId || '').trim();
     const sectionId = String(req.query.section_id || req.query.sectionId || '').trim();
@@ -109,7 +111,7 @@ router.get('/teacher/mentor/teacher-assignments', requireRoles('TEACHER', 'SCHOO
 });
 
 // GET /api/teacher/mentor/permissions - Get subject teacher permissions for a mentored section
-router.get('/teacher/mentor/permissions', requireRoles('TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response) => {
+router.get(['/teacher/mentor/permissions', '/permissions'], ...mentorTeacher, async (req: AuthRequest, res: Response) => {
   try {
     const classId = String(req.query.class_id || req.query.classId || '').trim();
     const sectionId = String(req.query.section_id || req.query.sectionId || '').trim();
@@ -127,7 +129,7 @@ router.get('/teacher/mentor/permissions', requireRoles('TEACHER', 'SCHOOL_ADMIN'
 });
 
 // PUT /api/teacher/mentor/permissions - Toggle assignment publishing permission for a primary subject teacher
-router.put('/teacher/mentor/permissions', requireRoles('TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response) => {
+router.put(['/teacher/mentor/permissions', '/permissions'], ...mentorTeacher, async (req: AuthRequest, res: Response) => {
   try {
     const { class_id, classId, section_id, sectionId, subject_id, subjectId, target_teacher_id, targetTeacherId, is_authorized, isAuthorized } = req.body || {};
 
@@ -158,7 +160,7 @@ router.put('/teacher/mentor/permissions', requireRoles('TEACHER', 'SCHOOL_ADMIN'
 });
 
 // GET /api/teacher/mentor/attendance-analysis - Attendance metrics for mentored section
-router.get('/teacher/mentor/attendance-analysis', requireRoles('TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response) => {
+router.get(['/teacher/mentor/attendance-analysis', '/attendance-analysis'], ...mentorTeacher, async (req: AuthRequest, res: Response) => {
   try {
     const classId = String(req.query.class_id || req.query.classId || '').trim();
     const sectionId = String(req.query.section_id || req.query.sectionId || '').trim();
@@ -250,6 +252,103 @@ router.get('/teacher/mentor/attendance-analysis', requireRoles('TEACHER', 'SCHOO
     });
   } catch (err: any) {
     res.status(500).json({ message: err.message || 'Failed to generate attendance analysis' });
+  }
+});
+
+// ──────────────────────────────────────────
+// CLASS MENTOR RESULT PUBLISH ENDPOINTS
+// ──────────────────────────────────────────
+
+function extractSessionFromReq(req: AuthRequest): string {
+  return String(
+    req.query.session ||
+    req.query.academicSession ||
+    req.query.sessionId ||
+    req.query.academic_year_id ||
+    req.query.academicYearId ||
+    req.body?.session ||
+    req.body?.academicSession ||
+    req.body?.academicYearId ||
+    req.body?.academic_year_id ||
+    req.headers['x-academic-year-id'] ||
+    (req.headers['x-academic-session'] ? decodeURIComponent(String(req.headers['x-academic-session'])) : '') ||
+    ''
+  ).trim();
+}
+
+// GET /api/teacher/mentor/exams - Get exams published for class/section
+router.get(['/teacher/mentor/exams', '/exams'], ...mentorTeacher, async (req: AuthRequest, res: Response) => {
+  try {
+    const classId = String(req.query.class_id || req.query.classId || '').trim();
+    const sectionId = String(req.query.section_id || req.query.sectionId || '').trim();
+    const session = extractSessionFromReq(req);
+    if (!classId) {
+      return res.status(400).json({ message: 'class_id is required' });
+    }
+    const list = await mentorSvc.getMentoredExams(req.user!.schoolId!, classId, sectionId || undefined, session || undefined);
+    res.json(list);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to fetch mentored exams' });
+  }
+});
+
+// GET /api/teacher/mentor/exam-marks - Get all students and marks for a specific exam
+router.get(['/teacher/mentor/exam-marks', '/exam-marks'], ...mentorTeacher, async (req: AuthRequest, res: Response) => {
+  try {
+    const classId = String(req.query.class_id || req.query.classId || '').trim();
+    const sectionId = String(req.query.section_id || req.query.sectionId || '').trim();
+    const examId = String(req.query.exam_id || req.query.examId || '').trim() || undefined;
+    const session = extractSessionFromReq(req);
+
+    if (!classId || !sectionId) {
+      return res.status(400).json({ message: 'class_id and section_id are required' });
+    }
+
+    const data = await mentorSvc.getMentoredSectionStudentsWithMarks(
+      req.user!.schoolId!,
+      classId,
+      sectionId,
+      examId,
+      session || undefined
+    );
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to fetch exam student marks' });
+  }
+});
+
+// POST /api/teacher/mentor/publish-results - Publish or update exam & student marks
+router.post(['/teacher/mentor/publish-results', '/publish-results'], ...mentorTeacher, async (req: AuthRequest, res: Response) => {
+  try {
+    const { classId, sectionId, title, totalMarks } = req.body;
+    if (!classId || !title || !totalMarks) {
+      return res.status(400).json({ message: 'classId, title, and totalMarks are required' });
+    }
+
+    // Verify mentor permission
+    const isMentor = await mentorSvc.isClassMentor(req.user!.schoolId!, classId, sectionId || '', req.user!.id);
+    if (!isMentor && req.user!.role !== 'SCHOOL_ADMIN' && req.user!.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ message: 'You are not assigned as the Class Mentor for this section' });
+    }
+
+    const session = extractSessionFromReq(req);
+    const out = await mentorSvc.publishExamResults(req.user!.schoolId!, req.user!.id, {
+      ...req.body,
+      ...(session ? { session } : {})
+    });
+    res.json(out);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to publish exam results' });
+  }
+});
+
+// DELETE /api/teacher/mentor/exams/:id - Delete an exam and student marks
+router.delete(['/teacher/mentor/exams/:id', '/exams/:id'], ...mentorTeacher, async (req: AuthRequest, res: Response) => {
+  try {
+    await mentorSvc.deleteMentoredExam(req.user!.schoolId!, String(req.params.id));
+    res.json({ success: true, message: 'Exam deleted successfully' });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to delete exam' });
   }
 });
 

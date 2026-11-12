@@ -5,6 +5,7 @@ import {
   demoClasses,
   demoSections,
   demoSubjects,
+  demoStudents, isSameSession, toCanonicalSession,
 } from "../routes/schoolData";
 import { isSameSchool, isTestSchool } from "../utils/tenant";
 import { inMemoryAssignments, checkHasAssignedDate } from "../routes/teacherAssignments";
@@ -41,6 +42,37 @@ export interface TeacherPermissionRecord {
 
 // In-memory fallback stores for test/demo mode when PostgreSQL is absent
 export const inMemoryClassMentors: ClassMentorRecord[] = [];
+
+export interface InMemoryExam {
+  id: string;
+  school_id: string;
+  class_id: string;
+  section_id?: string;
+  subject_id?: string;
+  subject_name?: string;
+  title: string;
+  exam_date: string;
+  start_time: string;
+  end_time: string;
+  room?: string;
+  total_marks: number;
+  passing_marks: number;
+  created_at: string;
+}
+
+export interface InMemoryExamResult {
+  id: string;
+  school_id: string;
+  exam_id: string;
+  student_id: string;
+  marks_obtained: number;
+  grade?: string;
+  remarks?: string;
+  created_at: string;
+}
+
+export const inMemoryStudentExams: InMemoryExam[] = [];
+export const inMemoryExamResults: InMemoryExamResult[] = [];
 export const inMemoryTeacherPermissions: {
   id: string;
   school_id: string;
@@ -376,20 +408,50 @@ export async function isClassMentor(
 ): Promise<boolean> {
   if (isPostgresConfigured) {
     try {
+      const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classId);
+      const rawClassNum = isClassUuid ? null : parseInt(String(classId).replace(/\D/g, ''), 10);
+      const classNum = (rawClassNum !== null && !isNaN(rawClassNum)) ? rawClassNum : null;
+      const isSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sectionId);
+      const cleanSec = String(sectionId || '').replace(/section\s*/i, '').trim().toUpperCase();
+
       const q = await pool.query(
-        `SELECT 1 FROM class_mentors WHERE school_id = $1 AND class_id = $2 AND section_id = $3 AND teacher_id = $4`,
-        [schoolId, classId, sectionId, teacherId],
+        `SELECT 1 FROM class_mentors cm
+         JOIN classes c ON c.id = cm.class_id
+         JOIN sections s ON s.id = cm.section_id
+         WHERE cm.school_id = $1
+           AND (
+             cm.teacher_id = $2 
+             OR cm.teacher_id IN (SELECT id FROM teacher_profiles WHERE user_id = $2)
+             OR cm.teacher_id IN (SELECT user_id FROM teacher_profiles WHERE id = $2)
+           )
+           AND (
+             cm.class_id = $3::uuid 
+             OR ($4::smallint IS NOT NULL AND c.class_number = $4::smallint)
+           )
+           AND (
+             cm.section_id = $5::uuid 
+             OR UPPER(s.name) = UPPER($6)
+           )
+         LIMIT 1`,
+        [
+          schoolId,
+          teacherId,
+          isClassUuid ? classId : '00000000-0000-0000-0000-000000000000',
+          classNum,
+          isSecUuid ? sectionId : '00000000-0000-0000-0000-000000000000',
+          cleanSec
+        ]
       );
-      return (q.rowCount ?? 0) > 0;
+      if ((q.rowCount ?? 0) > 0) return true;
     } catch (_e) {}
   }
 
   return inMemoryClassMentors.some(
     (m) =>
       isSameSchool(m.school_id, schoolId) &&
-      m.class_id === classId &&
-      m.section_id === sectionId &&
-      m.teacher_id === teacherId,
+      (m.class_id === classId || String(m.class_id).includes(String(classId))) &&
+      (m.section_id === sectionId || String(m.section_id).toLowerCase().includes(String(sectionId).toLowerCase())) &&
+      (m.teacher_id === teacherId || !m.teacher_id),
   );
 }
 
@@ -1251,4 +1313,574 @@ export async function getMentorTeacherAssignmentsOverview(
     if (sCmp !== 0) return sCmp;
     return a.teacher_name.localeCompare(b.teacher_name);
   });
+}
+
+// ─────────────────────────────────────────────────────────────
+// CLASS MENTOR: RESULT PUBLISH & EXAM MARKS MANAGEMENT
+// ─────────────────────────────────────────────────────────────
+
+let schemaEnsured = false;
+export async function ensureStudentExamsSchema() {
+  if (schemaEnsured || !isPostgresConfigured) return;
+  try {
+    await pool.query(`
+      ALTER TABLE student_exams ADD COLUMN IF NOT EXISTS section_id UUID;
+      ALTER TABLE student_exams ADD COLUMN IF NOT EXISTS created_by UUID;
+      ALTER TABLE student_exams ADD COLUMN IF NOT EXISTS term VARCHAR(50);
+      ALTER TABLE student_exams ADD COLUMN IF NOT EXISTS academic_year_id UUID;
+      ALTER TABLE student_exams ADD COLUMN IF NOT EXISTS grading_system VARCHAR(20) DEFAULT 'MARKS';
+    `);
+    schemaEnsured = true;
+  } catch (_e) {}
+}
+
+/**
+ * Resolve an academic session string (e.g. '2026-2027' or UUID) to an academic_years.id UUID.
+ * Returns null when 'all'/'all sessions' is explicitly requested or no active year exists.
+ */
+export async function resolveAcademicYearId(schoolId: string, rawSession?: string): Promise<string | null> {
+  if (!isPostgresConfigured || !schoolId) return null;
+  const trimmed = String(rawSession || '').trim();
+  if (trimmed && /^all(\s+sessions?)?$/i.test(trimmed)) {
+    return null;
+  }
+  try {
+    if (trimmed) {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed);
+      if (isUuid) return trimmed;
+      const ayList = await pool.query(
+        `SELECT id, name FROM academic_years WHERE school_id = $1::uuid`,
+        [schoolId]
+      );
+      if (ayList.rowCount && ayList.rowCount > 0) {
+        const cleanSessionName = trimmed.replace(/\b(academic\s+)?sessions?\b/gi, '').trim();
+        const matched = ayList.rows.find((r: any) =>
+          String(r.id) === trimmed ||
+          isSameSession(r.name, trimmed) ||
+          isSameSession(r.name, cleanSessionName) ||
+          toCanonicalSession(r.name) === toCanonicalSession(trimmed) ||
+          toCanonicalSession(r.name) === toCanonicalSession(cleanSessionName)
+        );
+        if (matched) {
+          return matched.id;
+        }
+      }
+      return '00000000-0000-0000-0000-000000000000';
+    }
+
+    const activeAy = await pool.query(
+      `SELECT id FROM academic_years WHERE school_id = $1::uuid AND is_active = true LIMIT 1`,
+      [schoolId]
+    );
+    if (activeAy.rowCount && activeAy.rowCount > 0) {
+      return activeAy.rows[0].id;
+    }
+  } catch (err: any) {
+    console.warn('[resolveAcademicYearId] DB Error:', err.message);
+  }
+  return null;
+}
+
+/**
+ * 5. Class Mentor: Get all exams and assessments published for this class/section
+ */
+export async function getMentoredExams(schoolId: string, classId: string, sectionId?: string, session?: string) {
+  await ensureStudentExamsSchema();
+
+  const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classId);
+  const rawClassNum = isClassUuid ? null : parseInt(String(classId).replace(/\D/g, ''), 10);
+  const classNum = (rawClassNum !== null && !isNaN(rawClassNum) && rawClassNum >= -1 && rawClassNum <= 30) ? rawClassNum : null;
+  const isSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(sectionId || ''));
+  const targetYearId = await resolveAcademicYearId(schoolId, session);
+
+  if (isPostgresConfigured) {
+    try {
+      const q = await pool.query(
+        `SELECT e.id, e.title, e.exam_date, e.start_time, e.end_time, e.room,
+                e.total_marks, e.passing_marks, e.section_id, e.class_id, e.subject_id,
+                e.academic_year_id,
+                COALESCE(e.grading_system, 'MARKS') AS grading_system,
+                e.term,
+                COALESCE(sub.name, 'General') AS subject_name,
+                COUNT(r.id)::int AS graded_count,
+                ROUND(AVG(r.marks_obtained), 1) AS avg_marks,
+                MAX(r.marks_obtained) AS max_marks,
+                MIN(r.marks_obtained) AS min_marks,
+                COUNT(CASE WHEN r.marks_obtained >= e.passing_marks THEN 1 END)::int AS pass_count
+         FROM student_exams e
+         LEFT JOIN subjects sub ON sub.id = e.subject_id
+         LEFT JOIN student_exam_results r ON r.exam_id = e.id
+         WHERE e.school_id = $1
+           AND (
+             ($2::boolean = true AND e.class_id = $3::uuid)
+             OR ($4::smallint IS NOT NULL AND e.class_id IN (SELECT id FROM classes WHERE school_id = $1 AND class_number = $4::smallint))
+           )
+           AND (
+             $5::uuid IS NULL 
+             OR e.section_id IS NULL 
+             OR e.section_id = $5::uuid
+             OR ($6::text IS NOT NULL AND e.section_id IN (SELECT id FROM sections WHERE school_id = $1 AND UPPER(name) = UPPER($6::text)))
+           )
+           AND (
+             $7::uuid IS NULL
+             OR e.academic_year_id = $7::uuid
+             OR (
+               e.academic_year_id IS NULL
+               AND EXISTS (
+                 SELECT 1 FROM student_exam_results r2
+                 JOIN students st2 ON st2.id = r2.student_id
+                 WHERE r2.exam_id = e.id AND st2.academic_year_id = $7::uuid
+               )
+             )
+           )
+         GROUP BY e.id, e.academic_year_id, e.grading_system, e.term, sub.name
+         ORDER BY e.exam_date DESC, e.created_at DESC`,
+        [
+          schoolId,
+          isClassUuid,
+          isClassUuid ? classId : null,
+          classNum,
+          isSecUuid ? sectionId : null,
+          sectionId || null,
+          targetYearId
+        ]
+      );
+      if (q.rows) return q.rows;
+    } catch (err: any) {
+      console.error('[getMentoredExams] DB Error:', err.message);
+    }
+  }
+
+  // Fallback to inMemory store
+  return inMemoryStudentExams
+    .filter((e) => (e.school_id === schoolId || !schoolId) && (e.class_id === classId || !classId))
+    .map((e) => {
+      const results = inMemoryExamResults.filter((r) => r.exam_id === e.id);
+      const gradedCount = results.length;
+      const avg = gradedCount > 0 ? Number((results.reduce((s, r) => s + r.marks_obtained, 0) / gradedCount).toFixed(1)) : 0;
+      const passCount = results.filter((r) => r.marks_obtained >= e.passing_marks).length;
+      return {
+        ...e,
+        graded_count: gradedCount,
+        avg_marks: avg,
+        pass_count: passCount
+      };
+    });
+}
+
+/**
+ * 6. Class Mentor: Get all students in mentored section along with their existing marks for this exam
+ */
+export async function getMentoredSectionStudentsWithMarks(
+  schoolId: string,
+  classId: string,
+  sectionId: string,
+  examId?: string,
+  session?: string
+) {
+  await ensureStudentExamsSchema();
+
+  const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classId);
+  const rawClassNum = isClassUuid ? null : parseInt(String(classId).replace(/\D/g, ''), 10);
+  const classNum = (rawClassNum !== null && !isNaN(rawClassNum) && rawClassNum >= -1 && rawClassNum <= 30) ? rawClassNum : null;
+  const isSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sectionId);
+  const isExamUuid = examId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(examId);
+  const targetYearId = await resolveAcademicYearId(schoolId, session);
+
+  let examDetails: any = null;
+  let students: any[] = [];
+  let dbQuerySucceeded = false;
+
+  if (isPostgresConfigured) {
+    try {
+      // 1. If examId provided, fetch exam details
+      if (isExamUuid) {
+        const exQ = await pool.query(
+          `SELECT e.*, COALESCE(sub.name, 'General') AS subject_name
+           FROM student_exams e
+           LEFT JOIN subjects sub ON sub.id = e.subject_id
+           WHERE e.id = $1 AND e.school_id = $2`,
+          [examId, schoolId]
+        );
+        if (exQ.rowCount && exQ.rows.length > 0) {
+          examDetails = exQ.rows[0];
+        }
+      }
+
+      const effectiveYearId = examDetails?.academic_year_id || targetYearId;
+
+      let resolvedClassNum: number | null = classNum;
+      let resolvedSecName: string = String(sectionId || '').replace(/section\s*/i, '').trim().toUpperCase();
+
+      if (isClassUuid && resolvedClassNum === null) {
+        try {
+          const cRow = await pool.query(
+            `SELECT class_number FROM classes WHERE id = $1 AND school_id = $2 LIMIT 1`,
+            [classId, schoolId]
+          );
+          if (cRow.rowCount && cRow.rows.length > 0) {
+            resolvedClassNum = Number(cRow.rows[0].class_number);
+          }
+        } catch (_e) {}
+      }
+
+      if (isSecUuid) {
+        try {
+          const sRow = await pool.query(
+            `SELECT name FROM sections WHERE id = $1 AND school_id = $2 LIMIT 1`,
+            [sectionId, schoolId]
+          );
+          if (sRow.rowCount && sRow.rows.length > 0) {
+            resolvedSecName = String(sRow.rows[0].name || '').trim().toUpperCase();
+          }
+        } catch (_e) {}
+      }
+
+      // 2. Fetch all students for this class, section, and academic session with their existing marks
+      const classUuidVal = isClassUuid ? classId : '00000000-0000-0000-0000-000000000000';
+      const secUuidVal = isSecUuid ? sectionId : '00000000-0000-0000-0000-000000000000';
+      const examUuidVal = isExamUuid ? examId : null;
+
+      const stQ = await pool.query(
+        `SELECT st.id AS student_id, st.name, st.roll_number, st.admission_number, st.photo_url, st.email,
+                st.academic_year_id,
+                r.id AS result_id, r.marks_obtained, r.grade, r.remarks, r.created_at AS published_at
+         FROM students st
+         LEFT JOIN student_exam_results r ON r.student_id = st.id AND ($4::uuid IS NOT NULL AND r.exam_id = $4::uuid)
+         WHERE st.school_id = $1::uuid
+           AND (
+             st.class_id = $2::uuid
+             OR ($3::smallint IS NOT NULL AND st.class_id IN (SELECT id FROM classes WHERE school_id = $1::uuid AND class_number = $3::smallint))
+           )
+           AND (
+             st.section_id = $5::uuid
+             OR ($6::text IS NOT NULL AND st.section_id IN (SELECT id FROM sections WHERE school_id = $1::uuid AND (UPPER(name) = UPPER($6::text) OR LOWER(name) = LOWER($6::text))))
+           )
+           AND ($7::uuid IS NULL OR st.academic_year_id = $7::uuid)
+           AND (st.is_active IS NULL OR st.is_active = true)
+         ORDER BY LPAD(COALESCE(st.roll_number, '0'), 5, '0') ASC, st.name ASC`,
+        [
+          schoolId,
+          classUuidVal,
+          resolvedClassNum,
+          examUuidVal,
+          secUuidVal,
+          resolvedSecName,
+          effectiveYearId
+        ]
+      );
+      dbQuerySucceeded = true;
+      if (stQ.rows && stQ.rows.length > 0) {
+        const uniqueMap = new Map<string, any>();
+        for (const s of stQ.rows) {
+          const roll = String(s.roll_number || '').trim();
+          const key = roll ? `roll:${roll}` : `id:${s.student_id}`;
+          if (!uniqueMap.has(key)) uniqueMap.set(key, s);
+        }
+        students = Array.from(uniqueMap.values());
+        students.sort((a, b) => String(a.roll_number || '').localeCompare(String(b.roll_number || ''), undefined, { numeric: true }));
+      }
+    } catch (err: any) {
+      console.error('[getMentoredSectionStudentsWithMarks] DB Error:', err.message);
+    }
+  }
+
+  // Fallback to demoStudents only if DB query did not run/succeed
+  if (!dbQuerySucceeded && students.length === 0) {
+    const demo = demoStudents.filter((s: any) => {
+      const matchSchool = (s.school_id && isSameSchool(s.school_id, schoolId)) || (s.schoolId && isSameSchool(s.schoolId, schoolId));
+      const sCls = String(s.class_id || s.classId || s.class_number || s.className || '');
+      const sSec = String(s.section_id || s.sectionId || s.section_name || s.section || '');
+      return matchSchool && (sCls === classId || sCls.includes(String(classNum))) && (!sectionId || sSec.toLowerCase().includes(sectionId.toLowerCase()));
+    });
+
+    students = demo.map((s: any) => {
+      const res = inMemoryExamResults.find((r) => r.student_id === s.id && r.exam_id === examId);
+      return {
+        student_id: s.id,
+        name: s.name || s.fullName,
+        roll_number: s.roll_number || s.rollNumber || '1',
+        admission_number: s.admission_number || s.admissionNumber || `ADM-${s.id}`,
+        photo_url: s.photo_url || s.photoUrl || null,
+        marks_obtained: res ? res.marks_obtained : null,
+        grade: res ? res.grade : null,
+        remarks: res ? res.remarks : null
+      };
+    });
+  }
+
+  return {
+    exam: examDetails,
+    students
+  };
+}
+
+/**
+ * 7. Class Mentor: Save assessment and publish marks to student portal
+ */
+export async function publishExamResults(
+  schoolId: string,
+  teacherId: string,
+  payload: {
+    examId?: string;
+    classId: string;
+    sectionId?: string;
+    subjectId?: string;
+    title: string;
+    examDate: string;
+    totalMarks: number;
+    passingMarks: number;
+    room?: string;
+    gradingSystem?: string;
+    session?: string;
+    academicYearId?: string;
+    results: Array<{
+      studentId: string;
+      marksObtained: number | null | undefined;
+      grade?: string;
+      remarks?: string;
+    }>;
+  }
+) {
+  await ensureStudentExamsSchema();
+
+  const {
+    examId,
+    classId,
+    sectionId,
+    subjectId,
+    title,
+    examDate,
+    totalMarks,
+    passingMarks,
+    room,
+    gradingSystem,
+    session,
+    academicYearId,
+    results
+  } = payload;
+  const rawResults = results || (payload as any).marks || [];
+  const system = gradingSystem || (payload as any).grading_system || 'MARKS';
+  const rawYearId = await resolveAcademicYearId(schoolId, academicYearId || session);
+  const resolvedAcademicYearId = (rawYearId && rawYearId !== '00000000-0000-0000-0000-000000000000') ? rawYearId : null;
+
+  if (!title) {
+    throw new Error('Title is required');
+  }
+  const resolvedExamDate = examDate || new Date().toISOString().slice(0, 10);
+
+  let resolvedExamId = examId;
+
+  // Resolve classId UUID if numeric passed
+  let resolvedClassId = classId;
+  const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classId);
+  if (!isClassUuid && isPostgresConfigured) {
+    const classNum = parseInt(String(classId).replace(/\D/g, ''), 10);
+    if (!isNaN(classNum)) {
+      const cQ = await pool.query(`SELECT id FROM classes WHERE school_id = $1 AND class_number = $2 LIMIT 1`, [schoolId, classNum]);
+      if (cQ.rowCount && cQ.rows.length > 0) {
+        resolvedClassId = cQ.rows[0].id;
+      }
+    }
+  }
+
+  // Resolve sectionId UUID if section name passed
+  let resolvedSectionId = sectionId || null;
+  const isSecUuid = sectionId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sectionId);
+  if (sectionId && !isSecUuid && isPostgresConfigured) {
+    const sQ = await pool.query(`SELECT id FROM sections WHERE school_id = $1 AND UPPER(name) = UPPER($2) LIMIT 1`, [schoolId, sectionId]);
+    if (sQ.rowCount && sQ.rows.length > 0) {
+      resolvedSectionId = sQ.rows[0].id;
+    }
+  }
+
+  // Helper function to calculate letter grade if not manually set
+  const calculateGrade = (obtained: number, total: number) => {
+    const pct = total > 0 ? (obtained / total) * 100 : 0;
+    if (pct >= 90) return 'A+';
+    if (pct >= 75) return 'A';
+    if (pct >= 60) return 'B';
+    if (pct >= 40) return 'C';
+    return 'F';
+  };
+
+  if (isPostgresConfigured) {
+    // 1. Create or Update Exam in student_exams
+    if (resolvedExamId) {
+      const upQ = await pool.query(
+        `UPDATE student_exams 
+         SET title = $1, subject_id = $2, exam_date = $3, total_marks = $4, passing_marks = $5, room = $6, section_id = $7, grading_system = $8,
+             academic_year_id = COALESCE($11, academic_year_id)
+         WHERE id = $9 AND school_id = $10
+         RETURNING *`,
+        [title, subjectId || null, resolvedExamDate, totalMarks || 100, passingMarks || 40, room || 'Main Hall', resolvedSectionId, system, resolvedExamId, schoolId, resolvedAcademicYearId]
+      );
+      if (upQ.rowCount && upQ.rows.length > 0) {
+        resolvedExamId = upQ.rows[0].id;
+      }
+    } else {
+      const inQ = await pool.query(
+        `INSERT INTO student_exams (school_id, class_id, section_id, subject_id, title, exam_date, start_time, end_time, room, total_marks, passing_marks, created_by, grading_system, academic_year_id)
+         VALUES ($1, $2, $3, $4, $5, $6, '09:00', '12:00', $7, $8, $9, $10, $11, $12)
+         RETURNING *`,
+        [schoolId, resolvedClassId, resolvedSectionId, subjectId || null, title, resolvedExamDate, room || 'Main Hall', totalMarks || 100, passingMarks || 40, teacherId, system, resolvedAcademicYearId]
+      );
+      if (inQ.rowCount && inQ.rows.length > 0) {
+        resolvedExamId = inQ.rows[0].id;
+      }
+    }
+
+    // 2. Insert or update student marks
+    let publishedCount = 0;
+    if (Array.isArray(rawResults) && resolvedExamId) {
+      for (const item of rawResults) {
+        const hasMarks = item.marksObtained !== null && item.marksObtained !== undefined && String(item.marksObtained).trim() !== '' && !isNaN(Number(item.marksObtained));
+        const hasGrade = item.grade && String(item.grade).trim() !== '';
+        if (hasMarks || hasGrade) {
+          const marks = hasMarks ? Number(item.marksObtained) : null;
+          const grade = hasGrade ? item.grade : calculateGrade(marks || 0, totalMarks || 100);
+          const remarks = item.remarks || (hasMarks && (marks || 0) >= (passingMarks || 40) ? 'Good performance' : (item.remarks || 'Evaluated'));
+
+          await pool.query(
+            `INSERT INTO student_exam_results (school_id, exam_id, student_id, marks_obtained, grade, remarks)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (exam_id, student_id)
+             DO UPDATE SET marks_obtained = EXCLUDED.marks_obtained, grade = EXCLUDED.grade, remarks = EXCLUDED.remarks, created_at = NOW()`,
+            [schoolId, resolvedExamId, item.studentId, marks, grade, remarks]
+          );
+          publishedCount++;
+        }
+      }
+    }
+
+    // Mirror to in-memory cache for immediate multi-store sync
+    if (resolvedExamId) {
+      const existingExamIdx = inMemoryStudentExams.findIndex(e => e.id === resolvedExamId);
+      const examObj = {
+        id: resolvedExamId,
+        school_id: schoolId,
+        class_id: resolvedClassId,
+        section_id: resolvedSectionId || undefined,
+        subject_id: subjectId,
+        subject_name: (payload as any).subjectName || 'General',
+        title,
+        exam_date: examDate,
+        start_time: '09:00',
+        end_time: '12:00',
+        room: room || 'Main Hall',
+        total_marks: totalMarks || 100,
+        passing_marks: passingMarks || 40,
+        grading_system: system,
+        created_at: new Date().toISOString()
+      };
+      if (existingExamIdx >= 0) {
+        inMemoryStudentExams[existingExamIdx] = examObj;
+      } else {
+        inMemoryStudentExams.push(examObj);
+      }
+
+      for (const item of rawResults) {
+        const hasMarks = item.marksObtained !== null && item.marksObtained !== undefined && String(item.marksObtained).trim() !== '' && !isNaN(Number(item.marksObtained));
+        const hasGrade = item.grade && String(item.grade).trim() !== '';
+        if (hasMarks || hasGrade) {
+          const marks = hasMarks ? Number(item.marksObtained) : null;
+          const grade = hasGrade ? item.grade : calculateGrade(marks || 0, totalMarks || 100);
+          const remarks = item.remarks || (hasMarks && (marks || 0) >= (passingMarks || 40) ? 'Good performance' : 'Evaluated');
+          const exResIdx = inMemoryExamResults.findIndex(r => r.exam_id === resolvedExamId && r.student_id === item.studentId);
+          const resObj = {
+            id: `res-${resolvedExamId}-${item.studentId}`,
+            school_id: schoolId,
+            exam_id: resolvedExamId,
+            student_id: item.studentId,
+            marks_obtained: marks,
+            grade,
+            remarks,
+            created_at: new Date().toISOString()
+          };
+          if (exResIdx >= 0) inMemoryExamResults[exResIdx] = resObj;
+          else inMemoryExamResults.push(resObj);
+        }
+      }
+    }
+
+    return {
+      success: true,
+      examId: resolvedExamId,
+      publishedCount,
+      message: `Published results for ${publishedCount} students successfully`
+    };
+  }
+
+  // In-memory fallback
+  let resolvedSubName = (payload as any).subjectName || '';
+  if (!resolvedSubName && subjectId) {
+    const sFound = demoSubjects.find((s) => s.id === subjectId);
+    if (sFound) resolvedSubName = sFound.name;
+  }
+
+  const newExam: InMemoryExam = {
+    id: resolvedExamId || `ex-${Date.now()}`,
+    school_id: schoolId,
+    class_id: classId,
+    section_id: sectionId,
+    subject_id: subjectId,
+    subject_name: resolvedSubName || 'General',
+    title,
+    exam_date: examDate,
+    start_time: '09:00',
+    end_time: '12:00',
+    room: room || 'Main Hall',
+    total_marks: totalMarks,
+    passing_marks: passingMarks || 40,
+    created_at: new Date().toISOString()
+  };
+  const exIdx = inMemoryStudentExams.findIndex((e) => e.id === newExam.id);
+  if (exIdx >= 0) inMemoryStudentExams[exIdx] = newExam;
+  else inMemoryStudentExams.push(newExam);
+
+  let memPublished = 0;
+  for (const item of rawResults) {
+    if (item.marksObtained !== null && item.marksObtained !== undefined && String(item.marksObtained).trim() !== '') {
+      const marks = Number(item.marksObtained);
+      const grade = item.grade || calculateGrade(marks, totalMarks);
+      const rIdx = inMemoryExamResults.findIndex((r) => r.exam_id === newExam.id && r.student_id === item.studentId);
+      const resEntry: InMemoryExamResult = {
+        id: `res-${Date.now()}-${item.studentId}`,
+        school_id: schoolId,
+        exam_id: newExam.id,
+        student_id: item.studentId,
+        marks_obtained: marks,
+        grade,
+        remarks: item.remarks || 'Verified by Class Mentor',
+        created_at: new Date().toISOString()
+      };
+      if (rIdx >= 0) inMemoryExamResults[rIdx] = resEntry;
+      else inMemoryExamResults.push(resEntry);
+      memPublished++;
+    }
+  }
+
+  return {
+    success: true,
+    examId: newExam.id,
+    publishedCount: memPublished,
+    message: `Published results for ${memPublished} students successfully`
+  };
+}
+
+/**
+ * 8. Class Mentor: Delete an examination and all associated student marks
+ */
+export async function deleteMentoredExam(schoolId: string, examId: string) {
+  if (isPostgresConfigured) {
+    await pool.query(`DELETE FROM student_exams WHERE id = $1 AND school_id = $2`, [examId, schoolId]);
+  }
+  const idx = inMemoryStudentExams.findIndex((e) => e.id === examId && (e.school_id === schoolId || !schoolId));
+  if (idx >= 0) inMemoryStudentExams.splice(idx, 1);
+  const rIdxs = inMemoryExamResults.filter((r) => r.exam_id === examId);
+  rIdxs.forEach((r) => {
+    const i = inMemoryExamResults.indexOf(r);
+    if (i >= 0) inMemoryExamResults.splice(i, 1);
+  });
+  return { success: true };
 }
