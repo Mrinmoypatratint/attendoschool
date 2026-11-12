@@ -725,6 +725,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
       setEditHolidayModal(prev => ({ ...prev, isOpen: false, loading: false }));
       await loadHolidaysList();
       executeCalculation();
+      window.dispatchEvent(new CustomEvent('calendarHolidaysChanged'));
+      localStorage.setItem('attendo_holidays_updated_at', String(Date.now()));
     } catch (err: any) {
       setEditHolidayModal(prev => ({
         ...prev,
@@ -781,6 +783,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
       setHolidayDesc('');
       await loadHolidaysList();
       executeCalculation();
+      window.dispatchEvent(new CustomEvent('calendarHolidaysChanged'));
+      localStorage.setItem('attendo_holidays_updated_at', String(Date.now()));
     } catch (err: any) {
       setHolidayMsg({
         type: 'error',
@@ -801,6 +805,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
       await api.delete(`/calendar/holidays/${id}${allSeries ? '?allSeries=true' : ''}`);
       await loadHolidaysList();
       executeCalculation();
+      window.dispatchEvent(new CustomEvent('calendarHolidaysChanged'));
+      localStorage.setItem('attendo_holidays_updated_at', String(Date.now()));
     } catch (err: any) {
       alert(err?.response?.data?.message || 'Failed to remove holiday');
     }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Calendar,
@@ -17,10 +17,29 @@ import {
   BookMarked,
   Award,
   CheckCircle2,
-  Building2
+  Building2,
+  PartyPopper
 } from 'lucide-react';
+import { api } from '../../api';
 import { studentApi, StudentDashboardData } from '../../services/studentApi';
 import { useAuth } from '../../hooks/useAuth';
+
+function getHolidayCategoryStyle(type?: string) {
+  switch (type) {
+    case 'NATIONAL':
+      return { background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', label: 'National Holiday' };
+    case 'FESTIVAL':
+      return { background: '#f3e8ff', color: '#7e22ce', border: '1px solid #d8b4fe', label: 'Festival Holiday' };
+    case 'GAZETTED':
+      return { background: '#e0e7ff', color: '#3730a3', border: '1px solid #a5b4fc', label: 'Gazetted Holiday' };
+    case 'REGIONAL':
+      return { background: '#ccfbf1', color: '#0f766e', border: '1px solid #99f6e4', label: 'Regional Holiday' };
+    case 'INSTITUTIONAL':
+      return { background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', label: 'Institutional Break' };
+    default:
+      return { background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', label: type || 'Holiday' };
+  }
+}
 
 function isTeacherNotice(a: any): boolean {
   if (a.author_role === 'TEACHER' || a.created_by_role === 'TEACHER') return true;
@@ -64,6 +83,20 @@ export function StudentDashboard() {
   // Dynamic Mini Calendar state - must be declared at top level to obey Rules of Hooks
   const [calendarViewDate, setCalendarViewDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [holidays, setHolidays] = useState<any[]>([]);
+
+  const fetchHolidays = useCallback(async () => {
+    try {
+      const res = await api.get('/calendar/holidays');
+      if (res.data?.success && Array.isArray(res.data?.data)) {
+        setHolidays(res.data.data);
+      } else if (Array.isArray(res.data)) {
+        setHolidays(res.data);
+      }
+    } catch (err) {
+      console.warn('[StudentDashboard] Could not fetch calendar holidays:', err);
+    }
+  }, []);
 
   const fetchDashboard = useCallback((showSpinner = false) => {
     if (showSpinner && !data) setLoading(true);
@@ -93,16 +126,22 @@ export function StudentDashboard() {
 
   useEffect(() => {
     fetchDashboard(false);
-    const handleRefresh = () => fetchDashboard(false);
+    fetchHolidays();
+    const handleRefresh = () => {
+      fetchDashboard(false);
+      fetchHolidays();
+    };
     window.addEventListener('announcements-read', handleRefresh);
+    window.addEventListener('calendarHolidaysChanged', handleRefresh);
     window.addEventListener('focus', handleRefresh);
     window.addEventListener('storage', handleRefresh);
     return () => {
       window.removeEventListener('announcements-read', handleRefresh);
+      window.removeEventListener('calendarHolidaysChanged', handleRefresh);
       window.removeEventListener('focus', handleRefresh);
       window.removeEventListener('storage', handleRefresh);
     };
-  }, [fetchDashboard]);
+  }, [fetchDashboard, fetchHolidays]);
 
   if (loading) {
     return (
@@ -196,6 +235,18 @@ export function StudentDashboard() {
       } catch { }
     });
   }
+
+  // Map declared holidays
+  const holidayMap = useMemo(() => {
+    const map = new Map<string, any>();
+    holidays.forEach((h: any) => {
+      if (h.is_active !== false && h.holiday_date) {
+        const dateKey = String(h.holiday_date).slice(0, 10);
+        map.set(dateKey, h);
+      }
+    });
+    return map;
+  }, [holidays]);
 
   // Upcoming exam indicator for current month
   let examDayInMonth: number | null = null;
@@ -610,12 +661,17 @@ export function StudentDashboard() {
                   selectedDate.getMonth() === calMonth &&
                   selectedDate.getDate() === dayNum;
 
+                const dayDateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                const dayHoliday = holidayMap.get(dayDateStr);
+
                 const isActive = isSelected;
                 const attStatus = attendanceDayMap.get(dayNum);
                 const isExam = examDayInMonth === dayNum;
 
                 let dotClass = '';
-                if (isExam) {
+                if (dayHoliday) {
+                  dotClass = 'dot-holiday is-holiday';
+                } else if (isExam) {
                   dotClass = 'dot-exam';
                 } else if (attStatus === 'Present') {
                   dotClass = 'dot-present';
@@ -631,12 +687,18 @@ export function StudentDashboard() {
                   dotClass
                 ].filter(Boolean).join(' ');
 
+                const tooltip = dayHoliday
+                  ? `${dayNum} ${calMonthName} · 🎉 ${dayHoliday.name} (${dayHoliday.holiday_type || 'Holiday'})`
+                  : isToday
+                  ? `Today (${dayNum} ${calMonthName})`
+                  : `${dayNum} ${calMonthName}`;
+
                 return (
                   <div
                     key={dayNum}
                     className={classes}
                     onClick={() => setSelectedDate(new Date(calYear, calMonth, dayNum))}
-                    title={isToday ? `Today (${dayNum} ${calMonthName})` : `${dayNum} ${calMonthName}`}
+                    title={tooltip}
                   >
                     {dayNum}
                   </div>
@@ -658,6 +720,123 @@ export function StudentDashboard() {
                 </div>
               ))}
             </div>
+
+            {/* Selected Date Details Panel */}
+            {(() => {
+              const selYear = selectedDate.getFullYear();
+              const selMonth = selectedDate.getMonth();
+              const selDay = selectedDate.getDate();
+              const selDateKey = `${selYear}-${String(selMonth + 1).padStart(2, '0')}-${String(selDay).padStart(2, '0')}`;
+              const selHoliday = holidayMap.get(selDateKey);
+              const isSelSunday = selectedDate.getDay() === 0;
+              const isSelToday = selectedDate.toDateString() === today.toDateString();
+              const selAtt = attendanceDayMap.get(selDay);
+              const isSelExam = examDayInMonth === selDay && selMonth === calMonth && selYear === calYear;
+
+              const formattedSelDate = selectedDate.toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+              });
+
+              if (selHoliday) {
+                const catStyle = getHolidayCategoryStyle(selHoliday.holiday_type);
+                return (
+                  <div className="student-selected-day-panel holiday-day">
+                    <div className="student-selected-day-header">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <PartyPopper size={16} style={{ color: '#d97706' }} />
+                        <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text, #0f172a)' }}>
+                          {formattedSelDate}
+                        </span>
+                        {isSelToday && (
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#dbeafe', color: '#1d4ed8' }}>
+                            Today
+                          </span>
+                        )}
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12, ...catStyle }}>
+                        {catStyle.label || selHoliday.holiday_type || 'Holiday'}
+                      </span>
+                    </div>
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                        {selHoliday.name}
+                      </div>
+                      {selHoliday.description && (
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary, #475569)', marginTop: 2 }}>
+                          {selHoliday.description}
+                        </div>
+                      )}
+                      <div style={{ fontSize: 11.5, color: '#d97706', marginTop: 4, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span>🎉</span> School Closed · Declared Holiday
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (isSelSunday) {
+                return (
+                  <div className="student-selected-day-panel weekend-day">
+                    <div className="student-selected-day-header">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Calendar size={15} style={{ color: '#64748b' }} />
+                        <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text, #0f172a)' }}>
+                          {formattedSelDate}
+                        </span>
+                        {isSelToday && (
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#dbeafe', color: '#1d4ed8' }}>
+                            Today
+                          </span>
+                        )}
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 12, background: 'rgba(100, 116, 139, 0.1)', color: '#64748b' }}>
+                        Weekend
+                      </span>
+                    </div>
+                    <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-secondary, #64748b)' }}>
+                      Sunday · Weekly Off (School is closed)
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="student-selected-day-panel">
+                  <div className="student-selected-day-header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <CalendarCheck size={15} style={{ color: '#2563eb' }} />
+                      <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text, #0f172a)' }}>
+                        {formattedSelDate}
+                      </span>
+                      {isSelToday && (
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#dbeafe', color: '#1d4ed8' }}>
+                          Today
+                        </span>
+                      )}
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>
+                      Working Day
+                    </span>
+                  </div>
+                  {isSelExam ? (
+                    <div style={{ marginTop: 6, fontSize: 12, color: '#7c3aed', fontWeight: 600 }}>
+                      📝 Upcoming Examination scheduled on this date
+                    </div>
+                  ) : selAtt ? (
+                    <div style={{ marginTop: 6, fontSize: 12, color: selAtt === 'Present' ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                      Attendance: {selAtt} {selAtt === 'Present' ? '✓' : '✗'}
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                      Regular school day · Classes in session
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Recent Attendance Widget */}

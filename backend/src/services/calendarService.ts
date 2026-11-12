@@ -1,4 +1,5 @@
 import { pool, isPostgresConfigured } from '../db';
+import { canonicalSchoolId } from '../utils/tenant';
 
 export interface SchoolWorkingDaysConfig {
   school_id: string;
@@ -54,6 +55,26 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 // In-memory tenant store for fallback / testing when Postgres is not available
 const memWorkingDays: Record<string, SchoolWorkingDaysConfig> = {};
 const memHolidays: Record<string, SchoolHoliday[]> = {};
+
+export function getOrInitMemHolidays(schoolId: string): SchoolHoliday[] {
+  const sid = canonicalSchoolId(schoolId) || schoolId;
+  if (!memHolidays[sid]) {
+    memHolidays[sid] = [
+      { id: 'hol-seed-01', school_id: sid, name: 'Republic Day', holiday_date: '2026-01-26', holiday_type: 'NATIONAL', description: 'National Republic Day Celebration', is_active: true },
+      { id: 'hol-seed-02', school_id: sid, name: 'Holi', holiday_date: '2026-03-04', holiday_type: 'FESTIVAL', description: 'Festival of Colors', is_active: true },
+      { id: 'hol-seed-03', school_id: sid, name: 'Good Friday', holiday_date: '2026-04-03', holiday_type: 'GAZETTED', description: 'Good Friday Observance', is_active: true },
+      { id: 'hol-seed-04', school_id: sid, name: 'Independence Day', holiday_date: '2026-08-15', holiday_type: 'NATIONAL', description: 'National Independence Day', is_active: true },
+      { id: 'hol-seed-05', school_id: sid, name: 'Gandhi Jayanti', holiday_date: '2026-10-02', holiday_type: 'NATIONAL', description: 'Mahatma Gandhi Birthday', is_active: true },
+      { id: 'hol-seed-06', school_id: sid, name: 'Durga Puja / Dussehra', holiday_date: '2026-10-20', holiday_type: 'FESTIVAL', description: 'Maha Dussehra Celebration', is_active: true },
+      { id: 'hol-seed-07', school_id: sid, name: 'Diwali', holiday_date: '2026-11-08', holiday_type: 'FESTIVAL', description: 'Deepavali Festival of Lights', is_active: true },
+      { id: 'hol-seed-08', school_id: sid, name: 'Bhai Dooj', holiday_date: '2026-11-10', holiday_type: 'FESTIVAL', description: 'Bhai Dooj Celebration', is_active: true },
+      { id: 'hol-seed-09', school_id: sid, name: 'Chhath Puja', holiday_date: '2026-11-15', holiday_type: 'FESTIVAL', description: 'Chhath Puja Holy Festival', is_active: true },
+      { id: 'hol-seed-10', school_id: sid, name: 'Guru Nanak Jayanti', holiday_date: '2026-11-24', holiday_type: 'GAZETTED', description: 'Prakash Utsav', is_active: true },
+      { id: 'hol-seed-11', school_id: sid, name: 'Christmas Day', holiday_date: '2026-12-25', holiday_type: 'GAZETTED', description: 'Christmas Celebration', is_active: true }
+    ];
+  }
+  return memHolidays[sid];
+}
 
 /**
  * Ensure database tables exist
@@ -130,18 +151,19 @@ export function parseYMDToUtc(str: string): Date {
  */
 export async function getSchoolWorkingDays(schoolId: string): Promise<SchoolWorkingDaysConfig> {
   await ensureCalendarTables();
+  const targetSid = canonicalSchoolId(schoolId) || schoolId;
 
   const defaultConfig: SchoolWorkingDaysConfig = {
-    school_id: schoolId,
+    school_id: targetSid,
     working_days: [1, 2, 3, 4, 5, 6], // Mon-Sat
     weekend_days: [0],                 // Sun
     saturday_rule: 'WORKING',
     updated_at: new Date().toISOString()
   };
 
-  const isSchoolUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(schoolId));
+  const isSchoolUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(targetSid));
   if (!isPostgresConfigured || !isSchoolUuid) {
-    return memWorkingDays[schoolId] || defaultConfig;
+    return memWorkingDays[targetSid] || defaultConfig;
   }
 
   try {
@@ -149,7 +171,7 @@ export async function getSchoolWorkingDays(schoolId: string): Promise<SchoolWork
       `SELECT school_id, working_days, weekend_days, saturday_rule, updated_at
        FROM school_working_days
        WHERE school_id = $1`,
-      [schoolId]
+      [targetSid]
     );
 
     if (res.rowCount && res.rows[0]) {
@@ -164,9 +186,9 @@ export async function getSchoolWorkingDays(schoolId: string): Promise<SchoolWork
     }
 
     // Check if school exists in schools table before inserting default record to satisfy FK
-    const schoolExists = await pool.query('SELECT id FROM schools WHERE id = $1 LIMIT 1', [schoolId]);
+    const schoolExists = await pool.query('SELECT id FROM schools WHERE id = $1 LIMIT 1', [targetSid]);
     if (!schoolExists.rowCount) {
-      memWorkingDays[schoolId] = defaultConfig;
+      memWorkingDays[targetSid] = defaultConfig;
       return defaultConfig;
     }
 
@@ -175,13 +197,13 @@ export async function getSchoolWorkingDays(schoolId: string): Promise<SchoolWork
       `INSERT INTO school_working_days (school_id, working_days, weekend_days, saturday_rule)
        VALUES ($1, ARRAY[1,2,3,4,5,6], ARRAY[0], 'WORKING')
        ON CONFLICT (school_id) DO NOTHING`,
-      [schoolId]
+      [targetSid]
     );
 
     return defaultConfig;
   } catch (err: any) {
     console.error('[CalendarService] Error fetching working days config:', err.message);
-    return memWorkingDays[schoolId] || defaultConfig;
+    return memWorkingDays[targetSid] || defaultConfig;
   }
 }
 
@@ -197,14 +219,15 @@ export async function updateSchoolWorkingDays(
   }
 ): Promise<SchoolWorkingDaysConfig> {
   await ensureCalendarTables();
+  const targetSid = canonicalSchoolId(schoolId) || schoolId;
 
   const workingDays = config.working_days || [1, 2, 3, 4, 5, 6];
   const weekendDays = config.weekend_days || [0];
   const saturdayRule = config.saturday_rule || 'WORKING';
 
   // In-memory update for fallback
-  memWorkingDays[schoolId] = {
-    school_id: schoolId,
+  memWorkingDays[targetSid] = {
+    school_id: targetSid,
     working_days: workingDays,
     weekend_days: weekendDays,
     saturday_rule: saturdayRule,
@@ -212,7 +235,7 @@ export async function updateSchoolWorkingDays(
   };
 
   if (!isPostgresConfigured) {
-    return memWorkingDays[schoolId];
+    return memWorkingDays[targetSid];
   }
 
   const res = await pool.query(
@@ -224,7 +247,7 @@ export async function updateSchoolWorkingDays(
          saturday_rule = EXCLUDED.saturday_rule,
          updated_at = NOW()
      RETURNING school_id, working_days, weekend_days, saturday_rule, updated_at`,
-    [schoolId, workingDays, weekendDays, saturdayRule]
+    [targetSid, workingDays, weekendDays, saturdayRule]
   );
 
   const row = res.rows[0];
@@ -250,9 +273,10 @@ export async function listSchoolHolidays(
   }
 ): Promise<SchoolHoliday[]> {
   await ensureCalendarTables();
+  const targetSid = canonicalSchoolId(schoolId) || schoolId;
 
   if (!isPostgresConfigured) {
-    let list = memHolidays[schoolId] || [];
+    let list = getOrInitMemHolidays(targetSid);
     if (!options?.includeInactive) {
       list = list.filter(h => h.is_active);
     }
@@ -275,7 +299,7 @@ export async function listSchoolHolidays(
       FROM school_holidays
       WHERE school_id = $1
     `;
-    const params: any[] = [schoolId];
+    const params: any[] = [targetSid];
 
     if (!options?.includeInactive) {
       params.push(true);
@@ -320,6 +344,7 @@ export async function addSchoolHoliday(
   }
 ): Promise<SchoolHoliday> {
   await ensureCalendarTables();
+  const targetSid = canonicalSchoolId(schoolId) || schoolId;
 
   const cleanDate = data.holiday_date.trim();
   parseYMDToUtc(cleanDate); // validates date syntax and validity
@@ -328,11 +353,11 @@ export async function addSchoolHoliday(
   const name = data.name.trim();
 
   if (!isPostgresConfigured) {
-    const list = memHolidays[schoolId] || [];
+    const list = getOrInitMemHolidays(targetSid);
     const existingIdx = list.findIndex(h => h.holiday_date === cleanDate);
     const item: SchoolHoliday = {
       id: existingIdx >= 0 ? list[existingIdx].id : `hol-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      school_id: schoolId,
+      school_id: targetSid,
       name,
       holiday_date: cleanDate,
       holiday_type: holidayType,
@@ -346,7 +371,7 @@ export async function addSchoolHoliday(
     } else {
       list.push(item);
     }
-    memHolidays[schoolId] = list;
+    memHolidays[targetSid] = list;
     return item;
   }
 
@@ -361,7 +386,7 @@ export async function addSchoolHoliday(
          updated_at = NOW()
      RETURNING id, school_id, name, to_char(holiday_date, 'YYYY-MM-DD') as holiday_date,
                holiday_type, description, is_active, created_at, updated_at`,
-    [schoolId, name, cleanDate, holidayType, data.description || null]
+    [targetSid, name, cleanDate, holidayType, data.description || null]
   );
 
   return res.rows[0];
@@ -382,9 +407,10 @@ export async function updateSchoolHoliday(
   }
 ): Promise<SchoolHoliday | null> {
   await ensureCalendarTables();
+  const targetSid = canonicalSchoolId(schoolId) || schoolId;
 
   if (!isPostgresConfigured) {
-    const list = memHolidays[schoolId] || [];
+    const list = getOrInitMemHolidays(targetSid);
     const item = list.find(h => h.id === holidayId);
     if (!item) return null;
     if (data.name !== undefined) item.name = data.name.trim();
@@ -397,7 +423,7 @@ export async function updateSchoolHoliday(
   }
 
   const setClauses: string[] = ['updated_at = NOW()'];
-  const params: any[] = [holidayId, schoolId];
+  const params: any[] = [holidayId, targetSid];
 
   if (data.name !== undefined) {
     params.push(data.name.trim());
@@ -492,13 +518,14 @@ export async function deleteSchoolHoliday(
   deleteAllMatchingName: boolean = false
 ): Promise<boolean> {
   await ensureCalendarTables();
+  const targetSid = canonicalSchoolId(schoolId) || schoolId;
 
   if (!isPostgresConfigured) {
-    const list = memHolidays[schoolId] || [];
+    const list = getOrInitMemHolidays(targetSid);
     const target = list.find(h => h.id === holidayId);
     if (!target) return false;
     if (deleteAllMatchingName) {
-      memHolidays[schoolId] = list.filter(h => h.name !== target.name);
+      memHolidays[targetSid] = list.filter(h => h.name !== target.name);
       return true;
     } else {
       const idx = list.findIndex(h => h.id === holidayId);
@@ -510,20 +537,20 @@ export async function deleteSchoolHoliday(
   if (deleteAllMatchingName) {
     const holRes = await pool.query(
       `SELECT name FROM school_holidays WHERE id = $1 AND school_id = $2`,
-      [holidayId, schoolId]
+      [holidayId, targetSid]
     );
     if (holRes.rows.length === 0) return false;
     const holName = holRes.rows[0].name;
     const res = await pool.query(
       `DELETE FROM school_holidays WHERE school_id = $1 AND name = $2`,
-      [schoolId, holName]
+      [targetSid, holName]
     );
     return (res.rowCount || 0) > 0;
   }
 
   const res = await pool.query(
     `DELETE FROM school_holidays WHERE id = $1 AND school_id = $2`,
-    [holidayId, schoolId]
+    [holidayId, targetSid]
   );
   return (res.rowCount || 0) > 0;
 }
