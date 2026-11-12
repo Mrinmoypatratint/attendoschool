@@ -2901,7 +2901,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         </header>
       ) : user.role === 'SCHOOL_ADMIN' ? (
         <header className="app-topbar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: '1 1 auto' }}>
             <button
               type="button"
               className="header-icon-btn mobile-menu-btn mobile-only-menu-btn"
@@ -2912,7 +2912,7 @@ function Layout({ children }: { children: React.ReactNode }) {
               <Menu size={18} />
             </button>
             <div
-              style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flexShrink: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
               onClick={handleOpenSchoolWebsite}
               title={currentSchoolWebsite ? `Visit Official School Website: ${currentSchoolWebsite}` : currentSchoolName}
             >
@@ -2942,7 +2942,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
             </div>
-            <div className="header-search" style={{ marginLeft: 16, width: 380, maxWidth: 440, cursor: 'pointer' }} onClick={() => setSearchOpen(true)}>
+            <div className="header-search" style={{ width: 360, maxWidth: 440, flex: '0 1 380px', cursor: 'pointer' }} onClick={() => setSearchOpen(true)}>
               <Search size={15} />
               <input placeholder="Search menu, pages..." readOnly style={{ cursor: 'pointer' }} />
             </div>
@@ -3142,7 +3142,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         </header>
       ) : (
         <header className="app-topbar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: '1 1 auto' }}>
             <button
               type="button"
               className="header-icon-btn mobile-menu-btn mobile-only-menu-btn"
@@ -3153,7 +3153,7 @@ function Layout({ children }: { children: React.ReactNode }) {
               <Menu size={18} />
             </button>
             <div
-              style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
+              style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flexShrink: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
               onClick={handleOpenSchoolWebsite}
               title={currentSchoolWebsite ? `Visit Official School Website: ${currentSchoolWebsite}` : currentSchoolName}
             >
@@ -3183,10 +3183,11 @@ function Layout({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
             </div>
-          </div>
-          <div className="header-search" onClick={() => setSearchOpen(true)} style={{ width: 380, maxWidth: 440, cursor: 'pointer' }}>
-            <Search size={15} />
-            <input placeholder="Search menu, pages..." readOnly style={{ cursor: 'pointer' }} />
+
+            <div className="header-search" onClick={() => setSearchOpen(true)} style={{ width: 360, maxWidth: 440, flex: '0 1 380px', cursor: 'pointer' }}>
+              <Search size={15} />
+              <input placeholder="Search menu, pages..." readOnly style={{ cursor: 'pointer' }} />
+            </div>
           </div>
           <div className="header-right">
             {/* Connected Academic Session Selector Dropdown */}
