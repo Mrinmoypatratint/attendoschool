@@ -480,29 +480,10 @@ export function StudentAnnouncements() {
               setSourceFilter('ALL');
               setSelectedTeacherName('ALL');
             }}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '6px 14px',
-              borderRadius: 4,
-              fontSize: 12.5,
-              fontWeight: 600,
-              cursor: 'pointer',
-              border: sourceFilter === 'ALL' ? "1px solid var(--border)" : "1px solid var(--border, var(--border))",
-              backgroundColor: sourceFilter === 'ALL' ? "var(--primary)" : "var(--bg-card, var(--card))",
-              color: sourceFilter === 'ALL' ? "var(--background)" : "var(--text, var(--foreground))",
-              boxShadow: sourceFilter === 'ALL' ? "none" : 'none',
-              transition: 'all 0.15s ease'
-            }}
+            className={`announcement-filter-btn ${sourceFilter === 'ALL' ? 'active' : ''}`}
           >
-            All <span style={{
-              fontSize: 11,
-              padding: '1px 6px',
-              borderRadius: 4,
-              backgroundColor: sourceFilter === 'ALL' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
-              color: sourceFilter === 'ALL' ? "var(--background)" : "var(--text-muted, var(--muted-foreground))"
-            }}>{announcements.length}</span>
+            <span>All</span>
+            <span className="announcement-filter-badge">{announcements.length}</span>
           </button>
 
           {/* SCHOOL */}
@@ -512,60 +493,22 @@ export function StudentAnnouncements() {
               setSourceFilter('SCHOOL');
               setSelectedTeacherName('ALL');
             }}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '6px 14px',
-              borderRadius: 4,
-              fontSize: 12.5,
-              fontWeight: 600,
-              cursor: 'pointer',
-              border: sourceFilter === 'SCHOOL' ? "1px solid var(--border)" : "1px solid var(--border, var(--border))",
-              backgroundColor: sourceFilter === 'SCHOOL' ? "var(--primary)" : "var(--bg-card, var(--card))",
-              color: sourceFilter === 'SCHOOL' ? "var(--background)" : "var(--text, var(--foreground))",
-              boxShadow: sourceFilter === 'SCHOOL' ? "none" : 'none',
-              transition: 'all 0.15s ease'
-            }}
+            className={`announcement-filter-btn ${sourceFilter === 'SCHOOL' ? 'active' : ''}`}
           >
             <Building2 size={13} />
-            School <span style={{
-              fontSize: 11,
-              padding: '1px 6px',
-              borderRadius: 4,
-              backgroundColor: sourceFilter === 'SCHOOL' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
-              color: sourceFilter === 'SCHOOL' ? "var(--background)" : "var(--text-muted, var(--muted-foreground))"
-            }}>{schoolCount}</span>
+            <span>School</span>
+            <span className="announcement-filter-badge">{schoolCount}</span>
           </button>
 
           {/* TEACHER */}
           <button
             type="button"
             onClick={() => setSourceFilter('TEACHER')}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '6px 14px',
-              borderRadius: 4,
-              fontSize: 12.5,
-              fontWeight: 600,
-              cursor: 'pointer',
-              border: sourceFilter === 'TEACHER' ? "1px solid var(--border)" : "1px solid var(--border, var(--border))",
-              backgroundColor: sourceFilter === 'TEACHER' ? "var(--primary)" : "var(--bg-card, var(--card))",
-              color: sourceFilter === 'TEACHER' ? "var(--background)" : "var(--text, var(--foreground))",
-              boxShadow: sourceFilter === 'TEACHER' ? "none" : 'none',
-              transition: 'all 0.15s ease'
-            }}
+            className={`announcement-filter-btn ${sourceFilter === 'TEACHER' ? 'active' : ''}`}
           >
             <GraduationCap size={14} />
-            Teacher <span style={{
-              fontSize: 11,
-              padding: '1px 6px',
-              borderRadius: 4,
-              backgroundColor: sourceFilter === 'TEACHER' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
-              color: sourceFilter === 'TEACHER' ? "var(--background)" : "var(--text-muted, var(--muted-foreground))"
-            }}>{teacherCount}</span>
+            <span>Teacher</span>
+            <span className="announcement-filter-badge">{teacherCount}</span>
           </button>
         </div>
 

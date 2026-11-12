@@ -1434,18 +1434,9 @@ export default function Communication() {
                   key={f}
                   type="button"
                   onClick={() => setTableFilter(f)}
-                  style={{
-                    padding: '3px 9px',
-                    borderRadius: 4,
-                    fontSize: 11.5,
-                    fontWeight: tableFilter === f ? 700 : 500,
-                    backgroundColor: tableFilter === f ? "var(--sidebar-accent, var(--primary))" : "var(--card-subtle, var(--secondary))",
-                    color: tableFilter === f ? "var(--background)" : "var(--text-secondary, var(--muted-foreground))",
-                    border: '1px solid var(--border, transparent)',
-                    cursor: 'pointer'
-                  }}
+                  className={`announcement-filter-btn ${tableFilter === f ? 'active' : ''}`}
                 >
-                  {f === 'ALL' ? 'All' : f}
+                  <span>{f === 'ALL' ? 'All' : f}</span>
                 </button>
               ))}
             </div>
