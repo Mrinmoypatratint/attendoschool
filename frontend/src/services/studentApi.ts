@@ -183,6 +183,7 @@ export interface Exam {
   room: string;
   total_marks: number;
   passing_marks: number;
+  grading_system?: 'MARKS' | 'CGPA' | 'GRADE';
   marks_obtained?: number;
   grade?: string;
   remarks?: string;

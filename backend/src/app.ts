@@ -251,12 +251,13 @@ app.use('/api/webhooks', razorpayWebhook);
 app.use('/api/school-payment', razorpaySchool);
 app.use('/api', schoolData);
 app.use('/api/routines', routines);
+app.use('/api/teacher/mentor', mentor);
+app.use('/api', mentor);
 app.use('/api/teacher', teacher);
 app.use('/api/attendance', teacher);
 app.use('/api/notifications', notifications);
 app.use('/api/student', student);
 app.use('/api/reviews', requireAuth, reviews);
-app.use('/api', mentor);
 app.use('/api/admin/temporary-assignments', temporaryAssignments);
 app.use('/api/teacher/assignments', teacherAssignments);
 

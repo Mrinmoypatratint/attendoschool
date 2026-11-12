@@ -14,6 +14,7 @@ import { memEntries } from './timetable';
 import { validatePasswordStrength } from '../utils/passwordPolicy';
 import { fastCache } from '../utils/cache';
 import { normalizeGender } from '../utils/gender';
+import * as mentorSvc from '../services/mentorService';
 import { inMemoryClassMentors } from '../services/mentorService';
 import { inMemoryTemporaryAssignments } from '../services/temporaryAssignmentService';
 
@@ -3661,6 +3662,77 @@ r.put('/profile', ...teacher, async (req: AuthRequest, res) => {
     res.json({ success: true, message: 'Profile details updated successfully' });
   } catch (err: any) {
     res.status(400).json({ message: err.message || 'Failed to update profile' });
+  }
+});
+
+// Class Mentor Exam Results forwarding handlers on /api/teacher
+function extractMentorSession(req: AuthRequest): string {
+  return String(
+    req.query.session ||
+    req.query.academicSession ||
+    req.query.sessionId ||
+    req.query.academic_year_id ||
+    req.query.academicYearId ||
+    req.body?.session ||
+    req.body?.academicSession ||
+    req.body?.academicYearId ||
+    req.body?.academic_year_id ||
+    req.headers['x-academic-year-id'] ||
+    (req.headers['x-academic-session'] ? decodeURIComponent(String(req.headers['x-academic-session'])) : '') ||
+    ''
+  ).trim();
+}
+
+r.get(['/mentor/exams', '/exams'], ...teacher, async (req: AuthRequest, res: any) => {
+  try {
+    const classId = String(req.query.class_id || req.query.classId || '').trim();
+    const sectionId = String(req.query.section_id || req.query.sectionId || '').trim();
+    const session = extractMentorSession(req);
+    if (!classId) return res.status(400).json({ message: 'class_id is required' });
+    const list = await mentorSvc.getMentoredExams(req.user!.schoolId!, classId, sectionId || undefined, session || undefined);
+    res.json(list);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to fetch mentored exams' });
+  }
+});
+
+r.get(['/mentor/exam-marks', '/exam-marks'], ...teacher, async (req: AuthRequest, res: any) => {
+  try {
+    const classId = String(req.query.class_id || req.query.classId || '').trim();
+    const sectionId = String(req.query.section_id || req.query.sectionId || '').trim();
+    const examId = String(req.query.exam_id || req.query.examId || '').trim() || undefined;
+    const session = extractMentorSession(req);
+    if (!classId || !sectionId) return res.status(400).json({ message: 'class_id and section_id are required' });
+    const data = await mentorSvc.getMentoredSectionStudentsWithMarks(req.user!.schoolId!, classId, sectionId, examId, session || undefined);
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to fetch exam student marks' });
+  }
+});
+
+r.post(['/mentor/publish-results', '/publish-results'], ...teacher, async (req: AuthRequest, res: any) => {
+  try {
+    const { classId, title, totalMarks } = req.body || {};
+    if (!classId || !title || !totalMarks) {
+      return res.status(400).json({ message: 'classId, title, and totalMarks are required' });
+    }
+    const session = extractMentorSession(req);
+    const out = await mentorSvc.publishExamResults(req.user!.schoolId!, req.user!.id, {
+      ...req.body,
+      ...(session ? { session } : {})
+    });
+    res.json(out);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to publish exam results' });
+  }
+});
+
+r.delete(['/mentor/exams/:id', '/exams/:id'], ...teacher, async (req: AuthRequest, res: any) => {
+  try {
+    await mentorSvc.deleteMentoredExam(req.user!.schoolId!, String(req.params.id));
+    res.json({ success: true, message: 'Exam deleted successfully' });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to delete exam' });
   }
 });
 

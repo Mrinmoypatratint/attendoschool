@@ -8,6 +8,7 @@ import { getAllDemoUsers } from '../store/demoUsers';
 import { memAttendanceSessions, memAttendanceRecords } from '../routes/teacher';
 import { calculateWorkingCalendar } from './calendarService';
 import { inMemoryLeaves } from '../store/leavesStore';
+import { inMemoryStudentExams, inMemoryExamResults } from './mentorService';
 import { memEntries } from '../routes/timetable';
 import { validatePasswordStrength } from '../utils/passwordPolicy';
 import { normalizeGender } from '../utils/gender';
@@ -1860,18 +1861,80 @@ export async function getStudentExams(schoolId: string, userId: string) {
   try {
     const examsQ = await pool.query(
       `SELECT e.id, e.title, e.exam_date, e.start_time, e.end_time, e.room,
-              e.total_marks, e.passing_marks, COALESCE(sub.name, 'General') AS subject_name,
+              e.total_marks, e.passing_marks, COALESCE(e.grading_system, 'MARKS') AS grading_system,
+              COALESCE(sub.name, 'General') AS subject_name,
               r.marks_obtained, r.grade, r.remarks
        FROM student_exams e
        LEFT JOIN subjects sub ON sub.id = e.subject_id
-       LEFT JOIN student_exam_results r ON r.exam_id = e.id AND r.student_id = $3
+       LEFT JOIN student_exam_results r ON r.exam_id = e.id AND (r.student_id = $3 OR r.student_id::text = $5::text)
        WHERE e.school_id = $1 
-         AND (e.class_id = $2 OR e.class_id IN (SELECT id FROM classes WHERE school_id = $1 AND class_number = $4))
+         AND (
+           e.class_id = $2 
+           OR e.class_id IN (SELECT id FROM classes WHERE school_id = $1 AND class_number = $4)
+           OR e.id IN (SELECT exam_id FROM student_exam_results WHERE student_id = $3 OR student_id::text = $5::text)
+         )
+         AND (
+           e.section_id IS NULL 
+           OR e.section_id = $6 
+           OR e.section_id IN (SELECT id FROM sections WHERE school_id = $1 AND UPPER(name) = UPPER($7)) 
+           OR r.id IS NOT NULL
+         )
        ORDER BY e.exam_date ASC`,
-      [schoolId, st.class_id, st.id, Number(st.class_number || 0)]
+      [schoolId, st.class_id, st.id, Number(st.class_number || 0), userId, st.section_id, st.section_name || '']
     );
     if (examsQ.rowCount && examsQ.rowCount > 0) return examsQ.rows;
   } catch (_e) {}
+
+  // Check in-memory store
+  const matchedExams = inMemoryStudentExams.filter((e) => {
+    const matchSchool = !e.school_id || isSameSchool(e.school_id, schoolId);
+    const matchClass = !e.class_id || e.class_id === st.class_id || String(e.class_id).includes(String(st.class_number || ''));
+    const matchSection = !e.section_id || e.section_id === st.section_id || (st.section_name && String(e.section_id).toLowerCase() === String(st.section_name).toLowerCase());
+    return matchSchool && (matchClass || matchSection);
+  });
+
+  if (matchedExams.length > 0) {
+    return matchedExams.map((ex) => {
+      const r = inMemoryExamResults.find((res) => res.exam_id === ex.id && (res.student_id === st.id || res.student_id === userId));
+      return {
+        id: ex.id,
+        title: ex.title,
+        exam_date: ex.exam_date,
+        start_time: ex.start_time || '09:00',
+        end_time: ex.end_time || '12:00',
+        room: ex.room || 'Main Hall',
+        total_marks: ex.total_marks,
+        passing_marks: ex.passing_marks,
+        subject_name: ex.subject_name || 'General',
+        marks_obtained: r ? r.marks_obtained : null,
+        grade: r ? r.grade : null,
+        remarks: r ? r.remarks : null
+      };
+    });
+  }
+
+  const memResults = inMemoryExamResults.filter(
+    (r) => (r.school_id === schoolId || !schoolId) && (r.student_id === st.id || r.student_id === userId)
+  );
+  if (memResults.length > 0) {
+    return memResults.map((r) => {
+      const ex = inMemoryStudentExams.find((e) => e.id === r.exam_id);
+      return {
+        id: ex?.id || r.exam_id,
+        title: ex?.title || 'Examination Assessment',
+        exam_date: ex?.exam_date || new Date().toISOString().slice(0, 10),
+        start_time: ex?.start_time || '09:00',
+        end_time: ex?.end_time || '12:00',
+        room: ex?.room || 'Main Hall',
+        total_marks: ex?.total_marks || 100,
+        passing_marks: ex?.passing_marks || 40,
+        subject_name: ex?.subject_name || 'General',
+        marks_obtained: r.marks_obtained,
+        grade: r.grade,
+        remarks: r.remarks
+      };
+    });
+  }
 
   return [];
 }

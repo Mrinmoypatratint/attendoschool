@@ -344,7 +344,7 @@ export const ROUTE_BINDINGS: RouteBinding[] = [
   // ---- mentors / temporary assignments ----
   B(ANY, /^\/api\/admin\/mentors$/, 'mentors_and_temporary_assignments', 'mentors.manage'),
   B('PUT', /^\/api\/teacher\/mentor\/permissions$/, 'mentors_and_temporary_assignments', 'mentors.permissions.manage'),
-  B('GET', /^\/api\/teacher\/mentor\//, 'mentors_and_temporary_assignments', 'mentors.workspace'),
+  B(ANY, /^\/api\/teacher\/mentor\//, 'mentors_and_temporary_assignments', 'mentors.workspace'),
   B(ANY, /^\/api\/admin\/temporary-assignments(\/|$)/, 'mentors_and_temporary_assignments', 'temporary_assignments.manage'),
 
   // ---- assignments ----

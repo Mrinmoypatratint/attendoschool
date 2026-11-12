@@ -88,6 +88,12 @@ api.interceptors.request.use((c) => {
   if (currentAcademicSession && !c.headers['x-academic-session']) {
     c.headers['x-academic-session'] = encodeURIComponent(currentAcademicSession);
   }
+  const currentAcademicYearId = typeof localStorage !== 'undefined'
+    ? localStorage.getItem('attendo_active_academic_year_id')
+    : null;
+  if (currentAcademicYearId && !c.headers['x-academic-year-id']) {
+    c.headers['x-academic-year-id'] = currentAcademicYearId;
+  }
   return c;
 });
 
