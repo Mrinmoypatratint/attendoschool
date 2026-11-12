@@ -1566,29 +1566,10 @@ export function TeacherAnnouncements() {
                     key={f}
                     type="button"
                     onClick={() => setTableFilter(f)}
-                    style={{
-                      padding: '4px 11px',
-                      borderRadius: 4,
-                      fontSize: 12,
-                      fontWeight: tableFilter === f ? 700 : 500,
-                      backgroundColor: tableFilter === f ? "var(--sidebar-accent, var(--primary))" : "var(--card-subtle, var(--secondary))",
-                      color: tableFilter === f ? "var(--background)" : "var(--text-secondary, var(--muted-foreground))",
-                      border: '1px solid var(--border, transparent)',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      transition: 'all 0.15s ease'
-                    }}
+                    className={`announcement-filter-btn ${tableFilter === f ? 'active' : ''}`}
                   >
                     <span>{label}</span>
-                    <span style={{
-                      fontSize: 10.5,
-                      opacity: tableFilter === f ? 0.9 : 0.7,
-                      backgroundColor: tableFilter === f ? "var(--card)" : "var(--card)",
-                      padding: '1px 5px',
-                      borderRadius: 4
-                    }}>
+                    <span className="announcement-filter-badge">
                       {count}
                     </span>
                   </button>
