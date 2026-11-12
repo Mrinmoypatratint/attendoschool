@@ -376,7 +376,7 @@ export default function TeacherLeaveRequest() {
   };
 
   return (
-    <div className="student-subpage w-full pb-16">
+    <div className="student-subpage w-full pb-16" style={{ padding: '24px 24px 48px', boxSizing: 'border-box' }}>
       {/* ── Header ── */}
       <div className="student-subpage-header mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="student-subpage-title-row">

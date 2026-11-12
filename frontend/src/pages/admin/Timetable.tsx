@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
 import { PersonProfileLink } from '../../components/PersonProfileLink';
-import { Calendar, Plus, Trash2, AlertTriangle, Clock, BookOpen, Users, User, RefreshCw, ChevronDown, Check, X, Layers, GraduationCap, ClipboardCheck, Sparkles, Pencil } from 'lucide-react';
+import { ArrowLeft, Calendar, Plus, Trash2, AlertTriangle, Clock, BookOpen, Users, User, RefreshCw, ChevronDown, Check, X, Layers, GraduationCap, ClipboardCheck, Sparkles, Pencil } from 'lucide-react';
 
 const DAYS = [
   { num: 1, name: 'Monday', short: 'Mon' },
@@ -663,10 +664,17 @@ export default function Timetable() {
 
   if (loading) return <div className="feature-page" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}><p className="muted" style={{ padding: 40, textAlign: 'center' }}>Loading timetable data...</p></div>;
 
-  return <div className="feature-page w-full max-w-none m-0 pb-12" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
+  return <div className="feature-page w-full max-w-none m-0 pb-12" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '24px 24px 48px', boxSizing: 'border-box' }}>
     {/* ── Header ── */}
     <div className="flex justify-between items-start flex-wrap gap-3.5 mb-4">
       <div>
+        <Link
+          to="/dashboard"
+          className="student-back-link inline-flex items-center gap-1.5 text-xs font-semibold mb-2"
+          style={{ color: '#e11d48', textDecoration: 'none' }}
+        >
+          <ArrowLeft size={16} /> <span>Dashboard</span>
+        </Link>
         <p className="eyebrow text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">{isSchoolAdmin ? 'TIMETABLE MANAGEMENT' : 'FACULTY TIMETABLE'}</p>
         <h1 className="m-0 text-2xl font-bold text-slate-900 dark:text-white">{isSchoolAdmin ? 'Weekly Class Timetable' : 'My Teaching Timetable'}</h1>
         <p className="muted text-xs text-slate-500 dark:text-slate-400 mt-1">

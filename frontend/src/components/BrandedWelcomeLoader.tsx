@@ -30,7 +30,7 @@ export const BrandedWelcomeLoader: React.FC<BrandedWelcomeLoaderProps> = ({
   logoUrl,
   onComplete,
   minDurationMs = 1900,
-  maxDurationMs = 2800,
+  maxDurationMs = 4000,
 }) => {
   const [fadingOut, setFadingOut] = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -80,15 +80,17 @@ export const BrandedWelcomeLoader: React.FC<BrandedWelcomeLoaderProps> = ({
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // Transition timing: start fade-out at minDuration, finish and unmount by minDuration + 350ms
-    const activeDuration = prefersReducedMotion ? Math.min(minDurationMs, 1200) : minDurationMs;
+    // Ensure the full letter-by-letter greeting finishes revealing before fade-out
+    const textRevealMs = Math.ceil((0.12 + fullGreeting.length * 0.028 + 0.85) * 1000);
+    const targetDuration = Math.min(Math.max(minDurationMs, textRevealMs), maxDurationMs - 300);
+    const activeDuration = prefersReducedMotion ? Math.min(minDurationMs, 700) : targetDuration;
     const fadeTimer = setTimeout(() => {
       setFadingOut(true);
     }, activeDuration);
 
     const completeTimer = setTimeout(() => {
       if (onComplete) onComplete();
-    }, activeDuration + 350);
+    }, activeDuration + 250);
 
     // Hard fail-safe timeout
     const maxTimer = setTimeout(() => {
@@ -100,7 +102,7 @@ export const BrandedWelcomeLoader: React.FC<BrandedWelcomeLoaderProps> = ({
       clearTimeout(completeTimer);
       clearTimeout(maxTimer);
     };
-  }, [minDurationMs, maxDurationMs, onComplete]);
+  }, [minDurationMs, maxDurationMs, fullGreeting.length, onComplete]);
 
   return (
     <div

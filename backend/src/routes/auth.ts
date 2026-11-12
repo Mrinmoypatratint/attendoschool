@@ -43,7 +43,8 @@ router.get('/institutes', async (_req, res) => {
                 id: sid,
                 name: String(s.name),
                 code: scode,
-                address: String(s.address || 'Main Campus')
+                address: String(s.address || 'Main Campus'),
+                photoUrl: s.photo_url || s.photoUrl || undefined
               });
             }
           }
@@ -58,7 +59,7 @@ router.get('/institutes', async (_req, res) => {
   if (isPostgresConfigured && list.length === 0) {
     try {
       const q = await pool.query(
-        `SELECT id, name, code, COALESCE(address, 'Main Campus') AS address
+        `SELECT id, name, code, COALESCE(address, 'Main Campus') AS address, photo_url
          FROM schools
          WHERE status = 'ACTIVE'
          ORDER BY name ASC`
@@ -73,7 +74,8 @@ router.get('/institutes', async (_req, res) => {
             id: sid,
             name: String(s.name),
             code: scode,
-            address: String(s.address || 'Main Campus')
+            address: String(s.address || 'Main Campus'),
+            photoUrl: s.photo_url || undefined
           };
         });
       }
@@ -114,7 +116,8 @@ router.get('/lookup-institute', async (req, res) => {
           found: true,
           instituteId: String(u.school_id || u.schoolId),
           instituteName: sch?.name || u.school_name || u.schoolName,
-          instituteCode: sch?.code || u.school_code || u.schoolCode
+          instituteCode: sch?.code || u.school_code || u.schoolCode,
+          instituteLogo: sch?.photo_url || sch?.photoUrl || u.school_photo_url || undefined
         });
       }
 
@@ -128,7 +131,8 @@ router.get('/lookup-institute', async (req, res) => {
           found: true,
           instituteId: String(st.school_id || st.schoolId),
           instituteName: sch?.name || st.school_name || st.schoolName,
-          instituteCode: sch?.code || st.school_code || st.schoolCode
+          instituteCode: sch?.code || st.school_code || st.schoolCode,
+          instituteLogo: sch?.photo_url || sch?.photoUrl || st.school_photo_url || undefined
         });
       }
     } catch (fsErr: any) {
@@ -140,7 +144,7 @@ router.get('/lookup-institute', async (req, res) => {
   if (isPostgresConfigured) {
     try {
       const q = await pool.query(
-        `SELECT u.school_id, s.name as school_name, s.code as school_code, s.status
+        `SELECT u.school_id, s.name as school_name, s.code as school_code, s.photo_url as school_photo_url, s.status
          FROM users u
          JOIN schools s ON u.school_id = s.id
          WHERE LOWER(u.email) = LOWER($1) AND s.status = 'ACTIVE'
@@ -153,13 +157,14 @@ router.get('/lookup-institute', async (req, res) => {
           found: true,
           instituteId: String(row.school_id),
           instituteName: row.school_name,
-          instituteCode: row.school_code
+          instituteCode: row.school_code,
+          instituteLogo: row.school_photo_url || undefined
         });
       }
 
       // Check teachers by employee_id / Savior_No
       const tq = await pool.query(
-        `SELECT u.school_id, s.name as school_name, s.code as school_code, s.status
+        `SELECT u.school_id, s.name as school_name, s.code as school_code, s.photo_url as school_photo_url, s.status
          FROM teacher_profiles tp
          JOIN users u ON u.id = tp.user_id
          JOIN schools s ON u.school_id = s.id
@@ -174,13 +179,14 @@ router.get('/lookup-institute', async (req, res) => {
           found: true,
           instituteId: String(row.school_id),
           instituteName: row.school_name,
-          instituteCode: row.school_code
+          instituteCode: row.school_code,
+          instituteLogo: row.school_photo_url || undefined
         });
       }
 
       // Check students table if not found in users
       const sq = await pool.query(
-        `SELECT st.school_id, s.name as school_name, s.code as school_code, s.status
+        `SELECT st.school_id, s.name as school_name, s.code as school_code, s.photo_url as school_photo_url, s.status
          FROM students st
          JOIN schools s ON st.school_id = s.id
          WHERE (LOWER(st.email) = LOWER($1) OR LOWER(st.roll_number) = LOWER($1) OR LOWER(st.admission_number) = LOWER($1))
@@ -194,7 +200,8 @@ router.get('/lookup-institute', async (req, res) => {
           found: true,
           instituteId: String(row.school_id),
           instituteName: row.school_name,
-          instituteCode: row.school_code
+          instituteCode: row.school_code,
+          instituteLogo: row.school_photo_url || undefined
         });
       }
     } catch (err: any) {

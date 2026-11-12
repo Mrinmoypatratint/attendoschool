@@ -524,14 +524,18 @@ function Login() {
             const instObj: Institute = {
               id: serverId,
               name: res.data.instituteName || 'Affiliated Institution',
-              code: res.data.instituteCode || 'SCH'
+              code: res.data.instituteCode || 'SCH',
+              photoUrl: res.data.instituteLogo || res.data.photoUrl || res.data.photo_url || undefined
             };
             setDetectedInstitute(instObj);
             setInstitutes(prev => {
-              if (!prev.some(i => i.id === serverId)) {
+              const idx = prev.findIndex(i => i.id === serverId);
+              if (idx === -1) {
                 return [...prev, instObj];
               }
-              return prev;
+              const next = [...prev];
+              next[idx] = { ...next[idx], ...instObj };
+              return next;
             });
             try {
               localStorage.setItem('attendoschool_last_institute_id', serverId);
@@ -588,7 +592,8 @@ function Login() {
             id: String(i.id || i._id),
             name: String(i.name),
             code: String(i.code || 'SCH001'),
-            address: String(i.address || '')
+            address: String(i.address || ''),
+            photoUrl: i.photoUrl || i.photo_url || undefined
           }));
 
         setInstitutes(cleanList);
@@ -746,7 +751,18 @@ function Login() {
             </div>
             {selectedRole && currentConfig.needsSchool && email.trim().length >= 3 && (
               <div className="login-school-status" role="status" aria-live="polite">
-                {lookupLoading ? <span id="detecting-institute-placeholder">Detecting your school...</span> : selectedInstitute ? <span id="detected-institute-display"><School size={16} /> {selectedInstitute.name}</span> : lookupNotFound ? <div id="not-found-institute-placeholder">
+                {lookupLoading ? <span id="detecting-institute-placeholder">Detecting your school...</span> : selectedInstitute ? <span id="detected-institute-display" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  {selectedInstitute.photoUrl ? (
+                    <img
+                      src={selectedInstitute.photoUrl}
+                      alt={selectedInstitute.name}
+                      style={{ width: 20, height: 20, borderRadius: 4, objectFit: 'contain', flexShrink: 0 }}
+                    />
+                  ) : (
+                    <School size={16} />
+                  )}
+                  <span>{selectedInstitute.name}</span>
+                </span> : lookupNotFound ? <div id="not-found-institute-placeholder">
                   <label htmlFor="login-school">Choose your school</label>
                   <select id="login-school" value={instituteId} onChange={e => { setInstituteId(e.target.value); setDetectedInstitute(institutes.find(i => i.id === e.target.value) || null); }}>
                     <option value="">Select your school...</option>
@@ -15661,9 +15677,17 @@ function Attendance() {
 
   return (
     <Layout>
+      <div style={{ padding: '24px 24px 48px', boxSizing: 'border-box' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 18 }}>
         <div>
+          <button
+            type="button"
+            onClick={() => nav('/dashboard')}
+            style={{ background: 'transparent', border: 'none', padding: 0, color: '#e11d48', boxShadow: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 8 }}
+          >
+            <ArrowLeft size={16} /> <span>Dashboard</span>
+          </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: existingSession ? "var(--success)" : "var(--warning)" }}></span>
             <p className="eyebrow" style={{ margin: 0 }}>ATTENDANCE CONTROL & RE-ATTENDANCE STATION</p>
@@ -17141,6 +17165,7 @@ function Attendance() {
         loading={attendancePreview.loading}
         error={attendancePreview.error}
       />
+      </div>
     </Layout>
   );
 }

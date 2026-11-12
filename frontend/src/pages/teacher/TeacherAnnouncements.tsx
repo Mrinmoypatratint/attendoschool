@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Megaphone,
   Calendar,
@@ -1208,10 +1209,17 @@ export function TeacherAnnouncements() {
   const highReceivedTotal = receivedNotices.filter(n => n.priority === 'HIGH').length;
 
   return (
-    <div className="as-communication-page" style={{ width: '100%', maxWidth: '100%', margin: 0, padding: 0, marginTop: -8, boxSizing: 'border-box' }}>
+    <div className="as-communication-page" style={{ width: '100%', maxWidth: '100%', margin: 0, padding: '24px 24px 48px', boxSizing: 'border-box' }}>
       {/* ── Page Header Row ── */}
       <div className="as-communication-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
+          <Link
+            to="/dashboard"
+            className="student-back-link inline-flex items-center gap-1.5 text-xs font-semibold mb-2"
+            style={{ color: '#e11d48', textDecoration: 'none' }}
+          >
+            <ArrowLeft size={16} /> <span>Dashboard</span>
+          </Link>
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "var(--text, var(--foreground))" }}>Announcement</h1>
           <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: "var(--text-muted, var(--muted-foreground))" }}>
             Multi-channel institutional announcements, role-based audience broadcasts, and student notices.

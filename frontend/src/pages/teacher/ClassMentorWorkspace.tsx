@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
   Users, ShieldCheck, FileText, RefreshCw, AlertCircle, Loader2, Award,
   Plus, Edit2, Trash2, Calendar, BookOpen, Search, ArrowLeft, Save, CheckCircle2,
@@ -676,10 +676,17 @@ export function ClassMentorWorkspace() {
   }
 
   return (
-    <div className="as-mentor-workspace">
+    <div className="as-mentor-workspace" style={{ padding: '24px 24px 48px', boxSizing: 'border-box' }}>
       {/* Workspace Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
         <div>
+          <Link
+            to="/dashboard"
+            className="student-back-link inline-flex items-center gap-1.5 text-xs font-semibold mb-2"
+            style={{ color: '#e11d48', textDecoration: 'none' }}
+          >
+            <ArrowLeft size={16} /> <span>Dashboard</span>
+          </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: 'var(--text)' }}>
               Class Mentor Workspace
