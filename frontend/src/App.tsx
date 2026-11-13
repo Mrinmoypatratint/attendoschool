@@ -13628,7 +13628,7 @@ function Classes() {
       style={{
         display: 'flex',
         gap: 12,
-        borderBottom: dark ? '2px solid #334155' : '2px solid #e2e8f0',
+        borderBottom: "2px solid var(--border, var(--border))",
         marginBottom: 20
       }}
     >
@@ -13642,8 +13642,8 @@ function Classes() {
           padding: '12px 20px',
           background: 'none',
           border: 'none',
-          borderBottom: activeTab === 'CLASSES' ? '3px solid #e11d55' : '3px solid transparent',
-          color: activeTab === 'CLASSES' ? '#e11d55' : (dark ? '#94a3b8' : '#64748b'),
+          borderBottom: activeTab === 'CLASSES' ? "3px solid var(--border)" : '3px solid transparent',
+          color: activeTab === 'CLASSES' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
           fontWeight: activeTab === 'CLASSES' ? 700 : 500,
           fontSize: 15,
           cursor: 'pointer',
@@ -13655,7 +13655,19 @@ function Classes() {
         }}
       >
         <Layers size={18} />
-        <span>Class Administration ({s.length})</span>
+        <span>Class Administration</span>
+        <span
+          style={{
+            padding: '2px 8px',
+            borderRadius: 4,
+            background: activeTab === 'CLASSES' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+            color: activeTab === 'CLASSES' ? "var(--primary)" : "var(--muted-foreground)",
+            fontSize: 12,
+            fontWeight: 700
+          }}
+        >
+          {s.length}
+        </span>
       </button>
       <button
         type="button"
@@ -13667,8 +13679,8 @@ function Classes() {
           padding: '12px 20px',
           background: 'none',
           border: 'none',
-          borderBottom: activeTab === 'TEMPORARY' ? '3px solid #e11d55' : '3px solid transparent',
-          color: activeTab === 'TEMPORARY' ? '#e11d55' : (dark ? '#94a3b8' : '#64748b'),
+          borderBottom: activeTab === 'TEMPORARY' ? "3px solid var(--border)" : '3px solid transparent',
+          color: activeTab === 'TEMPORARY' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
           fontWeight: activeTab === 'TEMPORARY' ? 700 : 500,
           fontSize: 15,
           cursor: 'pointer',
@@ -13680,7 +13692,19 @@ function Classes() {
         }}
       >
         <UserCheck size={18} />
-        <span>Teacher Substitution ({activeSubstitutionsCount})</span>
+        <span>Teacher Substitution</span>
+        <span
+          style={{
+            padding: '2px 8px',
+            borderRadius: 4,
+            background: activeTab === 'TEMPORARY' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+            color: activeTab === 'TEMPORARY' ? "var(--primary)" : "var(--muted-foreground)",
+            fontSize: 12,
+            fontWeight: 700
+          }}
+        >
+          {activeSubstitutionsCount}
+        </span>
       </button>
     </div>
 

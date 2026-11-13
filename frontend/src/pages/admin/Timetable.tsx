@@ -774,7 +774,7 @@ export default function Timetable() {
       style={{
         display: 'flex',
         gap: 8,
-        borderBottom: '2px solid var(--border, #e2e8f0)',
+        borderBottom: "2px solid var(--border, var(--border))",
         marginBottom: 20,
         flexWrap: 'wrap'
       }}
@@ -789,8 +789,8 @@ export default function Timetable() {
               padding: '10px 18px',
               background: 'none',
               border: 'none',
-              borderBottom: isActive ? '3px solid #e11d55' : '3px solid transparent',
-              color: isActive ? '#e11d55' : 'var(--text-secondary, #64748b)',
+              borderBottom: isActive ? "3px solid var(--border)" : '3px solid transparent',
+              color: isActive ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
               fontWeight: isActive ? 700 : 500,
               fontSize: 14,
               cursor: 'pointer',
@@ -801,7 +801,7 @@ export default function Timetable() {
               transition: 'all 0.15s ease'
             }}
           >
-            <Calendar size={16} style={{ color: isActive ? '#e11d55' : 'inherit' }} />
+            <Calendar size={16} style={{ color: isActive ? "var(--primary)" : "inherit" }} />
             <span>{d.name}</span>
           </button>
         );
