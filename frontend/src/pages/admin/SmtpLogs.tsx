@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Mail,
   Search,
@@ -22,7 +23,8 @@ import {
   Briefcase,
   EyeOff,
   Calendar,
-  Download
+  Download,
+  ArrowLeft
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { api } from '../../api';
@@ -443,7 +445,13 @@ export default function SmtpLogs() {
   };
 
   return (
-    <div className="w-full max-w-none m-0 pb-10" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
+    <div className="w-full max-w-none m-0 pb-10" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '24px 24px 40px', boxSizing: 'border-box' }}>
+      <Link
+        to="/dashboard"
+        style={{ background: 'transparent', border: 'none', padding: 0, color: '#e11d48', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 12 }}
+      >
+        <ArrowLeft size={16} /> <span>Dashboard</span>
+      </Link>
       {/* ── Page Header ── */}
       <div className="flex justify-between items-start flex-wrap gap-4 mb-6">
         <div>
