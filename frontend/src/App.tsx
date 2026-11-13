@@ -5908,6 +5908,68 @@ export function formatLastFetched(date: Date | null): string {
   return `${timeStr} (${date.toLocaleDateString([], { month: 'short', day: 'numeric' })})`;
 }
 
+/**
+ * Reusable React component for live Find-style search result highlighting.
+ * Highlights matches with browser-style yellow background (#ffeb3b) and dark readable text (#1a1a1a).
+ * Safe from HTML injection (renders strings as React text nodes).
+ */
+export const HighlightMatch: React.FC<{
+  text: string | number | null | undefined;
+  query: string;
+  className?: string;
+  style?: React.CSSProperties;
+}> = ({ text, query, className, style }) => {
+  if (text === null || text === undefined) return null;
+  const str = String(text);
+  const q = (query || '').trim();
+  if (!q || !str) {
+    return <span className={className} style={style}>{str}</span>;
+  }
+
+  const terms = q.split(/\s+/).filter(Boolean);
+  if (terms.length === 0) {
+    return <span className={className} style={style}>{str}</span>;
+  }
+
+  // Sort terms by length descending so longer phrases match first
+  const sortedTerms = [...terms].sort((a, b) => b.length - a.length);
+  const pattern = sortedTerms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  const regex = new RegExp(`(${pattern})`, 'gi');
+  const parts = str.split(regex);
+
+  if (parts.length <= 1) {
+    return <span className={className} style={style}>{str}</span>;
+  }
+
+  const termSet = new Set(terms.map(t => t.toLowerCase()));
+
+  return (
+    <span className={className} style={style}>
+      {parts.map((part, i) => {
+        if (termSet.has(part.toLowerCase())) {
+          return (
+            <mark
+              key={i}
+              style={{
+                backgroundColor: '#ffeb3b',
+                color: '#1a1a1a',
+                padding: '0 2px',
+                borderRadius: '2px',
+                fontWeight: 'inherit',
+                boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.05)',
+                lineHeight: 'inherit'
+              }}
+            >
+              {part}
+            </mark>
+          );
+        }
+        return part;
+      })}
+    </span>
+  );
+};
+
 /* ────── Students ────── */
 function Students() {
   const { user } = useAuth();
@@ -8198,23 +8260,29 @@ function Students() {
                   />
                 </td>
                 <td style={{ whiteSpace: 'nowrap' }}>
-                  <span className="roll">{x.roll_number}</span>
+                  <span className="roll">
+                    <HighlightMatch text={x.roll_number} query={search} />
+                  </span>
                 </td>
                 <td style={{ whiteSpace: 'nowrap' }}>
                   {(x.admission_number || x.admissionNumber) ? (
                     <span className="adm-no-tag">
-                      {x.admission_number || x.admissionNumber}
+                      <HighlightMatch text={x.admission_number || x.admissionNumber} query={search} />
                     </span>
                   ) : (
                     <span className="muted" style={{ fontSize: 11 }}>—</span>
                   )}
                 </td>
                 <td style={{ whiteSpace: 'nowrap', fontSize: 12, color: 'var(--text-secondary)' }}>
-                  {toDdMmYyyy(x.admission_date || x.admissionDate) || '—'}
+                  {x.admission_date || x.admissionDate ? (
+                    <HighlightMatch text={toDdMmYyyy(x.admission_date || x.admissionDate)} query={search} />
+                  ) : '—'}
                 </td>
                 <td>
                   <StudentProfileHoverCard student={x} activeSession={activeSession} mode="student">
-                    <b style={{ textTransform: 'uppercase' }}>{String(x.name || '').toUpperCase()}</b>
+                    <b style={{ textTransform: 'uppercase' }}>
+                      <HighlightMatch text={String(x.name || '').toUpperCase()} query={search} />
+                    </b>
                   </StudentProfileHoverCard>
                 </td>
                 <td style={{ whiteSpace: 'nowrap' }}>
@@ -8233,7 +8301,7 @@ function Students() {
                         border: `1px solid ${formatGender(x.gender) === 'Female' ? '#fcc3d1' : formatGender(x.gender) === 'Male' ? '#c9cee9' : '#eaeaec'}`
                       }}
                     >
-                      {formatGender(x.gender)}
+                      <HighlightMatch text={formatGender(x.gender)} query={search} />
                     </span>
                   ) : (
                     <span className="muted" style={{ fontSize: 12 }}>—</span>
@@ -8243,33 +8311,47 @@ function Students() {
                   {(() => {
                     const cNum = Number(x.class_number);
                     const cId = String(x.class_id || '');
-                    if (cNum === -1 || /l.?kg/i.test(cId)) return 'L-KG';
-                    if (cNum === 0 || /u.?kg/i.test(cId)) return 'U-KG';
-                    if (!isNaN(cNum) && cNum > 0) return `Class ${cNum}`;
-                    const m = cId.match(/cls-(\d+)/);
-                    if (m) return `Class ${m[1]}`;
-                    const label = String(x.class_label || x.class_name || '');
-                    if (label) return label.replace(/^class\s*/i, '').trim() || label;
-                    return 'Class ' + (cNum || 1);
+                    let classNameStr = 'Class ' + (cNum || 1);
+                    if (cNum === -1 || /l.?kg/i.test(cId)) classNameStr = 'L-KG';
+                    else if (cNum === 0 || /u.?kg/i.test(cId)) classNameStr = 'U-KG';
+                    else if (!isNaN(cNum) && cNum > 0) classNameStr = `Class ${cNum}`;
+                    else {
+                      const m = cId.match(/cls-(\d+)/);
+                      if (m) classNameStr = `Class ${m[1]}`;
+                      else {
+                        const label = String(x.class_label || x.class_name || '');
+                        if (label) classNameStr = label.replace(/^class\s*/i, '').trim() || label;
+                      }
+                    }
+                    return <HighlightMatch text={classNameStr} query={search} />;
                   })()}
                 </td>
                 <td style={{ whiteSpace: 'nowrap' }}>
                   <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
                     {(() => {
                       const raw = String(x.section_name || x.sectionName || x.section || 'A').trim();
-                      return raw.replace(/^section\s*/i, '').trim() || 'A';
+                      const secName = raw.replace(/^section\s*/i, '').trim() || 'A';
+                      return <HighlightMatch text={secName} query={search} />;
                     })()}
                   </span>
                 </td>
                 <td style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   <span style={{ fontSize: 12, color: x.student_email || x.email ? 'var(--text-main)' : 'var(--text-muted)' }} title={x.student_email || x.email || ''}>
-                    {x.student_email || x.email || '—'}
+                    {x.student_email || x.email ? (
+                      <HighlightMatch text={x.student_email || x.email} query={search} />
+                    ) : '—'}
                   </span>
                 </td>
                 <td style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  <div><b>{x.parent_name || 'Parent'}</b></div>
+                  <div>
+                    <b>
+                      <HighlightMatch text={x.parent_name || x.father_name || x.mother_name || x.guardian_name || 'Parent'} query={search} />
+                    </b>
+                  </div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                    <code>{x.parent_sms_number}</code>
+                    <code>
+                      <HighlightMatch text={x.parent_sms_number || x.parentPhone || x.father_phone || x.mother_phone || ''} query={search} />
+                    </code>
                     {x.parent_whatsapp_no && <span style={{ marginLeft: 4, color: '#03806a' }} title={`WhatsApp: ${x.parent_whatsapp_no}`}>• WA</span>}
                   </div>
                 </td>
