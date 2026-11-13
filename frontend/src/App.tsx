@@ -9133,7 +9133,7 @@ function Students() {
                       placeholder={editingStudent ? 'New password (min 6 characters, e.g. ChangeMe123!)' : 'Optional initial password'}
                       value={f.password || ''}
                       onChange={e => setF({ ...f, password: e.target.value })}
-                      style={{ width: '100%', paddingRight: 40 }}
+                      style={{ width: '100%', paddingRight: 40, boxSizing: 'border-box' }}
                     />
                     <button
                       type="button"
@@ -9141,7 +9141,25 @@ function Students() {
                       onClick={() => setShowStudentPassword(s => !s)}
                       className="password-toggle-btn"
                       title={showStudentPassword ? "Hide password" : "Show password"}
-                      style={{ position: 'absolute', right: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary, #696e79)', display: 'flex', alignItems: 'center' }}
+                      style={{
+                        position: 'absolute',
+                        right: 10,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        margin: 0,
+                        marginTop: 0,
+                        background: 'none',
+                        border: 'none',
+                        boxShadow: 'none',
+                        cursor: 'pointer',
+                        padding: 6,
+                        color: 'var(--text-secondary, #696e79)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        lineHeight: 0,
+                        zIndex: 5
+                      }}
                     >
                       {showStudentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -12424,7 +12442,7 @@ function Teachers() {
                       placeholder={editingTeacher ? 'New password (min 6 characters)' : 'Optional initial password (e.g. ChangeMe123!)'}
                       value={f.password || ''}
                       onChange={e => setF({ ...f, password: e.target.value })}
-                      style={{ width: '100%', paddingRight: 40 }}
+                      style={{ width: '100%', paddingRight: 40, boxSizing: 'border-box' }}
                     />
                     <button
                       type="button"
@@ -12432,7 +12450,25 @@ function Teachers() {
                       onClick={() => setShowTeacherPassword(s => !s)}
                       className="password-toggle-btn"
                       title={showTeacherPassword ? "Hide password" : "Show password"}
-                      style={{ position: 'absolute', right: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary, #696e79)', display: 'flex', alignItems: 'center' }}
+                      style={{
+                        position: 'absolute',
+                        right: 10,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        margin: 0,
+                        marginTop: 0,
+                        background: 'none',
+                        border: 'none',
+                        boxShadow: 'none',
+                        cursor: 'pointer',
+                        padding: 6,
+                        color: 'var(--text-secondary, #696e79)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        lineHeight: 0,
+                        zIndex: 5
+                      }}
                     >
                       {showTeacherPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -19535,7 +19571,7 @@ function SchoolProfile() {
                         placeholder="••••••••••••"
                         value={currentPassword}
                         onChange={e => setCurrentPassword(e.target.value)}
-                        style={{ width: '100%', paddingRight: 40 }}
+                        style={{ width: '100%', paddingRight: 40, boxSizing: 'border-box' }}
                       />
                       <button
                         type="button"
@@ -19543,6 +19579,25 @@ function SchoolProfile() {
                         onClick={() => setShowCurrentPw(s => !s)}
                         className="password-toggle-btn"
                         title={showCurrentPw ? "Hide password" : "Show password"}
+                        style={{
+                          position: 'absolute',
+                          right: 10,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          margin: 0,
+                          marginTop: 0,
+                          background: 'none',
+                          border: 'none',
+                          boxShadow: 'none',
+                          cursor: 'pointer',
+                          padding: 6,
+                          color: 'var(--text-secondary, #696e79)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          lineHeight: 0,
+                          zIndex: 5
+                        }}
                       >
                         {showCurrentPw ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
@@ -19558,7 +19613,7 @@ function SchoolProfile() {
                         placeholder="Enter new strong password"
                         value={newPassword}
                         onChange={e => setNewPassword(e.target.value)}
-                        style={{ width: '100%', paddingRight: 40 }}
+                        style={{ width: '100%', paddingRight: 40, boxSizing: 'border-box' }}
                       />
                       <button
                         type="button"
@@ -19566,6 +19621,25 @@ function SchoolProfile() {
                         onClick={() => setShowNewPw(s => !s)}
                         className="password-toggle-btn"
                         title={showNewPw ? "Hide password" : "Show password"}
+                        style={{
+                          position: 'absolute',
+                          right: 10,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          margin: 0,
+                          marginTop: 0,
+                          background: 'none',
+                          border: 'none',
+                          boxShadow: 'none',
+                          cursor: 'pointer',
+                          padding: 6,
+                          color: 'var(--text-secondary, #696e79)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          lineHeight: 0,
+                          zIndex: 5
+                        }}
                       >
                         {showNewPw ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
@@ -19584,7 +19658,7 @@ function SchoolProfile() {
                         placeholder="Confirm new password"
                         value={confirmPassword}
                         onChange={e => setConfirmPassword(e.target.value)}
-                        style={{ width: '100%', paddingRight: 40 }}
+                        style={{ width: '100%', paddingRight: 40, boxSizing: 'border-box' }}
                       />
                       <button
                         type="button"
@@ -19592,6 +19666,25 @@ function SchoolProfile() {
                         onClick={() => setShowConfirmPw(s => !s)}
                         className="password-toggle-btn"
                         title={showConfirmPw ? "Hide password" : "Show password"}
+                        style={{
+                          position: 'absolute',
+                          right: 10,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          margin: 0,
+                          marginTop: 0,
+                          background: 'none',
+                          border: 'none',
+                          boxShadow: 'none',
+                          cursor: 'pointer',
+                          padding: 6,
+                          color: 'var(--text-secondary, #696e79)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          lineHeight: 0,
+                          zIndex: 5
+                        }}
                       >
                         {showConfirmPw ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
