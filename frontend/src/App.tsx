@@ -13624,38 +13624,63 @@ function Classes() {
     </div>
 
     {/* Tab Navigation */}
-    <div className="student-tab-bar" style={{ marginBottom: 20, borderBottom: 'none' }}>
+    <div
+      style={{
+        display: 'flex',
+        gap: 12,
+        borderBottom: dark ? '2px solid #334155' : '2px solid #e2e8f0',
+        marginBottom: 20
+      }}
+    >
       <button
         type="button"
-        className={`student-tab-btn as-classes-tab-btn ${activeTab === 'CLASSES' ? 'active' : ''}`}
         onClick={() => {
           setActiveTab('CLASSES');
           nav('/classes', { replace: true });
         }}
         style={{
-          color: activeTab === 'CLASSES' ? '#ffffff' : (dark ? '#d4d5d9' : '#535766'),
-          backgroundColor: activeTab === 'CLASSES' ? '#e11d55' : (dark ? '#282c3f' : '#f5f5f6'),
-          borderColor: activeTab === 'CLASSES' ? '#e11d55' : (dark ? '#3e4152' : '#eaeaec'),
-          fontWeight: 600,
+          padding: '12px 20px',
+          background: 'none',
+          border: 'none',
+          borderBottom: activeTab === 'CLASSES' ? '3px solid #e11d55' : '3px solid transparent',
+          color: activeTab === 'CLASSES' ? '#e11d55' : (dark ? '#94a3b8' : '#64748b'),
+          fontWeight: activeTab === 'CLASSES' ? 700 : 500,
+          fontSize: 15,
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: -2,
+          transition: 'all 0.15s ease'
         }}
       >
-        Class Administration ({s.length})
+        <Layers size={18} />
+        <span>Class Administration ({s.length})</span>
       </button>
       <button
         type="button"
-        className={`student-tab-btn as-classes-tab-btn ${activeTab === 'TEMPORARY' ? 'active' : ''}`}
         onClick={() => {
           setActiveTab('TEMPORARY');
           nav('/classes?tab=temporary', { replace: true });
         }}
         style={{
-          color: activeTab === 'TEMPORARY' ? '#ffffff' : (dark ? '#d4d5d9' : '#535766'),
-          backgroundColor: activeTab === 'TEMPORARY' ? '#e11d55' : (dark ? '#282c3f' : '#f5f5f6'),
-          borderColor: activeTab === 'TEMPORARY' ? '#e11d55' : (dark ? '#3e4152' : '#eaeaec'),
-          fontWeight: 600,
+          padding: '12px 20px',
+          background: 'none',
+          border: 'none',
+          borderBottom: activeTab === 'TEMPORARY' ? '3px solid #e11d55' : '3px solid transparent',
+          color: activeTab === 'TEMPORARY' ? '#e11d55' : (dark ? '#94a3b8' : '#64748b'),
+          fontWeight: activeTab === 'TEMPORARY' ? 700 : 500,
+          fontSize: 15,
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: -2,
+          transition: 'all 0.15s ease'
         }}
       >
-        Teacher Substitution ({activeSubstitutionsCount})
+        <UserCheck size={18} />
+        <span>Teacher Substitution ({activeSubstitutionsCount})</span>
       </button>
     </div>
 

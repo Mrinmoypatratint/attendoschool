@@ -770,19 +770,42 @@ export default function Timetable() {
     )}
 
     {/* ── Day Tabs (Monday to Saturday) ── */}
-    <div style={{ display: 'flex', gap: 4, marginBottom: 16, flexWrap: 'wrap' }}>
-      {DAYS.map(d => (
-        <button key={d.num}
-          onClick={() => setSelDay(d.num)}
-          style={{
-            padding: '8px 18px', borderRadius: 4, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13,
-            background: selDay === d.num ? "var(--primary)" : "var(--bg-card, var(--card))",
-            color: selDay === d.num ? "var(--background)" : 'var(--text)',
-            boxShadow: selDay === d.num ? "none" : "none",
-            transition: 'all 0.15s ease'
-          }}
-        >{d.name}</button>
-      ))}
+    <div
+      style={{
+        display: 'flex',
+        gap: 8,
+        borderBottom: '2px solid var(--border, #e2e8f0)',
+        marginBottom: 20,
+        flexWrap: 'wrap'
+      }}
+    >
+      {DAYS.map(d => {
+        const isActive = selDay === d.num;
+        return (
+          <button
+            key={d.num}
+            onClick={() => setSelDay(d.num)}
+            style={{
+              padding: '10px 18px',
+              background: 'none',
+              border: 'none',
+              borderBottom: isActive ? '3px solid #e11d55' : '3px solid transparent',
+              color: isActive ? '#e11d55' : 'var(--text-secondary, #64748b)',
+              fontWeight: isActive ? 700 : 500,
+              fontSize: 14,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              marginBottom: -2,
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <Calendar size={16} style={{ color: isActive ? '#e11d55' : 'inherit' }} />
+            <span>{d.name}</span>
+          </button>
+        );
+      })}
     </div>
 
     {/* ── Period Grid for Selected Day ── */}
