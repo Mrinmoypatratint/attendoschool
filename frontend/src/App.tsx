@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
 import type { ReactNode } from 'react';
-import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { api, API_BASE_URL } from './api';
 import { useAuth, Guard, RoleGuard } from './hooks/useAuth';
 import { useAccess } from './rbac/AccessProvider';
@@ -1983,6 +1983,19 @@ function Layout({ children }: { children: React.ReactNode }) {
       setTimeout(() => setAyDropdownOpen(false), 350);
     }
   }
+
+  // Keep navbar session in sync with other pages & storage
+  useEffect(() => {
+    const handleNavbarSessionSync = () => {
+      loadAcademicYears();
+    };
+    window.addEventListener('sessionChanged', handleNavbarSessionSync);
+    window.addEventListener('storage', handleNavbarSessionSync);
+    return () => {
+      window.removeEventListener('sessionChanged', handleNavbarSessionSync);
+      window.removeEventListener('storage', handleNavbarSessionSync);
+    };
+  }, []);
 
   // ── Navigation Menu Items for Global Command Palette (No Students / Teachers) ──
   const menuItems = useMemo(() => {
@@ -6398,9 +6411,11 @@ function Students() {
     // Client-side uniqueness pre-checks against loaded student directory
     if (primaryPhone) {
       const cleanPhoneDigits = primaryPhone.replace(/\D/g, '').slice(-10);
-      if (cleanPhoneDigits.length === 10) {
+      const origStuPhone = String(editingStudent?.parent_sms_number || editingStudent?.parentPhone || editingStudent?.fatherPhone || editingStudent?.motherPhone || editingStudent?.phone || '').replace(/\D/g, '').slice(-10);
+      const isSameStuPhone = Boolean(editingStudent && origStuPhone.length === 10 && origStuPhone === cleanPhoneDigits);
+      if (!isSameStuPhone && cleanPhoneDigits.length === 10) {
         const dupPhone = rows.find(r => {
-          if (editingStudent && r.id === editingStudent.id) return false;
+          if (editingStudent && (r.id === editingStudent.id || String(r.id) === String(editingStudent.id))) return false;
           const rPhone = String(r.parent_sms_number || r.parentPhone || r.fatherPhone || r.motherPhone || r.phone || '').replace(/\D/g, '').slice(-10);
           return rPhone === cleanPhoneDigits;
         });
@@ -7625,8 +7640,14 @@ function Students() {
   const displayedStudentPreviewRows = filteredStudentPreviewRows.slice(studentStartIdx, studentEndIdx);
 
   return <Layout>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16, paddingTop: 24 }}>
       <div>
+        <Link
+          to="/dashboard"
+          style={{ background: 'transparent', border: 'none', padding: 0, color: '#e11d48', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 8 }}
+        >
+          <ArrowLeft size={16} /> <span>Dashboard</span>
+        </Link>
         <p className="eyebrow">STUDENT DIRECTORY</p>
         <h1 style={{ margin: 0, fontSize: 24 }}>Students Directory</h1>
         <p className="muted" style={{ margin: '4px 0 0' }}>Manage enrolled students, section assignments, parent contacts, and batch Excel imports.</p>
@@ -9160,7 +9181,7 @@ function Students() {
                       placeholder={editingStudent ? 'New password (min 6 characters, e.g. ChangeMe123!)' : 'Optional initial password'}
                       value={f.password || ''}
                       onChange={e => setF({ ...f, password: e.target.value })}
-                      style={{ width: '100%', paddingRight: 40 }}
+                      style={{ width: '100%', paddingRight: 40, boxSizing: 'border-box' }}
                     />
                     <button
                       type="button"
@@ -9168,7 +9189,25 @@ function Students() {
                       onClick={() => setShowStudentPassword(s => !s)}
                       className="password-toggle-btn"
                       title={showStudentPassword ? "Hide password" : "Show password"}
-                      style={{ position: 'absolute', right: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary, #696e79)', display: 'flex', alignItems: 'center' }}
+                      style={{
+                        position: 'absolute',
+                        right: 10,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        margin: 0,
+                        marginTop: 0,
+                        background: 'none',
+                        border: 'none',
+                        boxShadow: 'none',
+                        cursor: 'pointer',
+                        padding: 6,
+                        color: 'var(--text-secondary, #696e79)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        lineHeight: 0,
+                        zIndex: 5
+                      }}
                     >
                       {showStudentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -10589,29 +10628,45 @@ function Teachers() {
       alert('Validation Error: Please enter a valid email address (e.g. teacher@school.edu).');
       return;
     }
-    const dupEmail = rows.find(r => (!editingTeacher || r.id !== editingTeacher.id) && String(r.email || '').trim().toLowerCase() === email);
-    if (dupEmail) {
-      alert('Validation Error: This email address is already registered.');
-      return;
+    const isSameTeacherRecord = (r: any) => {
+      if (!editingTeacher) return false;
+      if (r === editingTeacher) return true;
+      if (editingTeacher.id != null && r.id != null && String(r.id) === String(editingTeacher.id)) return true;
+      if (editingTeacher.user_id != null && r.user_id != null && String(r.user_id) === String(editingTeacher.user_id)) return true;
+      if (editingTeacher.id != null && r.user_id != null && String(r.user_id) === String(editingTeacher.id)) return true;
+      if (editingTeacher.user_id != null && r.id != null && String(r.id) === String(editingTeacher.user_id)) return true;
+      const editEmp = String(editingTeacher.employee_id || editingTeacher.employeeId || editingTeacher.savior_no || editingTeacher.saviorNo || '').trim().toLowerCase();
+      const rEmp = String(r.employee_id || r.employeeId || r.savior_no || r.saviorNo || '').trim().toLowerCase();
+      if (editEmp && rEmp && editEmp === rEmp) return true;
+      return false;
+    };
+
+    const origEmail = String(editingTeacher?.email || '').trim().toLowerCase();
+    const isSameEmail = Boolean(editingTeacher && origEmail && origEmail === email);
+    if (!isSameEmail) {
+      const dupEmail = rows.find(r => !isSameTeacherRecord(r) && String(r.email || '').trim().toLowerCase() === email);
+      if (dupEmail) {
+        alert('Validation Error: This email address is already registered.');
+        return;
+      }
     }
     if (!employeeId) {
       alert('Validation Error: Please enter Employee ID / Savior_No.');
       return;
     }
     const currentEmpIdTrimmed = employeeId.trim().toLowerCase();
-    const dupEmpId = rows.find(r => {
-      const isSameRecord = editingTeacher && (
-        r.id === editingTeacher.id ||
-        (editingTeacher.id && r.id && String(r.id) === String(editingTeacher.id)) ||
-        (editingTeacher.user_id && r.user_id && String(r.user_id) === String(editingTeacher.user_id))
-      );
-      if (isSameRecord) return false;
-      const rEmp = String(r.employee_id || r.employeeId || r.savior_no || r.saviorNo || '').trim().toLowerCase();
-      return rEmp && rEmp === currentEmpIdTrimmed;
-    });
-    if (dupEmpId) {
-      alert(`Validation Error: Employee ID already exists. Employee ID '${employeeId}' is already registered to teacher '${dupEmpId.name || 'Existing Teacher'}'.`);
-      return;
+    const origEmpId = String(editingTeacher?.employee_id || editingTeacher?.employeeId || editingTeacher?.savior_no || editingTeacher?.saviorNo || '').trim().toLowerCase();
+    const isSameEmpId = Boolean(editingTeacher && origEmpId && origEmpId === currentEmpIdTrimmed);
+    if (!isSameEmpId) {
+      const dupEmpId = rows.find(r => {
+        if (isSameTeacherRecord(r)) return false;
+        const rEmp = String(r.employee_id || r.employeeId || r.savior_no || r.saviorNo || '').trim().toLowerCase();
+        return rEmp && rEmp === currentEmpIdTrimmed;
+      });
+      if (dupEmpId) {
+        alert(`Validation Error: Employee ID already exists. Employee ID '${employeeId}' is already registered to teacher '${dupEmpId.name || 'Existing Teacher'}'.`);
+        return;
+      }
     }
     const joiningDateVal = f.joiningDate || f.joining_date;
     if (!joiningDateVal) {
@@ -10636,9 +10691,11 @@ function Teachers() {
       return;
     }
     const cleanMob10 = cleanMobile.slice(-10);
-    if (cleanMob10.length === 10) {
+    const origMob10 = String(editingTeacher?.mobile || editingTeacher?.phone || '').replace(/\D/g, '').slice(-10);
+    const isSameMob = Boolean(editingTeacher && origMob10.length === 10 && origMob10 === cleanMob10);
+    if (!isSameMob && cleanMob10.length === 10) {
       const dupMobile = rows.find(r => {
-        if (editingTeacher && r.id === editingTeacher.id) return false;
+        if (isSameTeacherRecord(r)) return false;
         const rMob = String(r.mobile || r.phone || '').replace(/\D/g, '').slice(-10);
         return rMob === cleanMob10;
       });
@@ -11285,8 +11342,14 @@ function Teachers() {
   const displayedTeacherPreviewRows = filteredTeacherPreviewRows.slice(teacherStartIdx, teacherEndIdx);
 
   return <Layout>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16, paddingTop: 24 }}>
       <div>
+        <Link
+          to="/dashboard"
+          style={{ background: 'transparent', border: 'none', padding: 0, color: '#e11d48', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 8 }}
+        >
+          <ArrowLeft size={16} /> <span>Dashboard</span>
+        </Link>
         <p className="eyebrow">FACULTY & STAFF</p>
         <h1 style={{ margin: 0, fontSize: 24 }}>Teachers & Faculty</h1>
         <p className="muted" style={{ margin: '4px 0 0' }}>Appointed faculty accounts, classroom attendance permissions, and bulk onboarding.</p>
@@ -12427,7 +12490,7 @@ function Teachers() {
                       placeholder={editingTeacher ? 'New password (min 6 characters)' : 'Optional initial password (e.g. ChangeMe123!)'}
                       value={f.password || ''}
                       onChange={e => setF({ ...f, password: e.target.value })}
-                      style={{ width: '100%', paddingRight: 40 }}
+                      style={{ width: '100%', paddingRight: 40, boxSizing: 'border-box' }}
                     />
                     <button
                       type="button"
@@ -12435,7 +12498,25 @@ function Teachers() {
                       onClick={() => setShowTeacherPassword(s => !s)}
                       className="password-toggle-btn"
                       title={showTeacherPassword ? "Hide password" : "Show password"}
-                      style={{ position: 'absolute', right: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary, #696e79)', display: 'flex', alignItems: 'center' }}
+                      style={{
+                        position: 'absolute',
+                        right: 10,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        margin: 0,
+                        marginTop: 0,
+                        background: 'none',
+                        border: 'none',
+                        boxShadow: 'none',
+                        cursor: 'pointer',
+                        padding: 6,
+                        color: 'var(--text-secondary, #696e79)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        lineHeight: 0,
+                        zIndex: 5
+                      }}
                     >
                       {showTeacherPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -13629,43 +13710,98 @@ function Classes() {
   const displayedClasses = isSearching ? c.filter(doesClassMatch) : c;
 
   return <Layout>
-    <div style={{ '--text-muted': dark ? '#94969f' : 'var(--text-secondary, #535766)' } as React.CSSProperties}>
+    <div style={{ paddingTop: 24, '--text-muted': dark ? '#94969f' : 'var(--text-secondary, #535766)' } as React.CSSProperties}>
+      <Link
+        to="/dashboard"
+        style={{ background: 'transparent', border: 'none', padding: 0, color: '#e11d48', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 8 }}
+      >
+        <ArrowLeft size={16} /> <span>Dashboard</span>
+      </Link>
       <PageHead title="Classes, Sections & Teachers" sub="Manage school classes, sections, and class teacher assignments." />
     </div>
 
     {/* Tab Navigation */}
-    <div className="student-tab-bar" style={{ marginBottom: 20, borderBottom: 'none' }}>
+    <div
+      style={{
+        display: 'flex',
+        gap: 12,
+        borderBottom: "2px solid var(--border, var(--border))",
+        marginBottom: 20
+      }}
+    >
       <button
         type="button"
-        className={`student-tab-btn as-classes-tab-btn ${activeTab === 'CLASSES' ? 'active' : ''}`}
         onClick={() => {
           setActiveTab('CLASSES');
           nav('/classes', { replace: true });
         }}
         style={{
-          color: activeTab === 'CLASSES' ? '#ffffff' : (dark ? '#d4d5d9' : '#535766'),
-          backgroundColor: activeTab === 'CLASSES' ? '#e11d55' : (dark ? '#282c3f' : '#f5f5f6'),
-          borderColor: activeTab === 'CLASSES' ? '#e11d55' : (dark ? '#3e4152' : '#eaeaec'),
-          fontWeight: 600,
+          padding: '12px 20px',
+          background: 'none',
+          border: 'none',
+          borderBottom: activeTab === 'CLASSES' ? "3px solid var(--border)" : '3px solid transparent',
+          color: activeTab === 'CLASSES' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+          fontWeight: activeTab === 'CLASSES' ? 700 : 500,
+          fontSize: 15,
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: -2,
+          transition: 'all 0.15s ease'
         }}
       >
-        Class Administration ({s.length})
+        <Layers size={18} />
+        <span>Class Administration</span>
+        <span
+          style={{
+            padding: '2px 8px',
+            borderRadius: 4,
+            background: activeTab === 'CLASSES' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+            color: activeTab === 'CLASSES' ? "var(--primary)" : "var(--muted-foreground)",
+            fontSize: 12,
+            fontWeight: 700
+          }}
+        >
+          {s.length}
+        </span>
       </button>
       <button
         type="button"
-        className={`student-tab-btn as-classes-tab-btn ${activeTab === 'TEMPORARY' ? 'active' : ''}`}
         onClick={() => {
           setActiveTab('TEMPORARY');
           nav('/classes?tab=temporary', { replace: true });
         }}
         style={{
-          color: activeTab === 'TEMPORARY' ? '#ffffff' : (dark ? '#d4d5d9' : '#535766'),
-          backgroundColor: activeTab === 'TEMPORARY' ? '#e11d55' : (dark ? '#282c3f' : '#f5f5f6'),
-          borderColor: activeTab === 'TEMPORARY' ? '#e11d55' : (dark ? '#3e4152' : '#eaeaec'),
-          fontWeight: 600,
+          padding: '12px 20px',
+          background: 'none',
+          border: 'none',
+          borderBottom: activeTab === 'TEMPORARY' ? "3px solid var(--border)" : '3px solid transparent',
+          color: activeTab === 'TEMPORARY' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+          fontWeight: activeTab === 'TEMPORARY' ? 700 : 500,
+          fontSize: 15,
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: -2,
+          transition: 'all 0.15s ease'
         }}
       >
-        Teacher Substitution ({activeSubstitutionsCount})
+        <UserCheck size={18} />
+        <span>Teacher Substitution</span>
+        <span
+          style={{
+            padding: '2px 8px',
+            borderRadius: 4,
+            background: activeTab === 'TEMPORARY' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+            color: activeTab === 'TEMPORARY' ? "var(--primary)" : "var(--muted-foreground)",
+            fontSize: 12,
+            fontWeight: 700
+          }}
+        >
+          {activeSubstitutionsCount}
+        </span>
       </button>
     </div>
 
@@ -14465,7 +14601,15 @@ function Subjects() {
   }
 
   return <Layout>
-    <PageHead title="Subjects" sub="Subjects used by class routines." />
+    <div style={{ paddingTop: 24 }}>
+      <Link
+        to="/dashboard"
+        style={{ background: 'transparent', border: 'none', padding: 0, color: '#e11d48', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 8 }}
+      >
+        <ArrowLeft size={16} /> <span>Dashboard</span>
+      </Link>
+      <PageHead title="Subjects" sub="Subjects used by class routines." />
+    </div>
     <div className="panel narrow">
       <form className="inline" onSubmit={initiateAddSubject}>
         <input placeholder="Subject name (e.g. Mathematics)" value={n} onChange={e => setN(e.target.value)} />
@@ -19066,10 +19210,17 @@ function SchoolProfile() {
 
   return (
     <Layout>
-      <PageHead
-        title="School Profile & Settings"
-        sub="Institutional credentials, contact coordinates, campus address, and official communication channels."
-      />
+      <div style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '24px 24px 40px', boxSizing: 'border-box' }}>
+        <Link
+          to="/dashboard"
+          style={{ background: 'transparent', border: 'none', padding: 0, color: '#e11d48', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 12 }}
+        >
+          <ArrowLeft size={16} /> <span>Dashboard</span>
+        </Link>
+        <PageHead
+          title="School Profile & Settings"
+          sub="Institutional credentials, contact coordinates, campus address, and official communication channels."
+        />
       {msg && (
         <div className={msg.type === 'success' ? 'success' : 'error'} style={{ marginBottom: 16 }}>
           {msg.text}
@@ -19468,7 +19619,7 @@ function SchoolProfile() {
                         placeholder="••••••••••••"
                         value={currentPassword}
                         onChange={e => setCurrentPassword(e.target.value)}
-                        style={{ width: '100%', paddingRight: 40 }}
+                        style={{ width: '100%', paddingRight: 40, boxSizing: 'border-box' }}
                       />
                       <button
                         type="button"
@@ -19476,6 +19627,25 @@ function SchoolProfile() {
                         onClick={() => setShowCurrentPw(s => !s)}
                         className="password-toggle-btn"
                         title={showCurrentPw ? "Hide password" : "Show password"}
+                        style={{
+                          position: 'absolute',
+                          right: 10,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          margin: 0,
+                          marginTop: 0,
+                          background: 'none',
+                          border: 'none',
+                          boxShadow: 'none',
+                          cursor: 'pointer',
+                          padding: 6,
+                          color: 'var(--text-secondary, #696e79)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          lineHeight: 0,
+                          zIndex: 5
+                        }}
                       >
                         {showCurrentPw ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
@@ -19491,7 +19661,7 @@ function SchoolProfile() {
                         placeholder="Enter new strong password"
                         value={newPassword}
                         onChange={e => setNewPassword(e.target.value)}
-                        style={{ width: '100%', paddingRight: 40 }}
+                        style={{ width: '100%', paddingRight: 40, boxSizing: 'border-box' }}
                       />
                       <button
                         type="button"
@@ -19499,6 +19669,25 @@ function SchoolProfile() {
                         onClick={() => setShowNewPw(s => !s)}
                         className="password-toggle-btn"
                         title={showNewPw ? "Hide password" : "Show password"}
+                        style={{
+                          position: 'absolute',
+                          right: 10,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          margin: 0,
+                          marginTop: 0,
+                          background: 'none',
+                          border: 'none',
+                          boxShadow: 'none',
+                          cursor: 'pointer',
+                          padding: 6,
+                          color: 'var(--text-secondary, #696e79)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          lineHeight: 0,
+                          zIndex: 5
+                        }}
                       >
                         {showNewPw ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
@@ -19517,7 +19706,7 @@ function SchoolProfile() {
                         placeholder="Confirm new password"
                         value={confirmPassword}
                         onChange={e => setConfirmPassword(e.target.value)}
-                        style={{ width: '100%', paddingRight: 40 }}
+                        style={{ width: '100%', paddingRight: 40, boxSizing: 'border-box' }}
                       />
                       <button
                         type="button"
@@ -19525,6 +19714,25 @@ function SchoolProfile() {
                         onClick={() => setShowConfirmPw(s => !s)}
                         className="password-toggle-btn"
                         title={showConfirmPw ? "Hide password" : "Show password"}
+                        style={{
+                          position: 'absolute',
+                          right: 10,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          margin: 0,
+                          marginTop: 0,
+                          background: 'none',
+                          border: 'none',
+                          boxShadow: 'none',
+                          cursor: 'pointer',
+                          padding: 6,
+                          color: 'var(--text-secondary, #696e79)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          lineHeight: 0,
+                          zIndex: 5
+                        }}
                       >
                         {showConfirmPw ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
@@ -19561,6 +19769,7 @@ function SchoolProfile() {
         loading={profilePreview.loading}
         error={profilePreview.error}
       />
+      </div>
     </Layout>
   );
 }

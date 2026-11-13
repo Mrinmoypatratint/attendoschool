@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { PersonProfileLink } from '../../components/PersonProfileLink';
 import {
@@ -7,8 +8,64 @@ import {
   PreviewTableData
 } from '../../components/preview';
 import { TableSubToolbar, TablePaginationFooter } from '../../components/TablePagination';
-import { Search, Filter, CheckSquare, Square, ArrowUpDown, Sparkles, FileSpreadsheet, Download } from 'lucide-react';
+import { Search, Filter, CheckSquare, Square, ArrowUpDown, Sparkles, FileSpreadsheet, Download, ArrowLeft } from 'lucide-react';
 import * as XLSX from 'xlsx';
+
+const sortAcademicYearsAscending = (list: any[]) => {
+  return [...list].sort((a: any, b: any) => {
+    const yearA = parseInt((String(a.name || '').match(/\d{4}/) || ['0'])[0], 10);
+    const yearB = parseInt((String(b.name || '').match(/\d{4}/) || ['0'])[0], 10);
+    if (yearA !== yearB && yearA > 0 && yearB > 0) return yearA - yearB;
+    const dateA = new Date(a.start_date || a.startDate || 0).getTime();
+    const dateB = new Date(b.start_date || b.startDate || 0).getTime();
+    if (dateA !== dateB) return dateA - dateB;
+    return String(a.name || '').localeCompare(String(b.name || ''));
+  });
+};
+
+const getActiveSessionId = (yearsList: any[], overrideNameOrId?: string) => {
+  if (!Array.isArray(yearsList) || yearsList.length === 0) return '';
+  const storedId = localStorage.getItem('attendo_active_academic_year_id');
+  const storedName = overrideNameOrId || localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
+
+  if (overrideNameOrId) {
+    const directMatch = yearsList.find((y: any) => String(y.id) === String(overrideNameOrId));
+    if (directMatch) return directMatch.id;
+  }
+
+  if (storedId) {
+    const match = yearsList.find((y: any) => String(y.id) === String(storedId));
+    if (match) return match.id;
+  }
+
+  if (storedName) {
+    const cleanStored = String(storedName).replace(/\b(academic\s+)?sessions?\b/gi, '').trim().toLowerCase();
+    const match = yearsList.find((y: any) => {
+      const cleanY = String(y.name || '').replace(/\b(academic\s+)?sessions?\b/gi, '').trim().toLowerCase();
+      return cleanY === cleanStored || cleanY.includes(cleanStored) || cleanStored.includes(cleanY) || y.code === storedName || String(y.id) === String(storedName);
+    });
+    if (match) return match.id;
+  }
+
+  const activeFromDb = yearsList.find((y: any) => y.is_active);
+  if (activeFromDb) return activeFromDb.id;
+
+  return yearsList[0]?.id || '';
+};
+
+const getTargetSessionId = (yearsList: any[], sourceYearId: string) => {
+  if (!Array.isArray(yearsList) || yearsList.length <= 1) return '';
+  const fromIdx = yearsList.findIndex((y: any) => String(y.id) === String(sourceYearId));
+  if (fromIdx >= 0) {
+    for (let i = fromIdx + 1; i < yearsList.length; i++) {
+      if (!yearsList[i].is_archived && String(yearsList[i].id) !== String(sourceYearId)) {
+        return yearsList[i].id;
+      }
+    }
+  }
+  const fallback = yearsList.find((y: any) => String(y.id) !== String(sourceYearId) && !y.is_archived);
+  return fallback?.id || '';
+};
 
 export default function StudentPromotion() {
   const [fromYear, setFromYear] = useState('');
@@ -46,16 +103,19 @@ export default function StudentPromotion() {
     error: null,
   });
 
-  async function loadYears() {
+  async function loadYears(preferredSessionIdOrName?: string) {
     try {
-      const r = await api.get('/academic-years');
-      setYears(r.data);
-      if (!fromYear && r.data.length) {
-        const activeYear = r.data.find((x: any) => x.is_active)?.id || r.data[0].id;
-        setFromYear(activeYear);
-        if (!toYear && r.data.length > 1) {
-          const targetYear = r.data.find((x: any) => x.id !== activeYear && !x.is_archived)?.id;
-          if (targetYear) setToYear(targetYear);
+      const r = await api.get('/academic-years?fresh=1');
+      if (Array.isArray(r.data) && r.data.length > 0) {
+        const sorted = sortAcademicYearsAscending(r.data);
+        setYears(sorted);
+        const activeYear = getActiveSessionId(sorted, preferredSessionIdOrName);
+        if (activeYear) {
+          setFromYear(activeYear);
+          const nextTarget = getTargetSessionId(sorted, activeYear);
+          if (nextTarget) {
+            setToYear(nextTarget);
+          }
         }
       }
     } catch (e: any) {
@@ -80,8 +140,62 @@ export default function StudentPromotion() {
     }
   }
 
-  useEffect(() => { loadYears(); }, []);
+  // Initial load and sync with navbar / localStorage session changes
+  useEffect(() => {
+    loadYears();
+
+    const handleSessionChange = (e?: any) => {
+      const detailName = typeof e?.detail === 'string' ? e.detail : (e?.detail?.name || '');
+      setYears(currentYears => {
+        if (!currentYears || currentYears.length === 0) {
+          loadYears(detailName);
+          return currentYears;
+        }
+        const activeYear = getActiveSessionId(currentYears, detailName);
+        if (activeYear) {
+          setFromYear(activeYear);
+          const nextTarget = getTargetSessionId(currentYears, activeYear);
+          if (nextTarget) {
+            setToYear(nextTarget);
+          }
+        }
+        return currentYears;
+      });
+    };
+
+    window.addEventListener('sessionChanged', handleSessionChange);
+    window.addEventListener('storage', handleSessionChange);
+    return () => {
+      window.removeEventListener('sessionChanged', handleSessionChange);
+      window.removeEventListener('storage', handleSessionChange);
+    };
+  }, []);
+
   useEffect(() => { loadCandidates(); }, [fromYear]);
+
+  const handleFromYearChange = async (newYearId: string) => {
+    setFromYear(newYearId);
+
+    const nextTarget = getTargetSessionId(years, newYearId);
+    if (nextTarget) {
+      setToYear(nextTarget);
+    }
+
+    const matchedYear = years.find((y: any) => String(y.id) === String(newYearId));
+    if (matchedYear) {
+      localStorage.setItem('attendo_active_academic_year', matchedYear.name);
+      localStorage.setItem('attendo_academic_session', matchedYear.name);
+      localStorage.setItem('attendo_active_academic_year_id', matchedYear.id);
+      window.dispatchEvent(new CustomEvent('sessionChanged', { detail: matchedYear.name }));
+      window.dispatchEvent(new Event('storage'));
+
+      try {
+        await api.post(`/academic-years/${matchedYear.id}/activate`);
+      } catch {
+        // ignore
+      }
+    }
+  };
 
   // Distinct classes and sections from current candidates sorted in natural academic order
   const availableClasses = useMemo(() => {
@@ -334,7 +448,13 @@ export default function StudentPromotion() {
     displayedItems.filter(x => !x.already_processed).every(x => selected[x.id]);
 
   return (
-    <div className="feature-page w-full max-w-none m-0 pb-10" ref={tableTopRef} style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
+    <div className="feature-page w-full max-w-none m-0 pb-10" ref={tableTopRef} style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '24px 24px 40px', boxSizing: 'border-box' }}>
+      <Link
+        to="/dashboard"
+        style={{ background: 'transparent', border: 'none', padding: 0, color: '#e11d48', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 12 }}
+      >
+        <ArrowLeft size={16} /> <span>Dashboard</span>
+      </Link>
       <div className="flex justify-between items-start flex-wrap gap-3.5 mb-4">
         <div>
           <p className="eyebrow m-0 mb-1 text-xs text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider">ACADEMIC TRANSITION</p>
@@ -375,13 +495,18 @@ export default function StudentPromotion() {
           <span>Source Session (From) <span className="text-rose-500">*</span></span>
           <select
             value={fromYear}
-            onChange={e => setFromYear(e.target.value)}
+            onChange={e => handleFromYearChange(e.target.value)}
             className="py-2 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs outline-none focus:border-blue-500"
           >
             <option value="">Select Academic Session</option>
-            {years.map(y => (
-              <option key={y.id} value={y.id}>{y.name} {y.is_active ? '(Active)' : ''}</option>
-            ))}
+            {years.map(y => {
+              const isActive = y.id === fromYear;
+              return (
+                <option key={y.id} value={y.id}>
+                  {y.name} {isActive ? '(Active)' : ''}
+                </option>
+              );
+            })}
           </select>
         </label>
 

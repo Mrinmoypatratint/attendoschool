@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import {
   UniversalPreviewModal,
@@ -28,7 +29,8 @@ import {
   Search,
   Printer,
   Tag,
-  Sparkles
+  Sparkles,
+  ArrowLeft
 } from 'lucide-react';
 
 type ActionType = 'activate' | 'deactivate' | 'archive' | 'unarchive';
@@ -813,7 +815,13 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
   }
 
   return (
-    <div className="feature-page w-full max-w-none m-0 pb-10" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
+    <div className="feature-page w-full max-w-none m-0 pb-10" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '24px 24px 40px', boxSizing: 'border-box' }}>
+      <Link
+        to="/dashboard"
+        style={{ background: 'transparent', border: 'none', padding: 0, color: '#e11d48', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 12 }}
+      >
+        <ArrowLeft size={16} /> <span>Dashboard</span>
+      </Link>
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-extrabold m-0 text-slate-900 dark:text-white tracking-tight">
@@ -825,65 +833,140 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex gap-2 border-b-2 border-slate-200 dark:border-slate-700 mb-6 flex-wrap pb-px">
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          borderBottom: "2px solid var(--border, var(--border))",
+          marginBottom: 20,
+          flexWrap: 'wrap'
+        }}
+      >
         <button
           type="button"
           onClick={() => setActiveTab('sessions')}
-          className={`bg-transparent border-0 py-3 px-4.5 text-sm font-semibold cursor-pointer flex items-center gap-2 border-b-2 -mb-0.5 transition-colors ${
-            activeTab === 'sessions'
-              ? 'text-blue-600 dark:text-blue-400 border-b-blue-600'
-              : 'text-slate-500 dark:text-slate-400 border-b-transparent hover:text-slate-700 dark:hover:text-slate-300'
-          }`}
+          style={{
+            padding: '12px 18px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'sessions' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'sessions' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+            fontWeight: activeTab === 'sessions' ? 700 : 500,
+            fontSize: 14,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease'
+          }}
         >
-          <Clock size={16} /> Academic Sessions
+          <Clock size={16} />
+          <span>Academic Sessions</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('working-days')}
-          className={`bg-transparent border-0 py-3 px-4.5 text-sm font-semibold cursor-pointer flex items-center gap-2 border-b-2 -mb-0.5 transition-colors ${
-            activeTab === 'working-days'
-              ? 'text-blue-600 dark:text-blue-400 border-b-blue-600'
-              : 'text-slate-500 dark:text-slate-400 border-b-transparent hover:text-slate-700 dark:hover:text-slate-300'
-          }`}
+          style={{
+            padding: '12px 18px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'working-days' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'working-days' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+            fontWeight: activeTab === 'working-days' ? 700 : 500,
+            fontSize: 14,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease'
+          }}
         >
-          <Sliders size={16} /> Weekly Working Days &amp; Weekend Rules
+          <Sliders size={16} />
+          <span>Weekly Working Days &amp; Weekend Rules</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('holidays')}
-          className={`bg-transparent border-0 py-3 px-4.5 text-sm font-semibold cursor-pointer flex items-center gap-2 border-b-2 -mb-0.5 transition-colors ${
-            activeTab === 'holidays'
-              ? 'text-blue-600 dark:text-blue-400 border-b-blue-600'
-              : 'text-slate-500 dark:text-slate-400 border-b-transparent hover:text-slate-700 dark:hover:text-slate-300'
-          }`}
+          style={{
+            padding: '12px 18px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'holidays' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'holidays' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+            fontWeight: activeTab === 'holidays' ? 700 : 500,
+            fontSize: 14,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease'
+          }}
         >
-          <CalendarCheck size={16} /> Holiday Manager ({holidays.length})
+          <CalendarCheck size={16} />
+          <span>Holiday Manager</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 4,
+              background: activeTab === 'holidays' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'holidays' ? "var(--primary)" : "var(--muted-foreground)",
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {holidays.length}
+          </span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('calculator')}
-          className={`bg-transparent border-0 py-3 px-4.5 text-sm font-semibold cursor-pointer flex items-center gap-2 border-b-2 -mb-0.5 transition-colors ${
-            activeTab === 'calculator'
-              ? 'text-blue-600 dark:text-blue-400 border-b-blue-600'
-              : 'text-slate-500 dark:text-slate-400 border-b-transparent hover:text-slate-700 dark:hover:text-slate-300'
-          }`}
+          style={{
+            padding: '12px 18px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'calculator' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'calculator' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+            fontWeight: activeTab === 'calculator' ? 700 : 500,
+            fontSize: 14,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease'
+          }}
         >
-          <CalendarDays size={16} /> Working Day &amp; Weekend/Holiday Calculator
+          <CalendarDays size={16} />
+          <span>Working Day &amp; Weekend/Holiday Calculator</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('academic-calendar')}
-          className={`bg-transparent border-0 py-3 px-4.5 text-sm font-semibold cursor-pointer flex items-center gap-2 border-b-2 -mb-0.5 transition-colors ${
-            activeTab === 'academic-calendar'
-              ? 'text-blue-600 dark:text-blue-400 border-b-blue-600'
-              : 'text-slate-500 dark:text-slate-400 border-b-transparent hover:text-slate-700 dark:hover:text-slate-300'
-          }`}
+          style={{
+            padding: '12px 18px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'academic-calendar' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'academic-calendar' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+            fontWeight: activeTab === 'academic-calendar' ? 700 : 500,
+            fontSize: 14,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease'
+          }}
         >
-          <Calendar size={16} /> Academic Holiday Calendar
+          <Calendar size={16} />
+          <span>Academic Holiday Calendar</span>
         </button>
       </div>
 

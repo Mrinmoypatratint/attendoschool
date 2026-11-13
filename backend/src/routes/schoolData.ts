@@ -7030,10 +7030,12 @@ r.put("/teachers/:id", ...admin, async (req: AuthRequest, res) => {
   const targetPutEmp = String(employeeId || employee_id || existingDocData.employee_id || demoTeachers[idx]?.employee_id || "").trim();
   const targetPutMobile = String(mobile || phone || existingDocData.mobile || demoTeachers[idx]?.mobile || "").trim();
   if (!isPostgresConfigured) {
-    if (targetPutEmp) {
+    const currentEmp = String(existingDocData.employee_id || demoTeachers[idx]?.employee_id || demoTeachers[idx]?.savior_no || "").trim().toLowerCase();
+    if (targetPutEmp && (!currentEmp || currentEmp !== targetPutEmp.toLowerCase())) {
       const dupEmp = demoTeachers.find(
         (t) =>
           t.id !== tid &&
+          String(t.user_id || "") !== tid &&
           t.school_id === (userSchoolId || resolvedSchoolId) &&
           String(t.employee_id || t.savior_no || t.employeeId || "").trim().toLowerCase() === targetPutEmp.toLowerCase(),
       );
@@ -7045,11 +7047,14 @@ r.put("/teachers/:id", ...admin, async (req: AuthRequest, res) => {
     }
     if (targetPutMobile) {
       const normMob = normalizePhoneNumber(targetPutMobile);
-      if (normMob) {
+      const currentMob = normalizePhoneNumber(existingDocData.mobile || existingDocData.phone || demoTeachers[idx]?.mobile || demoTeachers[idx]?.phone || "");
+      const isSamePhone = Boolean(currentMob && normMob && currentMob.slice(-10) === normMob.slice(-10));
+      if (!isSamePhone && normMob) {
         const last10 = normMob.slice(-10);
         const dupMob = demoTeachers.find(
           (t) =>
             t.id !== tid &&
+            String(t.user_id || "") !== tid &&
             t.school_id === (userSchoolId || resolvedSchoolId) &&
             normalizePhoneNumber(t.mobile || t.phone)?.slice(-10) === last10,
         );
@@ -7064,12 +7069,46 @@ r.put("/teachers/:id", ...admin, async (req: AuthRequest, res) => {
 
   // PostgreSQL teacher uniqueness check on edit
   if (isPostgresConfigured) {
+    let phoneToCheck: string | null = targetPutMobile || null;
+    let empToCheck: string | null = targetPutEmp || null;
+    let emailToCheck: string | null = cleanEmail || null;
+
+    try {
+      const isTidUuid = isUuid(tid);
+      const curQ = await pool.query(
+        `SELECT tp.id, tp.user_id, tp.employee_id, COALESCE(tp.phone, tp.mobile) AS existing_phone, u.email AS existing_email
+         FROM teacher_profiles tp
+         LEFT JOIN users u ON tp.user_id = u.id
+         WHERE ${isTidUuid ? '(tp.user_id = $1::uuid OR tp.id = $1::uuid)' : 'LOWER(TRIM(tp.employee_id)) = LOWER(TRIM($1))'}
+         LIMIT 1`,
+        [tid],
+      );
+      if (curQ.rows[0]) {
+        const row = curQ.rows[0];
+        const existingNorm = normalizePhoneNumber(row.existing_phone || "");
+        const nextNorm = normalizePhoneNumber(phoneToCheck || "");
+        if (existingNorm && nextNorm && existingNorm.slice(-10) === nextNorm.slice(-10)) {
+          phoneToCheck = null;
+        }
+        const existingEmp = String(row.employee_id || "").trim().toLowerCase();
+        if (existingEmp && empToCheck && existingEmp === empToCheck.toLowerCase()) {
+          empToCheck = null;
+        }
+        const existingEmail = String(row.existing_email || "").trim().toLowerCase();
+        if (existingEmail && emailToCheck && existingEmail === emailToCheck.toLowerCase()) {
+          emailToCheck = null;
+        }
+      }
+    } catch (err) {
+      console.warn('[Teacher Edit] Error fetching existing teacher profile:', err);
+    }
+
     const uniquenessResult = await validateTeacherUniqueness({
       schoolId: userSchoolId || resolvedSchoolId,
-      employeeId: targetPutEmp || null,
-      email: cleanEmail || null,
-      mobile: targetPutMobile || null,
-      phone: targetPutMobile || null,
+      employeeId: empToCheck,
+      email: emailToCheck,
+      mobile: phoneToCheck,
+      phone: phoneToCheck,
       excludeUserId: tid,
     });
     if (!uniquenessResult.valid) {
