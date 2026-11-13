@@ -9,7 +9,7 @@ export function createBackupRouter(managerFactory = backupManager, audit: (...ar
 const router = Router();
 router.use((req, res, next) => {
   try { requireBackupOwner((req as any).user); res.setHeader('Cache-Control', 'no-store'); next(); }
-  catch { res.status(403).json({ message: 'Super Admin access required for backups' }); }
+  catch { res.status(403).json({ message: 'Administrator access required for backups' }); }
 });
 const error = (res: any, e: any) => res.status(e.code === 'ENOENT' ? 404 : e.status || 500).json({ message: e.code === 'ENOENT' ? 'Backup not found' : e.message });
 const list = async (_req: any, res: any) => {

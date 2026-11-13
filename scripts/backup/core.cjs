@@ -15,7 +15,7 @@ const TEMPLATES = ['.env.example', '.env.production.example', 'backend/.env.exam
 const fail = (message, status = 500) => Object.assign(new Error(message), { status });
 const log = message => console.log(`${new Date().toISOString()} ${message}`);
 function positive(value, fallback) { const n = Number(value ?? fallback); if (!Number.isSafeInteger(n) || n < 1) throw fail('Invalid numeric backup setting'); return n; }
-function requireOwner(user) { if (!user || user.role !== 'SUPER_ADMIN') throw fail('Super Admin access required for backups', 403); }
+function requireOwner(user) { if (!user || (user.role !== 'SUPER_ADMIN' && user.role !== 'SCHOOL_ADMIN')) throw fail('Admin access required for backups', 403); }
 async function atomic(file, data) {
   const tmp = `${file}.${crypto.randomBytes(6).toString('hex')}.tmp`;
   try { await fs.writeFile(tmp, JSON.stringify(data), { mode: 0o600, flag: 'wx' }); await fs.rename(tmp, file); }
