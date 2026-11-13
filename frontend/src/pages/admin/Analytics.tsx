@@ -527,7 +527,7 @@ export default function Analytics() {
             style={{
               display: 'flex',
               gap: 12,
-              borderBottom: "2px solid var(--border, #e2e8f0)",
+              borderBottom: "2px solid var(--border, var(--border))",
               marginBottom: 20,
               overflow: 'visible'
             }}
@@ -536,13 +536,13 @@ export default function Analytics() {
               type="button"
               onClick={() => setActiveTab('overview')}
               style={{
-                padding: '12px 18px',
+                padding: '12px 20px',
                 background: 'none',
                 border: 'none',
-                borderBottom: activeTab === 'overview' ? "3px solid #e11d48" : '3px solid transparent',
-                color: activeTab === 'overview' ? "#e11d48" : "var(--text-secondary, #64748b)",
+                borderBottom: activeTab === 'overview' ? "3px solid var(--border)" : '3px solid transparent',
+                color: activeTab === 'overview' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
                 fontWeight: activeTab === 'overview' ? 700 : 500,
-                fontSize: 14.5,
+                fontSize: 15,
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -559,13 +559,13 @@ export default function Analytics() {
               type="button"
               onClick={() => setActiveTab('classes')}
               style={{
-                padding: '12px 18px',
+                padding: '12px 20px',
                 background: 'none',
                 border: 'none',
-                borderBottom: activeTab === 'classes' ? "3px solid #e11d48" : '3px solid transparent',
-                color: activeTab === 'classes' ? "#e11d48" : "var(--text-secondary, #64748b)",
+                borderBottom: activeTab === 'classes' ? "3px solid var(--border)" : '3px solid transparent',
+                color: activeTab === 'classes' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
                 fontWeight: activeTab === 'classes' ? 700 : 500,
-                fontSize: 14.5,
+                fontSize: 15,
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -582,13 +582,13 @@ export default function Analytics() {
               type="button"
               onClick={() => setActiveTab('watchlist')}
               style={{
-                padding: '12px 18px',
+                padding: '12px 20px',
                 background: 'none',
                 border: 'none',
-                borderBottom: activeTab === 'watchlist' ? "3px solid #e11d48" : '3px solid transparent',
-                color: activeTab === 'watchlist' ? "#e11d48" : "var(--text-secondary, #64748b)",
+                borderBottom: activeTab === 'watchlist' ? "3px solid var(--border)" : '3px solid transparent',
+                color: activeTab === 'watchlist' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
                 fontWeight: activeTab === 'watchlist' ? 700 : 500,
-                fontSize: 14.5,
+                fontSize: 15,
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -603,11 +603,10 @@ export default function Analytics() {
                 style={{
                   padding: '2px 8px',
                   borderRadius: 4,
-                  background: activeTab === 'watchlist' ? "var(--card, #ffffff)" : "var(--card-subtle, #f1f5f9)",
-                  color: activeTab === 'watchlist' ? "#e11d48" : "var(--muted-foreground, #64748b)",
+                  background: activeTab === 'watchlist' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+                  color: activeTab === 'watchlist' ? "var(--primary)" : "var(--muted-foreground)",
                   fontSize: 12,
-                  fontWeight: 700,
-                  border: "1px solid var(--border, #e2e8f0)"
+                  fontWeight: 700
                 }}
               >
                 {data.lowAttendanceCount ?? 0}

@@ -1122,7 +1122,7 @@ export default function TeacherLeaveApprove() {
         style={{
           display: 'flex',
           gap: 12,
-          borderBottom: "2px solid var(--border, #e2e8f0)",
+          borderBottom: "2px solid var(--border, var(--border))",
           marginBottom: 20,
           overflow: 'visible'
         }}
@@ -1131,13 +1131,13 @@ export default function TeacherLeaveApprove() {
           type="button"
           onClick={() => setActiveTab('ALL')}
           style={{
-            padding: '12px 18px',
+            padding: '12px 20px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'ALL' ? "3px solid #e11d48" : '3px solid transparent',
-            color: activeTab === 'ALL' ? "#e11d48" : "var(--text-secondary, #64748b)",
+            borderBottom: activeTab === 'ALL' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'ALL' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
             fontWeight: activeTab === 'ALL' ? 700 : 500,
-            fontSize: 14.5,
+            fontSize: 15,
             cursor: 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
@@ -1152,11 +1152,10 @@ export default function TeacherLeaveApprove() {
             style={{
               padding: '2px 8px',
               borderRadius: 4,
-              background: activeTab === 'ALL' ? "var(--card, #ffffff)" : "var(--card-subtle, #f1f5f9)",
-              color: activeTab === 'ALL' ? "#e11d48" : "var(--muted-foreground, #64748b)",
+              background: activeTab === 'ALL' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'ALL' ? "var(--primary)" : "var(--muted-foreground)",
               fontSize: 12,
-              fontWeight: 700,
-              border: "1px solid var(--border, #e2e8f0)"
+              fontWeight: 700
             }}
           >
             {dynamicCounts.all}
@@ -1167,13 +1166,13 @@ export default function TeacherLeaveApprove() {
           type="button"
           onClick={() => setActiveTab('PENDING')}
           style={{
-            padding: '12px 18px',
+            padding: '12px 20px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'PENDING' ? "3px solid #e11d48" : '3px solid transparent',
-            color: activeTab === 'PENDING' ? "#e11d48" : "var(--text-secondary, #64748b)",
+            borderBottom: activeTab === 'PENDING' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'PENDING' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
             fontWeight: activeTab === 'PENDING' ? 700 : 500,
-            fontSize: 14.5,
+            fontSize: 15,
             cursor: 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
@@ -1188,11 +1187,10 @@ export default function TeacherLeaveApprove() {
             style={{
               padding: '2px 8px',
               borderRadius: 4,
-              background: activeTab === 'PENDING' ? "var(--card, #ffffff)" : "var(--card-subtle, #f1f5f9)",
-              color: activeTab === 'PENDING' ? "#e11d48" : "var(--muted-foreground, #64748b)",
+              background: activeTab === 'PENDING' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'PENDING' ? "var(--primary)" : "var(--muted-foreground)",
               fontSize: 12,
-              fontWeight: 700,
-              border: "1px solid var(--border, #e2e8f0)"
+              fontWeight: 700
             }}
           >
             {dynamicCounts.pending}
@@ -1203,13 +1201,13 @@ export default function TeacherLeaveApprove() {
           type="button"
           onClick={() => setActiveTab('APPROVED')}
           style={{
-            padding: '12px 18px',
+            padding: '12px 20px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'APPROVED' ? "3px solid #e11d48" : '3px solid transparent',
-            color: activeTab === 'APPROVED' ? "#e11d48" : "var(--text-secondary, #64748b)",
+            borderBottom: activeTab === 'APPROVED' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'APPROVED' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
             fontWeight: activeTab === 'APPROVED' ? 700 : 500,
-            fontSize: 14.5,
+            fontSize: 15,
             cursor: 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
@@ -1224,11 +1222,10 @@ export default function TeacherLeaveApprove() {
             style={{
               padding: '2px 8px',
               borderRadius: 4,
-              background: activeTab === 'APPROVED' ? "var(--card, #ffffff)" : "var(--card-subtle, #f1f5f9)",
-              color: activeTab === 'APPROVED' ? "#e11d48" : "var(--muted-foreground, #64748b)",
+              background: activeTab === 'APPROVED' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'APPROVED' ? "var(--primary)" : "var(--muted-foreground)",
               fontSize: 12,
-              fontWeight: 700,
-              border: "1px solid var(--border, #e2e8f0)"
+              fontWeight: 700
             }}
           >
             {dynamicCounts.approved}
@@ -1239,13 +1236,13 @@ export default function TeacherLeaveApprove() {
           type="button"
           onClick={() => setActiveTab('REJECTED')}
           style={{
-            padding: '12px 18px',
+            padding: '12px 20px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'REJECTED' ? "3px solid #e11d48" : '3px solid transparent',
-            color: activeTab === 'REJECTED' ? "#e11d48" : "var(--text-secondary, #64748b)",
+            borderBottom: activeTab === 'REJECTED' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'REJECTED' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
             fontWeight: activeTab === 'REJECTED' ? 700 : 500,
-            fontSize: 14.5,
+            fontSize: 15,
             cursor: 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
@@ -1260,11 +1257,10 @@ export default function TeacherLeaveApprove() {
             style={{
               padding: '2px 8px',
               borderRadius: 4,
-              background: activeTab === 'REJECTED' ? "var(--card, #ffffff)" : "var(--card-subtle, #f1f5f9)",
-              color: activeTab === 'REJECTED' ? "#e11d48" : "var(--muted-foreground, #64748b)",
+              background: activeTab === 'REJECTED' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'REJECTED' ? "var(--primary)" : "var(--muted-foreground)",
               fontSize: 12,
-              fontWeight: 700,
-              border: "1px solid var(--border, #e2e8f0)"
+              fontWeight: 700
             }}
           >
             {dynamicCounts.rejected}
