@@ -13613,7 +13613,13 @@ function Classes() {
   const displayedClasses = isSearching ? c.filter(doesClassMatch) : c;
 
   return <Layout>
-    <div style={{ '--text-muted': dark ? '#94969f' : 'var(--text-secondary, #535766)' } as React.CSSProperties}>
+    <div style={{ paddingTop: 24, '--text-muted': dark ? '#94969f' : 'var(--text-secondary, #535766)' } as React.CSSProperties}>
+      <Link
+        to="/dashboard"
+        style={{ background: 'transparent', border: 'none', padding: 0, color: '#e11d48', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 8 }}
+      >
+        <ArrowLeft size={16} /> <span>Dashboard</span>
+      </Link>
       <PageHead title="Classes, Sections & Teachers" sub="Manage school classes, sections, and class teacher assignments." />
     </div>
 

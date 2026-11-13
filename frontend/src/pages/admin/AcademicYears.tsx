@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import {
   UniversalPreviewModal,
@@ -28,7 +29,8 @@ import {
   Search,
   Printer,
   Tag,
-  Sparkles
+  Sparkles,
+  ArrowLeft
 } from 'lucide-react';
 
 type ActionType = 'activate' | 'deactivate' | 'archive' | 'unarchive';
@@ -813,7 +815,13 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
   }
 
   return (
-    <div className="feature-page w-full max-w-none m-0 pb-10" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
+    <div className="feature-page w-full max-w-none m-0 pb-10" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '24px 24px 40px', boxSizing: 'border-box' }}>
+      <Link
+        to="/dashboard"
+        style={{ background: 'transparent', border: 'none', padding: 0, color: '#e11d48', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 12 }}
+      >
+        <ArrowLeft size={16} /> <span>Dashboard</span>
+      </Link>
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-extrabold m-0 text-slate-900 dark:text-white tracking-tight">
