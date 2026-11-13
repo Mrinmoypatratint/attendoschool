@@ -2836,6 +2836,16 @@ function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="header-right">
+            {/* Quick Mobile Search Button (Android / Mobile) */}
+            <button
+              type="button"
+              className="header-icon-btn mobile-search-icon-btn"
+              onClick={() => setSearchOpen(true)}
+              title="Search menu, pages..."
+              aria-label="Search"
+            >
+              <Search size={16} />
+            </button>
             <div className="ay-switcher-wrap" ref={ayDropdownRef} style={{ position: 'relative' }}>
               <div
                 className="session-pill"
@@ -2964,6 +2974,16 @@ function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="header-right">
+            {/* Quick Mobile Search Button (Android / Mobile) */}
+            <button
+              type="button"
+              className="header-icon-btn mobile-search-icon-btn"
+              onClick={() => setSearchOpen(true)}
+              title="Search menu, pages..."
+              aria-label="Search"
+            >
+              <Search size={16} />
+            </button>
             {/* Academic Year Switcher Dropdown */}
             <div className="ay-switcher-wrap" ref={ayDropdownRef} style={{ position: 'relative' }}>
               <div
@@ -3206,6 +3226,16 @@ function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="header-right">
+            {/* Quick Mobile Search Button (Android / Mobile) */}
+            <button
+              type="button"
+              className="header-icon-btn mobile-search-icon-btn"
+              onClick={() => setSearchOpen(true)}
+              title="Search menu, pages..."
+              aria-label="Search"
+            >
+              <Search size={16} />
+            </button>
             {/* Connected Academic Session Selector Dropdown */}
             <div className="ay-switcher-wrap" ref={ayDropdownRef} style={{ position: 'relative' }}>
               <div
@@ -3594,6 +3624,23 @@ function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
       )}
+
+      {/* Mobile Search Bar Strip (Visible only on <= 768px across Teacher, School Admin, Staff Portals) */}
+      <div className="app-mobile-search-strip">
+        <div
+          className="mobile-search-bar"
+          onClick={() => setSearchOpen(true)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSearchOpen(true); }}
+        >
+          <Search size={16} style={{ color: 'var(--text-muted, #64748b)', flexShrink: 0 }} />
+          <span className="mobile-search-placeholder">
+            {user.role === 'SUPER_ADMIN' ? 'Search schools, users, invoices...' : 'Search menu, pages...'}
+          </span>
+          <kbd className="mobile-search-kbd">Search</kbd>
+        </div>
+      </div>
       {/* ── Faculty In-App Inbox Drawer (Teacher Portal) ── */}
       {teacherDrawerOpen && (
         <div

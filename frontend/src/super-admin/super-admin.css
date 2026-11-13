@@ -3789,7 +3789,7 @@ p.sa-hero-sub {
     gap: 8px !important;
   }
 
-  .sa-search-trigger {
+  .sa-topbar .sa-search-trigger {
     display: none !important;
   }
 

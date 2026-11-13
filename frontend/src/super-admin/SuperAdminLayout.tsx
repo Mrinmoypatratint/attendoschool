@@ -372,6 +372,16 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
           </div>
 
           <div className="sa-topbar-right">
+            {/* Quick Mobile Search Button (Android / Mobile) */}
+            <button
+              type="button"
+              className="sa-icon-btn mobile-sa-search-btn"
+              onClick={() => setSearchOpen(true)}
+              title="Search platform"
+              aria-label="Search"
+            >
+              <Search size={18} />
+            </button>
             <BackupControls />
             {/* Academic Session Selector */}
             <div className="sa-session-wrap" ref={sessionRef}>
@@ -526,6 +536,20 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
             </div>
           </div>
         </header>
+
+        {/* Super Admin Mobile Search Strip (Visible only on <= 768px) */}
+        <div className="sa-mobile-search-strip">
+          <div
+            className="sa-search-trigger mobile-sa-search-bar"
+            onClick={() => setSearchOpen(true)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSearchOpen(true); }}
+          >
+            <Search size={16} className="sa-search-trigger-icon" />
+            <span className="sa-search-trigger-text">Search schools, users, payments, invoices...</span>
+          </div>
+        </div>
 
         {/* Breadcrumb row */}
         <div className="sa-breadcrumb-bar">

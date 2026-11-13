@@ -680,6 +680,23 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               </div>
             )}
 
+            {/* Quick Mobile Search Button (Android / Mobile viewport) */}
+            <button
+              type="button"
+              className="student-topbar-icon-btn mobile-search-icon-btn"
+              aria-label="Search"
+              title="Search classes, subjects, announcements"
+              onClick={() => {
+                const el = document.querySelector('.student-mobile-search-strip input') as HTMLInputElement | null;
+                if (el) {
+                  el.focus();
+                  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+              }}
+            >
+              <Search size={18} />
+            </button>
+
             {/* Connected Review Notifications Bell & Popover (Student Announcements) */}
             <div className="super-notif-wrap" ref={studentNotifRef} style={{ position: 'relative' }}>
               <button
@@ -929,6 +946,11 @@ export function StudentLayout({ children }: StudentLayoutProps) {
             </div>
           </div>
         </header>
+
+        {/* Mobile Search Bar Strip (Visible only on <= 768px in Student Portal) */}
+        <div className="student-mobile-search-strip">
+          <StudentSearchBar />
+        </div>
 
         {/* Page Content */}
         <main className="student-page-container">

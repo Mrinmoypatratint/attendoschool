@@ -8321,8 +8321,8 @@ header {
   }
 
   /* Topbar Mobile Ergonomics */
-  .student-search-bar,
-  .student-topbar-search-wrap {
+  .student-topbar .student-search-bar,
+  .student-topbar-left .student-topbar-search-wrap {
     display: none !important;
   }
 

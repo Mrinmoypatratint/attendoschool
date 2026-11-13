@@ -158,13 +158,17 @@ export function StudentSearchBar() {
 
   // Close dropdown on click outside
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
+    function handleClickOutside(e: Event) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
 
   // Extract unique subjects from timetable
@@ -425,7 +429,7 @@ export function StudentSearchBar() {
             top: 'calc(100% + 8px)',
             left: 0,
             width: '100%',
-            minWidth: 420,
+            minWidth: 'min(420px, 100%)',
             maxWidth: 540,
             maxHeight: 440,
             overflowY: 'auto',
