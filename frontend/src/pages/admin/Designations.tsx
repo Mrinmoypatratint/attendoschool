@@ -1632,35 +1632,34 @@ export default function Designations() {
                     border: '1px solid var(--border)'
                   }}
                 >
-                  {/* Previous Position Dropdown */}
+                  {/* Previous Position Display (Auto-fetched) */}
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4 }}>
                       Previous Position
                     </div>
-                    <select
-                      value={promoteCurrentPosition}
-                      onChange={e => handleSelectPreviousPosition(e.target.value)}
-                      disabled={!promoteTeacherId}
+                    <div
                       style={{
                         width: '100%',
                         padding: '8px 10px',
                         borderRadius: 4,
                         border: "1px solid var(--border)",
                         background: "var(--secondary)",
-                        color: "var(--destructive)",
+                        color: promoteCurrentPosition ? "var(--destructive)" : "var(--text-muted)",
                         fontWeight: 700,
                         fontSize: 13,
-                        cursor: 'pointer'
+                        boxSizing: 'border-box',
+                        minHeight: 38,
+                        display: 'flex',
+                        alignItems: 'center'
                       }}
-                      title="Current / Previous Designation"
+                      title="Current / Previous Designation (Automatically fetched)"
                     >
-                      {!promoteCurrentPosition && <option value="">Select previous position</option>}
-                      {allAvailableDesignationTitles.map(title => (
-                        <option key={title} value={title}>
-                          {title}
-                        </option>
-                      ))}
-                    </select>
+                      {promoteCurrentPosition || (
+                        <span style={{ color: 'var(--text-muted)', fontWeight: 500, fontSize: 12 }}>
+                          Select faculty member
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Arrow */}
