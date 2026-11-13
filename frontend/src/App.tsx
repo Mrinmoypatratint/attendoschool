@@ -19126,10 +19126,17 @@ function SchoolProfile() {
 
   return (
     <Layout>
-      <PageHead
-        title="School Profile & Settings"
-        sub="Institutional credentials, contact coordinates, campus address, and official communication channels."
-      />
+      <div style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '24px 24px 40px', boxSizing: 'border-box' }}>
+        <Link
+          to="/dashboard"
+          style={{ background: 'transparent', border: 'none', padding: 0, color: '#e11d48', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 12 }}
+        >
+          <ArrowLeft size={16} /> <span>Dashboard</span>
+        </Link>
+        <PageHead
+          title="School Profile & Settings"
+          sub="Institutional credentials, contact coordinates, campus address, and official communication channels."
+        />
       {msg && (
         <div className={msg.type === 'success' ? 'success' : 'error'} style={{ marginBottom: 16 }}>
           {msg.text}
@@ -19621,6 +19628,7 @@ function SchoolProfile() {
         loading={profilePreview.loading}
         error={profilePreview.error}
       />
+      </div>
     </Layout>
   );
 }

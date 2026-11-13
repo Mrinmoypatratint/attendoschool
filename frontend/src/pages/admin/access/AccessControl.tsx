@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ShieldCheck, Users, History, Search, RotateCcw, Loader2, RefreshCw, Crown, UserX, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, ShieldCheck, Users, History, Search, RotateCcw, Loader2, RefreshCw, Crown, UserX, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { api } from '../../../api';
 import { useAuth } from '../../../hooks/useAuth';
 import { useToast } from '../../../components/Toast';
@@ -54,7 +55,26 @@ export default function AccessControl() {
     { id: 'audit' as const, label: 'Audit', icon: History },
   ];
   return (
-    <div className="p-4 md:p-6 space-y-4" data-testid="access-control">
+    <div className="w-full max-w-none m-0 pb-10 space-y-4" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '24px 24px 40px', boxSizing: 'border-box' }} data-testid="access-control">
+      <Link
+        to="/dashboard"
+        style={{
+          background: 'transparent',
+          border: 'none',
+          padding: 0,
+          color: '#e11d48',
+          textDecoration: 'none',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: 'pointer',
+          marginBottom: 12
+        }}
+      >
+        <ArrowLeft size={16} /> <span>Dashboard</span>
+      </Link>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="m-0 text-xl md:text-2xl font-extrabold text-slate-900 dark:text-slate-100">Permissions &amp; Access</h1>
