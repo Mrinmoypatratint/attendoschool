@@ -941,13 +941,13 @@ export default function TeacherLeaveApprove() {
   };
 
   return (
-    <div className="student-subpage w-full pb-10">
+    <div className="student-subpage w-full pb-10" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '24px 24px 40px', boxSizing: 'border-box' }}>
       {/* ── Page Header ── */}
       <div className="student-subpage-header mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="student-subpage-title-row">
           <Link
             to="/dashboard"
-            className="student-back-link inline-flex items-center gap-1.5 text-blue-600 font-semibold text-xs no-underline mb-1 hover:text-blue-700 transition-colors"
+            style={{ background: 'transparent', border: 'none', padding: 0, color: '#e11d48', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 12 }}
           >
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
@@ -983,7 +983,20 @@ export default function TeacherLeaveApprove() {
               <button
                 type="button"
                 onClick={() => setMonthFilter('ALL')}
-                className="bg-transparent border-0 text-blue-600 dark:text-blue-400 text-xs font-semibold cursor-pointer py-0.5 px-1.5 rounded inline-flex items-center hover:underline"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#e11d48',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  boxShadow: 'none',
+                  whiteSpace: 'nowrap'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#be123c'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#e11d48'; }}
                 title="Show all months"
               >
                 All Months
@@ -1105,50 +1118,153 @@ export default function TeacherLeaveApprove() {
       </div>
 
       {/* ── Status Tab Navigation ── */}
-      <div className="student-tab-bar flex gap-1.5 border-b border-slate-200 dark:border-slate-700 mb-5 overflow-x-auto pb-px">
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          borderBottom: "2px solid var(--border, var(--border))",
+          marginBottom: 20,
+          overflowX: 'auto'
+        }}
+      >
         <button
           type="button"
-          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
-            activeTab === 'ALL'
-              ? 'border-blue-600 text-blue-600 dark:text-blue-400 active'
-              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
           onClick={() => setActiveTab('ALL')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'ALL' ? "3px solid var(--primary, #e11d48)" : '3px solid transparent',
+            color: activeTab === 'ALL' ? "var(--primary, #e11d48)" : "var(--text-secondary, var(--muted-foreground))",
+            fontWeight: activeTab === 'ALL' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease'
+          }}
         >
-          All ({dynamicCounts.all})
+          <FileText size={18} />
+          <span>All</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 4,
+              background: activeTab === 'ALL' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'ALL' ? "var(--primary, #e11d48)" : "var(--muted-foreground)",
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {dynamicCounts.all}
+          </span>
         </button>
+
         <button
           type="button"
-          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
-            activeTab === 'PENDING'
-              ? 'border-amber-500 text-amber-600 dark:text-amber-400 active'
-              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
           onClick={() => setActiveTab('PENDING')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'PENDING' ? "3px solid var(--primary, #e11d48)" : '3px solid transparent',
+            color: activeTab === 'PENDING' ? "var(--primary, #e11d48)" : "var(--text-secondary, var(--muted-foreground))",
+            fontWeight: activeTab === 'PENDING' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease'
+          }}
         >
-          Pending Review ({dynamicCounts.pending})
+          <Clock size={18} />
+          <span>Pending Review</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 4,
+              background: activeTab === 'PENDING' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'PENDING' ? "var(--primary, #e11d48)" : "var(--muted-foreground)",
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {dynamicCounts.pending}
+          </span>
         </button>
+
         <button
           type="button"
-          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
-            activeTab === 'APPROVED'
-              ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400 active'
-              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
           onClick={() => setActiveTab('APPROVED')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'APPROVED' ? "3px solid var(--primary, #e11d48)" : '3px solid transparent',
+            color: activeTab === 'APPROVED' ? "var(--primary, #e11d48)" : "var(--text-secondary, var(--muted-foreground))",
+            fontWeight: activeTab === 'APPROVED' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease'
+          }}
         >
-          Approved ({dynamicCounts.approved})
+          <CheckCircle2 size={18} />
+          <span>Approved</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 4,
+              background: activeTab === 'APPROVED' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'APPROVED' ? "var(--primary, #e11d48)" : "var(--muted-foreground)",
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {dynamicCounts.approved}
+          </span>
         </button>
+
         <button
           type="button"
-          className={`student-tab-btn px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
-            activeTab === 'REJECTED'
-              ? 'border-rose-600 text-rose-600 dark:text-rose-400 active'
-              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
           onClick={() => setActiveTab('REJECTED')}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'REJECTED' ? "3px solid var(--primary, #e11d48)" : '3px solid transparent',
+            color: activeTab === 'REJECTED' ? "var(--primary, #e11d48)" : "var(--text-secondary, var(--muted-foreground))",
+            fontWeight: activeTab === 'REJECTED' ? 700 : 500,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s ease'
+          }}
         >
-          Rejected ({dynamicCounts.rejected})
+          <XCircle size={18} />
+          <span>Rejected</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 4,
+              background: activeTab === 'REJECTED' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+              color: activeTab === 'REJECTED' ? "var(--primary, #e11d48)" : "var(--muted-foreground)",
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {dynamicCounts.rejected}
+          </span>
         </button>
       </div>
 
