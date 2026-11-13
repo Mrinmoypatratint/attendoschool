@@ -6,7 +6,7 @@ import BackupControls from '../../components/BackupControls';
 
 export default function Backup() {
   const { user } = useAuth();
-  const isAuthorized = user?.role === 'SUPER_ADMIN' || user?.role === 'SCHOOL_ADMIN';
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
   return (
     <div className="w-full max-w-none m-0 pb-10" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '24px 24px 40px', boxSizing: 'border-box' }}>
@@ -54,7 +54,7 @@ export default function Backup() {
         </div>
       </div>
 
-      {!isAuthorized ? (
+      {!isSuperAdmin ? (
         <div style={{
           padding: '24px',
           borderRadius: 12,
@@ -79,10 +79,10 @@ export default function Backup() {
           </div>
           <div>
             <h4 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: 'var(--text, #1c1f2e)' }}>
-              Administrator Access Restricted
+              Super Admin Access Restricted
             </h4>
             <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary, #64748b)' }}>
-              Only authorized Administrators can take or download encrypted backups. Contact your school administrator for assistance.
+              Only the platform Super Admin can take or download encrypted backups. Contact your system platform administrator for disaster recovery copies.
             </p>
           </div>
         </div>

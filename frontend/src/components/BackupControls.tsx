@@ -8,7 +8,7 @@ type Job = { id: string; status: 'queued' | 'running' | 'ready' | 'failed'; star
 const size = (bytes?: number) => bytes ? `${(bytes / 1048576).toFixed(2)} MB` : '—';
 export default function BackupControls({ panel = false }: { panel?: boolean }) {
   const { user } = useAuth();
-  const owner = user?.role === 'SUPER_ADMIN' || user?.role === 'SCHOOL_ADMIN';
+  const owner = user?.role === 'SUPER_ADMIN';
   const [open, setOpen] = useState(false), [jobs, setJobs] = useState<Job[]>([]);
   const [encrypted, setEncrypted] = useState<boolean | null>(null), [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(''), [completed, setCompleted] = useState<Job | null>(null);
@@ -31,7 +31,7 @@ export default function BackupControls({ panel = false }: { panel?: boolean }) {
     const close = (e: MouseEvent) => { if (!menu.current?.contains(e.target as Node)) setOpen(false); };
     document.addEventListener('mousedown', close); return () => document.removeEventListener('mousedown', close);
   }, []);
-  if (!owner) return panel ? <p>Administrator access required to take or download backups.</p> : null;
+  if (!owner) return panel ? <p>Only the platform Super Admin can take or download backups.</p> : null;
   const latest = jobs.find(j => j.status === 'ready');
   async function create() {
     setBusy(true); setNotice(''); setCompleted(null); setOpen(false);
