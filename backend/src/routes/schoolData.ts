@@ -4135,6 +4135,16 @@ r.put("/students/:id", ...admin, async (req: AuthRequest, res) => {
   ).trim();
 
   // Try PostgreSQL if available
+  const candidateAyUuid = [academic_year_id, sessionId, session].find(
+    (v) =>
+      typeof v === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        v.trim(),
+      ),
+  );
+  let resolvedAyId: string | null = candidateAyUuid
+    ? candidateAyUuid.trim()
+    : null;
   try {
     await ensureSchoolClassesAndSections(schoolId);
     const isStudentUuid =
@@ -4201,9 +4211,25 @@ r.put("/students/:id", ...admin, async (req: AuthRequest, res) => {
       (isPutClassUuid ? realPutClassId : null) || existStu?.class_id || null;
     const effectiveSectionId =
       (isPutSecUuid ? realPutSectionId : null) || existStu?.section_id || null;
-    const effectiveAyId = isAyUuid
-      ? resolvedSession
-      : existStu?.academic_year_id || null;
+    if (!resolvedAyId && resolvedSession && !/^all(\s+sessions?)?$/i.test(resolvedSession)) {
+      try {
+        const cleanName = resolvedSession.replace(/\b(academic\s+)?sessions?\b/gi, "").trim();
+        const ayLookup = await pool.query(
+          `SELECT id FROM academic_years
+           WHERE school_id = $1::uuid AND (LOWER(name) = LOWER($2) OR name ILIKE $3)
+           ORDER BY is_active DESC, created_at DESC LIMIT 1`,
+          [schoolId, resolvedSession, `%${cleanName}%`],
+        );
+        if (ayLookup.rowCount && ayLookup.rows.length > 0) {
+          resolvedAyId = ayLookup.rows[0].id;
+        }
+      } catch {}
+    }
+
+    const effectiveAyId = resolvedAyId || existStu?.academic_year_id || null;
+
+
+
     const effectiveAdmNum =
       cleanAdmissionNumber || existStu?.admission_number || null;
     const effectiveRollNum = cleanRollNumber || existStu?.roll_number || null;
@@ -4288,7 +4314,7 @@ r.put("/students/:id", ...admin, async (req: AuthRequest, res) => {
           cleanParentEmail || null,
           isPutClassUuid ? realPutClassId : null,
           isPutSecUuid ? realPutSectionId : null,
-          isAyUuid ? resolvedSession : null,
+          resolvedAyId || null,
           studentId,
           schoolId,
           cleanGender,
@@ -4476,7 +4502,8 @@ r.put("/students/:id", ...admin, async (req: AuthRequest, res) => {
             resolvedSession ||
             q.rows[0].session_name ||
             q.rows[0].academic_year_id,
-          academic_year_id: resolvedSession || q.rows[0].academic_year_id,
+          academic_year_id: q.rows[0].academic_year_id || resolvedAyId,
+          session_id: q.rows[0].academic_year_id || resolvedAyId,
           is_active: resolvedIsActive,
           status: resolvedStatus,
           user_id: studentUserId || q.rows[0].user_id,
