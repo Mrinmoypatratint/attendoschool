@@ -14504,7 +14504,15 @@ function Subjects() {
   }
 
   return <Layout>
-    <PageHead title="Subjects" sub="Subjects used by class routines." />
+    <div style={{ paddingTop: 24 }}>
+      <Link
+        to="/dashboard"
+        style={{ background: 'transparent', border: 'none', padding: 0, color: '#e11d48', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 8 }}
+      >
+        <ArrowLeft size={16} /> <span>Dashboard</span>
+      </Link>
+      <PageHead title="Subjects" sub="Subjects used by class routines." />
+    </div>
     <div className="panel narrow">
       <form className="inline" onSubmit={initiateAddSubject}>
         <input placeholder="Subject name (e.g. Mathematics)" value={n} onChange={e => setN(e.target.value)} />

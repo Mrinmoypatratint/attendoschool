@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { PersonProfileLink } from '../../components/PersonProfileLink';
 import {
@@ -7,7 +8,7 @@ import {
   PreviewTableData
 } from '../../components/preview';
 import { TableSubToolbar, TablePaginationFooter } from '../../components/TablePagination';
-import { Search, Filter, CheckSquare, Square, ArrowUpDown, Sparkles, FileSpreadsheet, Download } from 'lucide-react';
+import { Search, Filter, CheckSquare, Square, ArrowUpDown, Sparkles, FileSpreadsheet, Download, ArrowLeft } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 export default function StudentPromotion() {
@@ -334,7 +335,13 @@ export default function StudentPromotion() {
     displayedItems.filter(x => !x.already_processed).every(x => selected[x.id]);
 
   return (
-    <div className="feature-page w-full max-w-none m-0 pb-10" ref={tableTopRef} style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
+    <div className="feature-page w-full max-w-none m-0 pb-10" ref={tableTopRef} style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '24px 24px 40px', boxSizing: 'border-box' }}>
+      <Link
+        to="/dashboard"
+        style={{ background: 'transparent', border: 'none', padding: 0, color: '#e11d48', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 12 }}
+      >
+        <ArrowLeft size={16} /> <span>Dashboard</span>
+      </Link>
       <div className="flex justify-between items-start flex-wrap gap-3.5 mb-4">
         <div>
           <p className="eyebrow m-0 mb-1 text-xs text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider">ACADEMIC TRANSITION</p>
