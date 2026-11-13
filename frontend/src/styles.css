@@ -8328,7 +8328,48 @@ header {
   }
 
   /* Topbar Mobile Ergonomics */
-  .student-search-bar {
+  .student-topbar .student-search-bar,
+  .student-topbar-left .student-topbar-search-wrap {
+    display: none !important;
+  }
+
+  .student-topbar .session-pill,
+  .student-topbar .student-session-pill {
+    display: none !important;
+  }
+
+  .student-topbar-left {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    gap: 8px !important;
+  }
+
+  .student-header-school-brand {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
+  .student-topbar-crest {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    min-height: 34px !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    background: #ffffff !important;
+  }
+
+  .student-topbar-crest img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    display: block !important;
+  }
+
+  .student-topbar-school-sub {
     display: none !important;
   }
 

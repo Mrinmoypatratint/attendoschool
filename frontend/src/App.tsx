@@ -2849,6 +2849,16 @@ function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="header-right">
+            {/* Quick Mobile Search Button (Android / Mobile) */}
+            <button
+              type="button"
+              className="header-icon-btn mobile-search-icon-btn"
+              onClick={() => setSearchOpen(true)}
+              title="Search menu, pages..."
+              aria-label="Search"
+            >
+              <Search size={16} />
+            </button>
             <div className="ay-switcher-wrap" ref={ayDropdownRef} style={{ position: 'relative' }}>
               <div
                 className="session-pill"
@@ -2930,7 +2940,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         </header>
       ) : user.role === 'SCHOOL_ADMIN' ? (
         <header className="app-topbar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: '1 1 auto' }}>
             <button
               type="button"
               className="header-icon-btn mobile-menu-btn mobile-only-menu-btn"
@@ -2941,7 +2951,7 @@ function Layout({ children }: { children: React.ReactNode }) {
               <Menu size={18} />
             </button>
             <div
-              style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flexShrink: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
               onClick={handleOpenSchoolWebsite}
               title={currentSchoolWebsite ? `Visit Official School Website: ${currentSchoolWebsite}` : currentSchoolName}
             >
@@ -2971,12 +2981,22 @@ function Layout({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
             </div>
-            <div className="header-search" style={{ marginLeft: 16, width: 380, maxWidth: 440, cursor: 'pointer' }} onClick={() => setSearchOpen(true)}>
+            <div className="header-search" style={{ width: 360, maxWidth: 440, flex: '0 1 380px', cursor: 'pointer' }} onClick={() => setSearchOpen(true)}>
               <Search size={15} />
               <input placeholder="Search menu, pages..." readOnly style={{ cursor: 'pointer' }} />
             </div>
           </div>
           <div className="header-right">
+            {/* Quick Mobile Search Button (Android / Mobile) */}
+            <button
+              type="button"
+              className="header-icon-btn mobile-search-icon-btn"
+              onClick={() => setSearchOpen(true)}
+              title="Search menu, pages..."
+              aria-label="Search"
+            >
+              <Search size={16} />
+            </button>
             {/* Academic Year Switcher Dropdown */}
             <div className="ay-switcher-wrap" ref={ayDropdownRef} style={{ position: 'relative' }}>
               <div
@@ -3171,7 +3191,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         </header>
       ) : (
         <header className="app-topbar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: '1 1 auto' }}>
             <button
               type="button"
               className="header-icon-btn mobile-menu-btn mobile-only-menu-btn"
@@ -3182,7 +3202,7 @@ function Layout({ children }: { children: React.ReactNode }) {
               <Menu size={18} />
             </button>
             <div
-              style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
+              style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flexShrink: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
               onClick={handleOpenSchoolWebsite}
               title={currentSchoolWebsite ? `Visit Official School Website: ${currentSchoolWebsite}` : currentSchoolName}
             >
@@ -3212,12 +3232,23 @@ function Layout({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
             </div>
-          </div>
-          <div className="header-search" onClick={() => setSearchOpen(true)} style={{ width: 380, maxWidth: 440, cursor: 'pointer' }}>
-            <Search size={15} />
-            <input placeholder="Search menu, pages..." readOnly style={{ cursor: 'pointer' }} />
+
+            <div className="header-search" onClick={() => setSearchOpen(true)} style={{ width: 360, maxWidth: 440, flex: '0 1 380px', cursor: 'pointer' }}>
+              <Search size={15} />
+              <input placeholder="Search menu, pages..." readOnly style={{ cursor: 'pointer' }} />
+            </div>
           </div>
           <div className="header-right">
+            {/* Quick Mobile Search Button (Android / Mobile) */}
+            <button
+              type="button"
+              className="header-icon-btn mobile-search-icon-btn"
+              onClick={() => setSearchOpen(true)}
+              title="Search menu, pages..."
+              aria-label="Search"
+            >
+              <Search size={16} />
+            </button>
             {/* Connected Academic Session Selector Dropdown */}
             <div className="ay-switcher-wrap" ref={ayDropdownRef} style={{ position: 'relative' }}>
               <div
@@ -3606,6 +3637,23 @@ function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
       )}
+
+      {/* Mobile Search Bar Strip (Visible only on <= 768px across Teacher, School Admin, Staff Portals) */}
+      <div className="app-mobile-search-strip">
+        <div
+          className="mobile-search-bar"
+          onClick={() => setSearchOpen(true)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSearchOpen(true); }}
+        >
+          <Search size={16} style={{ color: 'var(--text-muted, #64748b)', flexShrink: 0 }} />
+          <span className="mobile-search-placeholder">
+            {user.role === 'SUPER_ADMIN' ? 'Search schools, users, invoices...' : 'Search menu, pages...'}
+          </span>
+          <kbd className="mobile-search-kbd">Search</kbd>
+        </div>
+      </div>
       {/* ── Faculty In-App Inbox Drawer (Teacher Portal) ── */}
       {teacherDrawerOpen && (
         <div

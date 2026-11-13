@@ -590,6 +590,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
 
             {/* School Crest & Institutional Identity */}
             <div
+              className="student-header-school-brand"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -602,10 +603,12 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               title={targetWebsiteUrl ? `Visit Official School Website: ${targetWebsiteUrl}` : displaySchoolName}
             >
               <div
-                className="school-crest"
+                className="school-crest student-topbar-crest"
                 style={{
                   width: 34,
                   height: 34,
+                  minWidth: 34,
+                  minHeight: 34,
                   background: '#ffffff',
                   border: '1px solid var(--border, #eaeaec)',
                   padding: 2,
@@ -630,7 +633,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
                   style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                 />
               </div>
-              <div style={{ minWidth: 0 }}>
+              <div className="student-topbar-school-info" style={{ minWidth: 0 }}>
                 <div
                   style={{
                     fontSize: 13.5,
@@ -645,6 +648,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
                   {displaySchoolName}
                 </div>
                 <div
+                  className="student-topbar-school-sub"
                   style={{
                     fontSize: 11,
                     color: 'var(--text-muted, #696e79)',
@@ -658,7 +662,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               </div>
             </div>
 
-            <div style={{ width: 360, maxWidth: 440, flex: '0 1 380px' }}>
+            <div className="student-topbar-search-wrap" style={{ width: 360, maxWidth: 440, flex: '0 1 380px' }}>
               <StudentSearchBar />
             </div>
           </div>
@@ -667,7 +671,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
             {/* Academic Session Pill (Read-only enrolled session, no dropdown) */}
             {academicSession && (
               <div
-                className="session-pill"
+                className="session-pill student-session-pill"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, cursor: 'default' }}
                 title={`Enrolled Academic Session: ${academicSession}`}
               >
@@ -675,6 +679,23 @@ export function StudentLayout({ children }: StudentLayoutProps) {
                 <span>{`${academicSession} ACADEMIC SESSION`.toUpperCase()}</span>
               </div>
             )}
+
+            {/* Quick Mobile Search Button (Android / Mobile viewport) */}
+            <button
+              type="button"
+              className="student-topbar-icon-btn mobile-search-icon-btn"
+              aria-label="Search"
+              title="Search classes, subjects, announcements"
+              onClick={() => {
+                const el = document.querySelector('.student-mobile-search-strip input') as HTMLInputElement | null;
+                if (el) {
+                  el.focus();
+                  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+              }}
+            >
+              <Search size={18} />
+            </button>
 
             {/* Connected Review Notifications Bell & Popover (Student Announcements) */}
             <div className="super-notif-wrap" ref={studentNotifRef} style={{ position: 'relative' }}>
@@ -925,6 +946,11 @@ export function StudentLayout({ children }: StudentLayoutProps) {
             </div>
           </div>
         </header>
+
+        {/* Mobile Search Bar Strip (Visible only on <= 768px in Student Portal) */}
+        <div className="student-mobile-search-strip">
+          <StudentSearchBar />
+        </div>
 
         {/* Page Content */}
         <main className="student-page-container">
