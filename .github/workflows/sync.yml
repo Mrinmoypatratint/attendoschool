@@ -41,23 +41,41 @@ jobs:
           echo "**Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          git fetch origin --prune
-          echo "All remote branches fetched."
+          if ! git fetch origin --prune; then
+            echo "::error::git fetch failed. Remote branches may be stale."
+            echo "❌ **Fetch Failed:** Unable to fetch remote references from origin." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          echo "All remote branches fetched successfully."
 
       - name: Analyze All Branches
         run: |
           TARGET="${{ inputs.target_branch || 'main' }}"
           SOURCE="${{ inputs.source_branch }}"
+          TARGET_REF="origin/${TARGET}"
 
-          echo "| Branch | Ahead | Behind | Conflicts | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "| :--- | :---: | :---: | :---: | :--- |" >> $GITHUB_STEP_SUMMARY
+          # Verify target reference exists
+          if ! git rev-parse --verify "${TARGET_REF}" >/dev/null 2>&1; then
+            echo "::error::Target branch ${TARGET_REF} does not exist on origin."
+            echo "❌ **Target Branch Missing:** \`${TARGET_REF}\` not found on remote." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "Comparing branches against \`${TARGET_REF}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | Comparison Target | Ahead | Behind | Conflicts | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- | :---: | :---: | :---: | :--- |" >> $GITHUB_STEP_SUMMARY
 
           # Get list of remote branches to analyze
           if [ -n "$SOURCE" ]; then
             BRANCHES="origin/${SOURCE}"
           else
-            BRANCHES=$(git branch -r | grep -v '\->' | grep -v "origin/${TARGET}" | grep -v 'origin/gh-pages' | sed 's/^ *//')
+            BRANCHES=$(git branch -r | grep -v '\->' | grep -v "${TARGET_REF}" | grep -v 'origin/gh-pages' | sed 's/^ *//')
           fi
+
+          # Safe merge check identity
+          git config user.name "sync-checker"
+          git config user.email "sync@attendoschool.local"
 
           for REMOTE_BRANCH in $BRANCHES; do
             BRANCH_NAME=$(echo "$REMOTE_BRANCH" | sed 's#origin/##')
@@ -67,43 +85,70 @@ jobs:
               continue
             fi
 
-            # Calculate ahead/behind
-            AHEAD=$(git rev-list --count "origin/${TARGET}..${REMOTE_BRANCH}" 2>/dev/null || echo "?")
-            BEHIND=$(git rev-list --count "${REMOTE_BRANCH}..origin/${TARGET}" 2>/dev/null || echo "?")
-
-            # Skip branches with no new commits
-            if [ "$AHEAD" = "0" ] || [ "$AHEAD" = "?" ]; then
-              echo "| \`${BRANCH_NAME}\` | ${AHEAD} | ${BEHIND} | — | ⏭️ Up-to-date |" >> $GITHUB_STEP_SUMMARY
+            # Check if remote branch exists
+            if ! git rev-parse --verify "${REMOTE_BRANCH}" >/dev/null 2>&1; then
+              echo "| \`${BRANCH_NAME}\` | \`${TARGET_REF}\` | ? | ? | ❓ | ❌ Unknown / Error (Branch missing) |" >> $GITHUB_STEP_SUMMARY
               continue
             fi
 
-            # Safe conflict detection using merge-tree
-            git config user.name "sync-checker"
-            git config user.email "sync@attendoschool.local"
+            # Calculate ahead/behind using symmetric difference
+            COUNTS=$(git rev-list --left-right --count "${REMOTE_BRANCH}...${TARGET_REF}" 2>/dev/null || echo "")
 
-            MERGE_BASE=$(git merge-base "origin/${TARGET}" "${REMOTE_BRANCH}" 2>/dev/null || echo "")
-            if [ -z "$MERGE_BASE" ]; then
-              echo "| \`${BRANCH_NAME}\` | ${AHEAD} | ${BEHIND} | ❓ | No common ancestor |" >> $GITHUB_STEP_SUMMARY
-              continue
-            fi
-
-            # Test merge on detached HEAD (completely safe)
-            git checkout -q --detach "origin/${TARGET}" 2>/dev/null
-            if git merge --no-commit --no-ff "${REMOTE_BRANCH}" >/dev/null 2>&1; then
-              CONFLICT_STATUS="✅ None"
-              STATUS="✅ Ready to merge"
-              git merge --abort 2>/dev/null || git reset --hard "origin/${TARGET}" 2>/dev/null
+            if [ -z "$COUNTS" ]; then
+              AHEAD="?"
+              BEHIND="?"
+              CONFLICT_STATUS="❓"
+              STATUS="❌ Unknown / Error"
             else
-              CONFLICT_FILES=$(git diff --name-only --diff-filter=U 2>/dev/null | wc -l)
-              CONFLICT_STATUS="❌ ${CONFLICT_FILES} file(s)"
-              STATUS="⚠️ Conflicts"
-              git merge --abort 2>/dev/null || git reset --hard "origin/${TARGET}" 2>/dev/null
+              AHEAD=$(echo "$COUNTS" | awk '{print $1}')
+              BEHIND=$(echo "$COUNTS" | awk '{print $2}')
+
+              # Phase 2 Rules:
+              # - ahead = 0 and behind = 0 → Up-to-date
+              # - ahead > 0 and behind = 0 → Ahead
+              # - ahead = 0 and behind > 0 → Behind
+              # - ahead > 0 and behind > 0 → Diverged
+              # - Git comparison failure → Unknown / Error
+              # Never display Up-to-date when behind or ahead is greater than zero!
+
+              if [ "$AHEAD" -eq 0 ] && [ "$BEHIND" -eq 0 ]; then
+                STATUS="✅ Up-to-date"
+                CONFLICT_STATUS="—"
+              elif [ "$AHEAD" -gt 0 ] && [ "$BEHIND" -eq 0 ]; then
+                STATUS="🚀 Ahead"
+                CONFLICT_STATUS="✅ None (Fast-forward)"
+              elif [ "$AHEAD" -eq 0 ] && [ "$BEHIND" -gt 0 ]; then
+                STATUS="📥 Behind"
+                CONFLICT_STATUS="—"
+              elif [ "$AHEAD" -gt 0 ] && [ "$BEHIND" -gt 0 ]; then
+                # Safe conflict detection on detached HEAD
+                MERGE_BASE=$(git merge-base "${TARGET_REF}" "${REMOTE_BRANCH}" 2>/dev/null || echo "")
+                if [ -z "$MERGE_BASE" ]; then
+                  STATUS="⚠️ Diverged (No common ancestor)"
+                  CONFLICT_STATUS="❓"
+                else
+                  git checkout -q --detach "${TARGET_REF}" 2>/dev/null
+                  if git merge --no-commit --no-ff "${REMOTE_BRANCH}" >/dev/null 2>&1; then
+                    CONFLICT_STATUS="✅ None"
+                    STATUS="🔀 Diverged (Clean merge)"
+                    git merge --abort 2>/dev/null || git reset --hard "${TARGET_REF}" 2>/dev/null
+                  else
+                    CONFLICT_FILES=$(git diff --name-only --diff-filter=U 2>/dev/null | wc -l)
+                    CONFLICT_STATUS="❌ ${CONFLICT_FILES} file(s)"
+                    STATUS="⚠️ Diverged (Conflicts)"
+                    git merge --abort 2>/dev/null || git reset --hard "${TARGET_REF}" 2>/dev/null
+                  fi
+                fi
+              else
+                STATUS="❌ Unknown / Error"
+                CONFLICT_STATUS="❓"
+              fi
             fi
 
-            echo "| \`${BRANCH_NAME}\` | ${AHEAD} | ${BEHIND} | ${CONFLICT_STATUS} | ${STATUS} |" >> $GITHUB_STEP_SUMMARY
+            echo "| \`${BRANCH_NAME}\` | \`${TARGET_REF}\` | ${AHEAD} | ${BEHIND} | ${CONFLICT_STATUS} | ${STATUS} |" >> $GITHUB_STEP_SUMMARY
           done
 
-          git checkout -q main 2>/dev/null || true
+          git checkout -q main 2>/dev/null || git checkout -q arnab 2>/dev/null || true
 
       - name: Sync Summary
         run: |
