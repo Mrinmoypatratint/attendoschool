@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
@@ -9,7 +9,12 @@ const envDir = fs.existsSync(path.resolve(__dirname, '.env'))
   ? __dirname
   : path.resolve(__dirname, '..');
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, envDir, '');
+  const backendPort = env.BACKEND_PORT || env.PORT || process.env.PORT || '5002';
+  const backendTarget = env.VITE_BACKEND_URL || `http://localhost:${backendPort}`;
+
+  return {
   base: './',
   envDir,
   build: mode === 'native' ? { target: ['chrome83', 'safari15'] } : undefined,
@@ -33,11 +38,12 @@ export default defineConfig(({ mode }) => ({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:5001',
+        target: backendTarget,
         changeOrigin: true,
         secure: false,
         ws: true
       }
     }
   }
-}));
+  };
+});
