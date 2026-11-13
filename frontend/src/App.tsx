@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
 import type { ReactNode } from 'react';
-import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { api, API_BASE_URL } from './api';
 import { useAuth, Guard, RoleGuard } from './hooks/useAuth';
 import { useAccess } from './rbac/AccessProvider';
@@ -6350,9 +6350,11 @@ function Students() {
     // Client-side uniqueness pre-checks against loaded student directory
     if (primaryPhone) {
       const cleanPhoneDigits = primaryPhone.replace(/\D/g, '').slice(-10);
-      if (cleanPhoneDigits.length === 10) {
+      const origStuPhone = String(editingStudent?.parent_sms_number || editingStudent?.parentPhone || editingStudent?.fatherPhone || editingStudent?.motherPhone || editingStudent?.phone || '').replace(/\D/g, '').slice(-10);
+      const isSameStuPhone = Boolean(editingStudent && origStuPhone.length === 10 && origStuPhone === cleanPhoneDigits);
+      if (!isSameStuPhone && cleanPhoneDigits.length === 10) {
         const dupPhone = rows.find(r => {
-          if (editingStudent && r.id === editingStudent.id) return false;
+          if (editingStudent && (r.id === editingStudent.id || String(r.id) === String(editingStudent.id))) return false;
           const rPhone = String(r.parent_sms_number || r.parentPhone || r.fatherPhone || r.motherPhone || r.phone || '').replace(/\D/g, '').slice(-10);
           return rPhone === cleanPhoneDigits;
         });
@@ -7577,8 +7579,14 @@ function Students() {
   const displayedStudentPreviewRows = filteredStudentPreviewRows.slice(studentStartIdx, studentEndIdx);
 
   return <Layout>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16, paddingTop: 24 }}>
       <div>
+        <Link
+          to="/dashboard"
+          style={{ background: 'transparent', border: 'none', padding: 0, color: '#e11d48', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 8 }}
+        >
+          <ArrowLeft size={16} /> <span>Dashboard</span>
+        </Link>
         <p className="eyebrow">STUDENT DIRECTORY</p>
         <h1 style={{ margin: 0, fontSize: 24 }}>Students Directory</h1>
         <p className="muted" style={{ margin: '4px 0 0' }}>Manage enrolled students, section assignments, parent contacts, and batch Excel imports.</p>
@@ -10541,29 +10549,45 @@ function Teachers() {
       alert('Validation Error: Please enter a valid email address (e.g. teacher@school.edu).');
       return;
     }
-    const dupEmail = rows.find(r => (!editingTeacher || r.id !== editingTeacher.id) && String(r.email || '').trim().toLowerCase() === email);
-    if (dupEmail) {
-      alert('Validation Error: This email address is already registered.');
-      return;
+    const isSameTeacherRecord = (r: any) => {
+      if (!editingTeacher) return false;
+      if (r === editingTeacher) return true;
+      if (editingTeacher.id != null && r.id != null && String(r.id) === String(editingTeacher.id)) return true;
+      if (editingTeacher.user_id != null && r.user_id != null && String(r.user_id) === String(editingTeacher.user_id)) return true;
+      if (editingTeacher.id != null && r.user_id != null && String(r.user_id) === String(editingTeacher.id)) return true;
+      if (editingTeacher.user_id != null && r.id != null && String(r.id) === String(editingTeacher.user_id)) return true;
+      const editEmp = String(editingTeacher.employee_id || editingTeacher.employeeId || editingTeacher.savior_no || editingTeacher.saviorNo || '').trim().toLowerCase();
+      const rEmp = String(r.employee_id || r.employeeId || r.savior_no || r.saviorNo || '').trim().toLowerCase();
+      if (editEmp && rEmp && editEmp === rEmp) return true;
+      return false;
+    };
+
+    const origEmail = String(editingTeacher?.email || '').trim().toLowerCase();
+    const isSameEmail = Boolean(editingTeacher && origEmail && origEmail === email);
+    if (!isSameEmail) {
+      const dupEmail = rows.find(r => !isSameTeacherRecord(r) && String(r.email || '').trim().toLowerCase() === email);
+      if (dupEmail) {
+        alert('Validation Error: This email address is already registered.');
+        return;
+      }
     }
     if (!employeeId) {
       alert('Validation Error: Please enter Employee ID / Savior_No.');
       return;
     }
     const currentEmpIdTrimmed = employeeId.trim().toLowerCase();
-    const dupEmpId = rows.find(r => {
-      const isSameRecord = editingTeacher && (
-        r.id === editingTeacher.id ||
-        (editingTeacher.id && r.id && String(r.id) === String(editingTeacher.id)) ||
-        (editingTeacher.user_id && r.user_id && String(r.user_id) === String(editingTeacher.user_id))
-      );
-      if (isSameRecord) return false;
-      const rEmp = String(r.employee_id || r.employeeId || r.savior_no || r.saviorNo || '').trim().toLowerCase();
-      return rEmp && rEmp === currentEmpIdTrimmed;
-    });
-    if (dupEmpId) {
-      alert(`Validation Error: Employee ID already exists. Employee ID '${employeeId}' is already registered to teacher '${dupEmpId.name || 'Existing Teacher'}'.`);
-      return;
+    const origEmpId = String(editingTeacher?.employee_id || editingTeacher?.employeeId || editingTeacher?.savior_no || editingTeacher?.saviorNo || '').trim().toLowerCase();
+    const isSameEmpId = Boolean(editingTeacher && origEmpId && origEmpId === currentEmpIdTrimmed);
+    if (!isSameEmpId) {
+      const dupEmpId = rows.find(r => {
+        if (isSameTeacherRecord(r)) return false;
+        const rEmp = String(r.employee_id || r.employeeId || r.savior_no || r.saviorNo || '').trim().toLowerCase();
+        return rEmp && rEmp === currentEmpIdTrimmed;
+      });
+      if (dupEmpId) {
+        alert(`Validation Error: Employee ID already exists. Employee ID '${employeeId}' is already registered to teacher '${dupEmpId.name || 'Existing Teacher'}'.`);
+        return;
+      }
     }
     const joiningDateVal = f.joiningDate || f.joining_date;
     if (!joiningDateVal) {
@@ -10588,9 +10612,11 @@ function Teachers() {
       return;
     }
     const cleanMob10 = cleanMobile.slice(-10);
-    if (cleanMob10.length === 10) {
+    const origMob10 = String(editingTeacher?.mobile || editingTeacher?.phone || '').replace(/\D/g, '').slice(-10);
+    const isSameMob = Boolean(editingTeacher && origMob10.length === 10 && origMob10 === cleanMob10);
+    if (!isSameMob && cleanMob10.length === 10) {
       const dupMobile = rows.find(r => {
-        if (editingTeacher && r.id === editingTeacher.id) return false;
+        if (isSameTeacherRecord(r)) return false;
         const rMob = String(r.mobile || r.phone || '').replace(/\D/g, '').slice(-10);
         return rMob === cleanMob10;
       });
@@ -11237,8 +11263,14 @@ function Teachers() {
   const displayedTeacherPreviewRows = filteredTeacherPreviewRows.slice(teacherStartIdx, teacherEndIdx);
 
   return <Layout>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16, paddingTop: 24 }}>
       <div>
+        <Link
+          to="/dashboard"
+          style={{ background: 'transparent', border: 'none', padding: 0, color: '#e11d48', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 8 }}
+        >
+          <ArrowLeft size={16} /> <span>Dashboard</span>
+        </Link>
         <p className="eyebrow">FACULTY & STAFF</p>
         <h1 style={{ margin: 0, fontSize: 24 }}>Teachers & Faculty</h1>
         <p className="muted" style={{ margin: '4px 0 0' }}>Appointed faculty accounts, classroom attendance permissions, and bulk onboarding.</p>

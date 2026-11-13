@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { api } from '../../api';
 import {
+  ArrowLeft,
   Award,
   Plus,
   Search,
@@ -599,7 +601,14 @@ export default function Designations() {
   };
 
   return (
-    <div className="w-full pb-16">
+    <div className="w-full pb-16" style={{ padding: '24px 24px 48px', boxSizing: 'border-box' }}>
+      <Link
+        to="/dashboard"
+        className="student-back-link inline-flex items-center gap-1.5 text-xs font-semibold mb-2"
+        style={{ color: '#e11d48', textDecoration: 'none' }}
+      >
+        <ArrowLeft size={16} /> <span>Dashboard</span>
+      </Link>
       {/* Page Header */}
       <div className="flex items-start justify-between flex-wrap gap-4 mb-6">
         <div className="flex items-center gap-3.5">

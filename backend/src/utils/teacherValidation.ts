@@ -24,6 +24,46 @@ export function normalizeEmployeeId(id: any): string | null {
 const isUuid = (val: any): boolean =>
   typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 
+async function getExcludeIds(excludeUserId?: string | null, client: any = pool): Promise<{
+  uuidUser: string | null;
+  uuidProfile: string | null;
+  employeeId: string | null;
+}> {
+  if (!excludeUserId) return { uuidUser: null, uuidProfile: null, employeeId: null };
+  const str = String(excludeUserId).trim();
+  if (isUuid(str)) {
+    try {
+      const q = await client.query(
+        `SELECT user_id, id, employee_id FROM teacher_profiles WHERE user_id = $1::uuid OR id = $1::uuid LIMIT 1`,
+        [str]
+      );
+      if (q.rows[0]) {
+        return {
+          uuidUser: q.rows[0].user_id,
+          uuidProfile: q.rows[0].id,
+          employeeId: q.rows[0].employee_id ? String(q.rows[0].employee_id).trim() : null
+        };
+      }
+    } catch {}
+    return { uuidUser: str, uuidProfile: str, employeeId: null };
+  } else {
+    try {
+      const q = await client.query(
+        `SELECT user_id, id, employee_id FROM teacher_profiles WHERE LOWER(TRIM(employee_id)) = LOWER(TRIM($1)) LIMIT 1`,
+        [str]
+      );
+      if (q.rows[0]) {
+        return {
+          uuidUser: q.rows[0].user_id,
+          uuidProfile: q.rows[0].id,
+          employeeId: q.rows[0].employee_id ? String(q.rows[0].employee_id).trim() : null
+        };
+      }
+    } catch {}
+    return { uuidUser: null, uuidProfile: null, employeeId: str };
+  }
+}
+
 /**
  * Checks if an Employee ID / Saviour ID is already registered in the school.
  */
@@ -36,7 +76,11 @@ export async function checkTeacherEmployeeIdConflict(
   const norm = normalizeEmployeeId(employeeId);
   if (!norm) return { conflict: false };
 
-  const safeExclude = isUuid(excludeUserId) ? excludeUserId : null;
+  const exclude = await getExcludeIds(excludeUserId, client);
+  if (exclude.employeeId && exclude.employeeId.toLowerCase() === norm.toLowerCase()) {
+    return { conflict: false };
+  }
+
   const q = await client.query(
     `SELECT tp.id, tp.employee_id, u.name
      FROM teacher_profiles tp
@@ -44,8 +88,10 @@ export async function checkTeacherEmployeeIdConflict(
      WHERE u.school_id = $1
        AND LOWER(TRIM(tp.employee_id)) = LOWER(TRIM($2))
        AND ($3::uuid IS NULL OR (tp.user_id != $3::uuid AND tp.id != $3::uuid))
+       AND ($4::uuid IS NULL OR (tp.user_id != $4::uuid AND tp.id != $4::uuid))
+       AND ($5::text IS NULL OR LOWER(TRIM(tp.employee_id)) != LOWER(TRIM($5)))
      LIMIT 1`,
-    [schoolId, norm, safeExclude]
+    [schoolId, norm, exclude.uuidUser, exclude.uuidProfile, exclude.employeeId]
   );
 
   if (q.rowCount && q.rowCount > 0) {
@@ -70,7 +116,7 @@ export async function checkTeacherEmailConflict(
   const norm = normalizeEmail(email);
   if (!norm) return { conflict: false };
 
-  const safeExclude = isUuid(excludeUserId) ? excludeUserId : null;
+  const exclude = await getExcludeIds(excludeUserId, client);
 
   // Check users table (email is used for login)
   const q = await client.query(
@@ -78,8 +124,9 @@ export async function checkTeacherEmailConflict(
      FROM users
      WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))
        AND ($2::uuid IS NULL OR id != $2::uuid)
+       AND ($3::uuid IS NULL OR id != $3::uuid)
      LIMIT 1`,
-    [norm, safeExclude]
+    [norm, exclude.uuidUser, exclude.uuidProfile]
   );
 
   if (q.rowCount && q.rowCount > 0) {
@@ -104,8 +151,29 @@ export async function checkTeacherPhoneConflict(
   const norm = normalizePhoneNumber(phone);
   if (!norm) return { conflict: false };
 
-  const safeExclude = isUuid(excludeUserId) ? excludeUserId : null;
   const last10 = norm.slice(-10);
+  const exclude = await getExcludeIds(excludeUserId, client);
+
+  // If the phone matches the existing teacher's own current phone, it is NOT a conflict
+  if (exclude.uuidUser || exclude.uuidProfile || exclude.employeeId) {
+    try {
+      const curQ = await client.query(
+        `SELECT COALESCE(phone, mobile) as phone
+         FROM teacher_profiles
+         WHERE ($1::uuid IS NOT NULL AND (user_id = $1::uuid OR id = $1::uuid))
+            OR ($2::uuid IS NOT NULL AND (user_id = $2::uuid OR id = $2::uuid))
+            OR ($3::text IS NOT NULL AND LOWER(TRIM(employee_id)) = LOWER(TRIM($3)))
+         LIMIT 1`,
+        [exclude.uuidUser, exclude.uuidProfile, exclude.employeeId]
+      );
+      if (curQ.rows[0]) {
+        const curNorm = normalizePhoneNumber(curQ.rows[0].phone);
+        if (curNorm && curNorm.slice(-10) === last10) {
+          return { conflict: false };
+        }
+      }
+    } catch {}
+  }
 
   const q = await client.query(
     `SELECT tp.id, u.name, COALESCE(tp.phone, tp.mobile) as phone
@@ -119,8 +187,10 @@ export async function checkTeacherPhoneConflict(
          OR regexp_replace(COALESCE(tp.phone, tp.mobile), '[^0-9]', '', 'g') = $3
        )
        AND ($4::uuid IS NULL OR (tp.user_id != $4::uuid AND tp.id != $4::uuid))
+       AND ($5::uuid IS NULL OR (tp.user_id != $5::uuid AND tp.id != $5::uuid))
+       AND ($6::text IS NULL OR LOWER(TRIM(tp.employee_id)) != LOWER(TRIM($6)))
      LIMIT 1`,
-    [schoolId, last10, norm, safeExclude]
+    [schoolId, last10, norm, exclude.uuidUser, exclude.uuidProfile, exclude.employeeId]
   );
 
   if (q.rowCount && q.rowCount > 0) {

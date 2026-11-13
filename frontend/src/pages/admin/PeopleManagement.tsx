@@ -484,7 +484,15 @@ export default function PeopleManagement() {
       return;
     }
     const cleanMob10 = cleanMobile.slice(-10);
-    if (cleanMob10.length === 10 && rows && rows.some((r: any) => String(r.mobile || r.phone || '').replace(/\D/g, '').slice(-10) === cleanMob10)) {
+    const origMob10 = String(teacherForm.originalMobile || teacherForm.orig_mobile || '').replace(/\D/g, '').slice(-10);
+    const isSameMob = Boolean(teacherForm.id && origMob10.length === 10 && origMob10 === cleanMob10);
+    const isSameTeacherInPM = (r: any) => {
+      if (!teacherForm.id) return false;
+      if (r.id != null && String(r.id) === String(teacherForm.id)) return true;
+      if (r.user_id != null && String(r.user_id) === String(teacherForm.user_id || teacherForm.id)) return true;
+      return false;
+    };
+    if (!isSameMob && cleanMob10.length === 10 && rows && rows.some((r: any) => !isSameTeacherInPM(r) && String(r.mobile || r.phone || '').replace(/\D/g, '').slice(-10) === cleanMob10)) {
       alert('Validation Error: This phone number is already registered.');
       return;
     }

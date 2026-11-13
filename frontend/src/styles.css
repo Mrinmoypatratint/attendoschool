@@ -8674,6 +8674,7 @@ header {
   justify-content: space-between;
   align-items: center;
   gap: 24px;
+  margin-top: 24px;
   margin-bottom: 24px;
   box-shadow: none;
   border: 1px solid #eaeaec;
