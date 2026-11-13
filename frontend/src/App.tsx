@@ -1984,6 +1984,19 @@ function Layout({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // Keep navbar session in sync with other pages & storage
+  useEffect(() => {
+    const handleNavbarSessionSync = () => {
+      loadAcademicYears();
+    };
+    window.addEventListener('sessionChanged', handleNavbarSessionSync);
+    window.addEventListener('storage', handleNavbarSessionSync);
+    return () => {
+      window.removeEventListener('sessionChanged', handleNavbarSessionSync);
+      window.removeEventListener('storage', handleNavbarSessionSync);
+    };
+  }, []);
+
   // ── Navigation Menu Items for Global Command Palette (No Students / Teachers) ──
   const menuItems = useMemo(() => {
     if (!user) return [];
