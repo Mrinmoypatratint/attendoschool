@@ -192,11 +192,11 @@ export default function PhotoApprove() {
           <h1 className="student-subpage-title" style={{ fontSize: 24, fontWeight: 800, color: "var(--text, var(--foreground))", margin: '2px 0 4px' }}>
             {isTeacher ? 'Student Photo Approvals' : 'Photo Approve'}
           </h1>
-          <p className="student-subpage-desc" style={{ fontSize: 14, color: "var(--text-secondary, var(--muted-foreground))", margin: 0 }}>
-            {isTeacher
-              ? 'Review, verify, and approve submitted student profile photographs for your mentored class-section.'
-              : 'Review, verify, and approve submitted student and staff profile photographs.'}
-          </p>
+          {!isTeacher && (
+            <p className="student-subpage-desc" style={{ fontSize: 14, color: "var(--text-secondary, var(--muted-foreground))", margin: 0 }}>
+              Review, verify, and approve submitted student and staff profile photographs.
+            </p>
+          )}
         </div>
 
         <button
