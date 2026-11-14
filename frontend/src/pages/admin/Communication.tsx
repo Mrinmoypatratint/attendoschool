@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import {
   MessageSquare,
@@ -18,7 +19,8 @@ import {
   Maximize2,
   Minimize2,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  ArrowLeft
 } from 'lucide-react';
 import { UniversalPreviewModal, DestructiveConfirmModal, PreviewSectionData } from '../../components/preview';
 import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
@@ -1003,56 +1005,19 @@ export default function Communication() {
   ];
 
   return (
-    <div className="as-communication-page w-full max-w-full m-0 p-0 box-border" style={{ width: '100%', maxWidth: '100%', margin: 0, padding: 0, marginTop: -8, boxSizing: 'border-box' }}>
+    <div className="as-communication-page w-full max-w-full m-0 box-border" style={{ width: '100%', maxWidth: '100%', margin: 0, padding: '24px 24px 40px', boxSizing: 'border-box' }}>
+      <Link
+        to="/dashboard"
+        style={{ background: 'transparent', border: 'none', padding: 0, color: '#e11d48', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 12 }}
+      >
+        <ArrowLeft size={16} /> <span>Dashboard</span>
+      </Link>
       <div className="as-communication-header-row flex flex-wrap items-center justify-between gap-3 mb-4" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 m-0" style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "var(--text, var(--foreground))" }}>Announcement</h1>
           <p className="muted text-xs md:text-sm text-slate-500 m-0 mt-1" style={{ margin: '4px 0 0', fontSize: 13, color: "var(--text-muted, var(--muted-foreground))" }}>
-            Multi-channel institutional announcements, role-based audience broadcasts, and threaded replies.
+            Multi-channel institutional announcements and role-based audience broadcasts.
           </p>
-        </div>
-
-        {/* Tab switch */}
-        <div className="flex flex-wrap gap-2 bg-slate-100 p-1 rounded-lg" style={{ display: 'flex', gap: 8, backgroundColor: "var(--card-subtle, var(--secondary))", padding: 4, borderRadius: 4, flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={() => setActiveTab('announcements')}
-            className={`px-3.5 py-1.5 text-xs md:text-sm font-semibold rounded-md border-0 cursor-pointer transition ${activeTab === 'announcements' ? 'bg-white text-slate-900 shadow-sm' : 'bg-transparent text-slate-500'}`}
-            style={{
-              padding: '6px 14px',
-              fontSize: 13,
-              fontWeight: 600,
-              borderRadius: 4,
-              border: 'none',
-              cursor: 'pointer',
-              backgroundColor: activeTab === 'announcements' ? "var(--bg-card, var(--card))" : 'transparent',
-              color: activeTab === 'announcements' ? "var(--text, var(--foreground))" : "var(--text-muted, var(--muted-foreground))",
-              boxShadow: activeTab === 'announcements' ? "none" : 'none'
-            }}
-          >
-            Announcements
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('all-replies');
-              loadAllReplies();
-            }}
-            className={`px-3.5 py-1.5 text-xs md:text-sm font-semibold rounded-md border-0 cursor-pointer transition ${activeTab === 'all-replies' ? 'bg-white text-slate-900 shadow-sm' : 'bg-transparent text-slate-500'}`}
-            style={{
-              padding: '6px 14px',
-              fontSize: 13,
-              fontWeight: 600,
-              borderRadius: 4,
-              border: 'none',
-              cursor: 'pointer',
-              backgroundColor: activeTab === 'all-replies' ? "var(--bg-card, var(--card))" : 'transparent',
-              color: activeTab === 'all-replies' ? "var(--text, var(--foreground))" : "var(--text-muted, var(--muted-foreground))",
-              boxShadow: activeTab === 'all-replies' ? "none" : 'none'
-            }}
-          >
-            Threaded Replies ({allReplies.length})
-          </button>
         </div>
       </div>
 
@@ -1076,7 +1041,6 @@ export default function Communication() {
         </div>
       )}
 
-      {activeTab === 'announcements' ? (
         <>
           {/* New Announcement Form */}
           <div className="form-card as-announcement-card rounded-lg border border-slate-200 bg-white p-5 mb-6 shadow-sm w-full max-w-full box-border" style={{
@@ -2199,70 +2163,6 @@ export default function Communication() {
             </div>
           )}
         </>
-      ) : (
-        /* Administrator Console: Threaded Replies Grouped by Notice */
-        <div style={{ display: 'grid', gap: 16 }}>
-          <div style={{ fontSize: 14, color: "var(--text-secondary, var(--muted-foreground))", marginBottom: 4 }}>
-            Threaded parent and student responses grouped across all published notices:
-          </div>
-          {allReplies.map(r => (
-            <div
-              key={r.id}
-              style={{
-                backgroundColor: "var(--bg-card, var(--card))",
-                border: "1px solid var(--border, var(--border))",
-                borderRadius: 4,
-                padding: 18,
-                boxShadow: 'none'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                <div>
-                  <span style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    padding: '2px 7px',
-                    borderRadius: 4,
-                    backgroundColor: r.author_role === 'PARENT' ? "var(--card)" : "var(--secondary)",
-                    color: r.author_role === 'PARENT' ? "var(--primary)" : "var(--success)",
-                    marginRight: 8
-                  }}>
-                    {r.author_role}
-                  </span>
-                  <span style={{ fontWeight: 700, color: "var(--text, var(--foreground))", fontSize: 14 }}>{r.author_name}</span>
-                  {r.author_email && <span style={{ fontSize: 12, color: "var(--text-muted, var(--muted-foreground))", marginLeft: 6 }}>({r.author_email})</span>}
-                </div>
-                <span style={{ fontSize: 11.5, color: "var(--text-muted, var(--muted-foreground))", display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <Clock size={12} /> {r.created_at ? new Date(r.created_at).toLocaleString() : ''}
-                </span>
-              </div>
-
-              {/* Linked Student academic placement context */}
-              {r.student_name && (
-                <div style={{ fontSize: 12.5, color: "var(--text-secondary, var(--muted-foreground))", backgroundColor: "var(--card-subtle, var(--card))", padding: '6px 10px', borderRadius: 4, marginBottom: 10 }}>
-                  Linked Student: <PersonProfileLink kind="student" name={r.student_name} person={r as any}><b>{r.student_name}</b></PersonProfileLink>{(r.class_name || r.section_name) ? ` · ${[r.class_name, r.section_name].filter(Boolean).join(' - ')}` : ''}{r.student_roll ? ` (Roll #${r.student_roll})` : ''}
-                </div>
-              )}
-
-              {/* Reply message */}
-              <div style={{ fontSize: 13.5, color: "var(--text, var(--foreground))", lineHeight: 1.5, whiteSpace: 'pre-wrap', backgroundColor: "var(--card-subtle, var(--card))", padding: 12, borderRadius: 4, borderLeft: "3px solid var(--border)" }}>
-                {r.reply_text}
-              </div>
-
-              {r.announcement_title && (
-                <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--text-muted, var(--muted-foreground))" }}>
-                  In response to notice: <b>{r.announcement_title}</b>
-                </div>
-              )}
-            </div>
-          ))}
-          {!allReplies.length && (
-            <div style={{ padding: 40, textAlign: 'center', backgroundColor: "var(--bg-card, var(--card))", border: "1px solid var(--border, var(--border))", borderRadius: 4, color: "var(--text-secondary, var(--muted-foreground))" }}>
-              No threaded replies received from parents or students yet.
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ─── Threaded Replies Drawer for Specific Notice ─── */}
       {selectedNoticeForReplies && (

@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { api } from '../../api';
 import {
+  ArrowLeft,
   Award,
   Plus,
   Search,
@@ -599,7 +601,14 @@ export default function Designations() {
   };
 
   return (
-    <div className="w-full pb-16">
+    <div className="w-full pb-16" style={{ padding: '24px 24px 48px', boxSizing: 'border-box' }}>
+      <Link
+        to="/dashboard"
+        className="student-back-link inline-flex items-center gap-1.5 text-xs font-semibold mb-2"
+        style={{ color: '#e11d48', textDecoration: 'none' }}
+      >
+        <ArrowLeft size={16} /> <span>Dashboard</span>
+      </Link>
       {/* Page Header */}
       <div className="flex items-start justify-between flex-wrap gap-4 mb-6">
         <div className="flex items-center gap-3.5">
@@ -1623,35 +1632,34 @@ export default function Designations() {
                     border: '1px solid var(--border)'
                   }}
                 >
-                  {/* Previous Position Dropdown */}
+                  {/* Previous Position Display (Auto-fetched) */}
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4 }}>
                       Previous Position
                     </div>
-                    <select
-                      value={promoteCurrentPosition}
-                      onChange={e => handleSelectPreviousPosition(e.target.value)}
-                      disabled={!promoteTeacherId}
+                    <div
                       style={{
                         width: '100%',
                         padding: '8px 10px',
                         borderRadius: 4,
                         border: "1px solid var(--border)",
                         background: "var(--secondary)",
-                        color: "var(--destructive)",
+                        color: promoteCurrentPosition ? "var(--destructive)" : "var(--text-muted)",
                         fontWeight: 700,
                         fontSize: 13,
-                        cursor: 'pointer'
+                        boxSizing: 'border-box',
+                        minHeight: 38,
+                        display: 'flex',
+                        alignItems: 'center'
                       }}
-                      title="Current / Previous Designation"
+                      title="Current / Previous Designation (Automatically fetched)"
                     >
-                      {!promoteCurrentPosition && <option value="">Select previous position</option>}
-                      {allAvailableDesignationTitles.map(title => (
-                        <option key={title} value={title}>
-                          {title}
-                        </option>
-                      ))}
-                    </select>
+                      {promoteCurrentPosition || (
+                        <span style={{ color: 'var(--text-muted)', fontWeight: 500, fontSize: 12 }}>
+                          Select faculty member
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Arrow */}

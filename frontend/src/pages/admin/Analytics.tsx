@@ -1,17 +1,20 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { api } from '../../api';
 import { PersonProfileLink } from '../../components/PersonProfileLink';
-import { 
-  BarChart3, 
-  TrendingUp, 
-  AlertTriangle, 
-  CheckCircle2, 
+import {
+  BarChart3,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle2,
   Calendar,
   RefreshCw,
   Filter,
   X,
-  FileSpreadsheet
+  FileSpreadsheet,
+  ArrowLeft,
+  GraduationCap
 } from 'lucide-react';
 
 function parseLocalDate(dateStr: string): Date {
@@ -182,7 +185,7 @@ export default function Analytics() {
     setExporting(true);
     try {
       const selectedClsObj = classList.find((c: any) => String(c.id || c.class_number) === String(filterClass));
-      const classLabel = selectedClsObj 
+      const classLabel = selectedClsObj
         ? formatClassOptionLabel(selectedClsObj).replace(/\s+/g, '_')
         : (filterClass ? `Class_${filterClass}` : 'All_Classes');
       const secLabel = filterSection ? `_Sec_${filterSection}` : '';
@@ -371,7 +374,13 @@ export default function Analytics() {
   );
 
   return (
-    <div className="feature-page w-full max-w-none m-0 pb-10" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
+    <div className="feature-page w-full max-w-none m-0 pb-10" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '24px 24px 40px', boxSizing: 'border-box' }}>
+      <Link
+        to="/dashboard"
+        style={{ background: 'transparent', border: 'none', padding: 0, color: '#e11d48', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 12 }}
+      >
+        <ArrowLeft size={16} /> <span>Dashboard</span>
+      </Link>
       <div className="page-head flex justify-between items-center mb-5 flex-wrap gap-4">
         <div>
           <p className="eyebrow text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">INSTITUTIONAL INSIGHTS & RADAR</p>
@@ -452,9 +461,8 @@ export default function Analytics() {
                           <b className={`text-sm ${isHigh ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400'}`}>{rate}%</b>
                         </td>
                         <td className="py-3 px-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                            isHigh ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400' : 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400'
-                          }`}>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${isHigh ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400' : 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400'
+                            }`}>
                             {isHigh ? 'EXEMPLARY' : 'GOOD STANDING'}
                           </span>
                         </td>
@@ -476,9 +484,8 @@ export default function Analytics() {
             <div className="stat bg-white dark:bg-slate-800 border-l-4 border-l-blue-600 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-xs">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Average Attendance</span>
               <strong className="text-2xl font-extrabold text-blue-600 dark:text-blue-400 block mt-1">{data.attendancePercentage ?? 0}%</strong>
-              <div className={`text-xs flex items-center gap-1 mt-1 font-medium ${
-                (data.attendancePercentage ?? 0) >= 75 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
-              }`}>
+              <div className={`text-xs flex items-center gap-1 mt-1 font-medium ${(data.attendancePercentage ?? 0) >= 75 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+                }`}>
                 {(data.attendancePercentage ?? 0) >= 75 ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}
                 {data.attendanceSessions > 0 ? `${data.attendanceSessions} sessions recorded` : 'No sessions recorded'}
               </div>
@@ -507,9 +514,8 @@ export default function Analytics() {
             <div className="stat bg-white dark:bg-slate-800 border-l-4 border-l-purple-600 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-xs">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Low Attendance Risk</span>
               <strong className="text-2xl font-extrabold text-purple-600 dark:text-purple-400 block mt-1">{data.lowAttendanceCount ?? 0}</strong>
-              <div className={`text-xs flex items-center gap-1 mt-1 font-medium ${
-                (data.lowAttendanceCount ?? 0) > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
-              }`}>
+              <div className={`text-xs flex items-center gap-1 mt-1 font-medium ${(data.lowAttendanceCount ?? 0) > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
+                }`}>
                 {(data.lowAttendanceCount ?? 0) > 0 ? <AlertTriangle size={13} /> : <CheckCircle2 size={13} />}
                 {(data.lowAttendanceCount ?? 0) > 0 ? '< 75% threshold' : 'All students ≥ 75%'}
               </div>
@@ -517,36 +523,94 @@ export default function Analytics() {
           </div>
 
           {/* Sub Navigation Tabs */}
-          <div className="tabs flex gap-2 border-b border-slate-200 dark:border-slate-700 mb-5 overflow-x-auto pb-1">
+          <div
+            style={{
+              display: 'flex',
+              gap: 12,
+              borderBottom: "2px solid var(--border, var(--border))",
+              marginBottom: 20,
+              overflow: 'visible'
+            }}
+          >
             <button
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
-                activeTab === 'overview'
-                  ? 'bg-blue-600 text-white shadow-xs tab-active'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
+              type="button"
               onClick={() => setActiveTab('overview')}
+              style={{
+                padding: '12px 20px',
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === 'overview' ? "3px solid var(--border)" : '3px solid transparent',
+                color: activeTab === 'overview' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+                fontWeight: activeTab === 'overview' ? 700 : 500,
+                fontSize: 15,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: -2,
+                transition: 'all 0.15s ease'
+              }}
             >
-              📊 Daily Attendance Trend
+              <BarChart3 size={18} />
+              <span>Daily Attendance Trend</span>
             </button>
+
             <button
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
-                activeTab === 'classes'
-                  ? 'bg-blue-600 text-white shadow-xs tab-active'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
+              type="button"
               onClick={() => setActiveTab('classes')}
+              style={{
+                padding: '12px 20px',
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === 'classes' ? "3px solid var(--border)" : '3px solid transparent',
+                color: activeTab === 'classes' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+                fontWeight: activeTab === 'classes' ? 700 : 500,
+                fontSize: 15,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: -2,
+                transition: 'all 0.15s ease'
+              }}
             >
-              🏫 Class-Wise Performance
+              <GraduationCap size={18} />
+              <span>Class-Wise Performance</span>
             </button>
+
             <button
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
-                activeTab === 'watchlist'
-                  ? 'bg-blue-600 text-white shadow-xs tab-active'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
+              type="button"
               onClick={() => setActiveTab('watchlist')}
+              style={{
+                padding: '12px 20px',
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === 'watchlist' ? "3px solid var(--border)" : '3px solid transparent',
+                color: activeTab === 'watchlist' ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+                fontWeight: activeTab === 'watchlist' ? 700 : 500,
+                fontSize: 15,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: -2,
+                transition: 'all 0.15s ease'
+              }}
             >
-              ⚠️ At-Risk Watchlist ({data.lowAttendanceCount ?? 0})
+              <AlertTriangle size={18} />
+              <span>At-Risk Watchlist</span>
+              <span
+                style={{
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  background: activeTab === 'watchlist' ? "var(--card)" : "var(--card-subtle, var(--secondary))",
+                  color: activeTab === 'watchlist' ? "var(--primary)" : "var(--muted-foreground)",
+                  fontSize: 12,
+                  fontWeight: 700
+                }}
+              >
+                {data.lowAttendanceCount ?? 0}
+              </span>
             </button>
           </div>
 
@@ -607,26 +671,25 @@ export default function Analytics() {
                     const isSelected = selectedDay?.snapshot_date === d.snapshot_date;
                     const dateObj = parseLocalDate(d.snapshot_date);
                     const dateLabel = dateObj.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
-                    const tooltipText = `${dateLabel} (${dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}): ${
-                      d.has_attendance ? `${rate}% (${d.present_records} Present, ${d.absent_records} Absent)` : 'No attendance recorded (0%)'
-                    }`;
+                    const tooltipText = `${dateLabel} (${dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}): ${d.has_attendance ? `${rate}% (${d.present_records} Present, ${d.absent_records} Absent)` : 'No attendance recorded (0%)'
+                      }`;
 
                     return (
-                      <div 
-                        key={d.snapshot_date} 
-                        className="chart-column" 
+                      <div
+                        key={d.snapshot_date}
+                        className="chart-column"
                         onClick={() => setSelectedDay(d)}
                         title={tooltipText}
                         style={{ cursor: 'pointer' }}
                       >
                         <div className="bar-track" style={{ border: isSelected ? '2px solid var(--primary-600)' : 'none', position: 'relative' }}>
-                          <div 
-                            className="bar-fill" 
-                            style={{ 
+                          <div
+                            className="bar-fill"
+                            style={{
                               height: `${rate}%`,
-                              background: rate >= 90 
-                                ? "var(--success)" 
-                                : rate >= 80 
+                              background: rate >= 90
+                                ? "var(--success)"
+                                : rate >= 80
                                   ? "var(--primary)"
                                   : "var(--warning)"
                             }}

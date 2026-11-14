@@ -143,6 +143,18 @@ export function StudentDashboard() {
     };
   }, [fetchDashboard, fetchHolidays]);
 
+  // Map declared holidays (must be declared before early returns to obey Rules of Hooks)
+  const holidayMap = useMemo(() => {
+    const map = new Map<string, any>();
+    holidays.forEach((h: any) => {
+      if (h.is_active !== false && h.holiday_date) {
+        const dateKey = String(h.holiday_date).slice(0, 10);
+        map.set(dateKey, h);
+      }
+    });
+    return map;
+  }, [holidays]);
+
   if (loading) {
     return (
       <div className="student-loading-wrap">
@@ -235,18 +247,6 @@ export function StudentDashboard() {
       } catch { }
     });
   }
-
-  // Map declared holidays
-  const holidayMap = useMemo(() => {
-    const map = new Map<string, any>();
-    holidays.forEach((h: any) => {
-      if (h.is_active !== false && h.holiday_date) {
-        const dateKey = String(h.holiday_date).slice(0, 10);
-        map.set(dateKey, h);
-      }
-    });
-    return map;
-  }, [holidays]);
 
   // Upcoming exam indicator for current month
   let examDayInMonth: number | null = null;

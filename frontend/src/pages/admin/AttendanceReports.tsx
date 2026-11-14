@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { api } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
 import * as XLSX from 'xlsx';
@@ -17,7 +17,8 @@ import {
   ChevronDown,
   Edit2,
   RefreshCw,
-  Lock
+  Lock,
+  ArrowLeft
 } from 'lucide-react';
 import { TableSubToolbar, TablePaginationFooter } from '../../components/TablePagination';
 import { PersonProfileLink } from '../../components/PersonProfileLink';
@@ -879,7 +880,15 @@ export default function AttendanceReports({
   }
 
   return (
-    <div className={`${embedded ? 'embedded-reports-pane' : 'feature-page'} w-full max-w-none m-0 pb-10`} style={{ width: '100%', maxWidth: 'none', margin: 0, padding: embedded ? '8px 0 20px' : '0 0 40px 0' }}>
+    <div className={`${embedded ? 'embedded-reports-pane' : 'feature-page'} w-full max-w-none m-0 pb-10`} style={{ width: '100%', maxWidth: 'none', margin: 0, padding: embedded ? '8px 0 20px' : '24px 24px 40px', boxSizing: 'border-box' }}>
+      {!embedded && (
+        <Link
+          to="/dashboard"
+          style={{ background: 'transparent', border: 'none', padding: 0, color: '#e11d48', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 12 }}
+        >
+          <ArrowLeft size={16} /> <span>Dashboard</span>
+        </Link>
+      )}
       {/* ─── Header: Title & Right Corner Controls ─── */}
       <div className="flex justify-between items-start flex-wrap gap-3.5 mb-4.5">
         <div>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ShieldCheck, Users, History, Search, RotateCcw, Loader2, RefreshCw, Crown, UserX, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, ShieldCheck, Users, History, Search, RotateCcw, Loader2, RefreshCw, Crown, UserX, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { api } from '../../../api';
 import { useAuth } from '../../../hooks/useAuth';
 import { useToast } from '../../../components/Toast';
@@ -54,7 +55,26 @@ export default function AccessControl() {
     { id: 'audit' as const, label: 'Audit', icon: History },
   ];
   return (
-    <div className="p-4 md:p-6 space-y-4" data-testid="access-control">
+    <div className="w-full max-w-none m-0 pb-10 space-y-4" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '24px 24px 40px', boxSizing: 'border-box' }} data-testid="access-control">
+      <Link
+        to="/dashboard"
+        style={{
+          background: 'transparent',
+          border: 'none',
+          padding: 0,
+          color: '#e11d48',
+          textDecoration: 'none',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: 'pointer',
+          marginBottom: 12
+        }}
+      >
+        <ArrowLeft size={16} /> <span>Dashboard</span>
+      </Link>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="m-0 text-xl md:text-2xl font-extrabold text-slate-900 dark:text-slate-100">Permissions &amp; Access</h1>
@@ -68,11 +88,44 @@ export default function AccessControl() {
         )}
       </div>
       <StatusBanner mode={catalog?.mode} store={catalog?.store} />
-      <div role="tablist" className="flex gap-1 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
+      {/* ── Tab Navigation ── */}
+      <div
+        role="tablist"
+        style={{
+          display: 'flex',
+          gap: 12,
+          borderBottom: "2px solid var(--border, var(--border))",
+          marginBottom: 20,
+          overflow: 'visible'
+        }}
+      >
         {tabs.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)} type="button"
-            className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap ${tab === t.id ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
-            <t.icon size={16} /> {t.label}
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            type="button"
+            style={{
+              padding: '12px 20px',
+              background: 'none',
+              border: 'none',
+              borderBottom: tab === t.id ? "3px solid var(--border)" : '3px solid transparent',
+              color: tab === t.id ? "var(--primary)" : "var(--text-secondary, var(--muted-foreground))",
+              fontWeight: tab === t.id ? 700 : 500,
+              fontSize: 15,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              marginBottom: -2,
+              borderRadius: 0,
+              boxShadow: 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <t.icon size={18} />
+            <span>{t.label}</span>
           </button>
         ))}
       </div>
@@ -184,8 +237,29 @@ function RolesTab({ catalog, params }: { catalog: Catalog; params: Record<string
               {ROLES.map((r) => (
                 <th key={r} className="px-3 py-3 text-center whitespace-nowrap">
                   <div>{ROLE_LABEL[r]}</div>
-                  <button type="button" onClick={() => resetRole(r)} className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-600 normal-case" title={`Reset ${ROLE_LABEL[r]} to defaults`}>
-                    <RotateCcw size={10} /> Reset
+                  <button
+                    type="button"
+                    onClick={() => resetRole(r)}
+                    style={{
+                      background: 'var(--primary, #e11d48)',
+                      color: '#ffffff',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: '4px 10px',
+                      borderRadius: 6,
+                      border: 'none',
+                      boxShadow: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      cursor: 'pointer',
+                      marginTop: 6,
+                      transition: 'all 0.15s ease'
+                    }}
+                    title={`Reset ${ROLE_LABEL[r]} to defaults`}
+                  >
+                    <RotateCcw size={11} color="#ffffff" style={{ strokeWidth: 2.5 }} />
+                    <span style={{ color: '#ffffff' }}>Reset</span>
                   </button>
                 </th>
               ))}
@@ -281,7 +355,15 @@ function PeopleTab({ catalog, params }: { catalog: Catalog; params: Record<strin
             {list.items.length === 0 && <div className="px-4 py-10 text-center text-sm text-slate-500">No {ROLE_PLURAL[role]} found.</div>}
             {list.items.map((p) => (
               <button key={p.id} type="button" onClick={() => setSelected(p)} data-testid={`principal-${p.id}`}
-                className={`w-full text-left px-4 py-3 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 ${selected?.id === p.id ? 'bg-indigo-50 dark:bg-indigo-950/40' : ''}`}>
+                style={{
+                  background: selected?.id === p.id ? 'var(--secondary, #f1f5f9)' : 'transparent',
+                  color: 'inherit',
+                  border: 'none',
+                  boxShadow: 'none',
+                  borderRadius: 0,
+                  textAlign: 'left'
+                }}
+                className={`w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 ${selected?.id === p.id ? 'bg-indigo-50 dark:bg-indigo-950/40' : ''}`}>
                 <div className="min-w-0">
                   <div className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate flex items-center gap-1.5">
                     {p.name}{p.isOwner && <Crown size={13} className="text-amber-500" aria-label="Owner admin" />}{p.isSelf && <span className="text-[10px] text-slate-400">(you)</span>}
@@ -298,9 +380,41 @@ function PeopleTab({ catalog, params }: { catalog: Catalog; params: Record<strin
         )}
         {list && pages > 1 && (
           <div className="flex items-center justify-between text-sm text-slate-500">
-            <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)} className="inline-flex items-center gap-1 disabled:opacity-40"><ChevronLeft size={15} /> Prev</button>
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage(page - 1)}
+              style={{
+                background: 'var(--card, #ffffff)',
+                color: 'var(--text, #1c1f2e)',
+                border: '1px solid var(--border, #e2e8f0)',
+                borderRadius: 6,
+                padding: '4px 10px',
+                boxShadow: 'none',
+                fontSize: 12
+              }}
+              className="inline-flex items-center gap-1 disabled:opacity-40"
+            >
+              <ChevronLeft size={15} /> Prev
+            </button>
             <span>Page {page} of {pages}</span>
-            <button type="button" disabled={page >= pages} onClick={() => setPage(page + 1)} className="inline-flex items-center gap-1 disabled:opacity-40">Next <ChevronRight size={15} /></button>
+            <button
+              type="button"
+              disabled={page >= pages}
+              onClick={() => setPage(page + 1)}
+              style={{
+                background: 'var(--card, #ffffff)',
+                color: 'var(--text, #1c1f2e)',
+                border: '1px solid var(--border, #e2e8f0)',
+                borderRadius: 6,
+                padding: '4px 10px',
+                boxShadow: 'none',
+                fontSize: 12
+              }}
+              className="inline-flex items-center gap-1 disabled:opacity-40"
+            >
+              Next <ChevronRight size={15} />
+            </button>
           </div>
         )}
       </div>
@@ -379,7 +493,29 @@ function PersonDetail({ role, id, catalog, params, onChanged, onClose }: { role:
       </div>
       <div className="px-4 py-2 flex items-center justify-between gap-2 text-sm">
         <label className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300"><input type="checkbox" checked={changedOnly} onChange={(e) => setChangedOnly(e.target.checked)} /> Changed only</label>
-        <button type="button" onClick={reset} disabled={Boolean(lockAll)} className="inline-flex items-center gap-1 text-indigo-600 font-semibold disabled:opacity-40"><RotateCcw size={14} /> Reset to role defaults</button>
+        <button
+          type="button"
+          onClick={reset}
+          disabled={Boolean(lockAll)}
+          style={{
+            background: 'var(--primary, #e11d48)',
+            color: '#ffffff',
+            fontSize: 12,
+            fontWeight: 700,
+            padding: '5px 12px',
+            borderRadius: 6,
+            border: 'none',
+            boxShadow: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            cursor: lockAll ? 'not-allowed' : 'pointer',
+            opacity: lockAll ? 0.4 : 1
+          }}
+        >
+          <RotateCcw size={13} color="#ffffff" style={{ strokeWidth: 2.5 }} />
+          <span style={{ color: '#ffffff' }}>Reset to role defaults</span>
+        </button>
       </div>
       <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[60vh] overflow-y-auto">
         {list.length === 0 && <div className="px-4 py-8 text-center text-sm text-slate-500">No personal changes.</div>}
@@ -444,9 +580,41 @@ export function AuditList({ url, params }: { url: string; params: Record<string,
       </div>
       {pages > 1 && (
         <div className="flex items-center justify-between text-sm text-slate-500">
-          <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)} className="inline-flex items-center gap-1 disabled:opacity-40"><ChevronLeft size={15} /> Prev</button>
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => setPage(page - 1)}
+            style={{
+              background: 'var(--card, #ffffff)',
+              color: 'var(--text, #1c1f2e)',
+              border: '1px solid var(--border, #e2e8f0)',
+              borderRadius: 6,
+              padding: '4px 10px',
+              boxShadow: 'none',
+              fontSize: 12
+            }}
+            className="inline-flex items-center gap-1 disabled:opacity-40"
+          >
+            <ChevronLeft size={15} /> Prev
+          </button>
           <span>Page {page} of {pages}</span>
-          <button type="button" disabled={page >= pages} onClick={() => setPage(page + 1)} className="inline-flex items-center gap-1 disabled:opacity-40">Next <ChevronRight size={15} /></button>
+          <button
+            type="button"
+            disabled={page >= pages}
+            onClick={() => setPage(page + 1)}
+            style={{
+              background: 'var(--card, #ffffff)',
+              color: 'var(--text, #1c1f2e)',
+              border: '1px solid var(--border, #e2e8f0)',
+              borderRadius: 6,
+              padding: '4px 10px',
+              boxShadow: 'none',
+              fontSize: 12
+            }}
+            className="inline-flex items-center gap-1 disabled:opacity-40"
+          >
+            Next <ChevronRight size={15} />
+          </button>
         </div>
       )}
     </div>
