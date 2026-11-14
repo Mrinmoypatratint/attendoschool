@@ -5111,10 +5111,9 @@ function TeacherHome() {
           {/* 1. Welcome Banner */}
           <div className="td-welcome-banner">
             <div className="td-welcome-content">
-              <h1 className="td-welcome-title">
+              <h1 className="td-welcome-title" style={{ marginBottom: 14 }}>
                 {getGreeting()}, {teacherFirstName}! ☀️
               </h1>
-              <p className="td-welcome-subtitle">Here's your teaching overview for today.</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                 <div className="td-quote-box">
                   <span>“A great teacher inspires, guides, and creates brighter futures.”</span>
