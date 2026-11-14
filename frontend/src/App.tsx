@@ -15966,9 +15966,6 @@ function Attendance() {
             <p className="eyebrow" style={{ margin: 0 }}>ATTENDANCE CONTROL & RE-ATTENDANCE STATION</p>
           </div>
           <h1 style={{ margin: 0, fontSize: 24 }}>Daily Class Attendance</h1>
-          <p className="muted" style={{ margin: '4px 0 0' }}>
-            Multi-teacher synchronized roll-call with period-by-period re-attendance, early departure tracking, and automated parent alerts.
-          </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="secondary" onClick={() => nav('/dashboard')}>
