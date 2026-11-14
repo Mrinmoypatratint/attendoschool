@@ -802,12 +802,9 @@ export function TeacherAssignments() {
           >
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
-          <h1 style={{ margin: '0 0 6px', fontSize: 24, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "var(--text, var(--foreground))" }}>
             Assignment Management
           </h1>
-          <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted, var(--muted-foreground))" }}>
-            Create and publish assignments across any class or section, manage existing tasks, and review submissions.
-          </p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
