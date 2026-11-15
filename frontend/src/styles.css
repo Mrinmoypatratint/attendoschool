@@ -14663,3 +14663,29 @@ button.announcement-filter-btn.active:hover .announcement-filter-badge,
   background-color: #ffffff !important;
   color: var(--primary-700, #c0174a) !important;
 }
+
+
+/* ═══ Data Completeness & Missing Information Field Pulse Animation ═══ */
+@keyframes fieldPulseHighlight {
+  0% {
+    box-shadow: 0 0 0 0 rgba(225, 29, 85, 0.7);
+    border-color: #e11d55;
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(225, 29, 85, 0.25);
+    border-color: #e11d55;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(225, 29, 85, 0);
+    border-color: var(--border, #d4d5d9);
+  }
+}
+
+.field-highlight-pulse {
+  animation: fieldPulseHighlight 1.8s ease-in-out !important;
+  border-color: #e11d55 !important;
+}
+
+.completeness-student-row:hover {
+  background: var(--card-subtle, #f9f9fa);
+}
