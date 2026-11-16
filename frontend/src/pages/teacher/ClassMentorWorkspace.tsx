@@ -952,7 +952,6 @@ export function ClassMentorWorkspace() {
             'Admission No': String(s.admission_number || s.admissionNumber || s.admission_no || '—'),
             'Subject': exam.subject_name || 'General',
             'Exam Title': exam.title,
-            'Exam Date': exam.exam_date || '—',
             'Grading System': exam.grading_system === 'CGPA' ? 'CGPA System' : exam.grading_system === 'GRADE' ? 'Letter Grade' : 'Marks System',
             'Max Marks / Scale': totalNum,
             'Passing Marks': passNum,
