@@ -27,7 +27,8 @@ import {
   Maximize2,
   Minimize2,
   SlidersHorizontal,
-  Bookmark
+  Bookmark,
+  GraduationCap
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../api';
@@ -742,49 +743,82 @@ export default function GradingSystem() {
       </div>
 
       {/* MAIN VIEW NAVIGATION TABS */}
-      <div style={{ display: 'flex', gap: 12, borderBottom: '2px solid var(--border, #e2e8f0)', marginBottom: 20 }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          borderBottom: "2px solid var(--border, var(--border))",
+          marginBottom: 16
+        }}
+      >
         <button
+          type="button"
           onClick={() => setActiveTab('EXAMS')}
           style={{
-            padding: '10px 18px',
-            fontSize: 14,
-            fontWeight: 700,
+            padding: '12px 20px',
+            background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'EXAMS' ? '3px solid #e11d48' : '3px solid transparent',
-            backgroundColor: 'transparent',
-            color: activeTab === 'EXAMS' ? '#e11d48' : 'var(--text-secondary, #64748b)',
+            borderBottom: activeTab === 'EXAMS' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'EXAMS' ? "var(--primary, #e11d48)" : "var(--text-secondary, var(--muted-foreground, #64748b))",
+            fontWeight: activeTab === 'EXAMS' ? 700 : 500,
+            fontSize: 15,
             cursor: 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
             gap: 8,
             marginBottom: -2,
-            transition: 'all 0.15s'
+            transition: 'all 0.15s ease'
           }}
         >
-          <Award size={18} />
-          Examinations & Evaluations ({exams.length})
+          <BookOpen size={18} />
+          <span>Examinations & Evaluations</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 4,
+              background: activeTab === 'EXAMS' ? "var(--card, #ffffff)" : "var(--card-subtle, var(--secondary, #f1f5f9))",
+              color: activeTab === 'EXAMS' ? "var(--primary, #e11d48)" : "var(--muted-foreground, #64748b)",
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {exams.length}
+          </span>
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab('RANGES')}
           style={{
-            padding: '10px 18px',
-            fontSize: 14,
-            fontWeight: 700,
+            padding: '12px 20px',
+            background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'RANGES' ? '3px solid #e11d48' : '3px solid transparent',
-            backgroundColor: 'transparent',
-            color: activeTab === 'RANGES' ? '#e11d48' : 'var(--text-secondary, #64748b)',
+            borderBottom: activeTab === 'RANGES' ? "3px solid var(--border)" : '3px solid transparent',
+            color: activeTab === 'RANGES' ? "var(--primary, #e11d48)" : "var(--text-secondary, var(--muted-foreground, #64748b))",
+            fontWeight: activeTab === 'RANGES' ? 700 : 500,
+            fontSize: 15,
             cursor: 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
             gap: 8,
             marginBottom: -2,
-            transition: 'all 0.15s'
+            transition: 'all 0.15s ease'
           }}
         >
-          <SlidersHorizontal size={18} />
-          School Grade Ranges & Boundaries ({schoolGradeRanges.length})
+          <GraduationCap size={18} />
+          <span>School Grade Ranges & Boundaries</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 4,
+              background: activeTab === 'RANGES' ? "var(--card, #ffffff)" : "var(--card-subtle, var(--secondary, #f1f5f9))",
+              color: activeTab === 'RANGES' ? "var(--primary, #e11d48)" : "var(--muted-foreground, #64748b)",
+              fontSize: 12,
+              fontWeight: 700
+            }}
+          >
+            {schoolGradeRanges.length}
+          </span>
         </button>
       </div>
 
