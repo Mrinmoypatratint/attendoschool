@@ -23,7 +23,9 @@ import {
   ChevronRight,
   TrendingUp,
   Layers,
-  HelpCircle
+  HelpCircle,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../api';
@@ -157,6 +159,7 @@ export default function GradingSystem() {
 
   // Modal State for Create / Edit Exam
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalMaximized, setIsModalMaximized] = useState(false);
   const [editingExamId, setEditingExamId] = useState<string | null>(null);
 
   // Form Fields
@@ -217,11 +220,13 @@ export default function GradingSystem() {
       { id: 'tier-5', grade: 'F', minScore: 0, maxScore: 32, gradePoint: 0, remark: 'Needs Improvement', isPassing: false, colorScheme: 'rose' }
     ]);
 
+    setIsModalMaximized(false);
     setIsModalOpen(true);
   };
 
   // Open Edit Modal
   const handleOpenEditModal = (exam: ExamGradingConfig) => {
+    setIsModalMaximized(false);
     setEditingExamId(exam.id);
     setExamTitle(exam.examTitle);
     setExamCode(exam.examCode);
@@ -378,6 +383,7 @@ export default function GradingSystem() {
 
   // Interactive Live Tester Drawer / Modal
   const [testingExam, setTestingExam] = useState<ExamGradingConfig | null>(null);
+  const [isTesterMaximized, setIsTesterMaximized] = useState(false);
   const [testScoreInput, setTestScoreInput] = useState<number>(75);
 
   const testEvaluationResult = useMemo(() => {
@@ -964,20 +970,22 @@ export default function GradingSystem() {
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000,
-            padding: 20
+            padding: isModalMaximized ? 0 : 20
           }}
         >
           <div
             style={{
               backgroundColor: 'var(--bg-card, #ffffff)',
-              borderRadius: 14,
-              width: '100%',
-              maxWidth: 720,
-              maxHeight: '90vh',
+              borderRadius: isModalMaximized ? 0 : 14,
+              width: isModalMaximized ? '100vw' : '100%',
+              maxWidth: isModalMaximized ? '100vw' : 720,
+              height: isModalMaximized ? '100vh' : 'auto',
+              maxHeight: isModalMaximized ? '100vh' : '90vh',
               overflowY: 'auto',
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
-              border: '1px solid var(--border, #e2e8f0)',
-              padding: 24
+              boxShadow: isModalMaximized ? 'none' : '0 20px 25px -5px rgba(0,0,0,0.2)',
+              border: isModalMaximized ? 'none' : '1px solid var(--border, #e2e8f0)',
+              padding: isModalMaximized ? '28px 36px 40px' : 24,
+              transition: 'all 0.2s ease-in-out'
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, borderBottom: '1px solid var(--border, #e2e8f0)', paddingBottom: 14 }}>
@@ -989,12 +997,51 @@ export default function GradingSystem() {
                   Define the examination details and select its evaluation methodology.
                 </p>
               </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b', padding: 4 }}
-              >
-                <X size={20} />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => setIsModalMaximized(prev => !prev)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#64748b',
+                    padding: 6,
+                    borderRadius: 6,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.15s'
+                  }}
+                  title={isModalMaximized ? 'Restore Down' : 'Maximize'}
+                  aria-label={isModalMaximized ? 'Restore Down' : 'Maximize'}
+                >
+                  {isModalMaximized ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsModalMaximized(false);
+                    setIsModalOpen(false);
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#64748b',
+                    padding: 6,
+                    borderRadius: 6,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.15s'
+                  }}
+                  title="Close"
+                  aria-label="Close"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
             {formError && (
@@ -1498,18 +1545,22 @@ export default function GradingSystem() {
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000,
-            padding: 20
+            padding: isTesterMaximized ? 0 : 20
           }}
         >
           <div
             style={{
               backgroundColor: 'var(--bg-card, #ffffff)',
-              borderRadius: 14,
-              width: '100%',
-              maxWidth: 520,
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
-              border: '1px solid var(--border, #e2e8f0)',
-              padding: 24
+              borderRadius: isTesterMaximized ? 0 : 14,
+              width: isTesterMaximized ? '100vw' : '100%',
+              maxWidth: isTesterMaximized ? '100vw' : 520,
+              height: isTesterMaximized ? '100vh' : 'auto',
+              maxHeight: isTesterMaximized ? '100vh' : '90vh',
+              overflowY: 'auto',
+              boxShadow: isTesterMaximized ? 'none' : '0 20px 25px -5px rgba(0,0,0,0.2)',
+              border: isTesterMaximized ? 'none' : '1px solid var(--border, #e2e8f0)',
+              padding: isTesterMaximized ? '28px 36px 40px' : 24,
+              transition: 'all 0.2s ease-in-out'
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -1521,12 +1572,51 @@ export default function GradingSystem() {
                   Testing: <strong>{testingExam.examTitle}</strong> ({testingExam.gradingType} Basis)
                 </div>
               </div>
-              <button
-                onClick={() => setTestingExam(null)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b', padding: 4 }}
-              >
-                <X size={20} />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => setIsTesterMaximized(prev => !prev)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#64748b',
+                    padding: 6,
+                    borderRadius: 6,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.15s'
+                  }}
+                  title={isTesterMaximized ? 'Restore Down' : 'Maximize'}
+                  aria-label={isTesterMaximized ? 'Restore Down' : 'Maximize'}
+                >
+                  {isTesterMaximized ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsTesterMaximized(false);
+                    setTestingExam(null);
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#64748b',
+                    padding: 6,
+                    borderRadius: 6,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.15s'
+                  }}
+                  title="Close"
+                  aria-label="Close"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
             <div style={{ marginBottom: 20 }}>
