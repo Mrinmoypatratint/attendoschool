@@ -1404,6 +1404,7 @@ export async function getMentoredExams(schoolId: string, classId: string, sectio
                 COALESCE(sub.name, 'General') AS subject_name,
                 COUNT(r.id)::int AS graded_count,
                 ROUND(AVG(r.marks_obtained), 1) AS avg_marks,
+                ROUND(AVG(r.marks_obtained), 1) AS average_marks,
                 MAX(r.marks_obtained) AS max_marks,
                 MIN(r.marks_obtained) AS min_marks,
                 COUNT(CASE WHEN r.marks_obtained >= e.passing_marks THEN 1 END)::int AS pass_count
@@ -1445,7 +1446,17 @@ export async function getMentoredExams(schoolId: string, classId: string, sectio
           targetYearId
         ]
       );
-      if (q.rows) return q.rows;
+      if (q.rows) {
+        return q.rows.map(r => {
+          const rawAvg = r.avg_marks !== null && r.avg_marks !== undefined ? Number(r.avg_marks) : null;
+          return {
+            ...r,
+            graded_count: Number(r.graded_count) || 0,
+            avg_marks: rawAvg,
+            average_marks: rawAvg
+          };
+        });
+      }
     } catch (err: any) {
       console.error('[getMentoredExams] DB Error:', err.message);
     }
@@ -1457,12 +1468,13 @@ export async function getMentoredExams(schoolId: string, classId: string, sectio
     .map((e) => {
       const results = inMemoryExamResults.filter((r) => r.exam_id === e.id);
       const gradedCount = results.length;
-      const avg = gradedCount > 0 ? Number((results.reduce((s, r) => s + r.marks_obtained, 0) / gradedCount).toFixed(1)) : 0;
+      const avg = gradedCount > 0 ? Number((results.reduce((s, r) => s + (r.marks_obtained || 0), 0) / gradedCount).toFixed(1)) : 0;
       const passCount = results.filter((r) => r.marks_obtained >= e.passing_marks).length;
       return {
         ...e,
         graded_count: gradedCount,
         avg_marks: avg,
+        average_marks: avg,
         pass_count: passCount
       };
     });

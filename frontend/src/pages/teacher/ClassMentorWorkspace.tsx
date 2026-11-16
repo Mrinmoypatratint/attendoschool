@@ -31,7 +31,8 @@ interface MentoredExam {
   passing_marks: number;
   graded_count?: number;
   total_students?: number;
-  average_marks?: number;
+  average_marks?: number | string;
+  avg_marks?: number | string;
   pass_count?: number;
   created_at?: string;
 }
@@ -774,13 +775,71 @@ export function ClassMentorWorkspace() {
 
   // Overall class stats from exams list
   const examStats = useMemo(() => {
-    if (exams.length === 0) return { totalExams: 0, totalGraded: 0, avgMarks: '0%' };
+    if (exams.length === 0) return { totalExams: 0, totalGraded: 0, avgMarks: '0.0%' };
     const totalExams = exams.length;
     const totalGraded = exams.reduce((acc, e) => acc + (Number(e.graded_count) || 0), 0);
-    const avgSum = exams.reduce((acc, e) => acc + (Number(e.average_marks) || 0), 0);
-    const avgMarks = (avgSum / totalExams).toFixed(1) + '%';
+
+    const gradedExams = exams.filter(e => {
+      const val = e.avg_marks !== undefined && e.avg_marks !== null ? e.avg_marks : e.average_marks;
+      return val !== undefined && val !== null && val !== '' && !isNaN(Number(val)) && (Number(e.graded_count) || 0) > 0;
+    });
+
+    let avgMarks = '0.0%';
+    if (gradedExams.length > 0) {
+      const pctSum = gradedExams.reduce((acc, e) => {
+        const rawAvg = Number(e.avg_marks !== undefined && e.avg_marks !== null ? e.avg_marks : e.average_marks);
+        const maxVal = Number(e.total_marks) || (e.grading_system === 'CGPA' ? 10 : 100);
+        const pct = maxVal > 0 ? (rawAvg / maxVal) * 100 : rawAvg;
+        return acc + pct;
+      }, 0);
+      avgMarks = (pctSum / gradedExams.length).toFixed(1) + '%';
+    }
+
     return { totalExams, totalGraded, avgMarks };
   }, [exams]);
+
+  // Helper to format class average according to grading system
+  const renderClassAverage = (exam: MentoredExam) => {
+    const raw = exam.avg_marks !== undefined && exam.avg_marks !== null
+      ? exam.avg_marks
+      : exam.average_marks;
+    if (raw === undefined || raw === null || raw === '' || isNaN(Number(raw))) {
+      return <span className="text-slate-400 font-normal">—</span>;
+    }
+    const num = Number(raw);
+
+    if (exam.grading_system === 'CGPA') {
+      const maxCgpa = Number(exam.total_marks) || 10;
+      const pct = maxCgpa > 0 ? ((num / maxCgpa) * 100).toFixed(0) : null;
+      return (
+        <div className="inline-flex items-center gap-1 font-mono font-bold text-emerald-600 dark:text-emerald-400">
+          <span>{num.toFixed(1)}</span>
+          <span className="text-[10px] text-slate-500 font-semibold">CGPA</span>
+          {pct !== null && (
+            <span className="text-[10.5px] text-slate-400 dark:text-slate-500 font-normal">({pct}%)</span>
+          )}
+        </div>
+      );
+    }
+
+    if (exam.grading_system === 'GRADE') {
+      return <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{num.toFixed(1)}%</span>;
+    }
+
+    const total = Number(exam.total_marks) || 100;
+    if (total !== 100 && total > 0) {
+      const pct = ((num / total) * 100).toFixed(1);
+      return (
+        <div className="inline-flex items-center gap-1 font-mono font-bold text-emerald-600 dark:text-emerald-400">
+          <span>{num.toFixed(1)}</span>
+          <span className="text-[10px] text-slate-500 font-normal">/ {total}</span>
+          <span className="text-[10.5px] text-slate-400 dark:text-slate-500 font-normal">({pct}%)</span>
+        </div>
+      );
+    }
+
+    return <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{num.toFixed(1)}%</span>;
+  };
 
   if (loadingClasses) {
     return (
@@ -1637,8 +1696,8 @@ export function ClassMentorWorkspace() {
                                 <span>{exam.graded_count || 0} Graded</span>
                               </button>
                             </td>
-                            <td className="p-3 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                              {exam.average_marks ? `${exam.average_marks}%` : '—'}
+                            <td className="p-3 text-center">
+                              {renderClassAverage(exam)}
                             </td>
                             <td className="p-3 text-right">
                               <div className="flex items-center justify-end gap-1.5">
