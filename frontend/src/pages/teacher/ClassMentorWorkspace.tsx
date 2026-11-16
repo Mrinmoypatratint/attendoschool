@@ -1990,14 +1990,20 @@ export function ClassMentorWorkspace() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsGradedModalMaximized((prev) => !prev)}
-                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer shadow-xs"
+                  className="inline-flex items-center justify-center !w-8 !h-8 !min-h-0 !p-0 rounded-lg !border !border-slate-300 hover:!border-slate-400 dark:!border-slate-700 dark:hover:!border-slate-600 !bg-slate-100 hover:!bg-slate-200 dark:!bg-slate-800 dark:hover:!bg-slate-700 !text-slate-700 hover:!text-slate-900 dark:!text-slate-200 dark:hover:!text-white transition-colors cursor-pointer shadow-xs"
+                  style={{ width: 32, height: 32, minHeight: 32, padding: 0, color: '#334155' }}
                   title={isGradedModalMaximized ? "Restore default size" : "Maximize dialog"}
+                  aria-label={isGradedModalMaximized ? "Restore default size" : "Maximize dialog"}
                 >
-                  {isGradedModalMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                  {isGradedModalMaximized ? (
+                    <Minimize2 size={16} className="text-slate-700 dark:text-slate-200 shrink-0" strokeWidth={2.2} />
+                  ) : (
+                    <Maximize2 size={16} className="text-slate-700 dark:text-slate-200 shrink-0" strokeWidth={2.2} />
+                  )}
                 </button>
                 <button
                   type="button"
@@ -2005,10 +2011,12 @@ export function ClassMentorWorkspace() {
                     setShowGradedModal(false);
                     setIsGradedModalMaximized(false);
                   }}
-                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-rose-50 hover:border-rose-200 dark:bg-slate-800 dark:hover:bg-rose-950/40 text-slate-600 hover:text-rose-600 dark:text-slate-300 dark:hover:text-rose-400 transition-colors cursor-pointer shadow-xs"
+                  className="inline-flex items-center justify-center !w-8 !h-8 !min-h-0 !p-0 rounded-lg !border !border-slate-300 hover:!border-rose-300 dark:!border-slate-700 dark:hover:!border-rose-800 !bg-slate-100 hover:!bg-rose-50 dark:!bg-slate-800 dark:hover:!bg-rose-950/40 !text-slate-700 hover:!text-rose-600 dark:!text-slate-200 dark:hover:!text-rose-400 transition-colors cursor-pointer shadow-xs"
+                  style={{ width: 32, height: 32, minHeight: 32, padding: 0, color: '#334155' }}
                   title="Close (Esc)"
+                  aria-label="Close dialog"
                 >
-                  <X size={18} />
+                  <X size={18} className="text-slate-700 hover:text-rose-600 dark:text-slate-200 dark:hover:text-rose-400 shrink-0" strokeWidth={2.2} />
                 </button>
               </div>
             </div>
