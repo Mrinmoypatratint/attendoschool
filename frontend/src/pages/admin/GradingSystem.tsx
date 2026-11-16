@@ -119,14 +119,18 @@ export default function GradingSystem() {
     return [];
   });
 
-  // Sync to local storage
+  // Sync to local storage & backend API
   const saveExams = (updated: ExamGradingConfig[]) => {
     setExams(updated);
     try {
       localStorage.setItem(examsStorageKey, JSON.stringify(updated));
+      localStorage.setItem('attendo_active_school_exams', JSON.stringify(updated));
     } catch (e) {
       console.error('Failed to save exam grading configurations:', e);
     }
+    api.post('/grading-system/exams', { exams: updated }).catch(err => {
+      console.warn('Could not sync grading exams to server:', err);
+    });
   };
 
   const saveSchoolGradeRanges = (updated: GradeRangeRule[]) => {
@@ -138,7 +142,41 @@ export default function GradingSystem() {
     } catch (e) {
       console.error('Failed to save school grade ranges:', e);
     }
+    api.post('/grading-system/ranges', { ranges: sorted }).catch(err => {
+      console.warn('Could not sync grading ranges to server:', err);
+    });
   };
+
+  // Sync from server on mount
+  useEffect(() => {
+    let isMounted = true;
+    api.get('/grading-system/exams')
+      .then(res => {
+        if (!isMounted) return;
+        if (res.data?.success && Array.isArray(res.data.exams) && res.data.exams.length > 0) {
+          setExams(res.data.exams);
+          try {
+            localStorage.setItem(examsStorageKey, JSON.stringify(res.data.exams));
+            localStorage.setItem('attendo_active_school_exams', JSON.stringify(res.data.exams));
+          } catch {}
+        }
+      })
+      .catch(() => {});
+
+    api.get('/grading-system/ranges')
+      .then(res => {
+        if (!isMounted) return;
+        if (res.data?.success && Array.isArray(res.data.ranges) && res.data.ranges.length > 0) {
+          setSchoolGradeRanges(res.data.ranges);
+          try {
+            localStorage.setItem(rangesStorageKey, JSON.stringify(res.data.ranges));
+          } catch {}
+        }
+      })
+      .catch(() => {});
+
+    return () => { isMounted = false; };
+  }, [examsStorageKey, rangesStorageKey]);
 
   // Available school classes fetched dynamically
   const [availableClasses, setAvailableClasses] = useState<string[]>([]);

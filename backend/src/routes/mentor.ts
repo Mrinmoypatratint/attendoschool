@@ -352,4 +352,84 @@ router.delete(['/teacher/mentor/exams/:id', '/exams/:id'], ...mentorTeacher, asy
   }
 });
 
+// ──────────────────────────────────────────
+// SCHOOL EXAM GRADING SYSTEM CONFIGURATION
+// ──────────────────────────────────────────
+
+const schoolGradingStore = new Map<string, { exams: any[]; ranges: any[] }>();
+
+// GET /api/teacher/mentor/grading-exams or /api/grading-system/exams
+router.get(
+  ['/teacher/mentor/grading-exams', '/grading-system/exams', '/grading-exams'],
+  ...mentorTeacher,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const sid = String(req.user!.schoolId || 'global');
+      const store = schoolGradingStore.get(sid) || schoolGradingStore.get('global') || { exams: [], ranges: [] };
+      return res.json({ success: true, exams: store.exams || [] });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || 'Failed to fetch grading exams' });
+    }
+  }
+);
+
+// POST /api/grading-system/exams
+router.post(
+  ['/grading-system/exams', '/teacher/mentor/grading-exams'],
+  ...mentorAdmin,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const sid = String(req.user!.schoolId || 'global');
+      const { exams } = req.body;
+      const list = Array.isArray(exams) ? exams : [];
+      const current = schoolGradingStore.get(sid) || { exams: [], ranges: [] };
+      schoolGradingStore.set(sid, { ...current, exams: list });
+      if (sid !== 'global') {
+        const glob = schoolGradingStore.get('global') || { exams: [], ranges: [] };
+        schoolGradingStore.set('global', { ...glob, exams: list });
+      }
+      return res.json({ success: true, message: 'Grading exams updated successfully', exams: list });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || 'Failed to save grading exams' });
+    }
+  }
+);
+
+// GET /api/grading-system/ranges
+router.get(
+  ['/grading-system/ranges', '/teacher/mentor/grading-ranges'],
+  ...mentorTeacher,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const sid = String(req.user!.schoolId || 'global');
+      const store = schoolGradingStore.get(sid) || schoolGradingStore.get('global') || { exams: [], ranges: [] };
+      return res.json({ success: true, ranges: store.ranges || [] });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || 'Failed to fetch grading ranges' });
+    }
+  }
+);
+
+// POST /api/grading-system/ranges
+router.post(
+  ['/grading-system/ranges', '/teacher/mentor/grading-ranges'],
+  ...mentorAdmin,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const sid = String(req.user!.schoolId || 'global');
+      const { ranges } = req.body;
+      const list = Array.isArray(ranges) ? ranges : [];
+      const current = schoolGradingStore.get(sid) || { exams: [], ranges: [] };
+      schoolGradingStore.set(sid, { ...current, ranges: list });
+      if (sid !== 'global') {
+        const glob = schoolGradingStore.get('global') || { exams: [], ranges: [] };
+        schoolGradingStore.set('global', { ...glob, ranges: list });
+      }
+      return res.json({ success: true, message: 'Grading ranges updated successfully', ranges: list });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || 'Failed to save grading ranges' });
+    }
+  }
+);
+
 export default router;

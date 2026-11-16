@@ -96,23 +96,31 @@ export function ClassMentorWorkspace() {
   // Admin-configured exams from Grading System
   const [adminExams, setAdminExams] = useState<any[]>(() => {
     try {
+      // 1. Check active school exams
+      const activeStored = localStorage.getItem('attendo_active_school_exams');
+      if (activeStored) {
+        const parsed = JSON.parse(activeStored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      // 2. Check school specific key
       const key = `attendo_exam_grading_${schoolId}`;
-      let stored = localStorage.getItem(key);
-      if (!stored && schoolId !== 'global') {
-        stored = localStorage.getItem('attendo_exam_grading_global');
-      }
-      if (!stored) {
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i);
-          if (k && k.startsWith('attendo_exam_grading_')) {
-            stored = localStorage.getItem(k);
-            if (stored) break;
-          }
-        }
-      }
+      const stored = localStorage.getItem(key);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      // 3. Scan all keys in localStorage for any non-empty exams array
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('attendo_exam_grading_') || k.startsWith('attendo_exam_'))) {
+          const s = localStorage.getItem(k);
+          if (s) {
+            try {
+              const p = JSON.parse(s);
+              if (Array.isArray(p) && p.length > 0) return p;
+            } catch {}
+          }
+        }
       }
     } catch (e) {
       console.warn('Failed to parse admin exams from localStorage:', e);
@@ -121,27 +129,51 @@ export function ClassMentorWorkspace() {
   });
   const [isCustomTitle, setIsCustomTitle] = useState(false);
 
-  const reloadAdminExams = useCallback(() => {
+  const reloadAdminExams = useCallback(async () => {
+    // 1. First load from Backend API
     try {
-      const key = `attendo_exam_grading_${schoolId}`;
-      let stored = localStorage.getItem(key);
-      if (!stored && schoolId !== 'global') {
-        stored = localStorage.getItem('attendo_exam_grading_global');
+      const res = await api.get('/teacher/mentor/grading-exams');
+      if (res.data?.success && Array.isArray(res.data.exams) && res.data.exams.length > 0) {
+        setAdminExams(res.data.exams);
+        try {
+          localStorage.setItem('attendo_active_school_exams', JSON.stringify(res.data.exams));
+        } catch {}
+        return;
       }
-      if (!stored) {
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i);
-          if (k && k.startsWith('attendo_exam_grading_')) {
-            stored = localStorage.getItem(k);
-            if (stored) break;
-          }
-        }
-      }
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
+    } catch {}
+
+    // 2. Fallback to localStorage (ensuring non-empty check)
+    try {
+      const activeStored = localStorage.getItem('attendo_active_school_exams');
+      if (activeStored) {
+        const parsed = JSON.parse(activeStored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
           setAdminExams(parsed);
           return;
+        }
+      }
+      const key = `attendo_exam_grading_${schoolId}`;
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setAdminExams(parsed);
+          return;
+        }
+      }
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('attendo_exam_grading_') || k.startsWith('attendo_exam_'))) {
+          const s = localStorage.getItem(k);
+          if (s) {
+            try {
+              const p = JSON.parse(s);
+              if (Array.isArray(p) && p.length > 0) {
+                setAdminExams(p);
+                return;
+              }
+            } catch {}
+          }
         }
       }
     } catch (e) {
