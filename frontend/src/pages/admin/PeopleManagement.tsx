@@ -1081,7 +1081,7 @@ export default function PeopleManagement() {
               </div>
             </div>
           )}
-          <table style={{ minWidth: 1200, width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
+          <table style={{ minWidth: 1350, width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
             {tab === 'students' ? (
               <>
                 <thead>

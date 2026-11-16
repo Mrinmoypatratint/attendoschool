@@ -8528,10 +8528,10 @@ function Students() {
             </div>
           </div>
         )}
-        <table style={{ width: '100%', minWidth: 1280, borderCollapse: 'separate', borderSpacing: 0 }}>
+        <table style={{ width: '100%', minWidth: 1400, borderCollapse: 'separate', borderSpacing: 0 }}>
           <thead>
             <tr>
-              <th style={{ width: 36, textAlign: 'center' }}>
+              <th style={{ width: 40, textAlign: 'center' }}>
                 <input
                   type="checkbox"
                   checked={displayedStudents.length > 0 && displayedStudents.every(x => selectedIds.has(x.id))}
@@ -8539,17 +8539,17 @@ function Students() {
                   title="Select all on this page"
                 />
               </th>
-              <th style={{ whiteSpace: 'nowrap' }}>Roll No</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Adm No</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Adm Date</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Student Name</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Gender</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Class</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Section</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Student Email</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Parent & Contact</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Status</th>
-              <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
+              <th style={{ minWidth: 80, whiteSpace: 'nowrap' }}>Roll No</th>
+              <th style={{ minWidth: 95, whiteSpace: 'nowrap' }}>Adm No</th>
+              <th style={{ minWidth: 110, whiteSpace: 'nowrap' }}>Adm Date</th>
+              <th style={{ minWidth: 180, whiteSpace: 'nowrap' }}>Student Name</th>
+              <th style={{ minWidth: 90, whiteSpace: 'nowrap' }}>Gender</th>
+              <th style={{ minWidth: 90, whiteSpace: 'nowrap' }}>Class</th>
+              <th style={{ minWidth: 80, whiteSpace: 'nowrap' }}>Section</th>
+              <th style={{ minWidth: 190, whiteSpace: 'nowrap' }}>Student Email</th>
+              <th style={{ minWidth: 190, whiteSpace: 'nowrap' }}>Parent & Contact</th>
+              <th style={{ minWidth: 90, whiteSpace: 'nowrap' }}>Status</th>
+              <th style={{ minWidth: 130, textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -12077,10 +12077,10 @@ function Teachers() {
             </div>
           </div>
         )}
-        <table style={{ width: '100%', minWidth: 1200, borderCollapse: 'separate', borderSpacing: 0 }}>
+        <table style={{ width: '100%', minWidth: 1380, borderCollapse: 'separate', borderSpacing: 0 }}>
           <thead>
             <tr style={{ verticalAlign: 'middle' }}>
-              <th style={{ width: 36, textAlign: 'center' }}>
+              <th style={{ width: 40, textAlign: 'center' }}>
                 <input
                   type="checkbox"
                   checked={displayedTeachers.length > 0 && displayedTeachers.every(x => selectedIds.has(x.id))}
@@ -12088,20 +12088,20 @@ function Teachers() {
                   title="Select all on this page"
                 />
               </th>
-              <th style={{ lineHeight: 1.25, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+              <th style={{ minWidth: 130, lineHeight: 1.25, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                 Employee Id /<br />Savior_NO
               </th>
-              <th style={{ whiteSpace: 'nowrap' }}>Teacher Name</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Joining Date</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Gender</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Designation</th>
-              <th style={{ lineHeight: 1.25, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+              <th style={{ minWidth: 180, whiteSpace: 'nowrap' }}>Teacher Name</th>
+              <th style={{ minWidth: 110, whiteSpace: 'nowrap' }}>Joining Date</th>
+              <th style={{ minWidth: 90, whiteSpace: 'nowrap' }}>Gender</th>
+              <th style={{ minWidth: 110, whiteSpace: 'nowrap' }}>Designation</th>
+              <th style={{ minWidth: 140, lineHeight: 1.25, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                 Assigned<br />Classes
               </th>
-              <th style={{ whiteSpace: 'nowrap' }}>Email</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Mobile</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Status</th>
-              <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
+              <th style={{ minWidth: 220, whiteSpace: 'nowrap' }}>Email</th>
+              <th style={{ minWidth: 120, whiteSpace: 'nowrap' }}>Mobile</th>
+              <th style={{ minWidth: 90, whiteSpace: 'nowrap' }}>Status</th>
+              <th style={{ minWidth: 140, textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
