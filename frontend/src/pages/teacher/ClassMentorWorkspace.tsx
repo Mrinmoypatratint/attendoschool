@@ -3,7 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import {
   Users, ShieldCheck, FileText, RefreshCw, AlertCircle, Loader2, Award,
   Plus, Edit2, Trash2, Calendar, BookOpen, Search, ArrowLeft, Save, CheckCircle2,
-  Check, X, TrendingUp, Maximize2, Minimize2, Info
+  Check, X, TrendingUp, Maximize2, Minimize2, Info, Lock
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../api';
@@ -127,7 +127,6 @@ export function ClassMentorWorkspace() {
     }
     return [];
   });
-  const [isCustomTitle, setIsCustomTitle] = useState(false);
 
   const reloadAdminExams = useCallback(async () => {
     // 1. First load from Backend API
@@ -186,25 +185,24 @@ export function ClassMentorWorkspace() {
   }, [reloadAdminExams]);
 
   const handleExamTitleSelect = (val: string) => {
-    if (val === '__custom__') {
-      setIsCustomTitle(true);
-      setFormTitle('');
-      return;
-    }
-    setIsCustomTitle(false);
     setFormTitle(val);
+    if (!val) return;
 
     const matched = adminExams.find(ex => ex.examTitle === val);
     if (matched) {
       if (matched.gradingType) {
         setFormGradingSystem(matched.gradingType);
       }
-      if (matched.gradingType === 'MARKS' && matched.marksConfig) {
-        setFormTotalValue(matched.marksConfig.totalMarks);
-        setFormPassingMarks(matched.marksConfig.passingMarks);
-      } else if (matched.gradingType === 'CGPA' && matched.cgpaConfig) {
-        setFormTotalValue(matched.cgpaConfig.maxCgpa);
-        setFormPassingMarks(matched.cgpaConfig.passingCgpa);
+      if (matched.gradingType === 'MARKS') {
+        const total = matched.marksConfig?.totalMarks ?? 100;
+        const pass = matched.marksConfig?.passingMarks ?? Math.round(total * 0.4);
+        setFormTotalValue(total);
+        setFormPassingMarks(pass);
+      } else if (matched.gradingType === 'CGPA') {
+        const total = matched.cgpaConfig?.maxCgpa ?? 10.0;
+        const pass = matched.cgpaConfig?.passingCgpa ?? 4.0;
+        setFormTotalValue(total);
+        setFormPassingMarks(pass);
       } else if (matched.gradingType === 'GRADE') {
         setFormTotalValue('A+');
         setFormPassingMarks(40);
@@ -245,6 +243,31 @@ export function ClassMentorWorkspace() {
   const [formSubjectId, setFormSubjectId] = useState('');
   const [formSubjectName, setFormSubjectName] = useState('');
   const [formExamDate, setFormExamDate] = useState(() => new Date().toISOString().slice(0, 10));
+
+  // Resolved list of exams to show in teacher dropdown
+  const displayExams = useMemo(() => {
+    const list = [...adminExams];
+    if (editingExam && !list.some(ex => ex.examTitle === editingExam.title)) {
+      list.unshift({
+        id: editingExam.id,
+        examTitle: editingExam.title,
+        gradingType: editingExam.grading_system || 'MARKS',
+        marksConfig: {
+          totalMarks: editingExam.total_marks || 100,
+          passingMarks: editingExam.passing_marks || 40,
+        }
+      });
+    }
+    return list;
+  }, [adminExams, editingExam]);
+
+  // Currently selected admin exam matching formTitle
+  const selectedAdminExam = useMemo(() => {
+    return adminExams.find(ex => ex.examTitle === formTitle) || (editingExam && editingExam.title === formTitle ? editingExam : null);
+  }, [adminExams, formTitle, editingExam]);
+
+  // When an exam is selected from the grading system, its grading system & total marks become fixed
+  const isExamFixed = Boolean(selectedAdminExam && formTitle);
 
   // Student Marks Table
   const [studentsWithMarks, setStudentsWithMarks] = useState<StudentWithMark[]>([]);
@@ -401,7 +424,6 @@ export function ClassMentorWorkspace() {
   const handleStartNewAssessment = async () => {
     if (!selectedSection) return;
     reloadAdminExams();
-    setIsCustomTitle(false);
     setEditingExam(null);
     setFormTitle('');
     setFormGradingSystem('MARKS');
@@ -452,8 +474,6 @@ export function ClassMentorWorkspace() {
     reloadAdminExams();
     setEditingExam(exam);
     setFormTitle(exam.title);
-    const isMatchingAdmin = adminExams.some(ex => ex.examTitle === exam.title);
-    setIsCustomTitle(!isMatchingAdmin && !!exam.title);
     const sys = (exam.grading_system as 'MARKS' | 'CGPA' | 'GRADE') || 'MARKS';
     setFormGradingSystem(sys);
     setFormTotalValue(exam.total_marks || (sys === 'CGPA' ? 10.0 : 100));
@@ -1022,51 +1042,26 @@ export function ClassMentorWorkspace() {
 
               {/* Assessment Meta Fields Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
-                {/* 1. Exam Title (Dropdown fetched from School Admin Grading System) */}
+                {/* 1. Exam Title (Dropdown fetched strictly from School Admin Grading System) */}
                 <div className="lg:col-span-2">
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400">
                       Exam Title *
                     </label>
-                    {adminExams.length > 0 && !isCustomTitle && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsCustomTitle(true);
-                          setFormTitle('');
-                        }}
-                        className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline font-semibold cursor-pointer"
-                      >
-                        + Type Custom Title
-                      </button>
-                    )}
-                    {isCustomTitle && adminExams.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsCustomTitle(false);
-                          setFormTitle('');
-                        }}
-                        className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline font-semibold cursor-pointer"
-                      >
-                        ← Select from Admin Exams
-                      </button>
-                    )}
                   </div>
 
-                  {!isCustomTitle && adminExams.length > 0 ? (
+                  {adminExams.length > 0 ? (
                     <select
                       value={formTitle}
                       onChange={e => handleExamTitleSelect(e.target.value)}
                       className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-blue-500 font-semibold"
                     >
                       <option value="">-- Select Exam Title (from Grading System) --</option>
-                      {adminExams.map((ex: any) => (
+                      {displayExams.map((ex: any) => (
                         <option key={ex.id || ex.examTitle} value={ex.examTitle}>
-                          {ex.examTitle} ({ex.gradingType} Basis{ex.marksConfig ? ` · Max ${ex.marksConfig.totalMarks} Marks` : ''})
+                          {ex.examTitle} ({ex.gradingType} Basis{ex.marksConfig?.totalMarks ? ` · Max ${ex.marksConfig.totalMarks} Marks` : ex.cgpaConfig?.maxCgpa ? ` · Max ${ex.cgpaConfig.maxCgpa} CGPA` : ''})
                         </option>
                       ))}
-                      <option value="__custom__">+ Enter Custom Exam Title...</option>
                     </select>
                   ) : (
                     <div>
@@ -1077,12 +1072,10 @@ export function ClassMentorWorkspace() {
                         placeholder="Enter exam title (e.g. Mid-Term Examination 2026-27)..."
                         className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-blue-500 font-medium"
                       />
-                      {adminExams.length === 0 && (
-                        <div className="text-[10.5px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
-                          <Info size={12} />
-                          No exams configured in School Admin Grading System yet. You can type an exam title.
-                        </div>
-                      )}
+                      <div className="text-[10.5px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                        <Info size={12} />
+                        No exams configured in School Admin Grading System yet. You can type an exam title.
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1116,13 +1109,22 @@ export function ClassMentorWorkspace() {
                   </select>
                 </div>
 
-                {/* 3. Grading System Concept: Marks, CGPA, Grade */}
+                {/* 3. Grading System Concept: Marks, CGPA, Grade (Fixed when exam is selected) */}
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                    Grading System *
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                      Grading System *
+                    </label>
+                    {isExamFixed && (
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold inline-flex items-center gap-1" title="Grading system is locked by School Admin configuration">
+                        <Lock size={10} className="text-slate-400" />
+                        Fixed
+                      </span>
+                    )}
+                  </div>
                   <select
                     value={formGradingSystem}
+                    disabled={isExamFixed}
                     onChange={e => {
                       const sys = e.target.value as 'MARKS' | 'CGPA' | 'GRADE';
                       setFormGradingSystem(sys);
@@ -1136,7 +1138,11 @@ export function ClassMentorWorkspace() {
                         setFormTotalValue('A+');
                       }
                     }}
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-blue-500 font-semibold"
+                    className={`w-full px-3 py-2 text-xs rounded-lg border font-semibold outline-none transition-colors ${
+                      isExamFixed
+                        ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 cursor-not-allowed select-none shadow-none'
+                        : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-blue-500'
+                    }`}
                   >
                     <option value="MARKS">Marks (Numeric score)</option>
                     <option value="CGPA">CGPA (Point scale)</option>
@@ -1144,18 +1150,27 @@ export function ClassMentorWorkspace() {
                   </select>
                 </div>
 
-                {/* 4. Total CGPA / Grade / Marks input (Customizable by user) */}
+                {/* 4. Total CGPA / Grade / Marks input (Fixed when exam is selected) */}
                 <div>
                   {formGradingSystem === 'MARKS' && (
                     <>
-                      <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                        Total Marks *
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                          Total Marks *
+                        </label>
+                        {isExamFixed && (
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold inline-flex items-center gap-1" title="Total marks are locked by School Admin configuration">
+                            <Lock size={10} className="text-slate-400" />
+                            Fixed
+                          </span>
+                        )}
+                      </div>
                       <input
                         type="number"
                         min="1"
                         max="1000"
                         value={formTotalValue}
+                        disabled={isExamFixed}
                         onChange={e => {
                           const t = e.target.value;
                           setFormTotalValue(t);
@@ -1165,7 +1180,11 @@ export function ClassMentorWorkspace() {
                           }
                         }}
                         placeholder="e.g. 100"
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-blue-500 font-mono font-bold"
+                        className={`w-full px-3 py-2 text-xs rounded-lg border font-mono font-bold outline-none transition-colors ${
+                          isExamFixed
+                            ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 cursor-not-allowed select-none shadow-none'
+                            : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-blue-500'
+                        }`}
                       />
                       <span className="text-[10px] text-slate-500 mt-1 block">
                         Pass: {formPassingMarks} marks
@@ -1175,15 +1194,24 @@ export function ClassMentorWorkspace() {
 
                   {formGradingSystem === 'CGPA' && (
                     <>
-                      <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                        Total CGPA Scale *
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                          Total CGPA Scale *
+                        </label>
+                        {isExamFixed && (
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold inline-flex items-center gap-1" title="CGPA scale is locked by School Admin configuration">
+                            <Lock size={10} className="text-slate-400" />
+                            Fixed
+                          </span>
+                        )}
+                      </div>
                       <input
                         type="number"
                         step="0.1"
                         min="1"
                         max="100"
                         value={formTotalValue}
+                        disabled={isExamFixed}
                         onChange={e => {
                           const t = e.target.value;
                           setFormTotalValue(t);
@@ -1193,7 +1221,11 @@ export function ClassMentorWorkspace() {
                           }
                         }}
                         placeholder="e.g. 10.0 or 4.0"
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-blue-500 font-mono font-bold"
+                        className={`w-full px-3 py-2 text-xs rounded-lg border font-mono font-bold outline-none transition-colors ${
+                          isExamFixed
+                            ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 cursor-not-allowed select-none shadow-none'
+                            : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-blue-500'
+                        }`}
                       />
                       <span className="text-[10px] text-slate-500 mt-1 block">
                         Pass: {formPassingMarks} CGPA
@@ -1203,15 +1235,28 @@ export function ClassMentorWorkspace() {
 
                   {formGradingSystem === 'GRADE' && (
                     <>
-                      <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                        Highest Grade Scale *
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                          Highest Grade Scale *
+                        </label>
+                        {isExamFixed && (
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold inline-flex items-center gap-1" title="Grade scale is locked by School Admin configuration">
+                            <Lock size={10} className="text-slate-400" />
+                            Fixed
+                          </span>
+                        )}
+                      </div>
                       <input
                         type="text"
                         value={formTotalValue}
+                        disabled={isExamFixed}
                         onChange={e => setFormTotalValue(e.target.value)}
                         placeholder="e.g. A+ or O (Outstanding)"
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-blue-500 font-bold"
+                        className={`w-full px-3 py-2 text-xs rounded-lg border font-bold outline-none transition-colors ${
+                          isExamFixed
+                            ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 cursor-not-allowed select-none shadow-none'
+                            : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-blue-500'
+                        }`}
                       />
                       <span className="text-[10px] text-slate-500 mt-1 block">
                         Top grade achievable
