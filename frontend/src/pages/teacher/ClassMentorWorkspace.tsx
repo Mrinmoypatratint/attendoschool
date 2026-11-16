@@ -735,6 +735,19 @@ export function ClassMentorWorkspace() {
     }
   };
 
+  // Close modal on Escape key press
+  useEffect(() => {
+    if (!showGradedModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowGradedModal(false);
+        setIsGradedModalMaximized(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showGradedModal]);
+
   // Graded Count for modal
   const modalGradedCount = useMemo(() => {
     return gradedStudentsList.filter(
@@ -1949,23 +1962,23 @@ export function ClassMentorWorkspace() {
 
       {/* ── Modal for Graded Students & Marks Viewer ── */}
       {showGradedModal && (
-        <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs transition-all ${isGradedModalMaximized ? 'p-2 sm:p-3' : 'p-4'}`}>
-          <div className={`bg-white dark:bg-slate-900 flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 transition-all duration-200 ${
+        <div className={`fixed inset-0 z-[10050] flex items-center justify-center bg-black/70 backdrop-blur-sm transition-all overflow-y-auto ${isGradedModalMaximized ? 'p-2 sm:p-4' : 'p-4'}`}>
+          <div className={`bg-white dark:bg-slate-900 flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 transition-all duration-200 overflow-hidden ${
             isGradedModalMaximized
-              ? 'w-full h-full max-w-[98vw] max-h-[96vh] rounded-2xl p-6'
-              : 'rounded-2xl max-w-3xl w-full p-6 max-h-[90vh]'
+              ? 'w-full h-full max-w-[98vw] max-h-[96vh] rounded-2xl p-5 sm:p-6'
+              : 'rounded-2xl max-w-3xl w-full p-5 sm:p-6 max-h-[90vh]'
           }`}>
             {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+            <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center flex-shrink-0">
                   <Award size={18} />
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white m-0">
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white m-0 truncate">
                     {selectedExamForGradedView?.title} — Student Marks
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 m-0 mt-0.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 m-0 mt-0.5 truncate">
                     {selectedExamForGradedView?.subject_name || 'General'} · Class {selectedSection?.class_number} - Section {selectedSection?.section_name} ·{' '}
                     {selectedExamForGradedView?.exam_date ? formatDate(selectedExamForGradedView.exam_date) : ''} · Scale:{' '}
                     {selectedExamForGradedView?.grading_system === 'CGPA'
@@ -1976,14 +1989,14 @@ export function ClassMentorWorkspace() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsGradedModalMaximized((prev) => !prev)}
-                  className="bg-transparent border-none text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer shadow-xs"
                   title={isGradedModalMaximized ? "Restore default size" : "Maximize dialog"}
                 >
-                  {isGradedModalMaximized ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                  {isGradedModalMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                 </button>
                 <button
                   type="button"
@@ -1991,10 +2004,10 @@ export function ClassMentorWorkspace() {
                     setShowGradedModal(false);
                     setIsGradedModalMaximized(false);
                   }}
-                  className="bg-transparent border-none text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  title="Close"
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-rose-50 hover:border-rose-200 dark:bg-slate-800 dark:hover:bg-rose-950/40 text-slate-600 hover:text-rose-600 dark:text-slate-300 dark:hover:text-rose-400 transition-colors cursor-pointer shadow-xs"
+                  title="Close (Esc)"
                 >
-                  <X size={20} />
+                  <X size={18} />
                 </button>
               </div>
             </div>
