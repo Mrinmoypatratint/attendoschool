@@ -2345,43 +2345,55 @@ header {
 
 .directory-box-body {
   overflow-y: auto;
-  overflow-x: hidden !important;
+  overflow-x: auto !important;
   max-height: min(65vh, 600px);
   min-height: 280px;
   position: relative;
   background: var(--bg-card, #ffffff);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 150, 159, 0.6) rgba(0, 0, 0, 0.03);
 }
 
 [data-theme="dark"] .directory-box-body {
   background: #282c3f;
+  scrollbar-color: rgba(148, 150, 159, 0.45) rgba(255, 255, 255, 0.03);
 }
 
 /* Sleek inner scrollbar inside the directory box */
 .directory-box-body::-webkit-scrollbar {
-  width: 7px;
-  height: 0px;
+  width: 8px;
+  height: 8px;
 }
 
 .directory-box-body::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.02);
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 4px;
 }
 
 .directory-box-body::-webkit-scrollbar-thumb {
-  background: rgba(148, 150, 159, 0.55);
+  background: rgba(148, 150, 159, 0.6);
   border-radius: 4px;
 }
 
 .directory-box-body::-webkit-scrollbar-thumb:hover {
-  background: rgba(105, 110, 121, 0.85);
+  background: rgba(105, 110, 121, 0.9);
+}
+
+[data-theme="dark"] .directory-box-body::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
 }
 
 [data-theme="dark"] .directory-box-body::-webkit-scrollbar-thumb {
-  background: rgba(148, 150, 159, 0.35);
+  background: rgba(148, 150, 159, 0.45);
+}
+
+[data-theme="dark"] .directory-box-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(180, 182, 190, 0.8);
 }
 
 .directory-box-body table {
   width: 100%;
-  min-width: 0;
+  min-width: 1200px;
   border-collapse: separate;
   border-spacing: 0;
   table-layout: auto;

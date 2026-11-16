@@ -8497,7 +8497,7 @@ function Students() {
       </div>
 
       {/* Box Body (Scrollable Table Area) */}
-      <div className="directory-box-body" ref={tableBodyRef} style={{ overflowX: 'hidden' }}>
+      <div className="directory-box-body" ref={tableBodyRef} style={{ overflowX: 'auto' }}>
         {loading && displayedStudents.length > 0 && (
           <div style={{
             position: 'sticky',
@@ -8528,7 +8528,7 @@ function Students() {
             </div>
           </div>
         )}
-        <table>
+        <table style={{ width: '100%', minWidth: 1280, borderCollapse: 'separate', borderSpacing: 0 }}>
           <thead>
             <tr>
               <th style={{ width: 36, textAlign: 'center' }}>
@@ -12046,7 +12046,7 @@ function Teachers() {
       </div>
 
       {/* Box Body (Scrollable Table Area) */}
-      <div className="directory-box-body" ref={tableBodyRef}>
+      <div className="directory-box-body" ref={tableBodyRef} style={{ overflowX: 'auto' }}>
         {loading && displayedTeachers.length > 0 && (
           <div style={{
             position: 'sticky',
@@ -12077,7 +12077,7 @@ function Teachers() {
             </div>
           </div>
         )}
-        <table>
+        <table style={{ width: '100%', minWidth: 1200, borderCollapse: 'separate', borderSpacing: 0 }}>
           <thead>
             <tr style={{ verticalAlign: 'middle' }}>
               <th style={{ width: 36, textAlign: 'center' }}>
