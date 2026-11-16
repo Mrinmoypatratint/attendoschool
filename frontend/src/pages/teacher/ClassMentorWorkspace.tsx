@@ -3,8 +3,9 @@ import { useSearchParams, Link } from 'react-router-dom';
 import {
   Users, ShieldCheck, FileText, RefreshCw, AlertCircle, Loader2, Award,
   Plus, Edit2, Trash2, Calendar, BookOpen, Search, ArrowLeft, Save, CheckCircle2,
-  Check, X, TrendingUp, Maximize2, Minimize2
+  Check, X, TrendingUp, Maximize2, Minimize2, Info
 } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../api';
 import AttendanceReports from '../admin/AttendanceReports';
 
@@ -89,6 +90,96 @@ function getGradeBadgeClass(grade?: string) {
 }
 
 export function ClassMentorWorkspace() {
+  const { user } = useAuth();
+  const schoolId = user?.schoolId || 'global';
+
+  // Admin-configured exams from Grading System
+  const [adminExams, setAdminExams] = useState<any[]>(() => {
+    try {
+      const key = `attendo_exam_grading_${schoolId}`;
+      let stored = localStorage.getItem(key);
+      if (!stored && schoolId !== 'global') {
+        stored = localStorage.getItem('attendo_exam_grading_global');
+      }
+      if (!stored) {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('attendo_exam_grading_')) {
+            stored = localStorage.getItem(k);
+            if (stored) break;
+          }
+        }
+      }
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.warn('Failed to parse admin exams from localStorage:', e);
+    }
+    return [];
+  });
+  const [isCustomTitle, setIsCustomTitle] = useState(false);
+
+  const reloadAdminExams = useCallback(() => {
+    try {
+      const key = `attendo_exam_grading_${schoolId}`;
+      let stored = localStorage.getItem(key);
+      if (!stored && schoolId !== 'global') {
+        stored = localStorage.getItem('attendo_exam_grading_global');
+      }
+      if (!stored) {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('attendo_exam_grading_')) {
+            stored = localStorage.getItem(k);
+            if (stored) break;
+          }
+        }
+      }
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setAdminExams(parsed);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to reload admin exams:', e);
+    }
+  }, [schoolId]);
+
+  useEffect(() => {
+    reloadAdminExams();
+  }, [reloadAdminExams]);
+
+  const handleExamTitleSelect = (val: string) => {
+    if (val === '__custom__') {
+      setIsCustomTitle(true);
+      setFormTitle('');
+      return;
+    }
+    setIsCustomTitle(false);
+    setFormTitle(val);
+
+    const matched = adminExams.find(ex => ex.examTitle === val);
+    if (matched) {
+      if (matched.gradingType) {
+        setFormGradingSystem(matched.gradingType);
+      }
+      if (matched.gradingType === 'MARKS' && matched.marksConfig) {
+        setFormTotalValue(matched.marksConfig.totalMarks);
+        setFormPassingMarks(matched.marksConfig.passingMarks);
+      } else if (matched.gradingType === 'CGPA' && matched.cgpaConfig) {
+        setFormTotalValue(matched.cgpaConfig.maxCgpa);
+        setFormPassingMarks(matched.cgpaConfig.passingCgpa);
+      } else if (matched.gradingType === 'GRADE') {
+        setFormTotalValue('A+');
+        setFormPassingMarks(40);
+      }
+    }
+  };
+
   const [mentoredClasses, setMentoredClasses] = useState<MentoredClass[]>([]);
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [classesError, setClassesError] = useState<string | null>(null);
@@ -277,6 +368,8 @@ export function ClassMentorWorkspace() {
   // Start creating new assessment
   const handleStartNewAssessment = async () => {
     if (!selectedSection) return;
+    reloadAdminExams();
+    setIsCustomTitle(false);
     setEditingExam(null);
     setFormTitle('');
     setFormGradingSystem('MARKS');
@@ -324,8 +417,11 @@ export function ClassMentorWorkspace() {
   // Start editing existing assessment
   const handleStartEditAssessment = async (exam: MentoredExam, onlyGraded = false) => {
     if (!selectedSection) return;
+    reloadAdminExams();
     setEditingExam(exam);
     setFormTitle(exam.title);
+    const isMatchingAdmin = adminExams.some(ex => ex.examTitle === exam.title);
+    setIsCustomTitle(!isMatchingAdmin && !!exam.title);
     const sys = (exam.grading_system as 'MARKS' | 'CGPA' | 'GRADE') || 'MARKS';
     setFormGradingSystem(sys);
     setFormTotalValue(exam.total_marks || (sys === 'CGPA' ? 10.0 : 100));
@@ -416,7 +512,7 @@ export function ClassMentorWorkspace() {
   const handleSaveAndPublish = async () => {
     if (!selectedSection) return;
     if (!formTitle.trim()) {
-      setPublishError('Please enter an assessment title.');
+      setPublishError('Please select or enter an exam title.');
       return;
     }
     if (!formExamDate) {
@@ -894,18 +990,69 @@ export function ClassMentorWorkspace() {
 
               {/* Assessment Meta Fields Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
-                {/* 1. Assessment Title (Clean input, no hardcoded suggestions) */}
+                {/* 1. Exam Title (Dropdown fetched from School Admin Grading System) */}
                 <div className="lg:col-span-2">
-                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                    Assessment Title *
-                  </label>
-                  <input
-                    type="text"
-                    value={formTitle}
-                    onChange={e => setFormTitle(e.target.value)}
-                    placeholder="Enter assessment title..."
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-blue-500"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                      Exam Title *
+                    </label>
+                    {adminExams.length > 0 && !isCustomTitle && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCustomTitle(true);
+                          setFormTitle('');
+                        }}
+                        className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline font-semibold cursor-pointer"
+                      >
+                        + Type Custom Title
+                      </button>
+                    )}
+                    {isCustomTitle && adminExams.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCustomTitle(false);
+                          setFormTitle('');
+                        }}
+                        className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline font-semibold cursor-pointer"
+                      >
+                        ← Select from Admin Exams
+                      </button>
+                    )}
+                  </div>
+
+                  {!isCustomTitle && adminExams.length > 0 ? (
+                    <select
+                      value={formTitle}
+                      onChange={e => handleExamTitleSelect(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-blue-500 font-semibold"
+                    >
+                      <option value="">-- Select Exam Title (from Grading System) --</option>
+                      {adminExams.map((ex: any) => (
+                        <option key={ex.id || ex.examTitle} value={ex.examTitle}>
+                          {ex.examTitle} ({ex.gradingType} Basis{ex.marksConfig ? ` · Max ${ex.marksConfig.totalMarks} Marks` : ''})
+                        </option>
+                      ))}
+                      <option value="__custom__">+ Enter Custom Exam Title...</option>
+                    </select>
+                  ) : (
+                    <div>
+                      <input
+                        type="text"
+                        value={formTitle}
+                        onChange={e => setFormTitle(e.target.value)}
+                        placeholder="Enter exam title (e.g. Mid-Term Examination 2026-27)..."
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-blue-500 font-medium"
+                      />
+                      {adminExams.length === 0 && (
+                        <div className="text-[10.5px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                          <Info size={12} />
+                          No exams configured in School Admin Grading System yet. You can type an exam title.
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* 2. Subject (Strictly from School Admin) */}
@@ -1371,7 +1518,7 @@ export function ClassMentorWorkspace() {
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
                         <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 font-bold text-slate-600 dark:text-slate-300">
-                          <th className="p-3">ASSESSMENT TITLE</th>
+                          <th className="p-3">EXAM TITLE</th>
                           <th className="p-3">SUBJECT</th>
                           <th className="p-3">EXAM DATE</th>
                           <th className="p-3 text-right">EVALUATION SCALE</th>
