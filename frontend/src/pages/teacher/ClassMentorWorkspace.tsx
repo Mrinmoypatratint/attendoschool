@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import {
   Users, ShieldCheck, FileText, RefreshCw, AlertCircle, Loader2, Award,
   Plus, Edit2, Trash2, Calendar, BookOpen, Search, ArrowLeft, Save, CheckCircle2,
-  Check, X, TrendingUp, Maximize2, Minimize2, Info, Lock
+  Check, X, TrendingUp, Maximize2, Minimize2, Info, Lock, Download, FileSpreadsheet
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../api';
@@ -228,6 +229,8 @@ export function ClassMentorWorkspace() {
   const [exams, setExams] = useState<MentoredExam[]>([]);
   const [loadingExams, setLoadingExams] = useState(false);
   const [examsError, setExamsError] = useState<string | null>(null);
+  const [selectedExamIds, setSelectedExamIds] = useState<Set<string>>(new Set());
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   // Subject options (strictly from School Admin subjects)
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
@@ -839,6 +842,144 @@ export function ClassMentorWorkspace() {
     }
 
     return <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{num.toFixed(1)}%</span>;
+  };
+
+  // Selection handlers for exams export
+  const handleToggleSelectExam = (id: string) => {
+    setSelectedExamIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleToggleSelectAllExams = () => {
+    if (selectedExamIds.size === exams.length && exams.length > 0) {
+      setSelectedExamIds(new Set());
+    } else {
+      setSelectedExamIds(new Set(exams.map(e => e.id)));
+    }
+  };
+
+  // Export selected or all exams to Excel workbook
+  const handleExportToExcel = async () => {
+    if (!selectedSection) return;
+    const targetExams = selectedExamIds.size > 0
+      ? exams.filter(e => selectedExamIds.has(e.id))
+      : exams;
+
+    if (targetExams.length === 0) {
+      alert('No examinations found to export. Please select at least one exam.');
+      return;
+    }
+
+    setExportingExcel(true);
+    try {
+      const allRows: any[] = [];
+
+      for (const exam of targetExams) {
+        let students: any[] = [];
+        try {
+          const res = await api.get('/teacher/mentor/exam-marks', {
+            params: {
+              class_id: selectedSection.class_id,
+              section_id: selectedSection.section_id,
+              exam_id: exam.id,
+              ...(activeSession ? { session: activeSession } : {}),
+              ...(activeYearId ? { academicYearId: activeYearId } : {})
+            }
+          });
+          if (Array.isArray(res.data?.students)) {
+            students = res.data.students;
+          }
+        } catch (err) {
+          console.warn(`Failed to fetch exam-marks for ${exam.title}:`, err);
+        }
+
+        if (students.length === 0) {
+          try {
+            const res2 = await api.get(`/teacher/classes/${selectedSection.class_id}/${selectedSection.section_id}/students`);
+            if (Array.isArray(res2.data)) {
+              students = res2.data;
+            }
+          } catch (_e) {
+            try {
+              const res3 = await api.get(`/teacher/students/${selectedSection.class_id}/${selectedSection.section_id}`);
+              if (Array.isArray(res3.data)) {
+                students = res3.data;
+              }
+            } catch (_e2) {}
+          }
+        }
+
+        // Sort students by roll number numerically
+        students.sort((a: any, b: any) =>
+          String(a.roll_number || a.rollNumber || '').localeCompare(String(b.roll_number || b.rollNumber || ''), undefined, { numeric: true })
+        );
+
+        const totalNum = Number(exam.total_marks) || (exam.grading_system === 'CGPA' ? 10 : 100);
+        const passNum = Number(exam.passing_marks) || (exam.grading_system === 'CGPA' ? 4 : 40);
+
+        students.forEach((s: any) => {
+          const marksVal = s.marks_obtained !== undefined && s.marks_obtained !== null && s.marks_obtained !== ''
+            ? Number(s.marks_obtained)
+            : null;
+          const pct = marksVal !== null && totalNum > 0
+            ? ((marksVal / totalNum) * 100).toFixed(1) + '%'
+            : '—';
+          const isPass = marksVal !== null ? marksVal >= passNum : null;
+          const resultStatus = isPass === true ? 'PASS' : isPass === false ? 'FAIL' : (s.grade ? 'GRADED' : 'PENDING');
+
+          allRows.push({
+            'Student Name': s.name || s.fullName || 'Student',
+            'Class': `Class ${selectedSection.class_number}`,
+            'Section': `Section ${selectedSection.section_name}`,
+            'Roll No': String(s.roll_number || s.rollNumber || '—'),
+            'Admission No': String(s.admission_number || s.admissionNumber || s.admission_no || '—'),
+            'Subject': exam.subject_name || 'General',
+            'Exam Title': exam.title,
+            'Exam Date': exam.exam_date || '—',
+            'Grading System': exam.grading_system === 'CGPA' ? 'CGPA System' : exam.grading_system === 'GRADE' ? 'Letter Grade' : 'Marks System',
+            'Max Marks / Scale': totalNum,
+            'Passing Marks': passNum,
+            'Score / Marks Obtained': marksVal !== null ? marksVal : 'Not Graded',
+            'Percentage': pct,
+            'Letter Grade': s.grade || '—',
+            'Result Status': resultStatus,
+            'Mentor Remarks': s.remarks || '—'
+          });
+        });
+      }
+
+      if (allRows.length === 0) {
+        alert('No student marks data found to export for the selected examination(s).');
+        return;
+      }
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(allRows);
+
+      // Auto-fit column widths
+      const colKeys = Object.keys(allRows[0]);
+      ws['!cols'] = colKeys.map(k => ({
+        wch: Math.max(k.length + 4, ...allRows.map(r => String(r[k] || '').length + 2), 12)
+      }));
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Assessment Results');
+
+      const classLabel = `Class_${selectedSection.class_number}_${selectedSection.section_name}`;
+      const examLabel = targetExams.length === 1 ? `_${targetExams[0].title.replace(/\s+/g, '_')}` : `_${targetExams.length}_Exams`;
+      const dateLabel = new Date().toISOString().slice(0, 10);
+      const fileName = `Assessment_Results_${classLabel}${examLabel}_${dateLabel}.xlsx`;
+
+      XLSX.writeFile(wb, fileName);
+    } catch (err: any) {
+      console.error('Failed to export to Excel:', err);
+      alert('Failed to export to Excel: ' + (err.message || 'Unknown error'));
+    } finally {
+      setExportingExcel(false);
+    }
   };
 
   if (loadingClasses) {
@@ -1569,6 +1710,27 @@ export function ClassMentorWorkspace() {
                 <div className="flex items-center gap-2.5">
                   <button
                     type="button"
+                    onClick={handleExportToExcel}
+                    disabled={exportingExcel || exams.length === 0}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-300 dark:border-emerald-700/80 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-semibold text-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
+                    title={selectedExamIds.size > 0 ? `Export ${selectedExamIds.size} selected exam(s) with student marks to Excel` : 'Export all exams with student marks to Excel'}
+                  >
+                    {exportingExcel ? (
+                      <Loader2 size={13} className="animate-spin text-emerald-600 dark:text-emerald-400" />
+                    ) : (
+                      <FileSpreadsheet size={13} className="text-emerald-600 dark:text-emerald-400" />
+                    )}
+                    <span>
+                      {exportingExcel
+                        ? 'Exporting...'
+                        : selectedExamIds.size > 0
+                        ? `Export Excel (${selectedExamIds.size})`
+                        : 'Export Excel'}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => selectedSection && loadExams(selectedSection.class_id, selectedSection.section_id)}
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-50 cursor-pointer"
                   >
@@ -1650,28 +1812,80 @@ export function ClassMentorWorkspace() {
                     </button>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 font-bold text-slate-600 dark:text-slate-300">
-                          <th className="p-3">EXAM TITLE</th>
-                          <th className="p-3">SUBJECT</th>
-                          <th className="p-3">EXAM DATE</th>
-                          <th className="p-3 text-right">EVALUATION SCALE</th>
-                          <th className="p-3 text-center">STUDENTS GRADED</th>
-                          <th className="p-3 text-center">CLASS AVERAGE</th>
-                          <th className="p-3 text-right">ACTIONS</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {exams.map(exam => (
-                          <tr key={exam.id} className="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                            <td className="p-3">
-                              <div className="font-bold text-slate-900 dark:text-white text-sm">{exam.title}</div>
-                              <span className="inline-block mt-0.5 px-2 py-0.2 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                                {exam.grading_system === 'CGPA' ? 'CGPA System' : exam.grading_system === 'GRADE' ? 'Letter Grade' : 'Marks System'}
-                              </span>
-                            </td>
+                  <div>
+                    {selectedExamIds.size > 0 && (
+                      <div className="mb-4 px-3.5 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <FileSpreadsheet size={15} className="text-blue-600 dark:text-blue-400" />
+                          <span>
+                            <strong>{selectedExamIds.size}</strong> of {exams.length} exam(s) selected for Excel export
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handleExportToExcel}
+                            disabled={exportingExcel}
+                            className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold cursor-pointer shadow-xs inline-flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                          >
+                            {exportingExcel ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                            <span>Download Excel (.xlsx)</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedExamIds(new Set())}
+                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium ml-1"
+                          >
+                            Clear Selection
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 font-bold text-slate-600 dark:text-slate-300">
+                            <th className="p-3 w-10 text-center">
+                              <input
+                                type="checkbox"
+                                checked={exams.length > 0 && selectedExamIds.size === exams.length}
+                                onChange={handleToggleSelectAllExams}
+                                className="w-4 h-4 rounded text-blue-600 cursor-pointer accent-blue-600 align-middle"
+                                title={selectedExamIds.size === exams.length ? 'Deselect all' : 'Select all exams'}
+                              />
+                            </th>
+                            <th className="p-3">EXAM TITLE</th>
+                            <th className="p-3">SUBJECT</th>
+                            <th className="p-3">EXAM DATE</th>
+                            <th className="p-3 text-right">EVALUATION SCALE</th>
+                            <th className="p-3 text-center">STUDENTS GRADED</th>
+                            <th className="p-3 text-center">CLASS AVERAGE</th>
+                            <th className="p-3 text-right">ACTIONS</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {exams.map(exam => (
+                            <tr
+                              key={exam.id}
+                              className={`border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors ${
+                                selectedExamIds.has(exam.id) ? 'bg-blue-50/40 dark:bg-blue-950/20' : ''
+                              }`}
+                            >
+                              <td className="p-3 w-10 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedExamIds.has(exam.id)}
+                                  onChange={() => handleToggleSelectExam(exam.id)}
+                                  className="w-4 h-4 rounded text-blue-600 cursor-pointer accent-blue-600 align-middle"
+                                  title={`Select ${exam.title} for export`}
+                                />
+                              </td>
+                              <td className="p-3">
+                                <div className="font-bold text-slate-900 dark:text-white text-sm">{exam.title}</div>
+                                <span className="inline-block mt-0.5 px-2 py-0.2 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                  {exam.grading_system === 'CGPA' ? 'CGPA System' : exam.grading_system === 'GRADE' ? 'Letter Grade' : 'Marks System'}
+                                </span>
+                              </td>
                             <td className="p-3 font-semibold text-slate-700 dark:text-slate-300">
                               {exam.subject_name || 'General'}
                             </td>
@@ -1725,7 +1939,8 @@ export function ClassMentorWorkspace() {
                       </tbody>
                     </table>
                   </div>
-                )}
+                </div>
+              )}
               </div>
             </div>
           )}
