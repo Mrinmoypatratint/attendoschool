@@ -1847,9 +1847,11 @@ export function ClassMentorWorkspace() {
                           <button
                             type="button"
                             onClick={() => setSelectedExamIds(new Set())}
-                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium ml-1"
+                            className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 !bg-white hover:!bg-slate-100 dark:!bg-slate-800 dark:hover:!bg-slate-700 !text-slate-700 dark:!text-slate-200 text-xs font-semibold cursor-pointer shadow-xs transition-colors inline-flex items-center gap-1"
+                            title="Clear exam selection"
                           >
-                            Clear Selection
+                            <X size={13} className="text-slate-500 dark:text-slate-400" />
+                            <span>Clear Selection</span>
                           </button>
                         </div>
                       </div>
