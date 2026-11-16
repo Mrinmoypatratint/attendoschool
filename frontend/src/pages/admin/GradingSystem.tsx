@@ -25,14 +25,16 @@ import {
   Layers,
   HelpCircle,
   Maximize2,
-  Minimize2
+  Minimize2,
+  SlidersHorizontal,
+  Bookmark
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../api';
 
 export type GradingBasisType = 'MARKS' | 'CGPA' | 'GRADE';
 
-export interface CustomGradeTier {
+export interface GradeRangeRule {
   id: string;
   grade: string;
   minScore: number;
@@ -68,26 +70,30 @@ export interface ExamGradingConfig {
   cgpaConfig?: {
     maxCgpa: number;
     passingCgpa: number;
-    scaleMultiplier: number; // e.g. 9.5 for CBSE to percentage
+    scaleMultiplier: number;
     formulaLabel?: string;
     creditWeighted: boolean;
   };
 
   // Grade Basis Configuration
   gradeConfig?: {
-    gradeTiers: CustomGradeTier[];
+    gradeTiers: GradeRangeRule[];
   };
 }
 
 export default function GradingSystem() {
   const { user } = useAuth();
   const schoolId = user?.schoolId || 'global';
-  const storageKey = `attendo_exam_grading_${schoolId}`;
+  const examsStorageKey = `attendo_exam_grading_${schoolId}`;
+  const rangesStorageKey = `attendo_school_grade_ranges_${schoolId}`;
+
+  // Top level active tab: Examinations vs School Grade Ranges
+  const [activeTab, setActiveTab] = useState<'EXAMS' | 'RANGES'>('EXAMS');
 
   // Exams state - strictly dynamically loaded from storage with NO hardcoded default data
   const [exams, setExams] = useState<ExamGradingConfig[]>(() => {
     try {
-      const stored = localStorage.getItem(storageKey);
+      const stored = localStorage.getItem(examsStorageKey);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) return parsed;
@@ -97,6 +103,41 @@ export default function GradingSystem() {
     }
     return [];
   });
+
+  // School Grade Ranges (e.g. 90-100 = A) - decided exclusively by the School Admin
+  const [schoolGradeRanges, setSchoolGradeRanges] = useState<GradeRangeRule[]>(() => {
+    try {
+      const stored = localStorage.getItem(rangesStorageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.warn('Failed to parse stored school grade ranges:', e);
+    }
+    return [];
+  });
+
+  // Sync to local storage
+  const saveExams = (updated: ExamGradingConfig[]) => {
+    setExams(updated);
+    try {
+      localStorage.setItem(examsStorageKey, JSON.stringify(updated));
+    } catch (e) {
+      console.error('Failed to save exam grading configurations:', e);
+    }
+  };
+
+  const saveSchoolGradeRanges = (updated: GradeRangeRule[]) => {
+    // Sort descending by minScore (e.g. 90-100 first, then 80-89, etc.)
+    const sorted = [...updated].sort((a, b) => b.minScore - a.minScore);
+    setSchoolGradeRanges(sorted);
+    try {
+      localStorage.setItem(rangesStorageKey, JSON.stringify(sorted));
+    } catch (e) {
+      console.error('Failed to save school grade ranges:', e);
+    }
+  };
 
   // Available school classes fetched dynamically
   const [availableClasses, setAvailableClasses] = useState<string[]>([]);
@@ -114,7 +155,6 @@ export default function GradingSystem() {
         }
       })
       .catch(() => {
-        // Fallback default list if API is unreachable
         if (isMounted) {
           setAvailableClasses([
             'All Classes',
@@ -127,17 +167,7 @@ export default function GradingSystem() {
     return () => { isMounted = false; };
   }, []);
 
-  // Sync to local storage
-  const saveExams = (updated: ExamGradingConfig[]) => {
-    setExams(updated);
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(updated));
-    } catch (e) {
-      console.error('Failed to save exam grading configurations:', e);
-    }
-  };
-
-  // Filtering & Search
+  // Filtering & Search for Exams
   const [searchQuery, setSearchQuery] = useState('');
   const [basisFilter, setBasisFilter] = useState<'ALL' | GradingBasisType>('ALL');
 
@@ -157,7 +187,107 @@ export default function GradingSystem() {
   const cgpaCount = useMemo(() => exams.filter(e => e.gradingType === 'CGPA').length, [exams]);
   const gradeCount = useMemo(() => exams.filter(e => e.gradingType === 'GRADE').length, [exams]);
 
-  // Modal State for Create / Edit Exam
+  // -------------------------------------------------------------
+  // GRADE RANGE RULE MODAL STATE (Decided by School Admin)
+  // -------------------------------------------------------------
+  const [isRangeModalOpen, setIsRangeModalOpen] = useState(false);
+  const [isRangeModalMaximized, setIsRangeModalMaximized] = useState(false);
+  const [editingRangeId, setEditingRangeId] = useState<string | null>(null);
+
+  const [rangeGrade, setRangeGrade] = useState('');
+  const [rangeMin, setRangeMin] = useState<number>(90);
+  const [rangeMax, setRangeMax] = useState<number>(100);
+  const [rangeGradePoint, setRangeGradePoint] = useState<number>(10);
+  const [rangeRemark, setRangeRemark] = useState('Outstanding Performance');
+  const [rangeIsPassing, setRangeIsPassing] = useState<boolean>(true);
+  const [rangeFormError, setRangeFormError] = useState<string | null>(null);
+
+  const handleOpenCreateRangeModal = () => {
+    setEditingRangeId(null);
+    setRangeGrade('A');
+    setRangeMin(90);
+    setRangeMax(100);
+    setRangeGradePoint(10);
+    setRangeRemark('Outstanding Performance');
+    setRangeIsPassing(true);
+    setRangeFormError(null);
+    setIsRangeModalMaximized(false);
+    setIsRangeModalOpen(true);
+  };
+
+  const handleOpenEditRangeModal = (rule: GradeRangeRule) => {
+    setEditingRangeId(rule.id);
+    setRangeGrade(rule.grade);
+    setRangeMin(rule.minScore);
+    setRangeMax(rule.maxScore);
+    setRangeGradePoint(rule.gradePoint ?? 0);
+    setRangeRemark(rule.remark);
+    setRangeIsPassing(rule.isPassing);
+    setRangeFormError(null);
+    setIsRangeModalMaximized(false);
+    setIsRangeModalOpen(true);
+  };
+
+  const handleDeleteRangeRule = (id: string, grade: string) => {
+    if (window.confirm(`Are you sure you want to delete the range for Grade "${grade}"?`)) {
+      saveSchoolGradeRanges(schoolGradeRanges.filter(r => r.id !== id));
+    }
+  };
+
+  const handleSaveRangeRule = (e: React.FormEvent) => {
+    e.preventDefault();
+    setRangeFormError(null);
+
+    if (!rangeGrade.trim()) {
+      setRangeFormError('Please enter a Grade Symbol (e.g. A, A+, B).');
+      return;
+    }
+    if (rangeMin < 0 || rangeMax > 100 || rangeMin > rangeMax) {
+      setRangeFormError('Invalid range. Minimum must be <= Maximum and both within 0 to 100.');
+      return;
+    }
+
+    const newRule: GradeRangeRule = {
+      id: editingRangeId || `range-${Date.now()}`,
+      grade: rangeGrade.trim(),
+      minScore: Number(rangeMin),
+      maxScore: Number(rangeMax),
+      gradePoint: Number(rangeGradePoint),
+      remark: rangeRemark.trim() || 'Evaluated',
+      isPassing: rangeIsPassing,
+      colorScheme: rangeIsPassing ? (rangeMin >= 80 ? 'emerald' : 'blue') : 'rose'
+    };
+
+    if (editingRangeId) {
+      saveSchoolGradeRanges(schoolGradeRanges.map(r => r.id === editingRangeId ? newRule : r));
+    } else {
+      saveSchoolGradeRanges([...schoolGradeRanges, newRule]);
+    }
+
+    setIsRangeModalOpen(false);
+  };
+
+  // Helper template starter if admin desires one-click base to edit
+  const handleLoadSampleRangeTemplate = () => {
+    if (schoolGradeRanges.length > 0) {
+      if (!window.confirm('This will replace your current grade ranges with an editable sample range scale (90-100: A, 80-89: B, etc.). Continue?')) {
+        return;
+      }
+    }
+    const sample: GradeRangeRule[] = [
+      { id: 'sample-1', grade: 'A', minScore: 90, maxScore: 100, gradePoint: 10, remark: 'Outstanding', isPassing: true, colorScheme: 'emerald' },
+      { id: 'sample-2', grade: 'B', minScore: 80, maxScore: 89, gradePoint: 8, remark: 'Very Good', isPassing: true, colorScheme: 'blue' },
+      { id: 'sample-3', grade: 'C', minScore: 70, maxScore: 79, gradePoint: 6, remark: 'Good', isPassing: true, colorScheme: 'indigo' },
+      { id: 'sample-4', grade: 'D', minScore: 60, maxScore: 69, gradePoint: 5, remark: 'Satisfactory', isPassing: true, colorScheme: 'amber' },
+      { id: 'sample-5', grade: 'E', minScore: 33, maxScore: 59, gradePoint: 4, remark: 'Marginal Pass', isPassing: true, colorScheme: 'slate' },
+      { id: 'sample-6', grade: 'F', minScore: 0, maxScore: 32, gradePoint: 0, remark: 'Needs Improvement / Fail', isPassing: false, colorScheme: 'rose' }
+    ];
+    saveSchoolGradeRanges(sample);
+  };
+
+  // -------------------------------------------------------------
+  // EXAM MODAL STATE (Create / Edit Exam & Its Grading System)
+  // -------------------------------------------------------------
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isModalMaximized, setIsModalMaximized] = useState(false);
   const [editingExamId, setEditingExamId] = useState<string | null>(null);
@@ -184,8 +314,8 @@ export default function GradingSystem() {
   const [scaleMultiplier, setScaleMultiplier] = useState<number>(9.5);
   const [creditWeighted, setCreditWeighted] = useState<boolean>(false);
 
-  // Grade Basis Form Fields (Dynamic user-created tiers, starts clean)
-  const [gradeTiers, setGradeTiers] = useState<CustomGradeTier[]>([]);
+  // Grade Basis Form Fields (Dynamic user-created tiers)
+  const [gradeTiers, setGradeTiers] = useState<GradeRangeRule[]>([]);
 
   // Open Create Modal
   const handleOpenCreateModal = () => {
@@ -211,14 +341,18 @@ export default function GradingSystem() {
     setScaleMultiplier(9.5);
     setCreditWeighted(false);
 
-    // Dynamic initial clean grade tiers if user switches to Grade
-    setGradeTiers([
-      { id: 'tier-1', grade: 'A', minScore: 80, maxScore: 100, gradePoint: 10, remark: 'Outstanding', isPassing: true, colorScheme: 'emerald' },
-      { id: 'tier-2', grade: 'B', minScore: 60, maxScore: 79, gradePoint: 8, remark: 'Good', isPassing: true, colorScheme: 'blue' },
-      { id: 'tier-3', grade: 'C', minScore: 40, maxScore: 59, gradePoint: 6, remark: 'Satisfactory', isPassing: true, colorScheme: 'indigo' },
-      { id: 'tier-4', grade: 'D', minScore: 33, maxScore: 39, gradePoint: 4, remark: 'Marginal Pass', isPassing: true, colorScheme: 'amber' },
-      { id: 'tier-5', grade: 'F', minScore: 0, maxScore: 32, gradePoint: 0, remark: 'Needs Improvement', isPassing: false, colorScheme: 'rose' }
-    ]);
+    // If school already has defined grade ranges, adopt them as initial tiers!
+    if (schoolGradeRanges.length > 0) {
+      setGradeTiers([...schoolGradeRanges]);
+    } else {
+      setGradeTiers([
+        { id: 'tier-1', grade: 'A', minScore: 90, maxScore: 100, gradePoint: 10, remark: 'Outstanding', isPassing: true, colorScheme: 'emerald' },
+        { id: 'tier-2', grade: 'B', minScore: 80, maxScore: 89, gradePoint: 8, remark: 'Very Good', isPassing: true, colorScheme: 'blue' },
+        { id: 'tier-3', grade: 'C', minScore: 60, maxScore: 79, gradePoint: 6, remark: 'Satisfactory', isPassing: true, colorScheme: 'indigo' },
+        { id: 'tier-4', grade: 'D', minScore: 33, maxScore: 59, gradePoint: 4, remark: 'Pass', isPassing: true, colorScheme: 'amber' },
+        { id: 'tier-5', grade: 'F', minScore: 0, maxScore: 32, gradePoint: 0, remark: 'Needs Improvement', isPassing: false, colorScheme: 'rose' }
+      ]);
+    }
 
     setIsModalMaximized(false);
     setIsModalOpen(true);
@@ -252,7 +386,7 @@ export default function GradingSystem() {
     if (exam.gradeConfig) {
       setGradeTiers(exam.gradeConfig.gradeTiers || []);
     } else {
-      setGradeTiers([]);
+      setGradeTiers(schoolGradeRanges.length > 0 ? [...schoolGradeRanges] : []);
     }
 
     setIsModalOpen(true);
@@ -267,7 +401,7 @@ export default function GradingSystem() {
 
   // Add a new tier in Grade Basis
   const handleAddTierRow = () => {
-    const newTier: CustomGradeTier = {
+    const newTier: GradeRangeRule = {
       id: `tier-${Date.now()}`,
       grade: 'New Grade',
       minScore: 0,
@@ -286,7 +420,7 @@ export default function GradingSystem() {
   };
 
   // Update tier row field
-  const handleUpdateTierRow = (id: string, field: keyof CustomGradeTier, val: any) => {
+  const handleUpdateTierRow = (id: string, field: keyof GradeRangeRule, val: any) => {
     setGradeTiers(gradeTiers.map(t => (t.id === id ? { ...t, [field]: val } : t)));
   };
 
@@ -322,7 +456,7 @@ export default function GradingSystem() {
       }
     } else if (gradingType === 'GRADE') {
       if (gradeTiers.length === 0) {
-        setFormError('Please add at least one Grade Tier for this exam.');
+        setFormError('Please add at least one Grade Range Tier for this exam.');
         return;
       }
       for (const t of gradeTiers) {
@@ -396,6 +530,9 @@ export default function GradingSystem() {
       const passed = score >= passM;
       const graceNeeded = (!passed && gAllowed && gMax && (passM - score) <= gMax && (passM - score) > 0) ? (passM - score) : 0;
 
+      // Also map to School Grade Range if configured by school admin!
+      const matchedRange = schoolGradeRanges.find(r => pct >= r.minScore && pct <= r.maxScore);
+
       return {
         type: 'MARKS',
         score,
@@ -404,6 +541,8 @@ export default function GradingSystem() {
         passed: passed || graceNeeded > 0,
         eligibleWithGrace: graceNeeded > 0,
         graceMarksApplied: graceNeeded,
+        awardedGrade: matchedRange?.grade || null,
+        rangeRemark: matchedRange?.remark || null,
         verdict: passed ? 'PASSED' : (graceNeeded > 0 ? `PASSED WITH ${graceNeeded} GRACE MARKS` : 'FAILED'),
         remark: passed ? 'Candidate meets the minimum passing threshold.' : (graceNeeded > 0 ? 'Eligible for passing via allowable grace marks.' : 'Candidate scored below the passing threshold.')
       };
@@ -428,7 +567,6 @@ export default function GradingSystem() {
 
     if (testingExam.gradingType === 'GRADE' && testingExam.gradeConfig) {
       const tiers = testingExam.gradeConfig.gradeTiers || [];
-      // Find matching tier
       const matched = tiers.find(t => score >= t.minScore && score <= t.maxScore) ||
         (score > 100 ? tiers[0] : tiers[tiers.length - 1]);
 
@@ -444,7 +582,7 @@ export default function GradingSystem() {
     }
 
     return null;
-  }, [testingExam, testScoreInput]);
+  }, [testingExam, testScoreInput, schoolGradeRanges]);
 
   return (
     <div style={{ padding: '24px 24px 60px', maxWidth: '1440px', margin: '0 auto' }}>
@@ -487,37 +625,61 @@ export default function GradingSystem() {
                 Grading System & Examination Evaluation
               </h1>
               <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary, #64748b)' }}>
-                Configure academic exams and choose their evaluation basis: Marks Basis, CGPA Basis, or Grade Basis.
+                Create exams, configure their evaluation basis (Marks, CGPA, Grade), and decide custom grading ranges (e.g. 90–100 = Grade A).
               </p>
             </div>
           </div>
         </div>
 
-        {/* Primary Action Button */}
-        <button
-          onClick={handleOpenCreateModal}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            backgroundColor: '#e11d48',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: 8,
-            padding: '10px 18px',
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: 'pointer',
-            boxShadow: '0 2px 4px rgba(225, 29, 72, 0.25)',
-            transition: 'background-color 0.2s'
-          }}
-        >
-          <Plus size={18} />
-          Create Exam & Grading System
-        </button>
+        {/* Primary Action Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            onClick={handleOpenCreateRangeModal}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              backgroundColor: '#ffffff',
+              color: '#0f172a',
+              border: '1px solid var(--border, #cbd5e1)',
+              borderRadius: 8,
+              padding: '10px 16px',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              transition: 'all 0.15s'
+            }}
+          >
+            <SlidersHorizontal size={17} color="#e11d48" />
+            + Add Grade Range Rule
+          </button>
+
+          <button
+            onClick={handleOpenCreateModal}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              backgroundColor: '#e11d48',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: 8,
+              padding: '10px 18px',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: '0 2px 4px rgba(225, 29, 72, 0.25)',
+              transition: 'background-color 0.2s'
+            }}
+          >
+            <Plus size={18} />
+            Create Exam & Grading System
+          </button>
+        </div>
       </div>
 
-      {/* Dynamic Summary Cards (Computed strictly from configured exams) */}
+      {/* Dynamic Summary Cards */}
       <div
         style={{
           display: 'grid',
@@ -541,6 +703,19 @@ export default function GradingSystem() {
 
         <div style={{ backgroundColor: 'var(--bg-card, #ffffff)', padding: 18, borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#e11d48', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              School Grade Ranges
+            </span>
+            <SlidersHorizontal size={18} color="#e11d48" />
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: '#be123c' }}>{schoolGradeRanges.length}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748b)', marginTop: 4 }}>
+            {schoolGradeRanges.length === 0 ? 'Decided by school admin' : `Decided: ${schoolGradeRanges[0]?.grade || ''} to ${schoolGradeRanges[schoolGradeRanges.length - 1]?.grade || ''}`}
+          </div>
+        </div>
+
+        <div style={{ backgroundColor: 'var(--bg-card, #ffffff)', padding: 18, borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: '#2563eb', textTransform: 'uppercase', letterSpacing: 0.5 }}>
               Marks-Based Exams
             </span>
@@ -554,407 +729,857 @@ export default function GradingSystem() {
 
         <div style={{ backgroundColor: 'var(--bg-card, #ffffff)', padding: 18, borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              CGPA-Based Exams
-            </span>
-            <Scale size={18} color="#7c3aed" />
-          </div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: '#6d28d9' }}>{cgpaCount}</div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748b)', marginTop: 4 }}>
-            Evaluated on 10.0 or 4.0 point scale with multipliers
-          </div>
-        </div>
-
-        <div style={{ backgroundColor: 'var(--bg-card, #ffffff)', padding: 18, borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: '#059669', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              Grade-Based Exams
+              CGPA & Grade Schemes
             </span>
-            <Award size={18} color="#059669" />
+            <Scale size={18} color="#059669" />
           </div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: '#047857' }}>{gradeCount}</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: '#047857' }}>{cgpaCount + gradeCount}</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748b)', marginTop: 4 }}>
-            Evaluated via custom defined letter grade brackets
+            {cgpaCount} CGPA basis · {gradeCount} Grade basis
           </div>
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 12,
-          backgroundColor: 'var(--bg-card, #ffffff)',
-          padding: '14px 18px',
-          borderRadius: 12,
-          border: '1px solid var(--border, #e2e8f0)',
-          marginBottom: 20
-        }}
-      >
-        {/* Search */}
-        <div style={{ position: 'relative', flex: '1 1 280px', maxWidth: 400 }}>
-          <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-          <input
-            type="text"
-            placeholder="Search by exam title, code, or class..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '8px 12px 8px 36px',
-              fontSize: 13,
-              borderRadius: 8,
-              border: '1px solid var(--border, #cbd5e1)',
-              backgroundColor: 'var(--bg-input, #f8fafc)',
-              color: 'var(--text-primary, #0f172a)',
-              outline: 'none'
-            }}
-          />
-        </div>
+      {/* MAIN VIEW NAVIGATION TABS */}
+      <div style={{ display: 'flex', gap: 12, borderBottom: '2px solid var(--border, #e2e8f0)', marginBottom: 20 }}>
+        <button
+          onClick={() => setActiveTab('EXAMS')}
+          style={{
+            padding: '10px 18px',
+            fontSize: 14,
+            fontWeight: 700,
+            border: 'none',
+            borderBottom: activeTab === 'EXAMS' ? '3px solid #e11d48' : '3px solid transparent',
+            backgroundColor: 'transparent',
+            color: activeTab === 'EXAMS' ? '#e11d48' : 'var(--text-secondary, #64748b)',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s'
+          }}
+        >
+          <Award size={18} />
+          Examinations & Evaluations ({exams.length})
+        </button>
 
-        {/* Filter Pills */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: 'var(--text-secondary, #64748b)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <Filter size={14} /> Filter System:
-          </span>
-          {(['ALL', 'MARKS', 'CGPA', 'GRADE'] as const).map(f => {
-            const labelMap = {
-              ALL: 'All Exams',
-              MARKS: 'Marks Basis',
-              CGPA: 'CGPA Basis',
-              GRADE: 'Grade Basis'
-            };
-            const active = basisFilter === f;
-            return (
-              <button
-                key={f}
-                onClick={() => setBasisFilter(f)}
+        <button
+          onClick={() => setActiveTab('RANGES')}
+          style={{
+            padding: '10px 18px',
+            fontSize: 14,
+            fontWeight: 700,
+            border: 'none',
+            borderBottom: activeTab === 'RANGES' ? '3px solid #e11d48' : '3px solid transparent',
+            backgroundColor: 'transparent',
+            color: activeTab === 'RANGES' ? '#e11d48' : 'var(--text-secondary, #64748b)',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: -2,
+            transition: 'all 0.15s'
+          }}
+        >
+          <SlidersHorizontal size={18} />
+          School Grade Ranges & Boundaries ({schoolGradeRanges.length})
+        </button>
+      </div>
+
+      {/* TAB 1: EXAMINATIONS & EVALUATIONS */}
+      {activeTab === 'EXAMS' && (
+        <>
+          {/* Filter and Search Bar */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 12,
+              backgroundColor: 'var(--bg-card, #ffffff)',
+              padding: '14px 18px',
+              borderRadius: 12,
+              border: '1px solid var(--border, #e2e8f0)',
+              marginBottom: 20
+            }}
+          >
+            {/* Search */}
+            <div style={{ position: 'relative', flex: '1 1 280px', maxWidth: 400 }}>
+              <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <input
+                type="text"
+                placeholder="Search by exam title, code, or class..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
                 style={{
-                  padding: '6px 12px',
-                  borderRadius: 6,
-                  fontSize: 12,
-                  fontWeight: active ? 600 : 500,
-                  border: active ? '1px solid #e11d48' : '1px solid var(--border, #cbd5e1)',
-                  backgroundColor: active ? 'rgba(225, 29, 72, 0.08)' : 'transparent',
-                  color: active ? '#e11d48' : 'var(--text-secondary, #64748b)',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s'
+                  width: '100%',
+                  padding: '8px 12px 8px 36px',
+                  fontSize: 13,
+                  borderRadius: 8,
+                  border: '1px solid var(--border, #cbd5e1)',
+                  backgroundColor: 'var(--bg-input, #f8fafc)',
+                  color: 'var(--text-primary, #0f172a)',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            {/* Filter Pills */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary, #64748b)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <Filter size={14} /> Filter System:
+              </span>
+              {(['ALL', 'MARKS', 'CGPA', 'GRADE'] as const).map(f => {
+                const labelMap = {
+                  ALL: 'All Exams',
+                  MARKS: 'Marks Basis',
+                  CGPA: 'CGPA Basis',
+                  GRADE: 'Grade Basis'
+                };
+                const active = basisFilter === f;
+                return (
+                  <button
+                    key={f}
+                    onClick={() => setBasisFilter(f)}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: active ? 600 : 500,
+                      border: active ? '1px solid #e11d48' : '1px solid var(--border, #cbd5e1)',
+                      backgroundColor: active ? 'rgba(225, 29, 72, 0.08)' : 'transparent',
+                      color: active ? '#e11d48' : 'var(--text-secondary, #64748b)',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    {labelMap[f]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Main List / Table of Exam Grading Systems */}
+          {filteredExams.length === 0 ? (
+            <div
+              style={{
+                backgroundColor: 'var(--bg-card, #ffffff)',
+                borderRadius: 12,
+                border: '1px dashed var(--border, #cbd5e1)',
+                padding: '60px 20px',
+                textAlign: 'center'
+              }}
+            >
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 28,
+                  backgroundColor: 'rgba(225, 29, 72, 0.08)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#e11d48',
+                  marginBottom: 16
                 }}
               >
-                {labelMap[f]}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+                <Award size={30} />
+              </div>
+              <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: 'var(--text-primary, #0f172a)' }}>
+                {exams.length === 0 ? 'No Exam Grading Systems Configured' : 'No matching exams found'}
+              </h3>
+              <p style={{ margin: '0 auto 20px', fontSize: 13, color: 'var(--text-secondary, #64748b)', maxWidth: 460 }}>
+                {exams.length === 0
+                  ? 'Create your first exam to set up its evaluation system: Marks basis, CGPA basis, or custom Grade brackets.'
+                  : 'Try adjusting your search query or grading filter above.'}
+              </p>
+              {exams.length === 0 ? (
+                <button
+                  onClick={handleOpenCreateModal}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    backgroundColor: '#e11d48',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '10px 20px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Plus size={16} /> Create Exam & Grading System
+                </button>
+              ) : (
+                <button
+                  onClick={() => { setSearchQuery(''); setBasisFilter('ALL'); }}
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: 12,
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    backgroundColor: 'transparent',
+                    color: 'var(--text-primary, #0f172a)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
+              {filteredExams.map(exam => {
+                const isMarks = exam.gradingType === 'MARKS';
+                const isCgpa = exam.gradingType === 'CGPA';
+                const isGrade = exam.gradingType === 'GRADE';
 
-      {/* Main List / Table of Exam Grading Systems */}
-      {filteredExams.length === 0 ? (
+                return (
+                  <div
+                    key={exam.id}
+                    style={{
+                      backgroundColor: 'var(--bg-card, #ffffff)',
+                      borderRadius: 12,
+                      border: '1px solid var(--border, #e2e8f0)',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                      padding: 20,
+                      transition: 'box-shadow 0.2s'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div
+                          style={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: 10,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: isMarks ? 'rgba(37, 99, 235, 0.1)' : isCgpa ? 'rgba(124, 58, 237, 0.1)' : 'rgba(5, 150, 105, 0.1)',
+                            color: isMarks ? '#2563eb' : isCgpa ? '#7c3aed' : '#059669'
+                          }}
+                        >
+                          {isMarks && <Percent size={20} />}
+                          {isCgpa && <Scale size={20} />}
+                          {isGrade && <Award size={20} />}
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #0f172a)' }}>
+                              {exam.examTitle}
+                            </h3>
+                            <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4, backgroundColor: '#f1f5f9', color: '#475569' }}>
+                              {exam.examCode}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 11,
+                                fontWeight: 600,
+                                padding: '2px 8px',
+                                borderRadius: 4,
+                                backgroundColor: exam.status === 'ACTIVE' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(148, 163, 184, 0.15)',
+                                color: exam.status === 'ACTIVE' ? '#059669' : '#64748b'
+                              }}
+                            >
+                              {exam.status}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748b)', marginTop: 4 }}>
+                            Session: <strong>{exam.academicSession}</strong> · Target: <strong>{exam.applicableClasses}</strong>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions for this Exam */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <button
+                          onClick={() => {
+                            setTestingExam(exam);
+                            setTestScoreInput(isMarks ? Math.round((exam.marksConfig?.totalMarks || 100) * 0.75) : isCgpa ? 7.8 : 78);
+                          }}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '6px 12px',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            borderRadius: 6,
+                            border: '1px solid #cbd5e1',
+                            backgroundColor: '#f8fafc',
+                            color: '#0f172a',
+                            cursor: 'pointer'
+                          }}
+                          title="Test live marks evaluation"
+                        >
+                          <Calculator size={14} color="#e11d48" /> Test Evaluator
+                        </button>
+
+                        <button
+                          onClick={() => handleOpenEditModal(exam)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '6px 12px',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            borderRadius: 6,
+                            border: '1px solid #cbd5e1',
+                            backgroundColor: '#ffffff',
+                            color: '#334155',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Edit2 size={14} /> Edit
+                        </button>
+
+                        <button
+                          onClick={() => handleDeleteExam(exam.id, exam.examTitle)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '6px 10px',
+                            borderRadius: 6,
+                            border: '1px solid #fecdd3',
+                            backgroundColor: '#fff1f2',
+                            color: '#e11d48',
+                            cursor: 'pointer'
+                          }}
+                          title="Delete Exam Grading System"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Grading Configuration Breakdown Card */}
+                    <div
+                      style={{
+                        backgroundColor: 'var(--bg-card-sub, #f8fafc)',
+                        borderRadius: 8,
+                        padding: 14,
+                        border: '1px solid var(--border, #e2e8f0)',
+                        fontSize: 13
+                      }}
+                    >
+                      {isMarks && exam.marksConfig && (
+                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 24 }}>
+                          <div>
+                            <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>System Type</span>
+                            <div style={{ fontWeight: 600, color: '#2563eb' }}>Marks-Based Evaluation</div>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Total Marks</span>
+                            <div style={{ fontWeight: 700, color: '#0f172a' }}>{exam.marksConfig.totalMarks} Marks</div>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Passing Cutoff</span>
+                            <div style={{ fontWeight: 700, color: '#059669' }}>
+                              {exam.marksConfig.passingMarks} Marks ({((exam.marksConfig.passingMarks / exam.marksConfig.totalMarks) * 100).toFixed(0)}%)
+                            </div>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Grace Marks</span>
+                            <div style={{ color: '#475569' }}>
+                              {exam.marksConfig.allowGraceMarks ? `Allowed (Up to ${exam.marksConfig.maxGraceMarks} marks)` : 'Not Allowed'}
+                            </div>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Percentage Output</span>
+                            <div style={{ color: '#475569' }}>{exam.marksConfig.displayPercentage ? 'Included on marksheets' : 'Marks only'}</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {isCgpa && exam.cgpaConfig && (
+                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 24 }}>
+                          <div>
+                            <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>System Type</span>
+                            <div style={{ fontWeight: 600, color: '#7c3aed' }}>Cumulative Grade Point Average (CGPA)</div>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Maximum Scale</span>
+                            <div style={{ fontWeight: 700, color: '#0f172a' }}>{exam.cgpaConfig.maxCgpa.toFixed(1)} CGPA Scale</div>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Passing CGPA</span>
+                            <div style={{ fontWeight: 700, color: '#059669' }}>Min. {exam.cgpaConfig.passingCgpa.toFixed(1)} CGPA</div>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Multiplier</span>
+                            <div style={{ color: '#475569' }}>CGPA × {exam.cgpaConfig.scaleMultiplier} = Percentage %</div>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Credit Weighting</span>
+                            <div style={{ color: '#475569' }}>{exam.cgpaConfig.creditWeighted ? 'Credit Hours Weighted' : 'Direct Subject Average'}</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {isGrade && exam.gradeConfig && (
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                            <div>
+                              <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>System Type: </span>
+                              <span style={{ fontWeight: 600, color: '#059669' }}>
+                                Grade-Based Evaluation ({exam.gradeConfig.gradeTiers?.length || 0} Defined Grade Tiers)
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Grade Tiers Mini Grid */}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                            {(exam.gradeConfig.gradeTiers || []).map(tier => (
+                              <div
+                                key={tier.id}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 8,
+                                  padding: '6px 12px',
+                                  borderRadius: 6,
+                                  backgroundColor: '#ffffff',
+                                  border: '1px solid #cbd5e1',
+                                  fontSize: 12
+                                }}
+                              >
+                                <span style={{ fontWeight: 700, color: tier.isPassing ? '#059669' : '#e11d48' }}>
+                                  {tier.grade}
+                                </span>
+                                <span style={{ color: '#64748b' }}>
+                                  ({tier.minScore}% - {tier.maxScore}%)
+                                </span>
+                                <span style={{ fontSize: 11, color: '#475569' }}>{tier.remark}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* TAB 2: SCHOOL GRADE RANGES (DECIDED BY SCHOOL ADMIN) */}
+      {activeTab === 'RANGES' && (
+        <div style={{ backgroundColor: 'var(--bg-card, #ffffff)', borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', padding: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          {/* Header Info Banner */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 16,
+              marginBottom: 20,
+              padding: '14px 18px',
+              borderRadius: 10,
+              backgroundColor: 'rgba(225, 29, 72, 0.04)',
+              border: '1px solid rgba(225, 29, 72, 0.15)'
+            }}
+          >
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#9f1239', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Bookmark size={18} />
+                School Admin Grade Range Configuration
+              </div>
+              <div style={{ fontSize: 12.5, color: '#4c0519', marginTop: 4 }}>
+                Decide the percentage score range for your school's grading system (e.g. <strong>90% – 100% = Grade A</strong>, <strong>80% – 89% = Grade B</strong>). Only school administrators can set and modify these ranges.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              {schoolGradeRanges.length === 0 && (
+                <button
+                  onClick={handleLoadSampleRangeTemplate}
+                  style={{
+                    padding: '8px 14px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    borderRadius: 6,
+                    border: '1px solid #cbd5e1',
+                    backgroundColor: '#ffffff',
+                    color: '#334155',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Load Common Starting Scale
+                </button>
+              )}
+              <button
+                onClick={handleOpenCreateRangeModal}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 16px',
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  border: 'none',
+                  backgroundColor: '#e11d48',
+                  color: '#ffffff',
+                  cursor: 'pointer'
+                }}
+              >
+                <Plus size={16} /> Add Grade Range Rule
+              </button>
+            </div>
+          </div>
+
+          {/* Visual Range Spectrum Bar */}
+          {schoolGradeRanges.length > 0 && (
+            <div style={{ marginBottom: 24, padding: 16, borderRadius: 8, backgroundColor: 'var(--bg-card-sub, #f8fafc)', border: '1px solid var(--border, #e2e8f0)' }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Active Score Spectrum (0% to 100%)
+              </div>
+              <div style={{ display: 'flex', height: 28, borderRadius: 6, overflow: 'hidden', border: '1px solid #cbd5e1' }}>
+                {schoolGradeRanges.map((r, idx) => {
+                  const widthPct = Math.max(4, r.maxScore - r.minScore + 1);
+                  const colors = [
+                    '#10b981', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#d97706', '#ef4444'
+                  ];
+                  const bg = colors[idx % colors.length];
+                  return (
+                    <div
+                      key={r.id}
+                      style={{
+                        width: `${widthPct}%`,
+                        backgroundColor: bg,
+                        color: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        borderRight: '1px solid rgba(255,255,255,0.4)',
+                        textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                        overflow: 'hidden',
+                        whiteSpace: 'nowrap'
+                      }}
+                      title={`${r.grade}: ${r.minScore}% - ${r.maxScore}% (${r.remark})`}
+                    >
+                      {r.grade} ({r.minScore}-{r.maxScore}%)
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Ranges Table or Empty State */}
+          {schoolGradeRanges.length === 0 ? (
+            <div style={{ padding: '60px 20px', textAlign: 'center', border: '1px dashed #cbd5e1', borderRadius: 10 }}>
+              <div
+                style={{
+                  width: 50,
+                  height: 50,
+                  borderRadius: 25,
+                  backgroundColor: 'rgba(225, 29, 72, 0.08)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#e11d48',
+                  marginBottom: 14
+                }}
+              >
+                <SlidersHorizontal size={26} />
+              </div>
+              <h3 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #0f172a)' }}>
+                No Grade Ranges Decided Yet
+              </h3>
+              <p style={{ margin: '0 auto 18px', fontSize: 13, color: 'var(--text-secondary, #64748b)', maxWidth: 460 }}>
+                As the school administrator, you decide the grading ranges (e.g. if a student scores between <strong>90 and 100</strong>, their grade will be <strong>A</strong>). Click below to create your school's first range rule.
+              </p>
+              <button
+                onClick={handleOpenCreateRangeModal}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '9px 18px',
+                  borderRadius: 6,
+                  border: 'none',
+                  backgroundColor: '#e11d48',
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer'
+                }}
+              >
+                <Plus size={16} /> Add Grade Range Rule
+              </button>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid var(--border, #e2e8f0)', backgroundColor: 'var(--bg-card-sub, #f8fafc)' }}>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>GRADE</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>SCORE / PERCENTAGE RANGE</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>GRADE POINT</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>QUALITATIVE REMARK</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>RESULT STATUS</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {schoolGradeRanges.map(rule => (
+                    <tr key={rule.id} style={{ borderBottom: '1px solid var(--border, #e2e8f0)' }}>
+                      <td style={{ padding: '14px 16px' }}>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '3px 10px',
+                            borderRadius: 6,
+                            fontWeight: 800,
+                            fontSize: 13,
+                            backgroundColor: rule.isPassing ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                            color: rule.isPassing ? '#059669' : '#dc2626'
+                          }}
+                        >
+                          {rule.grade}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px', fontWeight: 700, color: '#0f172a' }}>
+                        {rule.minScore}% &nbsp;—&nbsp; {rule.maxScore}%
+                      </td>
+                      <td style={{ padding: '14px 16px', color: '#334155', fontWeight: 600 }}>
+                        {rule.gradePoint !== undefined ? rule.gradePoint.toFixed(1) : '—'}
+                      </td>
+                      <td style={{ padding: '14px 16px', color: '#475569' }}>
+                        {rule.remark}
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: 4,
+                            backgroundColor: rule.isPassing ? '#dcfce7' : '#fee2e2',
+                            color: rule.isPassing ? '#15803d' : '#b91c1c'
+                          }}
+                        >
+                          {rule.isPassing ? 'PASS' : 'FAIL'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: 6 }}>
+                          <button
+                            onClick={() => handleOpenEditRangeModal(rule)}
+                            style={{ padding: '5px 10px', borderRadius: 4, border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', cursor: 'pointer' }}
+                            title="Edit Range Rule"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteRangeRule(rule.id, rule.grade)}
+                            style={{ padding: '5px 10px', borderRadius: 4, border: '1px solid #fecdd3', backgroundColor: '#fff1f2', color: '#e11d48', cursor: 'pointer' }}
+                            title="Delete Range Rule"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MODAL: ADD / EDIT GRADE RANGE RULE (DECIDED BY SCHOOL ADMIN) */}
+      {isRangeModalOpen && (
         <div
           style={{
-            backgroundColor: 'var(--bg-card, #ffffff)',
-            borderRadius: 12,
-            border: '1px dashed var(--border, #cbd5e1)',
-            padding: '60px 20px',
-            textAlign: 'center'
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(3px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: isRangeModalMaximized ? 0 : 20
           }}
         >
           <div
             style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              backgroundColor: 'rgba(225, 29, 72, 0.08)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#e11d48',
-              marginBottom: 16
+              backgroundColor: 'var(--bg-card, #ffffff)',
+              borderRadius: isRangeModalMaximized ? 0 : 14,
+              width: isRangeModalMaximized ? '100vw' : '100%',
+              maxWidth: isRangeModalMaximized ? '100vw' : 540,
+              height: isRangeModalMaximized ? '100vh' : 'auto',
+              maxHeight: isRangeModalMaximized ? '100vh' : '90vh',
+              overflowY: 'auto',
+              boxShadow: isRangeModalMaximized ? 'none' : '0 20px 25px -5px rgba(0,0,0,0.2)',
+              border: isRangeModalMaximized ? 'none' : '1px solid var(--border, #e2e8f0)',
+              padding: isRangeModalMaximized ? '28px 36px 40px' : 24,
+              transition: 'all 0.2s ease-in-out'
             }}
           >
-            <Award size={30} />
-          </div>
-          <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: 'var(--text-primary, #0f172a)' }}>
-            {exams.length === 0 ? 'No Exam Grading Systems Configured' : 'No matching exams found'}
-          </h3>
-          <p style={{ margin: '0 auto 20px', fontSize: 13, color: 'var(--text-secondary, #64748b)', maxWidth: 460 }}>
-            {exams.length === 0
-              ? 'Create your first exam to set up its evaluation system: Marks basis, CGPA basis, or custom Grade brackets.'
-              : 'Try adjusting your search query or grading filter above.'}
-          </p>
-          {exams.length === 0 ? (
-            <button
-              onClick={handleOpenCreateModal}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                backgroundColor: '#e11d48',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: 8,
-                padding: '10px 20px',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              <Plus size={16} /> Create Exam & Grading System
-            </button>
-          ) : (
-            <button
-              onClick={() => { setSearchQuery(''); setBasisFilter('ALL'); }}
-              style={{
-                padding: '8px 16px',
-                fontSize: 12,
-                borderRadius: 6,
-                border: '1px solid var(--border, #cbd5e1)',
-                backgroundColor: 'transparent',
-                color: 'var(--text-primary, #0f172a)',
-                cursor: 'pointer'
-              }}
-            >
-              Clear Filters
-            </button>
-          )}
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
-          {filteredExams.map(exam => {
-            const isMarks = exam.gradingType === 'MARKS';
-            const isCgpa = exam.gradingType === 'CGPA';
-            const isGrade = exam.gradingType === 'GRADE';
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, borderBottom: '1px solid var(--border, #e2e8f0)', paddingBottom: 12 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #0f172a)' }}>
+                  {editingRangeId ? 'Edit Grade Range Rule' : 'Add Grade Range Rule'}
+                </h3>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary, #64748b)' }}>
+                  Decide the score boundary (e.g. 90 to 100 = Grade A).
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => setIsRangeModalMaximized(prev => !prev)}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b', padding: 6, borderRadius: 6 }}
+                  title={isRangeModalMaximized ? 'Restore Down' : 'Maximize'}
+                >
+                  {isRangeModalMaximized ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsRangeModalOpen(false)}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b', padding: 6, borderRadius: 6 }}
+                  title="Close"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
 
-            return (
-              <div
-                key={exam.id}
-                style={{
-                  backgroundColor: 'var(--bg-card, #ffffff)',
-                  borderRadius: 12,
-                  border: '1px solid var(--border, #e2e8f0)',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                  padding: 20,
-                  transition: 'box-shadow 0.2s'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div
-                      style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 10,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: isMarks ? 'rgba(37, 99, 235, 0.1)' : isCgpa ? 'rgba(124, 58, 237, 0.1)' : 'rgba(5, 150, 105, 0.1)',
-                        color: isMarks ? '#2563eb' : isCgpa ? '#7c3aed' : '#059669'
-                      }}
-                    >
-                      {isMarks && <Percent size={20} />}
-                      {isCgpa && <Scale size={20} />}
-                      {isGrade && <Award size={20} />}
-                    </div>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #0f172a)' }}>
-                          {exam.examTitle}
-                        </h3>
-                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4, backgroundColor: '#f1f5f9', color: '#475569' }}>
-                          {exam.examCode}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 600,
-                            padding: '2px 8px',
-                            borderRadius: 4,
-                            backgroundColor: exam.status === 'ACTIVE' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(148, 163, 184, 0.15)',
-                            color: exam.status === 'ACTIVE' ? '#059669' : '#64748b'
-                          }}
-                        >
-                          {exam.status}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748b)', marginTop: 4 }}>
-                        Session: <strong>{exam.academicSession}</strong> · Target: <strong>{exam.applicableClasses}</strong>
-                      </div>
-                    </div>
-                  </div>
+            {rangeFormError && (
+              <div style={{ padding: '10px 14px', borderRadius: 8, backgroundColor: '#fff1f2', border: '1px solid #fecdd3', color: '#e11d48', fontSize: 13, marginBottom: 16 }}>
+                <AlertTriangle size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} /> {rangeFormError}
+              </div>
+            )}
 
-                  {/* Actions for this Exam */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <button
-                      onClick={() => {
-                        setTestingExam(exam);
-                        setTestScoreInput(isMarks ? Math.round((exam.marksConfig?.totalMarks || 100) * 0.75) : isCgpa ? 7.8 : 78);
-                      }}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        padding: '6px 12px',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        borderRadius: 6,
-                        border: '1px solid #cbd5e1',
-                        backgroundColor: '#f8fafc',
-                        color: '#0f172a',
-                        cursor: 'pointer'
-                      }}
-                      title="Test live marks evaluation"
-                    >
-                      <Calculator size={14} color="#e11d48" /> Test Evaluator
-                    </button>
+            <form onSubmit={handleSaveRangeRule}>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 5 }}>
+                  Grade Symbol / Name * (e.g. A, A+, B, Distinction)
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. A"
+                  value={rangeGrade}
+                  onChange={e => setRangeGrade(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', fontSize: 14, fontWeight: 700, borderRadius: 6, border: '1px solid #cbd5e1' }}
+                />
+              </div>
 
-                    <button
-                      onClick={() => handleOpenEditModal(exam)}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        padding: '6px 12px',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        borderRadius: 6,
-                        border: '1px solid #cbd5e1',
-                        backgroundColor: '#ffffff',
-                        color: '#334155',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Edit2 size={14} /> Edit
-                    </button>
-
-                    <button
-                      onClick={() => handleDeleteExam(exam.id, exam.examTitle)}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        padding: '6px 10px',
-                        borderRadius: 6,
-                        border: '1px solid #fecdd3',
-                        backgroundColor: '#fff1f2',
-                        color: '#e11d48',
-                        cursor: 'pointer'
-                      }}
-                      title="Delete Exam Grading System"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 5 }}>
+                    Minimum Score / % *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    required
+                    value={rangeMin}
+                    onChange={e => setRangeMin(Number(e.target.value))}
+                    style={{ width: '100%', padding: '8px 12px', fontSize: 13, borderRadius: 6, border: '1px solid #cbd5e1' }}
+                  />
                 </div>
 
-                {/* Grading Configuration Breakdown Card */}
-                <div
-                  style={{
-                    backgroundColor: 'var(--bg-card-sub, #f8fafc)',
-                    borderRadius: 8,
-                    padding: 14,
-                    border: '1px solid var(--border, #e2e8f0)',
-                    fontSize: 13
-                  }}
-                >
-                  {isMarks && exam.marksConfig && (
-                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 24 }}>
-                      <div>
-                        <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>System Type</span>
-                        <div style={{ fontWeight: 600, color: '#2563eb' }}>Marks-Based Evaluation</div>
-                      </div>
-                      <div>
-                        <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Total Marks</span>
-                        <div style={{ fontWeight: 700, color: '#0f172a' }}>{exam.marksConfig.totalMarks} Marks</div>
-                      </div>
-                      <div>
-                        <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Passing Cutoff</span>
-                        <div style={{ fontWeight: 700, color: '#059669' }}>
-                          {exam.marksConfig.passingMarks} Marks ({((exam.marksConfig.passingMarks / exam.marksConfig.totalMarks) * 100).toFixed(0)}%)
-                        </div>
-                      </div>
-                      <div>
-                        <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Grace Marks</span>
-                        <div style={{ color: '#475569' }}>
-                          {exam.marksConfig.allowGraceMarks ? `Allowed (Up to ${exam.marksConfig.maxGraceMarks} marks)` : 'Not Allowed'}
-                        </div>
-                      </div>
-                      <div>
-                        <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Percentage Output</span>
-                        <div style={{ color: '#475569' }}>{exam.marksConfig.displayPercentage ? 'Included on marksheets' : 'Marks only'}</div>
-                      </div>
-                    </div>
-                  )}
-
-                  {isCgpa && exam.cgpaConfig && (
-                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 24 }}>
-                      <div>
-                        <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>System Type</span>
-                        <div style={{ fontWeight: 600, color: '#7c3aed' }}>Cumulative Grade Point Average (CGPA)</div>
-                      </div>
-                      <div>
-                        <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Maximum Scale</span>
-                        <div style={{ fontWeight: 700, color: '#0f172a' }}>{exam.cgpaConfig.maxCgpa.toFixed(1)} CGPA Scale</div>
-                      </div>
-                      <div>
-                        <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Passing CGPA</span>
-                        <div style={{ fontWeight: 700, color: '#059669' }}>Min. {exam.cgpaConfig.passingCgpa.toFixed(1)} CGPA</div>
-                      </div>
-                      <div>
-                        <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Multiplier</span>
-                        <div style={{ color: '#475569' }}>CGPA × {exam.cgpaConfig.scaleMultiplier} = Percentage %</div>
-                      </div>
-                      <div>
-                        <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Credit Weighting</span>
-                        <div style={{ color: '#475569' }}>{exam.cgpaConfig.creditWeighted ? 'Credit Hours Weighted' : 'Direct Subject Average'}</div>
-                      </div>
-                    </div>
-                  )}
-
-                  {isGrade && exam.gradeConfig && (
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                        <div>
-                          <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>System Type: </span>
-                          <span style={{ fontWeight: 600, color: '#059669' }}>
-                            Grade-Based Evaluation ({exam.gradeConfig.gradeTiers?.length || 0} Defined Grade Tiers)
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Grade Tiers Mini Grid */}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                        {(exam.gradeConfig.gradeTiers || []).map(tier => (
-                          <div
-                            key={tier.id}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 8,
-                              padding: '6px 12px',
-                              borderRadius: 6,
-                              backgroundColor: '#ffffff',
-                              border: '1px solid #cbd5e1',
-                              fontSize: 12
-                            }}
-                          >
-                            <span style={{ fontWeight: 700, color: tier.isPassing ? '#059669' : '#e11d48' }}>
-                              {tier.grade}
-                            </span>
-                            <span style={{ color: '#64748b' }}>
-                              ({tier.minScore}% - {tier.maxScore}%)
-                            </span>
-                            <span style={{ fontSize: 11, color: '#475569' }}>{tier.remark}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 5 }}>
+                    Maximum Score / % *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    required
+                    value={rangeMax}
+                    onChange={e => setRangeMax(Number(e.target.value))}
+                    style={{ width: '100%', padding: '8px 12px', fontSize: 13, borderRadius: 6, border: '1px solid #cbd5e1' }}
+                  />
                 </div>
               </div>
-            );
-          })}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 5 }}>
+                    Grade Point Equivalent (e.g. 10.0 or 4.0)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={rangeGradePoint}
+                    onChange={e => setRangeGradePoint(Number(e.target.value))}
+                    style={{ width: '100%', padding: '8px 12px', fontSize: 13, borderRadius: 6, border: '1px solid #cbd5e1' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 5 }}>
+                    Passing Status
+                  </label>
+                  <select
+                    value={rangeIsPassing ? 'pass' : 'fail'}
+                    onChange={e => setRangeIsPassing(e.target.value === 'pass')}
+                    style={{ width: '100%', padding: '8px 12px', fontSize: 13, borderRadius: 6, border: '1px solid #cbd5e1' }}
+                  >
+                    <option value="pass">Pass (Promoted)</option>
+                    <option value="fail">Fail (Needs Improvement)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 5 }}>
+                  Qualitative Remark (e.g. Outstanding, Excellent, Good)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Outstanding Performance"
+                  value={rangeRemark}
+                  onChange={e => setRangeRemark(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', fontSize: 13, borderRadius: 6, border: '1px solid #cbd5e1' }}
+                />
+              </div>
+
+              {/* Dynamic Preview Helper */}
+              <div style={{ padding: '10px 14px', borderRadius: 8, backgroundColor: '#f1f5f9', fontSize: 12, color: '#334155', marginBottom: 18 }}>
+                💡 <strong>Range Preview:</strong> Any student scoring between <strong>{rangeMin}%</strong> and <strong>{rangeMax}%</strong> will be awarded <strong>Grade {rangeGrade || '—'}</strong> ({rangeIsPassing ? 'PASS' : 'FAIL'}) with remark <em>&quot;{rangeRemark}&quot;</em>.
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, borderTop: '1px solid var(--border, #e2e8f0)', paddingTop: 14 }}>
+                <button
+                  type="button"
+                  onClick={() => setIsRangeModalOpen(false)}
+                  style={{ padding: '8px 16px', fontSize: 13, borderRadius: 6, border: '1px solid #cbd5e1', backgroundColor: 'transparent', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{ padding: '8px 18px', fontSize: 13, fontWeight: 600, borderRadius: 6, border: 'none', backgroundColor: '#e11d48', color: '#ffffff', cursor: 'pointer' }}
+                >
+                  {editingRangeId ? 'Save Range Rule' : 'Add Range Rule'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
@@ -1157,7 +1782,7 @@ export default function GradingSystem() {
                 </div>
               </div>
 
-              {/* GRADING BASIS SELECTION (3 CARDS) */}
+              {/* GRADING BASIS SELECTION */}
               <div style={{ marginBottom: 24 }}>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text-primary, #0f172a)', marginBottom: 8 }}>
                   Choose Grading System for this Exam:
@@ -1225,7 +1850,7 @@ export default function GradingSystem() {
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 14, color: '#047857' }}>Grade Basis</div>
                     <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
-                      Award letter grades (A+, A, B, C...) based on customizable score percentage intervals.
+                      Award letter grades (A, B, C...) based on custom score percentage intervals.
                     </div>
                   </div>
                 </div>
@@ -1395,7 +2020,7 @@ export default function GradingSystem() {
 
                   {/* Tiers List */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {gradeTiers.map((tier, idx) => (
+                    {gradeTiers.map((tier) => (
                       <div
                         key={tier.id}
                         style={{
@@ -1533,7 +2158,7 @@ export default function GradingSystem() {
         </div>
       )}
 
-      {/* LIVE TESTER MODAL / DRAWER */}
+      {/* LIVE TESTER MODAL */}
       {testingExam && (
         <div
           style={{
@@ -1676,6 +2301,12 @@ export default function GradingSystem() {
                 {testEvaluationResult.type === 'MARKS' && (
                   <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.6 }}>
                     <div>Calculated Percentage: <strong>{testEvaluationResult.percentage}%</strong></div>
+                    {testEvaluationResult.awardedGrade && (
+                      <div>
+                        School Range Grade: <strong style={{ color: '#059669' }}>Grade {testEvaluationResult.awardedGrade}</strong>
+                        {testEvaluationResult.rangeRemark && ` (${testEvaluationResult.rangeRemark})`}
+                      </div>
+                    )}
                     <div>{testEvaluationResult.remark}</div>
                   </div>
                 )}
