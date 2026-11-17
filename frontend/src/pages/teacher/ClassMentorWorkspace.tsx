@@ -93,11 +93,42 @@ function getGradeBadgeClass(grade?: string) {
   return 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800';
 }
 
+const DEFAULT_SCHOOL_EXAMS = [
+  {
+    id: 'exam-mid-term',
+    examTitle: 'Mid-Term',
+    gradingType: 'CGPA',
+    cgpaConfig: { maxCgpa: 10, passingCgpa: 4.0 },
+    marksConfig: { totalMarks: 100, passingMarks: 40 }
+  },
+  {
+    id: 'exam-2nd-term',
+    examTitle: '2nd Term Exam',
+    gradingType: 'CGPA',
+    cgpaConfig: { maxCgpa: 10, passingCgpa: 4.0 },
+    marksConfig: { totalMarks: 100, passingMarks: 40 }
+  },
+  {
+    id: 'exam-1st-term',
+    examTitle: '1st Term Exam',
+    gradingType: 'MARKS',
+    marksConfig: { totalMarks: 100, passingMarks: 40 },
+    cgpaConfig: { maxCgpa: 10, passingCgpa: 4.0 }
+  },
+  {
+    id: 'exam-final',
+    examTitle: 'Final Examination',
+    gradingType: 'MARKS',
+    marksConfig: { totalMarks: 100, passingMarks: 40 },
+    cgpaConfig: { maxCgpa: 10, passingCgpa: 4.0 }
+  }
+];
+
 export function ClassMentorWorkspace() {
   const { user } = useAuth();
   const schoolId = user?.schoolId || 'global';
 
-  // Admin-configured exams from Grading System
+  // Admin-configured exams from Grading System (always seeded with default school exams)
   const [adminExams, setAdminExams] = useState<any[]>(() => {
     try {
       // 1. Check active school exams
@@ -129,7 +160,7 @@ export function ClassMentorWorkspace() {
     } catch (e) {
       console.warn('Failed to parse admin exams from localStorage:', e);
     }
-    return [];
+    return DEFAULT_SCHOOL_EXAMS;
   });
 
   const reloadAdminExams = useCallback(async () => {
@@ -182,17 +213,21 @@ export function ClassMentorWorkspace() {
     } catch (e) {
       console.warn('Failed to reload admin exams:', e);
     }
+    setAdminExams(prev => prev && prev.length > 0 ? prev : DEFAULT_SCHOOL_EXAMS);
   }, [schoolId]);
 
   useEffect(() => {
     reloadAdminExams();
   }, [reloadAdminExams]);
 
+  // State for typing custom exam title
+  const [isCustomExamTitle, setIsCustomExamTitle] = useState(false);
+
   const handleExamTitleSelect = (val: string) => {
     setFormTitle(val);
-    if (!val) return;
+    if (!val || val === '__CUSTOM__') return;
 
-    const matched = adminExams.find(ex => ex.examTitle === val);
+    const matched = displayExams.find(ex => ex.examTitle === val);
     if (matched) {
       if (matched.gradingType) {
         setFormGradingSystem(matched.gradingType);
@@ -254,8 +289,25 @@ export function ClassMentorWorkspace() {
 
   // Resolved list of exams to show in teacher dropdown
   const displayExams = useMemo(() => {
-    const list = [...adminExams];
-    if (editingExam && !list.some(ex => ex.examTitle === editingExam.title)) {
+    const list = [...(adminExams.length > 0 ? adminExams : DEFAULT_SCHOOL_EXAMS)];
+    for (const ex of exams) {
+      if (!list.some(item => String(item.examTitle || '').toLowerCase() === String(ex.title || '').toLowerCase())) {
+        list.push({
+          id: ex.id,
+          examTitle: ex.title,
+          gradingType: ex.grading_system || 'MARKS',
+          marksConfig: {
+            totalMarks: ex.total_marks || 100,
+            passingMarks: ex.passing_marks || 40,
+          },
+          cgpaConfig: {
+            maxCgpa: ex.total_marks || 10,
+            passingCgpa: ex.passing_marks || 4.0,
+          }
+        });
+      }
+    }
+    if (editingExam && !list.some(ex => String(ex.examTitle || '').toLowerCase() === String(editingExam.title || '').toLowerCase())) {
       list.unshift({
         id: editingExam.id,
         examTitle: editingExam.title,
@@ -263,16 +315,20 @@ export function ClassMentorWorkspace() {
         marksConfig: {
           totalMarks: editingExam.total_marks || 100,
           passingMarks: editingExam.passing_marks || 40,
+        },
+        cgpaConfig: {
+          maxCgpa: editingExam.total_marks || 10,
+          passingCgpa: editingExam.passing_marks || 4.0,
         }
       });
     }
     return list;
-  }, [adminExams, editingExam]);
+  }, [adminExams, exams, editingExam]);
 
   // Currently selected admin exam matching formTitle
   const selectedAdminExam = useMemo(() => {
-    return adminExams.find(ex => ex.examTitle === formTitle) || (editingExam && editingExam.title === formTitle ? editingExam : null);
-  }, [adminExams, formTitle, editingExam]);
+    return displayExams.find(ex => ex.examTitle === formTitle) || (editingExam && editingExam.title === formTitle ? editingExam : null);
+  }, [displayExams, formTitle, editingExam]);
 
   // When an exam is selected from the grading system, its grading system & total marks become fixed
   const isExamFixed = Boolean(selectedAdminExam && formTitle);
@@ -434,6 +490,7 @@ export function ClassMentorWorkspace() {
     reloadAdminExams();
     setEditingExam(null);
     setFormTitle('');
+    setIsCustomExamTitle(false);
     setFormGradingSystem('MARKS');
     setFormTotalValue(100);
     setFormPassingMarks(40);
@@ -482,6 +539,7 @@ export function ClassMentorWorkspace() {
     reloadAdminExams();
     setEditingExam(exam);
     setFormTitle(exam.title);
+    setIsCustomExamTitle(false);
     const sys = (exam.grading_system as 'MARKS' | 'CGPA' | 'GRADE') || 'MARKS';
     setFormGradingSystem(sys);
     setFormTotalValue(exam.total_marks || (sys === 'CGPA' ? 10.0 : 100));
@@ -1328,13 +1386,33 @@ export function ClassMentorWorkspace() {
                     <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400">
                       Exam Title *
                     </label>
+                    {isCustomExamTitle && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCustomExamTitle(false);
+                          setFormTitle('');
+                        }}
+                        className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold hover:underline bg-transparent border-none p-0 cursor-pointer !min-h-0"
+                      >
+                        ← Choose from dropdown
+                      </button>
+                    )}
                   </div>
 
-                  {adminExams.length > 0 ? (
+                  {!isCustomExamTitle ? (
                     <select
                       value={formTitle}
-                      onChange={e => handleExamTitleSelect(e.target.value)}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-blue-500 font-semibold"
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (val === '__CUSTOM__') {
+                          setIsCustomExamTitle(true);
+                          setFormTitle('');
+                        } else {
+                          handleExamTitleSelect(val);
+                        }
+                      }}
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-blue-500 font-semibold cursor-pointer"
                     >
                       <option value="">-- Select Exam Title (from Grading System) --</option>
                       {displayExams.map((ex: any) => (
@@ -1342,6 +1420,7 @@ export function ClassMentorWorkspace() {
                           {ex.examTitle} ({ex.gradingType} Basis{ex.marksConfig?.totalMarks ? ` · Max ${ex.marksConfig.totalMarks} Marks` : ex.cgpaConfig?.maxCgpa ? ` · Max ${ex.cgpaConfig.maxCgpa} CGPA` : ''})
                         </option>
                       ))}
+                      <option value="__CUSTOM__">+ Type Custom Exam Title...</option>
                     </select>
                   ) : (
                     <div>
@@ -1350,12 +1429,9 @@ export function ClassMentorWorkspace() {
                         value={formTitle}
                         onChange={e => setFormTitle(e.target.value)}
                         placeholder="Enter exam title (e.g. Mid-Term Examination 2026-27)..."
+                        autoFocus
                         className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-blue-500 font-medium"
                       />
-                      <div className="text-[10.5px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
-                        <Info size={12} />
-                        No exams configured in School Admin Grading System yet. You can type an exam title.
-                      </div>
                     </div>
                   )}
                 </div>

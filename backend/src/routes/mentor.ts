@@ -370,7 +370,82 @@ router.delete(['/teacher/mentor/exams/:id', '/exams/:id'], ...mentorTeacher, asy
 // SCHOOL EXAM GRADING SYSTEM CONFIGURATION
 // ──────────────────────────────────────────
 
+import fs from 'fs';
+import path from 'path';
+
+const GRADING_STORE_FILE = path.resolve(__dirname, '../../data/schoolGradingStore.json');
+
+const DEFAULT_GRADING_EXAMS = [
+  {
+    id: 'exam-mid-term',
+    examTitle: 'Mid-Term',
+    gradingType: 'CGPA',
+    cgpaConfig: { maxCgpa: 10, passingCgpa: 4.0 },
+    marksConfig: { totalMarks: 100, passingMarks: 40 },
+    status: 'ACTIVE'
+  },
+  {
+    id: 'exam-2nd-term',
+    examTitle: '2nd Term Exam',
+    gradingType: 'CGPA',
+    cgpaConfig: { maxCgpa: 10, passingCgpa: 4.0 },
+    marksConfig: { totalMarks: 100, passingMarks: 40 },
+    status: 'ACTIVE'
+  },
+  {
+    id: 'exam-1st-term',
+    examTitle: '1st Term Exam',
+    gradingType: 'MARKS',
+    marksConfig: { totalMarks: 100, passingMarks: 40 },
+    cgpaConfig: { maxCgpa: 10, passingCgpa: 4.0 },
+    status: 'ACTIVE'
+  },
+  {
+    id: 'exam-final',
+    examTitle: 'Final Examination',
+    gradingType: 'MARKS',
+    marksConfig: { totalMarks: 100, passingMarks: 40 },
+    cgpaConfig: { maxCgpa: 10, passingCgpa: 4.0 },
+    status: 'ACTIVE'
+  }
+];
+
 const schoolGradingStore = new Map<string, { exams: any[]; ranges: any[] }>();
+let storeLoadedFromFile = false;
+
+function ensureGradingStoreLoaded() {
+  if (storeLoadedFromFile) return;
+  try {
+    if (fs.existsSync(GRADING_STORE_FILE)) {
+      const raw = fs.readFileSync(GRADING_STORE_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        for (const [k, v] of Object.entries(parsed)) {
+          schoolGradingStore.set(k, v as any);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[ensureGradingStoreLoaded] Error reading file:', e);
+  }
+  storeLoadedFromFile = true;
+}
+
+function persistGradingStoreToFile() {
+  try {
+    const dir = path.dirname(GRADING_STORE_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const obj: Record<string, any> = {};
+    for (const [k, v] of schoolGradingStore.entries()) {
+      obj[k] = v;
+    }
+    fs.writeFileSync(GRADING_STORE_FILE, JSON.stringify(obj, null, 2), 'utf-8');
+  } catch (e) {
+    console.warn('[persistGradingStoreToFile] Error writing file:', e);
+  }
+}
 
 // GET /api/teacher/mentor/grading-exams or /api/grading-system/exams
 router.get(
@@ -378,9 +453,64 @@ router.get(
   ...mentorTeacher,
   async (req: AuthRequest, res: Response) => {
     try {
+      ensureGradingStoreLoaded();
       const sid = String(req.user!.schoolId || 'global');
-      const store = schoolGradingStore.get(sid) || schoolGradingStore.get('global') || { exams: [], ranges: [] };
-      return res.json({ success: true, exams: store.exams || [] });
+      let exams = (schoolGradingStore.get(sid)?.exams || schoolGradingStore.get('global')?.exams || []);
+
+      // If store is empty, also collect existing exam titles from student_exams
+      if (exams.length === 0) {
+        if (isPostgresConfigured) {
+          try {
+            const dbEx = await pool.query(
+              `SELECT DISTINCT title, COALESCE(grading_system, 'MARKS') as grading_system, total_marks, passing_marks 
+               FROM student_exams 
+               WHERE school_id = $1 OR 1=1 
+               LIMIT 20`,
+              [req.user!.schoolId]
+            );
+            if (dbEx.rowCount && dbEx.rowCount > 0) {
+              exams = dbEx.rows.map(r => ({
+                id: `ex-${r.title}`,
+                examTitle: r.title,
+                gradingType: r.grading_system,
+                marksConfig: { totalMarks: r.total_marks || 100, passingMarks: r.passing_marks || 40 },
+                cgpaConfig: { maxCgpa: r.total_marks || 10, passingCgpa: r.passing_marks || 4.0 },
+                status: 'ACTIVE'
+              }));
+            }
+          } catch (_e) {}
+        }
+
+        // Also check in-memory store
+        if (exams.length === 0 && mentorSvc.inMemoryStudentExams.length > 0) {
+          const seen = new Set<string>();
+          for (const e of mentorSvc.inMemoryStudentExams) {
+            if (!seen.has(e.title.toLowerCase())) {
+              seen.add(e.title.toLowerCase());
+              exams.push({
+                id: `ex-${e.id}`,
+                examTitle: e.title,
+                gradingType: e.grading_system || 'CGPA',
+                marksConfig: { totalMarks: e.total_marks || 100, passingMarks: e.passing_marks || 40 },
+                cgpaConfig: { maxCgpa: e.total_marks || 10, passingCgpa: e.passing_marks || 4.0 },
+                status: 'ACTIVE'
+              });
+            }
+          }
+        }
+      }
+
+      // Merge with DEFAULT_GRADING_EXAMS so common exams are always present for all teachers
+      const mergedMap = new Map<string, any>();
+      for (const ex of DEFAULT_GRADING_EXAMS) {
+        mergedMap.set(ex.examTitle.toLowerCase(), ex);
+      }
+      for (const ex of exams) {
+        mergedMap.set(ex.examTitle.toLowerCase(), ex);
+      }
+      const finalExams = Array.from(mergedMap.values());
+
+      return res.json({ success: true, exams: finalExams });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message || 'Failed to fetch grading exams' });
     }
@@ -393,15 +523,14 @@ router.post(
   ...mentorAdmin,
   async (req: AuthRequest, res: Response) => {
     try {
+      ensureGradingStoreLoaded();
       const sid = String(req.user!.schoolId || 'global');
       const { exams } = req.body;
       const list = Array.isArray(exams) ? exams : [];
       const current = schoolGradingStore.get(sid) || { exams: [], ranges: [] };
       schoolGradingStore.set(sid, { ...current, exams: list });
-      if (sid !== 'global') {
-        const glob = schoolGradingStore.get('global') || { exams: [], ranges: [] };
-        schoolGradingStore.set('global', { ...glob, exams: list });
-      }
+      schoolGradingStore.set('global', { ...(schoolGradingStore.get('global') || { exams: [], ranges: [] }), exams: list });
+      persistGradingStoreToFile();
       return res.json({ success: true, message: 'Grading exams updated successfully', exams: list });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message || 'Failed to save grading exams' });
@@ -415,6 +544,7 @@ router.get(
   ...mentorTeacher,
   async (req: AuthRequest, res: Response) => {
     try {
+      ensureGradingStoreLoaded();
       const sid = String(req.user!.schoolId || 'global');
       const store = schoolGradingStore.get(sid) || schoolGradingStore.get('global') || { exams: [], ranges: [] };
       return res.json({ success: true, ranges: store.ranges || [] });
@@ -430,15 +560,14 @@ router.post(
   ...mentorAdmin,
   async (req: AuthRequest, res: Response) => {
     try {
+      ensureGradingStoreLoaded();
       const sid = String(req.user!.schoolId || 'global');
       const { ranges } = req.body;
       const list = Array.isArray(ranges) ? ranges : [];
       const current = schoolGradingStore.get(sid) || { exams: [], ranges: [] };
       schoolGradingStore.set(sid, { ...current, ranges: list });
-      if (sid !== 'global') {
-        const glob = schoolGradingStore.get('global') || { exams: [], ranges: [] };
-        schoolGradingStore.set('global', { ...glob, ranges: list });
-      }
+      schoolGradingStore.set('global', { ...(schoolGradingStore.get('global') || { exams: [], ranges: [] }), ranges: list });
+      persistGradingStoreToFile();
       return res.json({ success: true, message: 'Grading ranges updated successfully', ranges: list });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message || 'Failed to save grading ranges' });
