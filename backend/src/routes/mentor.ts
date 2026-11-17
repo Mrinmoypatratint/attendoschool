@@ -452,6 +452,9 @@ router.get(
               exams.push({
                 id: `ex-${e.id}`,
                 examTitle: e.title,
+                examCode: (e.title || 'EXAM').replace(/\s+/g, '-').toUpperCase().slice(0, 10),
+                academicSession: '2026-2027',
+                applicableClasses: 'All Classes',
                 gradingType: e.grading_system || 'CGPA',
                 marksConfig: { totalMarks: e.total_marks || 100, passingMarks: e.passing_marks || 40 },
                 cgpaConfig: { maxCgpa: e.total_marks || 10, passingCgpa: e.passing_marks || 4.0 },
@@ -478,6 +481,9 @@ router.get(
                   exams.push({
                     id: `ex-${r.title}`,
                     examTitle: r.title,
+                    examCode: (r.title || 'EXAM').replace(/\s+/g, '-').toUpperCase().slice(0, 10),
+                    academicSession: '2026-2027',
+                    applicableClasses: 'All Classes',
                     gradingType: r.grading_system,
                     marksConfig: { totalMarks: r.total_marks || 100, passingMarks: r.passing_marks || 40 },
                     cgpaConfig: { maxCgpa: r.total_marks || 10, passingCgpa: r.passing_marks || 4.0 },

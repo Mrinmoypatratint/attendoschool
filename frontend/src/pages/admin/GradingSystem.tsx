@@ -212,19 +212,23 @@ export default function GradingSystem() {
 
   const filteredExams = useMemo(() => {
     return exams.filter(ex => {
+      if (!ex) return false;
+      const title = String(ex.examTitle || '');
+      const code = String(ex.examCode || '');
+      const classes = String(ex.applicableClasses || '');
       const matchesSearch =
-        ex.examTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        ex.examCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        ex.applicableClasses.toLowerCase().includes(searchQuery.toLowerCase());
+        title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        classes.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesBasis = basisFilter === 'ALL' || ex.gradingType === basisFilter;
       return matchesSearch && matchesBasis;
     });
   }, [exams, searchQuery, basisFilter]);
 
   // Dynamic KPI counts
-  const marksCount = useMemo(() => exams.filter(e => e.gradingType === 'MARKS').length, [exams]);
-  const cgpaCount = useMemo(() => exams.filter(e => e.gradingType === 'CGPA').length, [exams]);
-  const gradeCount = useMemo(() => exams.filter(e => e.gradingType === 'GRADE').length, [exams]);
+  const marksCount = useMemo(() => (Array.isArray(exams) ? exams : []).filter(e => e && e.gradingType === 'MARKS').length, [exams]);
+  const cgpaCount = useMemo(() => (Array.isArray(exams) ? exams : []).filter(e => e && e.gradingType === 'CGPA').length, [exams]);
+  const gradeCount = useMemo(() => (Array.isArray(exams) ? exams : []).filter(e => e && e.gradingType === 'GRADE').length, [exams]);
 
   // -------------------------------------------------------------
   // GRADE RANGE RULE MODAL STATE (Decided by School Admin)
@@ -564,19 +568,22 @@ export default function GradingSystem() {
     const score = Number(testScoreInput) || 0;
 
     if (testingExam.gradingType === 'MARKS' && testingExam.marksConfig) {
-      const { totalMarks: maxM, passingMarks: passM, allowGraceMarks: gAllowed, maxGraceMarks: gMax } = testingExam.marksConfig;
+      const maxM = Number(testingExam.marksConfig.totalMarks || 100);
+      const passM = Number(testingExam.marksConfig.passingMarks || 40);
+      const gAllowed = testingExam.marksConfig.allowGraceMarks;
+      const gMax = Number(testingExam.marksConfig.maxGraceMarks || 0);
       const pct = maxM > 0 ? ((score / maxM) * 100) : 0;
       const passed = score >= passM;
       const graceNeeded = (!passed && gAllowed && gMax && (passM - score) <= gMax && (passM - score) > 0) ? (passM - score) : 0;
 
       // Also map to School Grade Range if configured by school admin!
-      const matchedRange = schoolGradeRanges.find(r => pct >= r.minScore && pct <= r.maxScore);
+      const matchedRange = schoolGradeRanges.find(r => pct >= Number(r.minScore) && pct <= Number(r.maxScore));
 
       return {
         type: 'MARKS',
         score,
         total: maxM,
-        percentage: pct.toFixed(1),
+        percentage: Number(pct || 0).toFixed(1),
         passed: passed || graceNeeded > 0,
         eligibleWithGrace: graceNeeded > 0,
         graceMarksApplied: graceNeeded,
@@ -588,14 +595,16 @@ export default function GradingSystem() {
     }
 
     if (testingExam.gradingType === 'CGPA' && testingExam.cgpaConfig) {
-      const { maxCgpa: maxC, passingCgpa: passC, scaleMultiplier: mult } = testingExam.cgpaConfig;
+      const maxC = Number(testingExam.cgpaConfig.maxCgpa || 10);
+      const passC = Number(testingExam.cgpaConfig.passingCgpa || 4);
+      const mult = Number(testingExam.cgpaConfig.scaleMultiplier || 9.5);
       const cgpa = Math.min(score, maxC);
       const passed = cgpa >= passC;
-      const eqPercentage = (cgpa * (mult || 9.5)).toFixed(1);
+      const eqPercentage = (cgpa * mult).toFixed(1);
 
       return {
         type: 'CGPA',
-        cgpa: cgpa.toFixed(2),
+        cgpa: Number(cgpa || 0).toFixed(2),
         maxCgpa: maxC,
         passed,
         equivalentPercentage: eqPercentage,
@@ -734,9 +743,9 @@ export default function GradingSystem() {
             </span>
             <FileText size={18} color="#64748b" />
           </div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-primary, #0f172a)' }}>{exams.length}</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-primary, #0f172a)' }}>{(Array.isArray(exams) ? exams : []).length}</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748b)', marginTop: 4 }}>
-            {exams.filter(e => e.status === 'ACTIVE').length} active evaluation schemes
+            {(Array.isArray(exams) ? exams : []).filter(e => e && e.status === 'ACTIVE').length} active evaluation schemes
           </div>
         </div>
 
@@ -1045,10 +1054,10 @@ export default function GradingSystem() {
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                             <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #0f172a)' }}>
-                              {exam.examTitle}
+                              {exam.examTitle || 'Exam'}
                             </h3>
                             <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4, backgroundColor: '#f1f5f9', color: '#475569' }}>
-                              {exam.examCode}
+                              {exam.examCode || 'EXAM'}
                             </span>
                             <span
                               style={{
@@ -1060,11 +1069,11 @@ export default function GradingSystem() {
                                 color: exam.status === 'ACTIVE' ? '#059669' : '#64748b'
                               }}
                             >
-                              {exam.status}
+                              {exam.status || 'ACTIVE'}
                             </span>
                           </div>
                           <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748b)', marginTop: 4 }}>
-                            Session: <strong>{exam.academicSession}</strong> · Target: <strong>{exam.applicableClasses}</strong>
+                            Session: <strong>{exam.academicSession || '2026-2027'}</strong> · Target: <strong>{exam.applicableClasses || 'All Classes'}</strong>
                           </div>
                         </div>
                       </div>
@@ -1150,18 +1159,18 @@ export default function GradingSystem() {
                           </div>
                           <div>
                             <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Total Marks</span>
-                            <div style={{ fontWeight: 700, color: '#0f172a' }}>{exam.marksConfig.totalMarks} Marks</div>
+                            <div style={{ fontWeight: 700, color: '#0f172a' }}>{Number(exam.marksConfig.totalMarks || 100)} Marks</div>
                           </div>
                           <div>
                             <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Passing Cutoff</span>
                             <div style={{ fontWeight: 700, color: '#059669' }}>
-                              {exam.marksConfig.passingMarks} Marks ({((exam.marksConfig.passingMarks / exam.marksConfig.totalMarks) * 100).toFixed(0)}%)
+                              {Number(exam.marksConfig.passingMarks || 40)} Marks ({Number(exam.marksConfig.totalMarks) > 0 ? ((Number(exam.marksConfig.passingMarks || 40) / Number(exam.marksConfig.totalMarks)) * 100).toFixed(0) : '40'}%)
                             </div>
                           </div>
                           <div>
                             <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Grace Marks</span>
                             <div style={{ color: '#475569' }}>
-                              {exam.marksConfig.allowGraceMarks ? `Allowed (Up to ${exam.marksConfig.maxGraceMarks} marks)` : 'Not Allowed'}
+                              {exam.marksConfig.allowGraceMarks ? `Allowed (Up to ${exam.marksConfig.maxGraceMarks || 5} marks)` : 'Not Allowed'}
                             </div>
                           </div>
                           <div>
@@ -1179,15 +1188,15 @@ export default function GradingSystem() {
                           </div>
                           <div>
                             <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Maximum Scale</span>
-                            <div style={{ fontWeight: 700, color: '#0f172a' }}>{exam.cgpaConfig.maxCgpa.toFixed(1)} CGPA Scale</div>
+                            <div style={{ fontWeight: 700, color: '#0f172a' }}>{Number(exam.cgpaConfig.maxCgpa || 10).toFixed(1)} CGPA Scale</div>
                           </div>
                           <div>
                             <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Passing CGPA</span>
-                            <div style={{ fontWeight: 700, color: '#059669' }}>Min. {exam.cgpaConfig.passingCgpa.toFixed(1)} CGPA</div>
+                            <div style={{ fontWeight: 700, color: '#059669' }}>Min. {Number(exam.cgpaConfig.passingCgpa || 4).toFixed(1)} CGPA</div>
                           </div>
                           <div>
                             <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Multiplier</span>
-                            <div style={{ color: '#475569' }}>CGPA × {exam.cgpaConfig.scaleMultiplier} = Percentage %</div>
+                            <div style={{ color: '#475569' }}>CGPA × {exam.cgpaConfig.scaleMultiplier || 9.5} = Percentage %</div>
                           </div>
                           <div>
                             <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Credit Weighting</span>
@@ -1319,7 +1328,7 @@ export default function GradingSystem() {
               </div>
               <div style={{ display: 'flex', height: 28, borderRadius: 6, overflow: 'hidden', border: '1px solid #cbd5e1' }}>
                 {schoolGradeRanges.map((r, idx) => {
-                  const widthPct = Math.max(4, r.maxScore - r.minScore + 1);
+                  const widthPct = Math.max(4, Number(r.maxScore || 100) - Number(r.minScore || 0) + 1);
                   const colors = [
                     '#10b981', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#d97706', '#ef4444'
                   ];
@@ -1429,7 +1438,9 @@ export default function GradingSystem() {
                         {rule.minScore}% &nbsp;—&nbsp; {rule.maxScore}%
                       </td>
                       <td style={{ padding: '14px 16px', color: '#334155', fontWeight: 600 }}>
-                        {rule.gradePoint !== undefined ? rule.gradePoint.toFixed(1) : '—'}
+                        {rule.gradePoint !== undefined && rule.gradePoint !== null && !isNaN(Number(rule.gradePoint))
+                          ? Number(rule.gradePoint).toFixed(1)
+                          : '—'}
                       </td>
                       <td style={{ padding: '14px 16px', color: '#475569' }}>
                         {rule.remark}
@@ -1962,7 +1973,7 @@ export default function GradingSystem() {
                         style={{ width: '100%', padding: '8px 12px', fontSize: 13, borderRadius: 6, border: '1px solid #cbd5e1' }}
                       />
                       <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
-                        Passing threshold: <strong>{totalMarks > 0 ? ((passingMarks / totalMarks) * 100).toFixed(1) : 0}%</strong>
+                        Passing threshold: <strong>{Number(totalMarks) > 0 ? ((Number(passingMarks) / Number(totalMarks)) * 100).toFixed(1) : '0'}%</strong>
                       </div>
                     </div>
 
