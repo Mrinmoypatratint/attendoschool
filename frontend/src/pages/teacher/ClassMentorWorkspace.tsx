@@ -2036,7 +2036,7 @@ export function ClassMentorWorkspace() {
                   <button
                     type="button"
                     onClick={() => setGradedModalSearch('')}
-                    className="bg-transparent border-none cursor-pointer text-slate-400 hover:text-slate-600"
+                    className="!bg-transparent hover:!bg-transparent border-none cursor-pointer text-slate-400 hover:text-slate-600 !p-1 !min-h-0"
                   >
                     <X size={12} />
                   </button>
@@ -2048,22 +2048,24 @@ export function ClassMentorWorkspace() {
                 <button
                   type="button"
                   onClick={() => setGradedModalFilter('GRADED')}
-                  className={`px-3 py-1 rounded-lg border-none cursor-pointer transition-colors ${
+                  className={`px-3 py-1.5 rounded-lg border-none cursor-pointer transition-all !min-h-0 ${
                     gradedModalFilter === 'GRADED'
-                      ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs font-bold'
-                      : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                      ? '!bg-white dark:!bg-slate-900 hover:!bg-white dark:hover:!bg-slate-900 !text-rose-600 dark:!text-rose-400 hover:!text-rose-700 dark:hover:!text-rose-300 shadow-xs font-bold'
+                      : '!bg-transparent hover:!bg-slate-200/80 dark:hover:!bg-slate-700/70 !text-slate-600 dark:text-slate-400 hover:!text-slate-900 dark:hover:!text-white'
                   }`}
+                  style={{ opacity: 1 }}
                 >
                   Graded ({modalGradedCount})
                 </button>
                 <button
                   type="button"
                   onClick={() => setGradedModalFilter('ALL')}
-                  className={`px-3 py-1 rounded-lg border-none cursor-pointer transition-colors ${
+                  className={`px-3 py-1.5 rounded-lg border-none cursor-pointer transition-all !min-h-0 ${
                     gradedModalFilter === 'ALL'
-                      ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs font-bold'
-                      : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                      ? '!bg-white dark:!bg-slate-900 hover:!bg-white dark:hover:!bg-slate-900 !text-rose-600 dark:!text-rose-400 hover:!text-rose-700 dark:hover:!text-rose-300 shadow-xs font-bold'
+                      : '!bg-transparent hover:!bg-slate-200/80 dark:hover:!bg-slate-700/70 !text-slate-600 dark:text-slate-400 hover:!text-slate-900 dark:hover:!text-white'
                   }`}
+                  style={{ opacity: 1 }}
                 >
                   All Students ({gradedStudentsList.length})
                 </button>
@@ -2209,7 +2211,7 @@ export function ClassMentorWorkspace() {
                 <button
                   type="button"
                   onClick={() => setShowGradedModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-50 cursor-pointer shadow-xs"
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 !bg-white hover:!bg-slate-100 dark:!bg-slate-800 dark:hover:!bg-slate-700 !text-slate-700 dark:!text-slate-300 font-semibold text-xs cursor-pointer shadow-xs transition-colors !min-h-0"
                 >
                   Close
                 </button>
