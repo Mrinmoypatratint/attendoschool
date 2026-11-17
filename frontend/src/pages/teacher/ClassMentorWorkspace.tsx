@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../api';
+import { popup } from '../../components/PopupModal';
 import AttendanceReports from '../admin/AttendanceReports';
 
 interface MentoredClass {
@@ -682,14 +683,26 @@ export function ClassMentorWorkspace() {
 
   // Delete Exam
   const handleDeleteExam = async (examId: string, title: string) => {
-    if (!window.confirm(`Are you sure you want to delete "${title}" and all associated student marks?`)) return;
+    const confirmed = await popup.confirm(
+      `Are you sure you want to delete "${title}" and all associated student marks?`,
+      {
+        title: 'Delete Examination',
+        type: 'error',
+        danger: true,
+        confirmText: 'Confirm',
+        cancelText: 'Cancel'
+      }
+    );
+    if (!confirmed) return;
+
     try {
       await api.delete(`/teacher/mentor/exams/${examId}`);
       if (selectedSection) {
         await loadExams(selectedSection.class_id, selectedSection.section_id);
       }
+      popup.success(`"${title}" deleted successfully.`);
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to delete examination.');
+      popup.error(err?.response?.data?.message || 'Failed to delete examination.');
     }
   };
 

@@ -182,14 +182,9 @@ export function initializeGlobalPopups() {
     }
   };
 
-  // Intercept window.confirm (async fallback: returns true after triggering dialog if synchronous caller)
+  // Keep window.confirm synchronous via originalConfirm so callers do not inadvertently proceed before user confirmation
   window.confirm = (message?: string) => {
-    try {
-      popup.confirm(String(message ?? ''));
-      return true;
-    } catch {
-      return originalConfirm(message);
-    }
+    return originalConfirm(message);
   };
 }
 
