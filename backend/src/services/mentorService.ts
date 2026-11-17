@@ -57,6 +57,9 @@ export interface InMemoryExam {
   room?: string;
   total_marks: number;
   passing_marks: number;
+  grading_system?: string;
+  status?: 'DRAFT' | 'PUBLISHED';
+  academic_year_id?: string | null;
   created_at: string;
 }
 
@@ -1474,7 +1477,7 @@ export async function getMentoredExams(schoolId: string, classId: string, sectio
       const passCount = results.filter((r) => r.marks_obtained >= e.passing_marks).length;
       return {
         ...e,
-        status: (e as any).status || 'PUBLISHED',
+        status: e.status ? e.status : 'PUBLISHED',
         graded_count: gradedCount,
         avg_marks: avg,
         average_marks: avg,
@@ -1677,7 +1680,8 @@ export async function publishExamResults(
   } = payload;
   const rawResults = results || (payload as any).marks || [];
   const system = gradingSystem || (payload as any).grading_system || 'MARKS';
-  const resolvedStatus = (payload as any).status === 'DRAFT' ? 'DRAFT' : 'PUBLISHED';
+  const rawStatus = String((payload as any).status || '').trim().toUpperCase();
+  const resolvedStatus: 'DRAFT' | 'PUBLISHED' = rawStatus === 'DRAFT' ? 'DRAFT' : 'PUBLISHED';
   const rawYearId = await resolveAcademicYearId(schoolId, academicYearId || session);
   const resolvedAcademicYearId = (rawYearId && rawYearId !== '00000000-0000-0000-0000-000000000000') ? rawYearId : null;
 
@@ -1723,11 +1727,27 @@ export async function publishExamResults(
 
   if (isPostgresConfigured) {
     // 1. Create or Update Exam in student_exams
+    if (!resolvedExamId) {
+      try {
+        const matchQ = await pool.query(
+          `SELECT id FROM student_exams 
+           WHERE school_id = $1 AND class_id = $2 
+             AND (section_id IS NULL OR section_id = $3)
+             AND LOWER(TRIM(title)) = LOWER(TRIM($4))
+           LIMIT 1`,
+          [schoolId, resolvedClassId, resolvedSectionId, title]
+        );
+        if (matchQ.rowCount && matchQ.rows.length > 0) {
+          resolvedExamId = matchQ.rows[0].id;
+        }
+      } catch (_e) {}
+    }
+
     if (resolvedExamId) {
       const upQ = await pool.query(
         `UPDATE student_exams 
          SET title = $1, subject_id = $2, exam_date = $3, total_marks = $4, passing_marks = $5, room = $6, section_id = $7, grading_system = $8,
-             academic_year_id = COALESCE($11, academic_year_id), status = COALESCE($12, status)
+             academic_year_id = COALESCE($11, academic_year_id), status = $12
          WHERE id = $9 AND school_id = $10
          RETURNING *`,
         [title, subjectId || null, resolvedExamDate, totalMarks || 100, passingMarks || 40, room || 'Main Hall', resolvedSectionId, system, resolvedExamId, schoolId, resolvedAcademicYearId, resolvedStatus]
@@ -1824,8 +1844,11 @@ export async function publishExamResults(
     return {
       success: true,
       examId: resolvedExamId,
+      status: resolvedStatus,
       publishedCount,
-      message: `Published results for ${publishedCount} students successfully`
+      message: resolvedStatus === 'DRAFT'
+        ? `Saved evaluations for ${publishedCount} students as draft successfully`
+        : `Published results for ${publishedCount} students successfully`
     };
   }
 
@@ -1834,6 +1857,19 @@ export async function publishExamResults(
   if (!resolvedSubName && subjectId) {
     const sFound = demoSubjects.find((s) => s.id === subjectId);
     if (sFound) resolvedSubName = sFound.name;
+  }
+
+  // Check if an exam with the same title, class, and section already exists in memory
+  if (!resolvedExamId) {
+    const existing = inMemoryStudentExams.find(
+      (e) => (e.school_id === schoolId || !schoolId) &&
+             (e.class_id === classId || !classId) &&
+             (!sectionId || !e.section_id || e.section_id === sectionId) &&
+             e.title.trim().toLowerCase() === title.trim().toLowerCase()
+    );
+    if (existing) {
+      resolvedExamId = existing.id;
+    }
   }
 
   const newExam: InMemoryExam = {
@@ -1850,11 +1886,17 @@ export async function publishExamResults(
     room: room || 'Main Hall',
     total_marks: totalMarks,
     passing_marks: passingMarks || 40,
+    grading_system: system,
+    status: resolvedStatus,
+    academic_year_id: resolvedAcademicYearId,
     created_at: new Date().toISOString()
   };
   const exIdx = inMemoryStudentExams.findIndex((e) => e.id === newExam.id);
-  if (exIdx >= 0) inMemoryStudentExams[exIdx] = newExam;
-  else inMemoryStudentExams.push(newExam);
+  if (exIdx >= 0) {
+    inMemoryStudentExams[exIdx] = { ...inMemoryStudentExams[exIdx], ...newExam, status: resolvedStatus, grading_system: system };
+  } else {
+    inMemoryStudentExams.push(newExam);
+  }
 
   let memPublished = 0;
   for (const item of rawResults) {
@@ -1881,8 +1923,11 @@ export async function publishExamResults(
   return {
     success: true,
     examId: newExam.id,
+    status: resolvedStatus,
     publishedCount: memPublished,
-    message: `Published results for ${memPublished} students successfully`
+    message: resolvedStatus === 'DRAFT'
+      ? `Saved evaluations for ${memPublished} students as draft successfully`
+      : `Published results for ${memPublished} students successfully`
   };
 }
 
@@ -1912,19 +1957,22 @@ export async function updateExamStatus(
   status: 'DRAFT' | 'PUBLISHED'
 ) {
   await ensureStudentExamsSchema();
+  let updatedExam: any = null;
   if (isPostgresConfigured) {
-    const q = await pool.query(
-      `UPDATE student_exams SET status = $1 WHERE id = $2 AND school_id = $3 RETURNING *`,
-      [status, examId, schoolId]
-    );
-    if (q.rowCount && q.rows.length > 0) {
-      return q.rows[0];
-    }
+    try {
+      const q = await pool.query(
+        `UPDATE student_exams SET status = $1 WHERE id = $2 AND school_id = $3 RETURNING *`,
+        [status, examId, schoolId]
+      );
+      if (q.rowCount && q.rows.length > 0) {
+        updatedExam = q.rows[0];
+      }
+    } catch (_e) {}
   }
   const ex = inMemoryStudentExams.find((e) => e.id === examId && (e.school_id === schoolId || !schoolId));
   if (ex) {
-    (ex as any).status = status;
+    ex.status = status;
     return ex;
   }
-  return { id: examId, status };
+  return updatedExam || { id: examId, status };
 }

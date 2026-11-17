@@ -651,6 +651,18 @@ export function ClassMentorWorkspace() {
           ? 'Assessment evaluations saved as draft! Results are preserved and hidden from student portal.'
           : (res.data?.message || 'Assessment results published and synced to student profiles successfully!')
       );
+      // Immediately reflect status in local exams state
+      if (res.data?.examId) {
+        setExams(prev => {
+          const idx = prev.findIndex(e => e.id === res.data.examId);
+          if (idx >= 0) {
+            const updated = [...prev];
+            updated[idx] = { ...updated[idx], status: targetStatus, title: formTitle.trim(), subject_name: finalSubjectName };
+            return updated;
+          }
+          return prev;
+        });
+      }
       // Reload exam list
       await loadExams(selectedSection.class_id, selectedSection.section_id);
       setTimeout(() => {
@@ -833,13 +845,14 @@ export function ClassMentorWorkspace() {
     );
   }, [studentsWithMarks, studentSearch]);
 
-  // Overall class stats from exams list
+  // Overall class stats from exams list (only counting published assessments)
   const examStats = useMemo(() => {
     if (exams.length === 0) return { totalExams: 0, totalGraded: 0, avgMarks: '0.0%' };
-    const totalExams = exams.length;
-    const totalGraded = exams.reduce((acc, e) => acc + (Number(e.graded_count) || 0), 0);
+    const publishedExams = exams.filter(e => (e.status || 'PUBLISHED') === 'PUBLISHED');
+    const totalExams = publishedExams.length;
+    const totalGraded = publishedExams.reduce((acc, e) => acc + (Number(e.graded_count) || 0), 0);
 
-    const gradedExams = exams.filter(e => {
+    const gradedExams = publishedExams.filter(e => {
       const val = e.avg_marks !== undefined && e.avg_marks !== null ? e.avg_marks : e.average_marks;
       return val !== undefined && val !== null && val !== '' && !isNaN(Number(val)) && (Number(e.graded_count) || 0) > 0;
     });
