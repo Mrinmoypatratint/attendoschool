@@ -375,41 +375,6 @@ import path from 'path';
 
 const GRADING_STORE_FILE = path.resolve(__dirname, '../../data/schoolGradingStore.json');
 
-const DEFAULT_GRADING_EXAMS = [
-  {
-    id: 'exam-mid-term',
-    examTitle: 'Mid-Term',
-    gradingType: 'CGPA',
-    cgpaConfig: { maxCgpa: 10, passingCgpa: 4.0 },
-    marksConfig: { totalMarks: 100, passingMarks: 40 },
-    status: 'ACTIVE'
-  },
-  {
-    id: 'exam-2nd-term',
-    examTitle: '2nd Term Exam',
-    gradingType: 'CGPA',
-    cgpaConfig: { maxCgpa: 10, passingCgpa: 4.0 },
-    marksConfig: { totalMarks: 100, passingMarks: 40 },
-    status: 'ACTIVE'
-  },
-  {
-    id: 'exam-1st-term',
-    examTitle: '1st Term Exam',
-    gradingType: 'MARKS',
-    marksConfig: { totalMarks: 100, passingMarks: 40 },
-    cgpaConfig: { maxCgpa: 10, passingCgpa: 4.0 },
-    status: 'ACTIVE'
-  },
-  {
-    id: 'exam-final',
-    examTitle: 'Final Examination',
-    gradingType: 'MARKS',
-    marksConfig: { totalMarks: 100, passingMarks: 40 },
-    cgpaConfig: { maxCgpa: 10, passingCgpa: 4.0 },
-    status: 'ACTIVE'
-  }
-];
-
 const schoolGradingStore = new Map<string, { exams: any[]; ranges: any[] }>();
 let storeLoadedFromFile = false;
 
@@ -455,62 +420,10 @@ router.get(
     try {
       ensureGradingStoreLoaded();
       const sid = String(req.user!.schoolId || 'global');
-      let exams = (schoolGradingStore.get(sid)?.exams || schoolGradingStore.get('global')?.exams || []);
+      const exams = (schoolGradingStore.get(sid)?.exams || schoolGradingStore.get('global')?.exams || []);
 
-      // If store is empty, also collect existing exam titles from student_exams
-      if (exams.length === 0) {
-        if (isPostgresConfigured) {
-          try {
-            const dbEx = await pool.query(
-              `SELECT DISTINCT title, COALESCE(grading_system, 'MARKS') as grading_system, total_marks, passing_marks 
-               FROM student_exams 
-               WHERE school_id = $1 OR 1=1 
-               LIMIT 20`,
-              [req.user!.schoolId]
-            );
-            if (dbEx.rowCount && dbEx.rowCount > 0) {
-              exams = dbEx.rows.map(r => ({
-                id: `ex-${r.title}`,
-                examTitle: r.title,
-                gradingType: r.grading_system,
-                marksConfig: { totalMarks: r.total_marks || 100, passingMarks: r.passing_marks || 40 },
-                cgpaConfig: { maxCgpa: r.total_marks || 10, passingCgpa: r.passing_marks || 4.0 },
-                status: 'ACTIVE'
-              }));
-            }
-          } catch (_e) {}
-        }
-
-        // Also check in-memory store
-        if (exams.length === 0 && mentorSvc.inMemoryStudentExams.length > 0) {
-          const seen = new Set<string>();
-          for (const e of mentorSvc.inMemoryStudentExams) {
-            if (!seen.has(e.title.toLowerCase())) {
-              seen.add(e.title.toLowerCase());
-              exams.push({
-                id: `ex-${e.id}`,
-                examTitle: e.title,
-                gradingType: e.grading_system || 'CGPA',
-                marksConfig: { totalMarks: e.total_marks || 100, passingMarks: e.passing_marks || 40 },
-                cgpaConfig: { maxCgpa: e.total_marks || 10, passingCgpa: e.passing_marks || 4.0 },
-                status: 'ACTIVE'
-              });
-            }
-          }
-        }
-      }
-
-      // Merge with DEFAULT_GRADING_EXAMS so common exams are always present for all teachers
-      const mergedMap = new Map<string, any>();
-      for (const ex of DEFAULT_GRADING_EXAMS) {
-        mergedMap.set(ex.examTitle.toLowerCase(), ex);
-      }
-      for (const ex of exams) {
-        mergedMap.set(ex.examTitle.toLowerCase(), ex);
-      }
-      const finalExams = Array.from(mergedMap.values());
-
-      return res.json({ success: true, exams: finalExams });
+      // Return strictly the exams configured by School Admin (no hardcoded/merged defaults)
+      return res.json({ success: true, exams });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message || 'Failed to fetch grading exams' });
     }

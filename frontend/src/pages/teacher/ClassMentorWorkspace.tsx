@@ -105,95 +105,50 @@ function getGradeBadgeClass(grade?: string) {
   return 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800';
 }
 
-const DEFAULT_SCHOOL_EXAMS = [
-  {
-    id: 'exam-mid-term',
-    examTitle: 'Mid-Term',
-    gradingType: 'CGPA',
-    cgpaConfig: { maxCgpa: 10, passingCgpa: 4.0 },
-    marksConfig: { totalMarks: 100, passingMarks: 40 }
-  },
-  {
-    id: 'exam-2nd-term',
-    examTitle: '2nd Term Exam',
-    gradingType: 'CGPA',
-    cgpaConfig: { maxCgpa: 10, passingCgpa: 4.0 },
-    marksConfig: { totalMarks: 100, passingMarks: 40 }
-  },
-  {
-    id: 'exam-1st-term',
-    examTitle: '1st Term Exam',
-    gradingType: 'MARKS',
-    marksConfig: { totalMarks: 100, passingMarks: 40 },
-    cgpaConfig: { maxCgpa: 10, passingCgpa: 4.0 }
-  },
-  {
-    id: 'exam-final',
-    examTitle: 'Final Examination',
-    gradingType: 'MARKS',
-    marksConfig: { totalMarks: 100, passingMarks: 40 },
-    cgpaConfig: { maxCgpa: 10, passingCgpa: 4.0 }
-  }
-];
-
 export function ClassMentorWorkspace() {
   const { user } = useAuth();
   const schoolId = user?.schoolId || 'global';
 
-  // Admin-configured exams from Grading System (always seeded with default school exams)
+  // Admin-configured exams strictly from School Admin Grading System
   const [adminExams, setAdminExams] = useState<any[]>(() => {
     try {
-      // 1. Check active school exams
       const activeStored = localStorage.getItem('attendo_active_school_exams');
       if (activeStored) {
         const parsed = JSON.parse(activeStored);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
-      // 2. Check school specific key
       const key = `attendo_exam_grading_${schoolId}`;
       const stored = localStorage.getItem(key);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
-      // 3. Scan all keys in localStorage for any non-empty exams array
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k && (k.startsWith('attendo_exam_grading_') || k.startsWith('attendo_exam_'))) {
-          const s = localStorage.getItem(k);
-          if (s) {
-            try {
-              const p = JSON.parse(s);
-              if (Array.isArray(p) && p.length > 0) return p;
-            } catch {}
-          }
-        }
-      }
     } catch (e) {
       console.warn('Failed to parse admin exams from localStorage:', e);
     }
-    return DEFAULT_SCHOOL_EXAMS;
+    return [];
   });
 
   const reloadAdminExams = useCallback(async () => {
     // 1. First load from Backend API
     try {
       const res = await api.get('/teacher/mentor/grading-exams');
-      if (res.data?.success && Array.isArray(res.data.exams) && res.data.exams.length > 0) {
+      if (res.data?.success && Array.isArray(res.data.exams)) {
         setAdminExams(res.data.exams);
         try {
           localStorage.setItem('attendo_active_school_exams', JSON.stringify(res.data.exams));
+          localStorage.setItem(`attendo_exam_grading_${schoolId}`, JSON.stringify(res.data.exams));
         } catch {}
         return;
       }
     } catch {}
 
-    // 2. Fallback to localStorage (ensuring non-empty check)
+    // 2. Fallback to localStorage
     try {
       const activeStored = localStorage.getItem('attendo_active_school_exams');
       if (activeStored) {
         const parsed = JSON.parse(activeStored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           setAdminExams(parsed);
           return;
         }
@@ -202,30 +157,15 @@ export function ClassMentorWorkspace() {
       const stored = localStorage.getItem(key);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           setAdminExams(parsed);
           return;
-        }
-      }
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k && (k.startsWith('attendo_exam_grading_') || k.startsWith('attendo_exam_'))) {
-          const s = localStorage.getItem(k);
-          if (s) {
-            try {
-              const p = JSON.parse(s);
-              if (Array.isArray(p) && p.length > 0) {
-                setAdminExams(p);
-                return;
-              }
-            } catch {}
-          }
         }
       }
     } catch (e) {
       console.warn('Failed to reload admin exams:', e);
     }
-    setAdminExams(prev => prev && prev.length > 0 ? prev : DEFAULT_SCHOOL_EXAMS);
+    setAdminExams([]);
   }, [schoolId]);
 
   useEffect(() => {
@@ -299,26 +239,11 @@ export function ClassMentorWorkspace() {
   const [formSubjectName, setFormSubjectName] = useState('');
   const [formExamDate, setFormExamDate] = useState(() => new Date().toISOString().slice(0, 10));
 
-  // Resolved list of exams to show in teacher dropdown
+  // Resolved list of exams to show in teacher dropdown (strictly from School Admin Grading System)
   const displayExams = useMemo(() => {
-    const list = [...(adminExams.length > 0 ? adminExams : DEFAULT_SCHOOL_EXAMS)];
-    for (const ex of exams) {
-      if (!list.some(item => String(item.examTitle || '').toLowerCase() === String(ex.title || '').toLowerCase())) {
-        list.push({
-          id: ex.id,
-          examTitle: ex.title,
-          gradingType: ex.grading_system || 'MARKS',
-          marksConfig: {
-            totalMarks: ex.total_marks || 100,
-            passingMarks: ex.passing_marks || 40,
-          },
-          cgpaConfig: {
-            maxCgpa: ex.total_marks || 10,
-            passingCgpa: ex.passing_marks || 4.0,
-          }
-        });
-      }
-    }
+    // Only show exams configured by School Admin
+    const list = Array.isArray(adminExams) ? [...adminExams] : [];
+    // If editing a specific exam whose title is not in the list, keep it for editing context
     if (editingExam && !list.some(ex => String(ex.examTitle || '').toLowerCase() === String(editingExam.title || '').toLowerCase())) {
       list.unshift({
         id: editingExam.id,
@@ -335,7 +260,7 @@ export function ClassMentorWorkspace() {
       });
     }
     return list;
-  }, [adminExams, exams, editingExam]);
+  }, [adminExams, editingExam]);
 
   // Currently selected admin exam matching formTitle
   const selectedAdminExam = useMemo(() => {
