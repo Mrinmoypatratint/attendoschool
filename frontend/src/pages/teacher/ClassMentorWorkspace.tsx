@@ -4,12 +4,24 @@ import * as XLSX from 'xlsx';
 import {
   Users, ShieldCheck, FileText, RefreshCw, AlertCircle, Loader2, Award,
   Plus, Edit2, Trash2, Calendar, BookOpen, Search, ArrowLeft, Save, CheckCircle2,
-  Check, X, TrendingUp, Maximize2, Minimize2, Info, Lock, Download, FileSpreadsheet, Send
+  Check, X, TrendingUp, Maximize2, Minimize2, Info, Lock, Download, FileSpreadsheet, Send,
+  Bookmark, SlidersHorizontal
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../api';
 import { popup } from '../../components/PopupModal';
 import AttendanceReports from '../admin/AttendanceReports';
+
+export interface GradeRangeRule {
+  id: string;
+  grade: string;
+  minScore: number;
+  maxScore: number;
+  gradePoint?: number;
+  remark: string;
+  isPassing: boolean;
+  colorScheme?: 'emerald' | 'blue' | 'indigo' | 'amber' | 'rose' | 'slate';
+}
 
 interface MentoredClass {
   mentor_record_id: string;
@@ -341,6 +353,84 @@ export function ClassMentorWorkspace() {
   const [publishSuccessMsg, setPublishSuccessMsg] = useState<string | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
 
+  // School Admin Grade Ranges & Boundaries State
+  const [schoolGradeRanges, setSchoolGradeRanges] = useState<GradeRangeRule[]>(() => {
+    try {
+      const key = `attendo_school_grade_ranges_${schoolId}`;
+      const stored = localStorage.getItem(key) || localStorage.getItem('attendo_school_grade_ranges_global');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+  const [loadingRanges, setLoadingRanges] = useState(false);
+  const [showGradeRangesModal, setShowGradeRangesModal] = useState(false);
+
+  const loadSchoolGradeRanges = useCallback(async () => {
+    setLoadingRanges(true);
+    try {
+      const res = await api.get('/teacher/mentor/grading-ranges');
+      if (res.data?.success && Array.isArray(res.data.ranges) && res.data.ranges.length > 0) {
+        setSchoolGradeRanges(res.data.ranges);
+        try {
+          localStorage.setItem(`attendo_school_grade_ranges_${schoolId}`, JSON.stringify(res.data.ranges));
+          localStorage.setItem('attendo_school_grade_ranges_global', JSON.stringify(res.data.ranges));
+        } catch {}
+        return;
+      }
+    } catch (err) {
+      console.warn('Failed to load grade ranges from API:', err);
+    }
+
+    try {
+      const key = `attendo_school_grade_ranges_${schoolId}`;
+      const stored = localStorage.getItem(key) || localStorage.getItem('attendo_school_grade_ranges_global');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSchoolGradeRanges(parsed);
+          return;
+        }
+      }
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('attendo_school_grade_ranges')) {
+          const s = localStorage.getItem(k);
+          if (s) {
+            try {
+              const p = JSON.parse(s);
+              if (Array.isArray(p) && p.length > 0) {
+                setSchoolGradeRanges(p);
+                return;
+              }
+            } catch {}
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load grade ranges from localStorage:', e);
+    } finally {
+      setLoadingRanges(false);
+    }
+  }, [schoolId]);
+
+  useEffect(() => {
+    loadSchoolGradeRanges();
+  }, [loadSchoolGradeRanges]);
+
+  // Compute letter grade & remark dynamically using school admin defined boundaries
+  const computeStudentGrade = useCallback((pct: number): { grade: string; remark?: string } => {
+    if (schoolGradeRanges.length > 0) {
+      const matched = schoolGradeRanges.find(r => pct >= r.minScore && pct <= r.maxScore);
+      if (matched) {
+        return { grade: matched.grade, remark: matched.remark };
+      }
+    }
+    return { grade: computeGradeFromPercentage(pct) };
+  }, [schoolGradeRanges]);
+
   // Graded Students View Modal State
   const [showGradedModal, setShowGradedModal] = useState(false);
   const [isGradedModalMaximized, setIsGradedModalMaximized] = useState(false);
@@ -607,13 +697,13 @@ export function ClassMentorWorkspace() {
       }
       const numVal = Math.min(totalNum, Math.max(0, Number(val)));
       const pct = totalNum > 0 ? (numVal / totalNum) * 100 : 0;
-      const grade = computeGradeFromPercentage(pct);
-      const defaultRemark = numVal >= passNum ? 'Good performance' : 'Needs improvement';
+      const { grade, remark } = computeStudentGrade(pct);
+      const defaultRemark = s.remarks ? s.remarks : (remark || (numVal >= passNum ? 'Good performance' : 'Needs improvement'));
       return {
         ...s,
         marks_obtained: numVal,
         grade,
-        remarks: s.remarks ? s.remarks : defaultRemark
+        remarks: defaultRemark
       };
     }));
   };
@@ -1325,15 +1415,40 @@ export function ClassMentorWorkspace() {
                   >
                     <ArrowLeft size={16} /> <span>Back to Assessment List</span>
                   </button>
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white m-0">
-                    {editingExam ? `Edit Evaluation: ${editingExam.title}` : `Publish Assessment Results`}
-                  </h2>
+                  <div className="flex items-center gap-2.5">
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white m-0">
+                      {editingExam ? `Edit Evaluation: ${editingExam.title}` : `Publish Assessment Results`}
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        loadSchoolGradeRanges();
+                        setShowGradeRangesModal(true);
+                      }}
+                      className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 transition-all shadow-xs cursor-pointer !min-h-0 !p-0"
+                      title="View School Grade Ranges & Boundaries (Configured by School Admin)"
+                    >
+                      <Info size={15} />
+                    </button>
+                  </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 m-0 mt-0.5">
                     Class {selectedSection?.class_number} — Section {selectedSection?.section_name} · {activeSession ? `Session ${activeSession} · ` : ''}Enter student performance records to publish to student portal.
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      loadSchoolGradeRanges();
+                      setShowGradeRangesModal(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-blue-200 dark:border-blue-800 !bg-blue-50 hover:!bg-blue-100 dark:!bg-blue-950/60 dark:hover:!bg-blue-900/60 !text-blue-700 dark:!text-blue-300 font-semibold text-xs cursor-pointer transition-colors !min-h-0 shadow-xs"
+                    title="View School Grade Ranges & Boundaries (Decided by School Admin)"
+                  >
+                    <Info size={14} />
+                    <span>Grade Ranges</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setIsPublishingView(false)}
@@ -1468,9 +1583,22 @@ export function ClassMentorWorkspace() {
                 {/* 3. Grading System Concept: Marks, CGPA, Grade (Fixed when exam is selected) */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400">
-                      Grading System *
-                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                        Grading System *
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          loadSchoolGradeRanges();
+                          setShowGradeRangesModal(true);
+                        }}
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 bg-transparent border-none p-0 cursor-pointer inline-flex items-center"
+                        title="View School Grade Ranges & Boundaries"
+                      >
+                        <Info size={12} />
+                      </button>
+                    </div>
                     {isExamFixed && (
                       <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold inline-flex items-center gap-1" title="Grading system is locked by School Admin configuration">
                         <Lock size={10} className="text-slate-400" />
@@ -2405,6 +2533,184 @@ export function ClassMentorWorkspace() {
               <span className="text-slate-500 font-medium">
                 Showing {modalFilteredStudents.length} of {gradedStudentsList.length} students ({modalGradedCount} graded)
               </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: SCHOOL GRADE RANGES & BOUNDARIES (Strictly from School Admin) */}
+      {showGradeRangesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div
+            className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 flex flex-col max-h-[90vh] overflow-hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="grade-ranges-modal-title"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs">
+                  <SlidersHorizontal size={20} />
+                </div>
+                <div>
+                  <h3 id="grade-ranges-modal-title" className="text-base font-bold text-slate-900 dark:text-white m-0">
+                    School Grade Ranges &amp; Boundaries
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 m-0 mt-0.5">
+                    Configured by School Admin · Applied automatically during marks entry
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => loadSchoolGradeRanges()}
+                  disabled={loadingRanges}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors bg-transparent border-none cursor-pointer"
+                  title="Reload Grade Ranges from Server"
+                >
+                  <RefreshCw size={16} className={loadingRanges ? 'animate-spin text-blue-600' : ''} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowGradeRangesModal(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors bg-transparent border-none cursor-pointer"
+                  title="Close"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto pr-1">
+              {loadingRanges ? (
+                <div className="py-12 text-center text-sm text-slate-500">
+                  <Loader2 size={24} className="animate-spin mx-auto mb-2 text-blue-600" />
+                  Fetching grade boundaries from School Admin...
+                </div>
+              ) : schoolGradeRanges.length === 0 ? (
+                <div className="py-10 px-4 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-800/20">
+                  <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-3">
+                    <AlertCircle size={22} />
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 m-0 mb-1">
+                    No Custom Grade Ranges Configured
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto m-0 mb-3 leading-relaxed">
+                    The School Administrator has not defined custom grade boundaries in <strong>School Admin → Grading System</strong> yet.
+                  </p>
+                  <div className="inline-block p-3 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-[11px] text-blue-800 dark:text-blue-300 text-left">
+                    <p className="font-semibold m-0 mb-1">Standard System Defaults in Effect:</p>
+                    <ul className="m-0 pl-4 list-disc space-y-0.5">
+                      <li><strong>Grade A</strong>: 80% and above</li>
+                      <li><strong>Grade B</strong>: 60% – 79%</li>
+                      <li><strong>Grade C</strong>: 40% – 59% (Passing threshold)</li>
+                      <li><strong>Grade F</strong>: Below 40%</li>
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Visual Spectrum Bar */}
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
+                    <div className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
+                      Active Score Spectrum (0% – 100%)
+                    </div>
+                    <div className="flex h-8 rounded-lg overflow-hidden border border-slate-300 dark:border-slate-700 shadow-inner">
+                      {schoolGradeRanges.map((r, idx) => {
+                        const widthPct = Math.max(4, r.maxScore - r.minScore + 1);
+                        const colors = [
+                          '#10b981', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#d97706', '#ef4444'
+                        ];
+                        const bg = colors[idx % colors.length];
+                        return (
+                          <div
+                            key={r.id}
+                            style={{ width: `${widthPct}%`, backgroundColor: bg }}
+                            className="flex items-center justify-center text-white text-[10px] font-bold border-r border-white/40 shadow-xs px-1 overflow-hidden whitespace-nowrap"
+                            title={`${r.grade}: ${r.minScore}% – ${r.maxScore}% (${r.remark || 'No remark'})`}
+                          >
+                            {r.grade} ({r.minScore}–{r.maxScore}%)
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Boundaries Table */}
+                  <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 font-bold text-slate-600 dark:text-slate-300">
+                          <th className="p-3">GRADE</th>
+                          <th className="p-3">PERCENTAGE RANGE</th>
+                          <th className="p-3">GRADE POINT</th>
+                          <th className="p-3">OFFICIAL REMARK</th>
+                          <th className="p-3 text-center">STATUS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {schoolGradeRanges.map((r) => (
+                          <tr
+                            key={r.id}
+                            className="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/40"
+                          >
+                            <td className="p-3">
+                              <span
+                                className={`inline-block px-2.5 py-0.5 rounded text-xs font-black ${
+                                  r.isPassing
+                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                                    : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                                }`}
+                              >
+                                {r.grade}
+                              </span>
+                            </td>
+                            <td className="p-3 font-bold text-slate-800 dark:text-slate-100 font-mono">
+                              {r.minScore}% &nbsp;—&nbsp; {r.maxScore}%
+                            </td>
+                            <td className="p-3 font-semibold text-slate-600 dark:text-slate-300 font-mono">
+                              {r.gradePoint !== undefined && r.gradePoint !== null ? Number(r.gradePoint).toFixed(1) : '—'}
+                            </td>
+                            <td className="p-3 text-slate-600 dark:text-slate-300">
+                              {r.remark || <span className="text-slate-400 italic">—</span>}
+                            </td>
+                            <td className="p-3 text-center">
+                              <span
+                                className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  r.isPassing
+                                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                                    : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                                }`}
+                              >
+                                {r.isPassing ? 'PASS' : 'FAIL'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0">
+                    <Info size={12} className="inline mr-1 text-blue-500" />
+                    When entering numeric marks or CGPA, the student's letter grade and remarks automatically update according to these School Admin boundaries.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2 pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowGradeRangesModal(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 !bg-white hover:!bg-slate-50 dark:!bg-slate-800 dark:hover:!bg-slate-700 !text-slate-700 dark:!text-slate-300 font-semibold text-xs cursor-pointer transition-colors !min-h-0"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
