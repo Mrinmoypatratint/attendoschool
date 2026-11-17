@@ -2329,29 +2329,6 @@ export function ClassMentorWorkspace() {
               <span className="text-slate-500 font-medium">
                 Showing {modalFilteredStudents.length} of {gradedStudentsList.length} students ({modalGradedCount} graded)
               </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowGradedModal(false);
-                    setIsGradedModalMaximized(false);
-                    if (selectedExamForGradedView) {
-                      handleStartEditAssessment(selectedExamForGradedView, true);
-                    }
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs cursor-pointer shadow-sm transition-colors"
-                >
-                  <Edit2 size={13} />
-                  <span>Edit Marks</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowGradedModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 !bg-white hover:!bg-slate-100 dark:!bg-slate-800 dark:hover:!bg-slate-700 !text-slate-700 dark:!text-slate-300 font-semibold text-xs cursor-pointer shadow-xs transition-colors !min-h-0"
-                >
-                  Close
-                </button>
-              </div>
             </div>
           </div>
         </div>
