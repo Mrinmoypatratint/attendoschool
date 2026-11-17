@@ -10,6 +10,7 @@ dist/
 !.env.production.example
 backups/
 backend/.backup-state/
+backend/data/
 deploy/nginx/certs/*.key
 deploy/nginx/certs/*.pem
 /attendoschool/

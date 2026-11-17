@@ -1050,7 +1050,7 @@ export default function PeopleManagement() {
         {message && <div className="error" style={{ margin: '8px 16px 0' }}>{message}</div>}
 
         {/* Box Body (Scrollable Table Area) */}
-        <div className="directory-box-body" ref={tableBodyRef}>
+        <div className="directory-box-body" ref={tableBodyRef} style={{ overflowX: 'auto' }}>
           {loading && rows.length > 0 && (
             <div style={{
               position: 'sticky',
@@ -1081,7 +1081,7 @@ export default function PeopleManagement() {
               </div>
             </div>
           )}
-          <table>
+          <table style={{ minWidth: 1350, width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
             {tab === 'students' ? (
               <>
                 <thead>

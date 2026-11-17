@@ -55,6 +55,7 @@ export function StudentResults() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'RESULTS' | 'MARKSHEET'>('RESULTS');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedExamTitles, setSelectedExamTitles] = useState<Set<string>>(new Set());
 
   const loadData = () => {
     setLoading(true);
@@ -147,12 +148,137 @@ export function StudentResults() {
     );
   }, [resultsList, searchTerm]);
 
-  // Handle Official Marksheet Print
+  // All distinct exam titles from resultsList
+  const allExamTitles = useMemo(() => {
+    const titlesSet = new Set<string>();
+    resultsList.forEach((r) => {
+      const titleKey = (r.title || 'General Assessment').trim();
+      titlesSet.add(titleKey);
+    });
+    return Array.from(titlesSet);
+  }, [resultsList]);
+
+  // Group filtered results by Exam Name for the grouped table structure
+  interface ExamGroup {
+    examTitle: string;
+    examDate?: string;
+    gradingSystem?: 'MARKS' | 'CGPA' | 'GRADE';
+    items: Exam[];
+  }
+
+  const groupedResults = useMemo(() => {
+    const groupsMap = new Map<string, ExamGroup>();
+
+    for (const r of filteredResults) {
+      const titleKey = (r.title || 'General Assessment').trim();
+      if (!groupsMap.has(titleKey)) {
+        groupsMap.set(titleKey, {
+          examTitle: titleKey,
+          examDate: r.exam_date,
+          gradingSystem: r.grading_system,
+          items: []
+        });
+      }
+      const group = groupsMap.get(titleKey)!;
+      group.items.push(r);
+      if (!group.examDate && r.exam_date) {
+        group.examDate = r.exam_date;
+      }
+    }
+
+    return Array.from(groupsMap.values());
+  }, [filteredResults]);
+
+  // Marksheet items filtered by selected exam(s), or all if none selected
+  const marksheetItems = useMemo(() => {
+    if (selectedExamTitles.size === 0) {
+      return resultsList;
+    }
+    return resultsList.filter((r) =>
+      selectedExamTitles.has((r.title || 'General Assessment').trim())
+    );
+  }, [resultsList, selectedExamTitles]);
+
+  // Marksheet stats calculated specifically for the marksheet items
+  const marksheetStats = useMemo(() => {
+    if (marksheetItems.length === 0) {
+      return {
+        totalSubjects: 0,
+        totalMarks: 0,
+        obtainedMarks: 0,
+        percentage: 0,
+        overallGrade: '—',
+        passCount: 0
+      };
+    }
+    const totalMax = marksheetItems.reduce((acc, r) => acc + (Number(r.total_marks) || 100), 0);
+    const totalObtained = marksheetItems.reduce((acc, r) => acc + (Number(r.marks_obtained) || 0), 0);
+    const pct = totalMax > 0 ? (totalObtained / totalMax) * 100 : 0;
+
+    let overallGrade = 'A+';
+    if (pct < 40) overallGrade = 'F';
+    else if (pct < 60) overallGrade = 'C';
+    else if (pct < 75) overallGrade = 'B';
+    else if (pct < 90) overallGrade = 'A';
+    else overallGrade = 'A+';
+
+    const passCount = marksheetItems.filter((r) => {
+      const passM = Number(r.passing_marks) || 40;
+      return (Number(r.marks_obtained) || 0) >= passM;
+    }).length;
+
+    return {
+      totalSubjects: marksheetItems.length,
+      totalMarks: totalMax,
+      obtainedMarks: totalObtained,
+      percentage: Number(pct.toFixed(1)),
+      overallGrade,
+      passCount
+    };
+  }, [marksheetItems]);
+
+  // Selection toggle handlers
+  const handleToggleExamSelection = (examTitle: string) => {
+    setSelectedExamTitles((prev) => {
+      const next = new Set(prev);
+      if (next.has(examTitle)) {
+        next.delete(examTitle);
+      } else {
+        next.add(examTitle);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAllExams = () => {
+    if (selectedExamTitles.size === allExamTitles.length) {
+      setSelectedExamTitles(new Set());
+    } else {
+      setSelectedExamTitles(new Set(allExamTitles));
+    }
+  };
+
+  // Printing handlers
+  const handlePrintSingleExam = (examTitle: string) => {
+    setSelectedExamTitles(new Set([examTitle]));
+    setActiveTab('MARKSHEET');
+    setTimeout(() => {
+      window.print();
+    }, 150);
+  };
+
+  const handlePrintSelected = () => {
+    setActiveTab('MARKSHEET');
+    setTimeout(() => {
+      window.print();
+    }, 150);
+  };
+
   const handlePrintFormalMarksheet = () => {
     setActiveTab('MARKSHEET');
     setTimeout(() => {
       window.print();
-    }, 100);
+    }, 150);
   };
 
   const studentDisplayName = profile?.name || user?.name || 'STUDENT';
@@ -354,14 +480,6 @@ export function StudentResults() {
             <RotateCw size={14} className={loading ? 'animate-spin' : ''} />
             <span className="hidden sm:inline">Refresh</span>
           </button>
-          <button
-            type="button"
-            onClick={handlePrintFormalMarksheet}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs cursor-pointer shadow-sm transition-colors"
-          >
-            <Printer size={15} />
-            <span>Print Marksheet</span>
-          </button>
         </div>
       </div>
 
@@ -507,7 +625,7 @@ export function StudentResults() {
               <Search size={15} className="text-slate-400" />
               <input
                 type="text"
-                placeholder="Search by subject, assessment, or remarks..."
+                placeholder="Search by subject, exam title, or remarks..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="border-none outline-none bg-transparent text-xs w-full text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
@@ -551,16 +669,13 @@ export function StudentResults() {
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800">
                       <th className="p-3.5 px-4 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">
+                        EXAM NAME
+                      </th>
+                      <th className="p-3.5 px-4 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">
                         SUBJECT
                       </th>
                       <th className="p-3.5 px-4 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">
-                        ASSESSMENT / EXAM
-                      </th>
-                      <th className="p-3.5 px-4 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">
-                        EXAM DATE
-                      </th>
-                      <th className="p-3.5 px-4 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">
-                        SCORE &amp; TOTAL
+                        SCORE
                       </th>
                       <th className="p-3.5 px-4 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">
                         GRADE
@@ -569,98 +684,129 @@ export function StudentResults() {
                         STATUS
                       </th>
                       <th className="p-3.5 px-4 font-semibold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider">
-                        MENTOR REMARKS
+                        MENTOR REMARK
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredResults.map((r) => {
-                      const totalM = Number(r.total_marks) || 100;
-                      const obtM = Number(r.marks_obtained) || 0;
-                      const pct = totalM > 0 ? (obtM / totalM) * 100 : 0;
-                      const passM = Number(r.passing_marks) || 40;
-                      const isPassed = obtM >= passM;
-
+                    {groupedResults.map((group) => {
                       return (
-                        <tr
-                          key={r.id}
-                          className="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
-                        >
-                          <td className="p-3.5 px-4">
-                            <div className="font-bold text-slate-900 dark:text-white">{r.subject_name}</div>
-                            <div className="text-[11px] text-slate-400">{studentClassName}</div>
-                          </td>
-                          <td className="p-3.5 px-4 text-slate-800 dark:text-slate-200">
-                            <span className="font-medium">{r.title}</span>
-                          </td>
-                          <td className="p-3.5 px-4 text-slate-600 dark:text-slate-400 text-xs whitespace-nowrap">
-                            {formatDate(r.exam_date)}
-                          </td>
-                          <td className="p-3.5 px-4">
-                            {r.grading_system === 'GRADE' ? (
-                              <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white text-sm">
-                                <span>Grade: {r.grade || '—'}</span>
-                              </div>
-                            ) : r.grading_system === 'CGPA' ? (
-                              <div>
-                                <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white text-sm">
-                                  <span>{obtM}</span>
-                                  <span className="text-slate-400 text-xs">/ {totalM} CGPA</span>
-                                </div>
-                                <div className="w-24 bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 mt-1 overflow-hidden">
-                                  <div
-                                    className="h-full rounded-full bg-rose-500"
-                                    style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
-                                  />
-                                </div>
-                              </div>
-                            ) : (
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-bold text-slate-900 dark:text-white text-sm">
-                                    {obtM}
+                        <React.Fragment key={group.examTitle}>
+                          {group.items.map((r, itemIdx) => {
+                            const totalM = Number(r.total_marks) || 100;
+                            const obtM = Number(r.marks_obtained) || 0;
+                            const pct = totalM > 0 ? (obtM / totalM) * 100 : 0;
+                            const passM = Number(r.passing_marks) || 40;
+                            const isPassed = obtM >= passM;
+
+                            return (
+                              <tr
+                                key={r.id}
+                                className="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                              >
+                                {/* Column 1: Exam Name with rowSpan spanning all subjects of this exam */}
+                                {itemIdx === 0 && (
+                                  <td
+                                    rowSpan={group.items.length}
+                                    className="p-3.5 px-4 align-top border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131b2e]"
+                                  >
+                                    <div className="min-w-[140px]">
+                                      <div className="font-bold text-slate-900 dark:text-white text-sm">
+                                        {group.examTitle}
+                                      </div>
+                                      {group.examDate && (
+                                        <div className="text-[11px] text-slate-400 mt-0.5">
+                                          {formatDate(group.examDate)}
+                                        </div>
+                                      )}
+                                      <div className="text-[11px] text-slate-400 mt-0.5">
+                                        {group.items.length} {group.items.length === 1 ? 'subject' : 'subjects'}
+                                      </div>
+                                    </div>
+                                  </td>
+                                )}
+
+                                {/* Column 2: Subject */}
+                                <td className="p-3.5 px-4">
+                                  <div className="font-bold text-slate-900 dark:text-white">{r.subject_name}</div>
+                                  <div className="text-[11px] text-slate-400">{studentClassName}</div>
+                                </td>
+
+                                {/* Column 3: Score */}
+                                <td className="p-3.5 px-4">
+                                  {r.grading_system === 'GRADE' ? (
+                                    <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white text-sm">
+                                      <span>Grade: {r.grade || '—'}</span>
+                                    </div>
+                                  ) : r.grading_system === 'CGPA' ? (
+                                    <div>
+                                      <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white text-sm">
+                                        <span>{obtM}</span>
+                                        <span className="text-slate-400 text-xs">/ {totalM} CGPA</span>
+                                      </div>
+                                      <div className="w-24 bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 mt-1 overflow-hidden">
+                                        <div
+                                          className="h-full rounded-full bg-rose-500"
+                                          style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+                                        />
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-bold text-slate-900 dark:text-white text-sm">
+                                          {obtM}
+                                        </span>
+                                        <span className="text-slate-400 text-xs">/ {totalM}</span>
+                                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 ml-1">
+                                          ({pct.toFixed(0)}%)
+                                        </span>
+                                      </div>
+                                      <div className="w-24 bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 mt-1 overflow-hidden">
+                                        <div
+                                          className={`h-full rounded-full ${
+                                            pct >= 75 ? 'bg-emerald-500' : pct >= 50 ? 'bg-rose-500' : 'bg-amber-500'
+                                          }`}
+                                          style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
+                                </td>
+
+                                {/* Column 4: Grade */}
+                                <td className="p-3.5 px-4">
+                                  <span
+                                    className={`inline-block px-2.5 py-0.5 rounded-md text-xs font-bold ${getGradeBadgeClass(
+                                      r.grade
+                                    )}`}
+                                  >
+                                    {r.grade || (pct >= 85 ? 'A+' : pct >= 70 ? 'A' : pct >= 55 ? 'B' : pct >= 40 ? 'C' : 'F')}
                                   </span>
-                                  <span className="text-slate-400 text-xs">/ {totalM}</span>
-                                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 ml-1">
-                                    ({pct.toFixed(0)}%)
-                                  </span>
-                                </div>
-                                <div className="w-24 bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 mt-1 overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full ${
-                                      pct >= 75 ? 'bg-emerald-500' : pct >= 50 ? 'bg-rose-500' : 'bg-amber-500'
+                                </td>
+
+                                {/* Column 5: Status */}
+                                <td className="p-3.5 px-4 whitespace-nowrap">
+                                  <span
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
+                                      isPassed
+                                        ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                                        : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
                                     }`}
-                                    style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
-                                  />
-                                </div>
-                              </div>
-                            )}
-                          </td>
-                          <td className="p-3.5 px-4">
-                            <span
-                              className={`inline-block px-2.5 py-0.5 rounded-md text-xs font-bold ${getGradeBadgeClass(
-                                r.grade
-                              )}`}
-                            >
-                              {r.grade || (pct >= 85 ? 'A+' : pct >= 70 ? 'A' : pct >= 55 ? 'B' : pct >= 40 ? 'C' : 'F')}
-                            </span>
-                          </td>
-                          <td className="p-3.5 px-4 whitespace-nowrap">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
-                                isPassed
-                                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                                  : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
-                              }`}
-                            >
-                              <CheckCircle2 size={12} />
-                              {isPassed ? (pct >= 85 ? 'DISTINCTION' : 'PASSED') : 'FAILED'}
-                            </span>
-                          </td>
-                          <td className="p-3.5 px-4 text-xs text-slate-600 dark:text-slate-300 max-w-xs">
-                            {r.remarks || 'Verified by Class Mentor'}
-                          </td>
-                        </tr>
+                                  >
+                                    <CheckCircle2 size={12} />
+                                    {isPassed ? (pct >= 85 ? 'DISTINCTION' : 'PASSED') : 'FAILED'}
+                                  </span>
+                                </td>
+
+                                {/* Column 6: Mentor remark */}
+                                <td className="p-3.5 px-4 text-xs text-slate-600 dark:text-slate-300 max-w-xs">
+                                  {r.remarks || 'Good performance'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </React.Fragment>
                       );
                     })}
                   </tbody>
@@ -678,6 +824,41 @@ export function StudentResults() {
           activeTab === 'MARKSHEET' ? 'block' : 'hidden print:block'
         }`}
       >
+        {/* Scope selector banner in interactive screen view */}
+        <div className="no-print flex flex-wrap items-center justify-between gap-3 mb-5 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-slate-600 dark:text-slate-400">Exam Scope:</span>
+            <button
+              type="button"
+              onClick={() => setSelectedExamTitles(new Set())}
+              className={`px-3 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+                selectedExamTitles.size === 0
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              All Published Exams
+            </button>
+            {allExamTitles.map((title) => {
+              const isSelected = selectedExamTitles.has(title) && selectedExamTitles.size === 1;
+              return (
+                <button
+                  key={title}
+                  type="button"
+                  onClick={() => setSelectedExamTitles(new Set([title]))}
+                  className={`px-3 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  {title}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Institutional Header of Marksheet */}
         <div className="text-center pb-6 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center justify-center mx-auto mb-2.5">
@@ -705,7 +886,11 @@ export function StudentResults() {
             {schoolName}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 m-0 mt-1 uppercase tracking-wider font-semibold">
-            Official Cumulative Academic Marksheet · Session {academicSession}
+            {selectedExamTitles.size === 1
+              ? `Official Marksheet · ${Array.from(selectedExamTitles)[0]} · Session ${academicSession}`
+              : selectedExamTitles.size > 1
+              ? `Official Marksheet · ${Array.from(selectedExamTitles).join(', ')} · Session ${academicSession}`
+              : `Official Cumulative Academic Marksheet · Session ${academicSession}`}
           </p>
         </div>
 
@@ -732,11 +917,11 @@ export function StudentResults() {
         </div>
 
         {/* Marksheet Table */}
-        {resultsList.length === 0 ? (
+        {marksheetItems.length === 0 ? (
           <div className="py-12 text-center text-sm text-slate-400 dark:text-slate-500">
             <FileText size={36} className="mx-auto mb-2 text-slate-300 dark:text-slate-600" />
             <p className="font-semibold text-slate-700 dark:text-slate-300 m-0 mb-1">No Marksheet Available</p>
-            <p className="text-xs m-0">Official marksheet will be generated automatically once examination marks are published by your Class Mentor.</p>
+            <p className="text-xs m-0">No published evaluation records found for the selected scope.</p>
           </div>
         ) : (
           <div className="mt-4 overflow-x-auto">
@@ -754,42 +939,52 @@ export function StudentResults() {
                 </tr>
               </thead>
               <tbody>
-                {resultsList.map((r, idx) => (
-                  <tr key={r.id} className="border-b border-slate-100 dark:border-slate-800/80">
-                    <td className="p-3 text-slate-400 font-mono">{idx + 1}</td>
-                    <td className="p-3 font-bold text-slate-900 dark:text-white">{r.subject_name}</td>
-                    <td className="p-3 text-slate-600 dark:text-slate-400">{r.title}</td>
-                    <td className="p-3 text-right font-mono">{formatScore(r.total_marks)}</td>
-                    <td className="p-3 text-right font-mono">{formatScore(r.passing_marks || 40)}</td>
-                    <td className="p-3 text-right font-bold text-slate-900 dark:text-white font-mono">
-                      {formatScore(r.marks_obtained)}
-                    </td>
-                    <td className="p-3 text-center">
-                      <span className={`grade-badge-print inline-block px-2 py-0.5 rounded text-[11px] font-bold ${getGradeBadgeClass(r.grade)}`}>
-                        {r.grade || 'A'}
-                      </span>
-                    </td>
-                    <td className="p-3 text-center">
-                      <span className="status-pass-print text-[11px] font-bold text-emerald-600 dark:text-emerald-400">PASSED</span>
-                    </td>
-                  </tr>
-                ))}
+                {marksheetItems.map((r, idx) => {
+                  const obtM = Number(r.marks_obtained) || 0;
+                  const passM = Number(r.passing_marks) || 40;
+                  const isPassed = obtM >= passM;
+                  const totalM = Number(r.total_marks) || 100;
+                  const pct = totalM > 0 ? (obtM / totalM) * 100 : 0;
+
+                  return (
+                    <tr key={r.id} className="border-b border-slate-100 dark:border-slate-800/80">
+                      <td className="p-3 text-slate-400 font-mono">{idx + 1}</td>
+                      <td className="p-3 font-bold text-slate-900 dark:text-white">{r.subject_name}</td>
+                      <td className="p-3 text-slate-600 dark:text-slate-400">{r.title}</td>
+                      <td className="p-3 text-right font-mono">{formatScore(r.total_marks)}</td>
+                      <td className="p-3 text-right font-mono">{formatScore(r.passing_marks || 40)}</td>
+                      <td className="p-3 text-right font-bold text-slate-900 dark:text-white font-mono">
+                        {formatScore(r.marks_obtained)}
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className={`grade-badge-print inline-block px-2 py-0.5 rounded text-[11px] font-bold ${getGradeBadgeClass(r.grade)}`}>
+                          {r.grade || 'A'}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className={`text-[11px] font-bold ${isPassed ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                          {isPassed ? (pct >= 85 ? 'DISTINCTION' : 'PASSED') : 'FAILED'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
               <tfoot>
                 <tr className="bg-rose-50/60 dark:bg-rose-950/30 font-bold border-t-2 border-slate-300 dark:border-slate-700">
                   <td colSpan={3} className="p-3 text-slate-900 dark:text-white font-extrabold uppercase">
-                    Grand Total
+                    Grand Total {selectedExamTitles.size > 0 ? `(${Array.from(selectedExamTitles).join(', ')})` : ''}
                   </td>
-                  <td className="p-3 text-right font-mono">{stats.totalMarks}</td>
+                  <td className="p-3 text-right font-mono">{marksheetStats.totalMarks}</td>
                   <td className="p-3 text-right font-mono">—</td>
                   <td className="p-3 text-right font-mono text-rose-600 dark:text-rose-400 text-sm font-bold">
-                    {stats.obtainedMarks}
+                    {marksheetStats.obtainedMarks}
                   </td>
                   <td className="p-3 text-center font-extrabold text-rose-600 dark:text-rose-400">
-                    {stats.overallGrade}
+                    {marksheetStats.overallGrade}
                   </td>
                   <td className="p-3 text-center text-emerald-600 dark:text-emerald-400 font-extrabold">
-                    {stats.percentage}%
+                    {marksheetStats.percentage}%
                   </td>
                 </tr>
               </tfoot>
@@ -801,7 +996,17 @@ export function StudentResults() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500">
           <div>
             <p className="m-0 font-medium text-slate-700 dark:text-slate-300">
-              Performance Evaluation: <b>First Class with Distinction ({stats.percentage}%)</b>
+              Performance Evaluation:{' '}
+              <b>
+                {marksheetStats.percentage >= 85
+                  ? 'First Class with Distinction'
+                  : marksheetStats.percentage >= 60
+                  ? 'First Class'
+                  : marksheetStats.percentage >= 40
+                  ? 'Second Class'
+                  : 'Needs Improvement'}{' '}
+                ({marksheetStats.percentage}%)
+              </b>
             </p>
             <p className="m-0 text-[11px] text-slate-400">
               Digitally verified academic record authenticated by School Authority.
