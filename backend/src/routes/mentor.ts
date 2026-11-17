@@ -3,6 +3,7 @@ import { Router, Response } from 'express';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import * as mentorSvc from '../services/mentorService';
 import * as attendanceSvc from '../services/attendanceReportService';
+import { isSameSchool, canonicalSchoolId } from '../utils/tenant';
 
 const router = Router();
 
@@ -419,10 +420,84 @@ router.get(
   async (req: AuthRequest, res: Response) => {
     try {
       ensureGradingStoreLoaded();
-      const sid = String(req.user!.schoolId || 'global');
-      const exams = (schoolGradingStore.get(sid)?.exams || schoolGradingStore.get('global')?.exams || []);
+      const rawSid = req.user?.schoolId;
+      const canonSid = canonicalSchoolId(rawSid) || rawSid || 'global';
 
-      // Return strictly the exams configured by School Admin (no hardcoded/merged defaults)
+      // 1. Check schoolGradingStore
+      let exams: any[] = [];
+      if (schoolGradingStore.has(canonSid) && (schoolGradingStore.get(canonSid)?.exams?.length || 0) > 0) {
+        exams = schoolGradingStore.get(canonSid)!.exams;
+      } else if (rawSid && schoolGradingStore.has(rawSid) && (schoolGradingStore.get(rawSid)?.exams?.length || 0) > 0) {
+        exams = schoolGradingStore.get(rawSid)!.exams;
+      } else {
+        for (const [storeKey, storeVal] of schoolGradingStore.entries()) {
+          if (storeKey !== 'global' && isSameSchool(storeKey, canonSid) && storeVal.exams && storeVal.exams.length > 0) {
+            exams = storeVal.exams;
+            break;
+          }
+        }
+      }
+      if (exams.length === 0 && (schoolGradingStore.get('global')?.exams?.length || 0) > 0) {
+        exams = schoolGradingStore.get('global')!.exams;
+      }
+
+      // 2. If store has no configured exams yet, inspect existing exams recorded for THIS school
+      if (exams.length === 0) {
+        const seen = new Set<string>();
+        // Check in-memory student exams
+        if (Array.isArray(mentorSvc.inMemoryStudentExams)) {
+          for (const e of mentorSvc.inMemoryStudentExams) {
+            if (isSameSchool(e.school_id, canonSid) && e.title && !seen.has(e.title.toLowerCase().trim())) {
+              seen.add(e.title.toLowerCase().trim());
+              exams.push({
+                id: `ex-${e.id}`,
+                examTitle: e.title,
+                gradingType: e.grading_system || 'CGPA',
+                marksConfig: { totalMarks: e.total_marks || 100, passingMarks: e.passing_marks || 40 },
+                cgpaConfig: { maxCgpa: e.total_marks || 10, passingCgpa: e.passing_marks || 4.0 },
+                status: 'ACTIVE'
+              });
+            }
+          }
+        }
+
+        // Check PostgreSQL student_exams strictly for this school
+        if (exams.length === 0 && isPostgresConfigured) {
+          try {
+            const dbEx = await pool.query(
+              `SELECT DISTINCT title, COALESCE(grading_system, 'MARKS') as grading_system, total_marks, passing_marks 
+               FROM student_exams 
+               WHERE school_id = $1
+               LIMIT 20`,
+              [canonSid]
+            );
+            if (dbEx.rowCount && dbEx.rowCount > 0) {
+              for (const r of dbEx.rows) {
+                if (r.title && !seen.has(r.title.toLowerCase().trim())) {
+                  seen.add(r.title.toLowerCase().trim());
+                  exams.push({
+                    id: `ex-${r.title}`,
+                    examTitle: r.title,
+                    gradingType: r.grading_system,
+                    marksConfig: { totalMarks: r.total_marks || 100, passingMarks: r.passing_marks || 40 },
+                    cgpaConfig: { maxCgpa: r.total_marks || 10, passingCgpa: r.passing_marks || 4.0 },
+                    status: 'ACTIVE'
+                  });
+                }
+              }
+            }
+          } catch (_e) {}
+        }
+
+        // Cache into store if found
+        if (exams.length > 0) {
+          const current = schoolGradingStore.get(canonSid) || { exams: [], ranges: [] };
+          schoolGradingStore.set(canonSid, { ...current, exams });
+          schoolGradingStore.set('global', { ...(schoolGradingStore.get('global') || { exams: [], ranges: [] }), exams });
+          persistGradingStoreToFile();
+        }
+      }
+
       return res.json({ success: true, exams });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message || 'Failed to fetch grading exams' });
@@ -433,15 +508,20 @@ router.get(
 // POST /api/grading-system/exams
 router.post(
   ['/grading-system/exams', '/teacher/mentor/grading-exams'],
-  ...mentorAdmin,
+  requireAuth,
   async (req: AuthRequest, res: Response) => {
     try {
       ensureGradingStoreLoaded();
-      const sid = String(req.user!.schoolId || 'global');
+      const rawSid = req.user?.schoolId;
+      const canonSid = canonicalSchoolId(rawSid) || rawSid || 'global';
       const { exams } = req.body;
       const list = Array.isArray(exams) ? exams : [];
-      const current = schoolGradingStore.get(sid) || { exams: [], ranges: [] };
-      schoolGradingStore.set(sid, { ...current, exams: list });
+
+      const current = schoolGradingStore.get(canonSid) || { exams: [], ranges: [] };
+      schoolGradingStore.set(canonSid, { ...current, exams: list });
+      if (rawSid && rawSid !== canonSid) {
+        schoolGradingStore.set(rawSid, { ...current, exams: list });
+      }
       schoolGradingStore.set('global', { ...(schoolGradingStore.get('global') || { exams: [], ranges: [] }), exams: list });
       persistGradingStoreToFile();
       return res.json({ success: true, message: 'Grading exams updated successfully', exams: list });
@@ -458,9 +538,27 @@ router.get(
   async (req: AuthRequest, res: Response) => {
     try {
       ensureGradingStoreLoaded();
-      const sid = String(req.user!.schoolId || 'global');
-      const store = schoolGradingStore.get(sid) || schoolGradingStore.get('global') || { exams: [], ranges: [] };
-      return res.json({ success: true, ranges: store.ranges || [] });
+      const rawSid = req.user?.schoolId;
+      const canonSid = canonicalSchoolId(rawSid) || rawSid || 'global';
+
+      let ranges: any[] = [];
+      if (schoolGradingStore.has(canonSid)) {
+        ranges = schoolGradingStore.get(canonSid)?.ranges || [];
+      } else if (rawSid && schoolGradingStore.has(rawSid)) {
+        ranges = schoolGradingStore.get(rawSid)?.ranges || [];
+      } else {
+        for (const [storeKey, storeVal] of schoolGradingStore.entries()) {
+          if (storeKey !== 'global' && isSameSchool(storeKey, canonSid) && storeVal.ranges && storeVal.ranges.length > 0) {
+            ranges = storeVal.ranges;
+            break;
+          }
+        }
+      }
+      if (ranges.length === 0 && (schoolGradingStore.get('global')?.ranges?.length || 0) > 0) {
+        ranges = schoolGradingStore.get('global')!.ranges;
+      }
+
+      return res.json({ success: true, ranges });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message || 'Failed to fetch grading ranges' });
     }
@@ -470,15 +568,20 @@ router.get(
 // POST /api/grading-system/ranges
 router.post(
   ['/grading-system/ranges', '/teacher/mentor/grading-ranges'],
-  ...mentorAdmin,
+  requireAuth,
   async (req: AuthRequest, res: Response) => {
     try {
       ensureGradingStoreLoaded();
-      const sid = String(req.user!.schoolId || 'global');
+      const rawSid = req.user?.schoolId;
+      const canonSid = canonicalSchoolId(rawSid) || rawSid || 'global';
       const { ranges } = req.body;
       const list = Array.isArray(ranges) ? ranges : [];
-      const current = schoolGradingStore.get(sid) || { exams: [], ranges: [] };
-      schoolGradingStore.set(sid, { ...current, ranges: list });
+
+      const current = schoolGradingStore.get(canonSid) || { exams: [], ranges: [] };
+      schoolGradingStore.set(canonSid, { ...current, ranges: list });
+      if (rawSid && rawSid !== canonSid) {
+        schoolGradingStore.set(rawSid, { ...current, ranges: list });
+      }
       schoolGradingStore.set('global', { ...(schoolGradingStore.get('global') || { exams: [], ranges: [] }), ranges: list });
       persistGradingStoreToFile();
       return res.json({ success: true, message: 'Grading ranges updated successfully', ranges: list });

@@ -133,7 +133,7 @@ export function ClassMentorWorkspace() {
     // 1. First load from Backend API
     try {
       const res = await api.get('/teacher/mentor/grading-exams');
-      if (res.data?.success && Array.isArray(res.data.exams)) {
+      if (res.data?.success && Array.isArray(res.data.exams) && res.data.exams.length > 0) {
         setAdminExams(res.data.exams);
         try {
           localStorage.setItem('attendo_active_school_exams', JSON.stringify(res.data.exams));
@@ -148,7 +148,7 @@ export function ClassMentorWorkspace() {
       const activeStored = localStorage.getItem('attendo_active_school_exams');
       if (activeStored) {
         const parsed = JSON.parse(activeStored);
-        if (Array.isArray(parsed)) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           setAdminExams(parsed);
           return;
         }
@@ -157,7 +157,7 @@ export function ClassMentorWorkspace() {
       const stored = localStorage.getItem(key);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           setAdminExams(parsed);
           return;
         }
