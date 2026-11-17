@@ -2076,10 +2076,11 @@ export function ClassMentorWorkspace() {
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteExam(exam.id, exam.title)}
-                                  className="p-1 rounded-lg border border-transparent text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer !min-h-0 transition-colors"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-rose-200 dark:border-rose-900/60 !bg-rose-50 hover:!bg-rose-100 dark:!bg-rose-950/60 dark:hover:!bg-rose-900/60 !text-rose-700 hover:!text-rose-800 dark:!text-rose-300 dark:hover:!text-rose-200 text-xs font-semibold cursor-pointer !min-h-0 shadow-xs transition-colors"
                                   title="Delete Exam"
                                 >
-                                  <Trash2 size={14} />
+                                  <Trash2 size={13} className="text-rose-600 dark:text-rose-400 shrink-0" />
+                                  <span>Delete</span>
                                 </button>
                               </div>
                             </td>
