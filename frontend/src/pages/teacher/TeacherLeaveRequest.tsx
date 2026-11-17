@@ -389,9 +389,6 @@ export default function TeacherLeaveRequest() {
           <h1 className="student-subpage-title text-2xl font-extrabold text-slate-900 dark:text-white my-1">
             Faculty Leave Applications
           </h1>
-          <p className="student-subpage-desc text-sm text-slate-500 dark:text-slate-400 m-0">
-            Submit absence requests for School Administration review and track approval status in real-time.
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">
