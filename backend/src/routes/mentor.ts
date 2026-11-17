@@ -342,6 +342,20 @@ router.post(['/teacher/mentor/publish-results', '/publish-results'], ...mentorTe
   }
 });
 
+// PATCH /api/teacher/mentor/exams/:id/status - Toggle exam status between DRAFT and PUBLISHED
+router.patch(['/teacher/mentor/exams/:id/status', '/exams/:id/status'], ...mentorTeacher, async (req: AuthRequest, res: Response) => {
+  try {
+    const { status } = req.body;
+    if (!['DRAFT', 'PUBLISHED'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status. Must be DRAFT or PUBLISHED' });
+    }
+    const updated = await mentorSvc.updateExamStatus(req.user!.schoolId!, String(req.params.id), status);
+    res.json({ success: true, exam: updated, status });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to update exam status' });
+  }
+});
+
 // DELETE /api/teacher/mentor/exams/:id - Delete an exam and student marks
 router.delete(['/teacher/mentor/exams/:id', '/exams/:id'], ...mentorTeacher, async (req: AuthRequest, res: Response) => {
   try {

@@ -1867,7 +1867,8 @@ export async function getStudentExams(schoolId: string, userId: string) {
        FROM student_exams e
        LEFT JOIN subjects sub ON sub.id = e.subject_id
        LEFT JOIN student_exam_results r ON r.exam_id = e.id AND (r.student_id = $3 OR r.student_id::text = $5::text)
-       WHERE e.school_id = $1 
+       WHERE e.school_id = $1
+         AND COALESCE(e.status, 'PUBLISHED') = 'PUBLISHED'
          AND (
            e.class_id = $2 
            OR e.class_id IN (SELECT id FROM classes WHERE school_id = $1 AND class_number = $4)
@@ -1890,7 +1891,8 @@ export async function getStudentExams(schoolId: string, userId: string) {
     const matchSchool = !e.school_id || isSameSchool(e.school_id, schoolId);
     const matchClass = !e.class_id || e.class_id === st.class_id || String(e.class_id).includes(String(st.class_number || ''));
     const matchSection = !e.section_id || e.section_id === st.section_id || (st.section_name && String(e.section_id).toLowerCase() === String(st.section_name).toLowerCase());
-    return matchSchool && (matchClass || matchSection);
+    const matchStatus = !(e as any).status || (e as any).status === 'PUBLISHED';
+    return matchSchool && (matchClass || matchSection) && matchStatus;
   });
 
   if (matchedExams.length > 0) {

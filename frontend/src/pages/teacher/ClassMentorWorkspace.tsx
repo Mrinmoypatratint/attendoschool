@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import {
   Users, ShieldCheck, FileText, RefreshCw, AlertCircle, Loader2, Award,
   Plus, Edit2, Trash2, Calendar, BookOpen, Search, ArrowLeft, Save, CheckCircle2,
-  Check, X, TrendingUp, Maximize2, Minimize2, Info, Lock, Download, FileSpreadsheet
+  Check, X, TrendingUp, Maximize2, Minimize2, Info, Lock, Download, FileSpreadsheet, Send
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../api';
@@ -26,6 +26,7 @@ interface MentoredExam {
   subject_name?: string;
   subject_code?: string;
   grading_system?: 'MARKS' | 'CGPA' | 'GRADE';
+  status?: 'DRAFT' | 'PUBLISHED';
   term?: string;
   exam_date: string;
   total_marks: number;
@@ -238,6 +239,8 @@ export function ClassMentorWorkspace() {
   // Publishing / Editing View State
   const [isPublishingView, setIsPublishingView] = useState(false);
   const [editingExam, setEditingExam] = useState<MentoredExam | null>(null);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [togglingExamId, setTogglingExamId] = useState<string | null>(null);
 
   // Form Fields
   const [formTitle, setFormTitle] = useState('');
@@ -564,8 +567,8 @@ export function ClassMentorWorkspace() {
     setStudentsWithMarks(prev => prev.map(s => s.student_id === studentId ? { ...s, remarks } : s));
   };
 
-  // Publish / Save Results to Backend
-  const handleSaveAndPublish = async () => {
+  // Publish / Save Results to Backend (DRAFT or PUBLISHED)
+  const handleSaveResults = async (targetStatus: 'DRAFT' | 'PUBLISHED' = 'PUBLISHED') => {
     if (!selectedSection) return;
     if (!formTitle.trim()) {
       setPublishError('Please select or enter an exam title.');
@@ -598,7 +601,12 @@ export function ClassMentorWorkspace() {
       passingScore = 40;
     }
 
-    setSubmittingResults(true);
+    const isDraft = targetStatus === 'DRAFT';
+    if (isDraft) {
+      setSavingDraft(true);
+    } else {
+      setSubmittingResults(true);
+    }
     setPublishError(null);
     setPublishSuccessMsg(null);
 
@@ -608,6 +616,7 @@ export function ClassMentorWorkspace() {
       if (!formSubjectId && !finalSubjectName) {
         setPublishError('Please select a subject.');
         setSubmittingResults(false);
+        setSavingDraft(false);
         return;
       }
 
@@ -619,6 +628,7 @@ export function ClassMentorWorkspace() {
         subjectName: finalSubjectName,
         title: formTitle.trim(),
         gradingSystem: formGradingSystem,
+        status: targetStatus,
         examDate: formExamDate || new Date().toISOString().slice(0, 10),
         totalMarks: totalScore,
         passingMarks: passingScore,
@@ -635,7 +645,11 @@ export function ClassMentorWorkspace() {
       };
 
       const res = await api.post('/teacher/mentor/publish-results', payload);
-      setPublishSuccessMsg(res.data?.message || 'Assessment results published and synced to student profiles successfully!');
+      setPublishSuccessMsg(
+        isDraft
+          ? 'Assessment evaluations saved as draft! Results are preserved and hidden from student portal.'
+          : (res.data?.message || 'Assessment results published and synced to student profiles successfully!')
+      );
       // Reload exam list
       await loadExams(selectedSection.class_id, selectedSection.section_id);
       setTimeout(() => {
@@ -643,9 +657,26 @@ export function ClassMentorWorkspace() {
       }, 1200);
     } catch (err: any) {
       console.error('Publish error:', err);
-      setPublishError(err?.response?.data?.message || 'Failed to publish assessment results.');
+      setPublishError(err?.response?.data?.message || 'Failed to save assessment results.');
     } finally {
       setSubmittingResults(false);
+      setSavingDraft(false);
+    }
+  };
+
+  const handleSaveAndPublish = () => handleSaveResults('PUBLISHED');
+
+  const handleToggleExamStatus = async (exam: MentoredExam, newStatus: 'DRAFT' | 'PUBLISHED') => {
+    if (!selectedSection) return;
+    setTogglingExamId(exam.id);
+    try {
+      await api.patch(`/teacher/mentor/exams/${exam.id}/status`, { status: newStatus });
+      setExams(prev => prev.map(e => e.id === exam.id ? { ...e, status: newStatus } : e));
+    } catch (err: any) {
+      console.error('Failed to toggle exam status:', err);
+      alert(err?.response?.data?.message || 'Failed to update exam status.');
+    } finally {
+      setTogglingExamId(null);
     }
   };
 
@@ -1222,17 +1253,28 @@ export function ClassMentorWorkspace() {
                   <button
                     type="button"
                     onClick={() => setIsPublishingView(false)}
-                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 !bg-white hover:!bg-slate-50 dark:!bg-slate-800 dark:hover:!bg-slate-700 !text-slate-700 dark:!text-slate-300 font-semibold text-xs cursor-pointer transition-colors !min-h-0"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
-                    onClick={handleSaveAndPublish}
-                    disabled={submittingResults}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold text-xs cursor-pointer shadow-sm transition-colors"
+                    onClick={() => handleSaveResults('DRAFT')}
+                    disabled={submittingResults || savingDraft}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-amber-300 dark:border-amber-700 !bg-amber-50 hover:!bg-amber-100 dark:!bg-amber-950/60 dark:hover:!bg-amber-900/60 disabled:opacity-60 !text-amber-800 dark:!text-amber-300 font-semibold text-xs cursor-pointer shadow-xs transition-colors !min-h-0"
+                    title="Save evaluations as a draft without publishing to students"
                   >
-                    {submittingResults ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                    {savingDraft ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
+                    <span>{savingDraft ? 'Saving Draft...' : 'Save Draft'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveResults('PUBLISHED')}
+                    disabled={submittingResults || savingDraft}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl !bg-blue-600 hover:!bg-blue-700 disabled:opacity-60 !text-white font-semibold text-xs cursor-pointer shadow-sm transition-colors !min-h-0"
+                    title="Publish and sync results to student portals immediately"
+                  >
+                    {submittingResults ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
                     <span>{submittingResults ? 'Publishing...' : 'Publish Results'}</span>
                   </button>
                 </div>
@@ -1689,15 +1731,25 @@ export function ClassMentorWorkspace() {
                   <button
                     type="button"
                     onClick={() => setIsPublishingView(false)}
-                    className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
+                    className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 !bg-white hover:!bg-slate-50 dark:!bg-slate-800 dark:hover:!bg-slate-700 !text-slate-700 dark:!text-slate-300 font-semibold text-xs cursor-pointer !min-h-0"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
-                    onClick={handleSaveAndPublish}
-                    disabled={submittingResults}
-                    className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold text-xs cursor-pointer shadow-sm transition-colors"
+                    onClick={() => handleSaveResults('DRAFT')}
+                    disabled={submittingResults || savingDraft}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-amber-300 dark:border-amber-700 !bg-amber-50 hover:!bg-amber-100 dark:!bg-amber-950/60 dark:hover:!bg-amber-900/60 disabled:opacity-60 !text-amber-800 dark:!text-amber-300 font-semibold text-xs cursor-pointer shadow-xs transition-colors !min-h-0"
+                    title="Save evaluations as a draft without publishing to students"
+                  >
+                    {savingDraft ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+                    <span>{savingDraft ? 'Saving Draft...' : 'Save Draft'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveResults('PUBLISHED')}
+                    disabled={submittingResults || savingDraft}
+                    className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl !bg-blue-600 hover:!bg-blue-700 disabled:opacity-60 !text-white font-semibold text-xs cursor-pointer shadow-sm transition-colors !min-h-0"
                   >
                     {submittingResults ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                     <span>{submittingResults ? 'Publishing...' : 'Publish & Sync to Student Portals'}</span>
@@ -1895,7 +1947,18 @@ export function ClassMentorWorkspace() {
                                 />
                               </td>
                               <td className="p-3">
-                                <div className="font-bold text-slate-900 dark:text-white text-sm">{exam.title}</div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-bold text-slate-900 dark:text-white text-sm">{exam.title}</span>
+                                  {exam.status === 'DRAFT' ? (
+                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                      DRAFT
+                                    </span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                      PUBLISHED
+                                    </span>
+                                  )}
+                                </div>
                                 <span className="inline-block mt-0.5 px-2 py-0.2 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
                                   {exam.grading_system === 'CGPA' ? 'CGPA System' : exam.grading_system === 'GRADE' ? 'Letter Grade' : 'Marks System'}
                                 </span>
@@ -1929,19 +1992,65 @@ export function ClassMentorWorkspace() {
                             </td>
                             <td className="p-3 text-right">
                               <div className="flex items-center justify-end gap-1.5">
+                                {/* 1. Draft Button */}
                                 <button
                                   type="button"
-                                  onClick={() => handleStartEditAssessment(exam)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-50 cursor-pointer"
-                                  title="Enter / Edit Marks"
+                                  onClick={() => {
+                                    if (exam.status === 'DRAFT') {
+                                      handleStartEditAssessment(exam);
+                                    } else {
+                                      handleToggleExamStatus(exam, 'DRAFT');
+                                    }
+                                  }}
+                                  disabled={togglingExamId === exam.id}
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-semibold cursor-pointer transition-colors !min-h-0 ${
+                                    exam.status === 'DRAFT'
+                                      ? '!bg-amber-50 hover:!bg-amber-100 dark:!bg-amber-950/60 dark:hover:!bg-amber-900/60 !text-amber-800 dark:!text-amber-300 border-amber-300 dark:border-amber-700 shadow-xs'
+                                      : '!bg-white hover:!bg-slate-50 dark:!bg-slate-800 dark:hover:!bg-slate-700 !text-slate-700 dark:!text-slate-300 border-slate-200 dark:border-slate-700'
+                                  }`}
+                                  title={exam.status === 'DRAFT' ? 'Edit Draft Marks' : 'Set to Draft (Hide from student portal)'}
                                 >
-                                  <Edit2 size={13} />
-                                  <span>Edit Marks</span>
+                                  {togglingExamId === exam.id && exam.status !== 'DRAFT' ? (
+                                    <Loader2 size={12} className="animate-spin text-amber-600" />
+                                  ) : (
+                                    <FileText size={12} className={exam.status === 'DRAFT' ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400 dark:text-slate-400'} />
+                                  )}
+                                  <span>Draft</span>
                                 </button>
+
+                                {/* 2. Publish Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (exam.status === 'DRAFT') {
+                                      handleToggleExamStatus(exam, 'PUBLISHED');
+                                    } else {
+                                      handleStartEditAssessment(exam);
+                                    }
+                                  }}
+                                  disabled={togglingExamId === exam.id}
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-semibold cursor-pointer transition-colors shadow-xs !min-h-0 ${
+                                    exam.status === 'DRAFT'
+                                      ? '!bg-blue-600 hover:!bg-blue-700 !text-white border-blue-600 dark:border-blue-700'
+                                      : '!bg-emerald-50 hover:!bg-emerald-100 dark:!bg-emerald-950/60 dark:hover:!bg-emerald-900/60 !text-emerald-700 dark:!text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                                  }`}
+                                  title={exam.status === 'DRAFT' ? 'Publish and sync results to students immediately' : 'Published to students (Click to edit & update)'}
+                                >
+                                  {togglingExamId === exam.id && exam.status === 'DRAFT' ? (
+                                    <Loader2 size={12} className="animate-spin text-white" />
+                                  ) : exam.status === 'DRAFT' ? (
+                                    <Send size={12} />
+                                  ) : (
+                                    <CheckCircle2 size={12} className="text-emerald-600 dark:text-emerald-400" />
+                                  )}
+                                  <span>{exam.status === 'DRAFT' ? 'Publish' : 'Published'}</span>
+                                </button>
+
+                                {/* Delete Button */}
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteExam(exam.id, exam.title)}
-                                  className="p-1 rounded-lg border border-transparent text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                                  className="p-1 rounded-lg border border-transparent text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer !min-h-0 transition-colors"
                                   title="Delete Exam"
                                 >
                                   <Trash2 size={14} />

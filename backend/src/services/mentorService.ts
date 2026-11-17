@@ -1329,6 +1329,7 @@ export async function ensureStudentExamsSchema() {
       ALTER TABLE student_exams ADD COLUMN IF NOT EXISTS term VARCHAR(50);
       ALTER TABLE student_exams ADD COLUMN IF NOT EXISTS academic_year_id UUID;
       ALTER TABLE student_exams ADD COLUMN IF NOT EXISTS grading_system VARCHAR(20) DEFAULT 'MARKS';
+      ALTER TABLE student_exams ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PUBLISHED';
     `);
     schemaEnsured = true;
   } catch (_e) {}
@@ -1400,6 +1401,7 @@ export async function getMentoredExams(schoolId: string, classId: string, sectio
                 e.total_marks, e.passing_marks, e.section_id, e.class_id, e.subject_id,
                 e.academic_year_id,
                 COALESCE(e.grading_system, 'MARKS') AS grading_system,
+                COALESCE(e.status, 'PUBLISHED') AS status,
                 e.term,
                 COALESCE(sub.name, 'General') AS subject_name,
                 COUNT(r.id)::int AS graded_count,
@@ -1434,7 +1436,7 @@ export async function getMentoredExams(schoolId: string, classId: string, sectio
                )
              )
            )
-         GROUP BY e.id, e.academic_year_id, e.grading_system, e.term, sub.name
+         GROUP BY e.id, e.academic_year_id, e.grading_system, e.status, e.term, sub.name
          ORDER BY e.exam_date DESC, e.created_at DESC`,
         [
           schoolId,
@@ -1472,6 +1474,7 @@ export async function getMentoredExams(schoolId: string, classId: string, sectio
       const passCount = results.filter((r) => r.marks_obtained >= e.passing_marks).length;
       return {
         ...e,
+        status: (e as any).status || 'PUBLISHED',
         graded_count: gradedCount,
         avg_marks: avg,
         average_marks: avg,
@@ -1644,6 +1647,7 @@ export async function publishExamResults(
     passingMarks: number;
     room?: string;
     gradingSystem?: string;
+    status?: 'DRAFT' | 'PUBLISHED';
     session?: string;
     academicYearId?: string;
     results: Array<{
@@ -1673,6 +1677,7 @@ export async function publishExamResults(
   } = payload;
   const rawResults = results || (payload as any).marks || [];
   const system = gradingSystem || (payload as any).grading_system || 'MARKS';
+  const resolvedStatus = (payload as any).status === 'DRAFT' ? 'DRAFT' : 'PUBLISHED';
   const rawYearId = await resolveAcademicYearId(schoolId, academicYearId || session);
   const resolvedAcademicYearId = (rawYearId && rawYearId !== '00000000-0000-0000-0000-000000000000') ? rawYearId : null;
 
@@ -1722,20 +1727,20 @@ export async function publishExamResults(
       const upQ = await pool.query(
         `UPDATE student_exams 
          SET title = $1, subject_id = $2, exam_date = $3, total_marks = $4, passing_marks = $5, room = $6, section_id = $7, grading_system = $8,
-             academic_year_id = COALESCE($11, academic_year_id)
+             academic_year_id = COALESCE($11, academic_year_id), status = COALESCE($12, status)
          WHERE id = $9 AND school_id = $10
          RETURNING *`,
-        [title, subjectId || null, resolvedExamDate, totalMarks || 100, passingMarks || 40, room || 'Main Hall', resolvedSectionId, system, resolvedExamId, schoolId, resolvedAcademicYearId]
+        [title, subjectId || null, resolvedExamDate, totalMarks || 100, passingMarks || 40, room || 'Main Hall', resolvedSectionId, system, resolvedExamId, schoolId, resolvedAcademicYearId, resolvedStatus]
       );
       if (upQ.rowCount && upQ.rows.length > 0) {
         resolvedExamId = upQ.rows[0].id;
       }
     } else {
       const inQ = await pool.query(
-        `INSERT INTO student_exams (school_id, class_id, section_id, subject_id, title, exam_date, start_time, end_time, room, total_marks, passing_marks, created_by, grading_system, academic_year_id)
-         VALUES ($1, $2, $3, $4, $5, $6, '09:00', '12:00', $7, $8, $9, $10, $11, $12)
+        `INSERT INTO student_exams (school_id, class_id, section_id, subject_id, title, exam_date, start_time, end_time, room, total_marks, passing_marks, created_by, grading_system, academic_year_id, status)
+         VALUES ($1, $2, $3, $4, $5, $6, '09:00', '12:00', $7, $8, $9, $10, $11, $12, $13)
          RETURNING *`,
-        [schoolId, resolvedClassId, resolvedSectionId, subjectId || null, title, resolvedExamDate, room || 'Main Hall', totalMarks || 100, passingMarks || 40, teacherId, system, resolvedAcademicYearId]
+        [schoolId, resolvedClassId, resolvedSectionId, subjectId || null, title, resolvedExamDate, room || 'Main Hall', totalMarks || 100, passingMarks || 40, teacherId, system, resolvedAcademicYearId, resolvedStatus]
       );
       if (inQ.rowCount && inQ.rows.length > 0) {
         resolvedExamId = inQ.rows[0].id;
@@ -1783,6 +1788,7 @@ export async function publishExamResults(
         total_marks: totalMarks || 100,
         passing_marks: passingMarks || 40,
         grading_system: system,
+        status: resolvedStatus,
         created_at: new Date().toISOString()
       };
       if (existingExamIdx >= 0) {
@@ -1895,4 +1901,30 @@ export async function deleteMentoredExam(schoolId: string, examId: string) {
     if (i >= 0) inMemoryExamResults.splice(i, 1);
   });
   return { success: true };
+}
+
+/**
+ * 9. Class Mentor: Update Exam Status (DRAFT or PUBLISHED)
+ */
+export async function updateExamStatus(
+  schoolId: string,
+  examId: string,
+  status: 'DRAFT' | 'PUBLISHED'
+) {
+  await ensureStudentExamsSchema();
+  if (isPostgresConfigured) {
+    const q = await pool.query(
+      `UPDATE student_exams SET status = $1 WHERE id = $2 AND school_id = $3 RETURNING *`,
+      [status, examId, schoolId]
+    );
+    if (q.rowCount && q.rows.length > 0) {
+      return q.rows[0];
+    }
+  }
+  const ex = inMemoryStudentExams.find((e) => e.id === examId && (e.school_id === schoolId || !schoolId));
+  if (ex) {
+    (ex as any).status = status;
+    return ex;
+  }
+  return { id: examId, status };
 }
