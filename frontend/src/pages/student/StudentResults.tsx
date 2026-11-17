@@ -480,14 +480,6 @@ export function StudentResults() {
             <RotateCw size={14} className={loading ? 'animate-spin' : ''} />
             <span className="hidden sm:inline">Refresh</span>
           </button>
-          <button
-            type="button"
-            onClick={handlePrintFormalMarksheet}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs cursor-pointer shadow-sm transition-colors"
-          >
-            <Printer size={15} />
-            <span>Print Marksheet</span>
-          </button>
         </div>
       </div>
 
@@ -865,15 +857,6 @@ export function StudentResults() {
               );
             })}
           </div>
-
-          <button
-            type="button"
-            onClick={handlePrintFormalMarksheet}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-rose-600 text-white font-semibold hover:bg-rose-700 cursor-pointer shadow-xs transition-colors"
-          >
-            <Printer size={13} />
-            <span>Print Marksheet</span>
-          </button>
         </div>
 
         {/* Institutional Header of Marksheet */}
