@@ -286,9 +286,6 @@ export function TeacherProfile() {
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
           <h1 className="student-subpage-title text-2xl font-bold text-slate-900 dark:text-slate-100 mt-2 mb-1">Faculty Profile &amp; Credentials</h1>
-          <p className="student-subpage-desc text-xs text-slate-500 dark:text-slate-400 m-0">
-            Personal identity, institutional details, and account security.
-          </p>
         </div>
       </div>
 

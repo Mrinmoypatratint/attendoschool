@@ -80,9 +80,6 @@ export function StudentLeaveRequest() {
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
           <h1 className="student-subpage-title text-2xl font-bold text-slate-900 dark:text-white m-0 mb-1">Leave Applications</h1>
-          <p className="student-subpage-desc text-sm text-slate-500 dark:text-slate-400 m-0">
-            Submit absence leave requests for teacher and administration approval.
-          </p>
         </div>
 
         <button

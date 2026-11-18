@@ -498,9 +498,6 @@ export function StudentAssignments() {
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
           <h1 className="student-subpage-title">Homework & Assignments</h1>
-          <p className="student-subpage-desc">
-            Class assignments, submissions, and teacher evaluations.
-          </p>
         </div>
       </div>
 

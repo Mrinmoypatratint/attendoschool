@@ -1221,9 +1221,6 @@ export function TeacherAnnouncements() {
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "var(--text, var(--foreground))" }}>Announcement</h1>
-          <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: "var(--text-muted, var(--muted-foreground))" }}>
-            Multi-channel institutional announcements, role-based audience broadcasts, and student notices.
-          </p>
         </div>
       </div>
 

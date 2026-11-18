@@ -677,11 +677,11 @@ export default function Timetable() {
         </Link>
         <p className="eyebrow text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">{isSchoolAdmin ? 'TIMETABLE MANAGEMENT' : 'FACULTY TIMETABLE'}</p>
         <h1 className="m-0 text-2xl font-bold text-slate-900 dark:text-white">{isSchoolAdmin ? 'Weekly Class Timetable' : 'My Teaching Timetable'}</h1>
-        <p className="muted text-xs text-slate-500 dark:text-slate-400 mt-1">
-          {isSchoolAdmin
-            ? 'Create and manage class-wise, period-wise timetable with faculty assignment and conflict detection.'
-            : 'View your scheduled teaching periods across all classes as primary faculty or alternative faculty.'}
-        </p>
+        {isSchoolAdmin && (
+          <p className="muted text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Create and manage class-wise, period-wise timetable with faculty assignment and conflict detection.
+          </p>
+        )}
       </div>
       {isSchoolAdmin && (
         <div className="flex gap-2">

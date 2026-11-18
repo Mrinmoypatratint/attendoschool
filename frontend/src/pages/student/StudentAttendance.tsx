@@ -95,9 +95,6 @@ export function StudentAttendance() {
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
           <h1 className="student-subpage-title text-2xl font-bold text-slate-900 dark:text-white m-0 mb-1">My Attendance Record</h1>
-          <p className="student-subpage-desc text-sm text-slate-500 dark:text-slate-400 m-0">
-            Official institutional attendance log verified by faculty members.
-          </p>
         </div>
 
         {/* Date Filter */}
