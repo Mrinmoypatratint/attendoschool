@@ -338,9 +338,6 @@ export function StudentResults() {
               <Sparkles size={12} /> Academic Session {academicSession}
             </span>
           </div>
-          <p className="student-subpage-desc text-sm text-slate-500 dark:text-slate-400 m-0">
-            Official academic examination evaluations, verified marks, subject grades, and report cards.
-          </p>
         </div>
 
         {/* Action Controls */}

@@ -401,9 +401,6 @@ export function StudentAnnouncements() {
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
           <h1 className="student-subpage-title text-2xl font-bold text-slate-900 dark:text-slate-100 mt-2 mb-1">School Announcements</h1>
-          <p className="student-subpage-desc text-xs text-slate-500 dark:text-slate-400 m-0">
-            Official circulars, student portal broadcasts, and interactive notice response channel.
-          </p>
         </div>
       </div>
 

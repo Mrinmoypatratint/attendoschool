@@ -58,9 +58,6 @@ export function StudentTimetable() {
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
           <h1 className="student-subpage-title text-2xl font-bold text-slate-900 dark:text-white m-0 mb-1">Weekly Class Timetable</h1>
-          <p className="student-subpage-desc text-sm text-slate-500 dark:text-slate-400 m-0">
-            Official class schedule and room allocations {profile ? `for ${profile.className} · Section ${profile.sectionName}` : 'for your enrolled class and section'}.
-          </p>
         </div>
       </div>
 
