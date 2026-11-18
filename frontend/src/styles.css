@@ -2345,43 +2345,55 @@ header {
 
 .directory-box-body {
   overflow-y: auto;
-  overflow-x: hidden !important;
+  overflow-x: auto !important;
   max-height: min(65vh, 600px);
   min-height: 280px;
   position: relative;
   background: var(--bg-card, #ffffff);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 150, 159, 0.65) rgba(0, 0, 0, 0.04);
 }
 
 [data-theme="dark"] .directory-box-body {
   background: #282c3f;
+  scrollbar-color: rgba(148, 150, 159, 0.5) rgba(255, 255, 255, 0.04);
 }
 
 /* Sleek inner scrollbar inside the directory box */
 .directory-box-body::-webkit-scrollbar {
-  width: 7px;
-  height: 0px;
+  width: 8px;
+  height: 10px;
 }
 
 .directory-box-body::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.02);
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 4px;
 }
 
 .directory-box-body::-webkit-scrollbar-thumb {
-  background: rgba(148, 150, 159, 0.55);
+  background: rgba(148, 150, 159, 0.65);
   border-radius: 4px;
 }
 
 .directory-box-body::-webkit-scrollbar-thumb:hover {
-  background: rgba(105, 110, 121, 0.85);
+  background: rgba(105, 110, 121, 0.95);
+}
+
+[data-theme="dark"] .directory-box-body::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
 }
 
 [data-theme="dark"] .directory-box-body::-webkit-scrollbar-thumb {
-  background: rgba(148, 150, 159, 0.35);
+  background: rgba(148, 150, 159, 0.5);
+}
+
+[data-theme="dark"] .directory-box-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(200, 202, 210, 0.85);
 }
 
 .directory-box-body table {
   width: 100%;
-  min-width: 0;
+  min-width: 1350px;
   border-collapse: separate;
   border-spacing: 0;
   table-layout: auto;
@@ -14662,4 +14674,30 @@ button.announcement-filter-btn.active:hover .announcement-filter-badge,
 .dark .announcement-filter-btn.active:hover .announcement-filter-badge {
   background-color: #ffffff !important;
   color: var(--primary-700, #c0174a) !important;
+}
+
+
+/* ═══ Data Completeness & Missing Information Field Pulse Animation ═══ */
+@keyframes fieldPulseHighlight {
+  0% {
+    box-shadow: 0 0 0 0 rgba(225, 29, 85, 0.7);
+    border-color: #e11d55;
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(225, 29, 85, 0.25);
+    border-color: #e11d55;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(225, 29, 85, 0);
+    border-color: var(--border, #d4d5d9);
+  }
+}
+
+.field-highlight-pulse {
+  animation: fieldPulseHighlight 1.8s ease-in-out !important;
+  border-color: #e11d55 !important;
+}
+
+.completeness-student-row:hover {
+  background: var(--card-subtle, #f9f9fa);
 }

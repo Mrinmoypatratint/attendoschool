@@ -15,6 +15,7 @@ const AttendanceReports = lazy(() => import('./pages/admin/AttendanceReports'));
 const AttendanceCorrections = lazy(() => import('./pages/admin/AttendanceCorrections'));
 const AcademicYears = lazy(() => import('./pages/admin/AcademicYears'));
 const StudentPromotion = lazy(() => import('./pages/admin/StudentPromotion'));
+const GradingSystem = lazy(() => import('./pages/admin/GradingSystem'));
 // RBAC: /permissions now renders the Access Control page (roles, people, audit). Route path unchanged.
 const Permissions = lazy(() => import('./pages/admin/access/AccessControl'));
 const SubscriptionEnforcement = lazy(() => import('./pages/admin/SubscriptionEnforcement'));
@@ -68,6 +69,7 @@ const StudentAnnouncements = lazy(() => import('./pages/student/StudentAnnouncem
 const StudentLeaveRequest = lazy(() => import('./pages/student/StudentLeaveRequest').then(m => ({ default: m.StudentLeaveRequest })));
 const StudentProfile = lazy(() => import('./pages/student/StudentProfile').then(m => ({ default: m.StudentProfile })));
 import { StudentProfileHoverCard } from './components/StudentProfileHoverCard';
+import StudentCompletenessTab from './components/student/StudentCompletenessTab';
 import { TeacherProfileHoverCard } from './components/TeacherProfileHoverCard';
 import { formatGender } from './utils/gender';
 import { formatCapitalizedName, formatStudentFullName, formatTeacherFullName } from './utils/formatters';
@@ -2108,6 +2110,14 @@ function Layout({ children }: { children: React.ReactNode }) {
           keywords: ['promotion', 'promote', 'progression', 'next grade', 'batch transition']
         },
         {
+          path: '/grading-system',
+          label: 'Grading System & Scales',
+          category: 'Academics',
+          description: 'Configure academic grade scales, marks intervals, GPA mapping, and passing evaluation rules',
+          icon: Award,
+          keywords: ['grading', 'grades', 'marks', 'gpa', 'report card', 'evaluation', 'grading system', 'cbse scale']
+        },
+        {
           path: '/communication',
           label: 'Announcements & Broadcasts',
           category: 'Communication',
@@ -2528,6 +2538,7 @@ function Layout({ children }: { children: React.ReactNode }) {
     ['/academic-years', 'Academic Calendar & Holidays', Clock],
     ['/subjects', 'Subjects', BookOpen],
     ['/promotion', 'Student Promotions', ArrowUpDown],
+    ['/grading-system', 'Grading System', Award],
     ['—', 'COMMUNICATION'],
     ['/communication', 'Announcements', MessageSquare],
     ['/smtp-logs', 'SMTP Email Logs', Mail],
@@ -5907,6 +5918,44 @@ export function formatLastFetched(date: Date | null): string {
   return `${timeStr} (${date.toLocaleDateString([], { month: 'short', day: 'numeric' })})`;
 }
 
+const FIELD_TO_INPUT_ID: Record<string, string> = {
+  student_email: 'student-form-student-email',
+  email: 'student-form-student-email',
+  father_name: 'student-form-father-name',
+  father_phone: 'student-form-father-phone',
+  father_occupation: 'student-form-father-occupation',
+  mother_name: 'student-form-mother-name',
+  mother_phone: 'student-form-mother-phone',
+  mother_occupation: 'student-form-mother-occupation',
+  guardian_name: 'student-form-guardian-name',
+  date_of_birth: 'student-form-dob',
+  dob: 'student-form-dob',
+  admission_date: 'student-form-admission-date',
+  admissionDate: 'student-form-admission-date',
+  gender: 'student-form-gender',
+  roll_number: 'student-form-roll-number',
+  rollNumber: 'student-form-roll-number',
+  admission_number: 'student-form-admission-number',
+  admissionNumber: 'student-form-admission-number',
+  class_id: 'student-form-class',
+  classId: 'student-form-class',
+  section_id: 'student-form-section',
+  sectionId: 'student-form-section',
+  parent_sms_number: 'student-form-parent-sms',
+  parentSmsNumber: 'student-form-parent-sms',
+  parent_guardian_contact: 'student-form-father-name',
+  parent_whatsapp: 'student-form-parent-whatsapp',
+  parentWhatsappNo: 'student-form-parent-whatsapp',
+  parent_email: 'student-form-parent-email',
+  parentEmail: 'student-form-parent-email',
+  first_name: 'student-form-first-name',
+  firstName: 'student-form-first-name',
+  last_name: 'student-form-last-name',
+  lastName: 'student-form-last-name',
+  middle_name: 'student-form-middle-name',
+  middleName: 'student-form-middle-name',
+};
+
 /**
  * Reusable React component for live Find-style search result highlighting.
  * Highlights matches with browser-style yellow background (#ffeb3b) and dark readable text (#1a1a1a).
@@ -5972,6 +6021,12 @@ export const HighlightMatch: React.FC<{
 /* ────── Students ────── */
 function Students() {
   const { user } = useAuth();
+  const [studentTab, setStudentTab] = useState<'all' | 'completeness'>(() => {
+    const urlTab = new URLSearchParams(window.location.search).get('tab');
+    return (urlTab === 'completeness' || urlTab === 'missing-info' || urlTab === 'missing-information') ? 'completeness' : 'all';
+  });
+  const [completenessRefreshTrigger, setCompletenessRefreshTrigger] = useState<number>(0);
+  const pendingFocusFieldRef = useRef<string | null>(null);
   const [activeSession, setActiveSession] = useState<string>(() => {
     return localStorage.getItem('attendo_academic_session') ||
       localStorage.getItem('attendo_active_academic_year') ||
@@ -6264,10 +6319,175 @@ function Students() {
     load(activeSession);
     if (new URLSearchParams(window.location.search).get('enroll') === 'true' && (user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN')) {
       setEditingStudent(null);
-      setF({ loginOption: 'STUDENT', sendInviteEmail: true, session: activeSession, countryCode: '+91' });
+      const curSess = localStorage.getItem('attendo_academic_session') || activeSession || '2026-2027';
+      const activeDbYear = sessions.find(s => s.is_active) ||
+        sessions.find(s => s.id === curSess || s.name === curSess || isSameSession(s.name, curSess)) ||
+        sessions[0];
+      const defaultSessionId = activeDbYear?.id || curSess;
+      setF({ loginOption: 'STUDENT', sendInviteEmail: true, session: defaultSessionId, countryCode: '+91' });
       setOpen(true);
     }
   }, [activeSession]);
+
+  // Synchronize student's saved academic session when opening edit modal
+  useEffect(() => {
+    if (open && editingStudent && !f.session) {
+      const savedSessionId = editingStudent.academic_year_id || editingStudent.session_id || (
+        sessions.find(s => s.id === editingStudent.session || s.name === editingStudent.session_name || s.name === editingStudent.session || isSameSession(s.name, editingStudent.session))?.id
+      ) || editingStudent.session || '';
+      if (savedSessionId) {
+        setF((prev: any) => prev?.session ? prev : { ...prev, session: savedSessionId });
+      }
+    }
+  }, [open, editingStudent, sessions]);
+
+  // One-click edit and redirect helper from Data Completeness / Missing Information tab
+  const openEditStudentWithFocus = useCallback((st: any, focusFieldKey?: string) => {
+    // 1. Activate All Students section if requested from Missing Information tab
+    setStudentTab('all');
+
+    // 2. Find and select the correct student record, preserving all existing information
+    const fullStudent = rows.find(r => r.id === st.id) || st;
+    const pNum = fullStudent.parent_phone || fullStudent.parent_sms_number || fullStudent.father_phone || fullStudent.mother_phone || '';
+    const cCode = pNum.startsWith('+') ? pNum.slice(0, 3) : '+91';
+
+    const rawFn = fullStudent.first_name || fullStudent.firstName || '';
+    const rawMn = fullStudent.middle_name || fullStudent.middleName || '';
+    const rawLn = fullStudent.last_name || fullStudent.lastName || '';
+    let fn = rawFn;
+    let mn = rawMn;
+    let ln = rawLn;
+    if (!fn && !ln && fullStudent.name) {
+      const parts = String(fullStudent.name).trim().split(/\s+/);
+      if (parts.length === 1) {
+        fn = parts[0];
+      } else if (parts.length === 2) {
+        fn = parts[0];
+        ln = parts[1];
+      } else if (parts.length >= 3) {
+        fn = parts[0];
+        mn = parts.slice(1, -1).join(' ');
+        ln = parts[parts.length - 1];
+      }
+    }
+
+    const savedSessionId = fullStudent.academic_year_id || fullStudent.session_id || (
+      sessions.find(s => s.id === fullStudent.session || s.name === fullStudent.session_name || s.name === fullStudent.session || isSameSession(s.name, fullStudent.session))?.id
+    ) || fullStudent.session || '';
+
+    setEditingStudent(fullStudent);
+    setF({
+      id: fullStudent.id,
+      name: String(fullStudent.name || '').toUpperCase(),
+      firstName: String(fn || '').toUpperCase(),
+      middleName: String(mn || '').toUpperCase(),
+      lastName: String(ln || '').toUpperCase(),
+      rollNumber: fullStudent.roll_number || fullStudent.rollNumber || '',
+      admissionNumber: fullStudent.admission_number || fullStudent.admissionNumber || '',
+      admissionDate: fullStudent.admission_date ? new Date(fullStudent.admission_date).toISOString().slice(0, 10) : (fullStudent.admissionDate || ''),
+      studentEmail: fullStudent.student_email || fullStudent.email || '',
+      parentName: fullStudent.parent_name || '',
+      fatherName: fullStudent.father_name || fullStudent.fatherName || '',
+      fatherPhone: fullStudent.father_phone || fullStudent.fatherPhone || pNum || '',
+      fatherOccupation: fullStudent.father_occupation || fullStudent.fatherOccupation || '',
+      motherName: fullStudent.mother_name || fullStudent.motherName || '',
+      motherPhone: fullStudent.mother_phone || fullStudent.motherPhone || '',
+      motherOccupation: fullStudent.mother_occupation || fullStudent.motherOccupation || '',
+      guardianName: fullStudent.guardian_name || fullStudent.guardianName || '',
+      countryCode: cCode,
+      parentSmsNumber: pNum,
+      parentWhatsappNo: fullStudent.parent_whatsapp_no || fullStudent.parentWhatsappNo || fullStudent.parent_whatsapp || fullStudent.parentWhatsapp || '',
+      parentEmail: fullStudent.parent_email || '',
+      classId: fullStudent.class_id || fullStudent.classId,
+      sectionId: fullStudent.section_id || fullStudent.sectionId,
+      session: savedSessionId,
+      gender: formatGender(fullStudent.gender) || '',
+      dob: fullStudent.date_of_birth ? new Date(fullStudent.date_of_birth).toISOString().slice(0, 10) : (fullStudent.dob || ''),
+      loginOption: (fullStudent.student_email || fullStudent.email) ? 'STUDENT' : fullStudent.parent_email ? 'PARENT' : 'STUDENT',
+      sendInviteEmail: true,
+      is_active: fullStudent.is_active !== false,
+      status: fullStudent.status || (fullStudent.is_active !== false ? 'ACTIVE' : 'INACTIVE'),
+      password: ''
+    });
+
+    pendingFocusFieldRef.current = focusFieldKey || null;
+    setOpen(true);
+  }, [rows, sessions]);
+
+  // Automatically scroll and focus on requested missing field when modal opens
+  const activeFocusAttemptRef = useRef<{ studentId: string; fieldKey: string; cancelled: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      if (activeFocusAttemptRef.current) {
+        activeFocusAttemptRef.current.cancelled = true;
+        activeFocusAttemptRef.current = null;
+      }
+      return;
+    }
+
+    if (pendingFocusFieldRef.current && editingStudent?.id) {
+      const fieldKey = pendingFocusFieldRef.current;
+      const targetStudentId = editingStudent.id;
+      pendingFocusFieldRef.current = null;
+
+      const attempt = { studentId: targetStudentId, fieldKey, cancelled: false };
+      activeFocusAttemptRef.current = attempt;
+
+      const targetId = FIELD_TO_INPUT_ID[fieldKey] || `student-form-${fieldKey.replace(/_/g, '-')}`;
+      const startTime = performance.now();
+      const maxWaitMs = 2500;
+
+      const checkAndFocus = () => {
+        if (attempt.cancelled) return;
+        // Verify that the modal is still open and displaying the same student
+        if (!editingStudent || editingStudent.id !== attempt.studentId) return;
+
+        const el = document.getElementById(targetId) as HTMLElement | null;
+        if (el) {
+          try {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.focus();
+            el.classList.add('field-highlight-pulse');
+            setTimeout(() => {
+              if (el) el.classList.remove('field-highlight-pulse');
+            }, 2500);
+          } catch { }
+          activeFocusAttemptRef.current = null;
+          return;
+        }
+
+        if (performance.now() - startTime < maxWaitMs) {
+          requestAnimationFrame(checkAndFocus);
+        }
+      };
+
+      requestAnimationFrame(checkAndFocus);
+    }
+  }, [open, editingStudent]);
+
+  // Deep-linking URL handler for ?tab=... and ?editStudentId=...
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (tabParam === 'completeness' || tabParam === 'missing-info' || tabParam === 'missing-information') {
+      setStudentTab('completeness');
+    }
+    const editId = params.get('editStudentId');
+    const focusField = params.get('focusField') || undefined;
+    if (editId && rows.length > 0) {
+      const match = rows.find(r => r.id === editId);
+      if (match) {
+        openEditStudentWithFocus(match, focusField);
+        try {
+          const u = new URL(window.location.href);
+          u.searchParams.delete('editStudentId');
+          u.searchParams.delete('focusField');
+          window.history.replaceState({}, '', u.toString());
+        } catch { }
+      }
+    }
+  }, [rows, openEditStudentWithFocus]);
 
   async function sendStudentResetEmail(st: any) {
     try {
@@ -6589,7 +6809,9 @@ function Students() {
       middle_name: middleName,
       lastName,
       session: matchedSession?.name || selectedSessionStr,
-      sessionId: matchedSession?.id || selectedSessionStr
+      sessionId: matchedSession?.id || selectedSessionStr,
+      academic_year_id: matchedSession?.id || (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedSessionStr) ? selectedSessionStr : undefined),
+      academicYearId: matchedSession?.id || (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedSessionStr) ? selectedSessionStr : undefined)
     };
 
     const cls = classes.find(c => c.id === f.classId || String(c.class_number) === String(f.classId));
@@ -6608,7 +6830,7 @@ function Students() {
           { label: 'Roll Number', value: f.rollNumber || editingStudent?.roll_number || 'Auto-assigned', type: 'code' },
           { label: 'Admission Number', value: f.admissionNumber || editingStudent?.admission_number || '—' },
           { label: 'Admission Date', value: f.admissionDate || f.admission_date || editingStudent?.admission_date || '—', type: 'date' },
-          { label: 'Academic Session', value: selectedSessionStr, type: 'badge', color: 'blue' },
+          { label: 'Academic Session', value: matchedSession?.name || selectedSessionStr, type: 'badge', color: 'blue' },
           { label: 'Date of Birth', value: f.dob || editingStudent?.dob || editingStudent?.date_of_birth || '—', type: 'date' },
           { label: 'Gender', value: formatGender(f.gender || editingStudent?.gender) || '—' },
         ]
@@ -6729,13 +6951,20 @@ function Students() {
       if (editingStudent) {
         const res = await api.put(`/students/${editingStudent.id}`, payload);
         const updated = res.data;
+        const resolvedUpdatedSessionName = payload.session || updated?.session_name || updated?.session || editingStudent.session_name || editingStudent.session;
+        const resolvedUpdatedSessionId = payload.academic_year_id || payload.sessionId || updated?.academic_year_id || updated?.session_id || editingStudent.academic_year_id;
         setRows(prev => prev.map(r => r.id === editingStudent.id ? {
           ...r,
           ...updated,
+          session_name: resolvedUpdatedSessionName,
+          session: resolvedUpdatedSessionName,
+          academic_year_id: resolvedUpdatedSessionId,
+          session_id: resolvedUpdatedSessionId,
           is_active: payload.is_active !== false,
           status: payload.is_active !== false ? 'ACTIVE' : 'INACTIVE'
         } : r));
         setToastNotice({ type: 'success', message: `Student profile for ${payload.name} updated successfully.` });
+        setCompletenessRefreshTrigger(prev => prev + 1);
       } else {
         const res = await api.post('/students', payload);
         const created = res.data;
@@ -6767,6 +6996,7 @@ function Students() {
         } else {
           setToastNotice({ type: 'success', message: `Student ${created.name} enrolled successfully.` });
         }
+        setCompletenessRefreshTrigger(prev => prev + 1);
       }
       setStudentPreview(prev => ({ ...prev, isOpen: false, loading: false }));
       setOpen(false);
@@ -6872,16 +7102,29 @@ function Students() {
   }
 
   const filtered = rows.filter(r => {
-    const q = search.toLowerCase();
-    const matchesSearch =
-      r.name.toLowerCase().includes(q) ||
-      String(r.roll_number).toLowerCase().includes(q) ||
-      String(r.class_number).toLowerCase().includes(q) ||
-      (r.admission_number && r.admission_number.toLowerCase().includes(q)) ||
-      (r.admissionNumber && r.admissionNumber.toLowerCase().includes(q)) ||
-      (r.gender && String(r.gender).toLowerCase().includes(q)) ||
-      (r.student_email && r.student_email.toLowerCase().includes(q)) ||
-      (r.parent_email && r.parent_email.toLowerCase().includes(q));
+    const q = search.trim().toLowerCase();
+    const admDateFormatted = toDdMmYyyy(r.admission_date || r.admissionDate) || '';
+    const admDateRaw = String(r.admission_date || r.admissionDate || '');
+    const matchesSearch = !q || (
+      String(r.name || '').toLowerCase().includes(q) ||
+      String(r.roll_number || r.rollNumber || '').toLowerCase().includes(q) ||
+      String(r.admission_number || r.admissionNumber || '').toLowerCase().includes(q) ||
+      admDateFormatted.toLowerCase().includes(q) ||
+      admDateRaw.toLowerCase().includes(q) ||
+      String(r.class_number || '').toLowerCase().includes(q) ||
+      String(r.section_name || r.sectionName || r.section || '').toLowerCase().includes(q) ||
+      String(r.gender || '').toLowerCase().includes(q) ||
+      String(r.student_email || r.email || '').toLowerCase().includes(q) ||
+      String(r.parent_name || '').toLowerCase().includes(q) ||
+      String(r.parent_sms_number || r.parentPhone || '').toLowerCase().includes(q) ||
+      String(r.parent_whatsapp_no || r.parent_whatsapp || '').toLowerCase().includes(q) ||
+      String(r.parent_email || '').toLowerCase().includes(q) ||
+      String(r.father_name || '').toLowerCase().includes(q) ||
+      String(r.father_phone || '').toLowerCase().includes(q) ||
+      String(r.mother_name || '').toLowerCase().includes(q) ||
+      String(r.mother_phone || '').toLowerCase().includes(q) ||
+      String(r.guardian_name || '').toLowerCase().includes(q)
+    );
     const matchesClass = !classFilter || String(r.class_id) === classFilter || String(r.class_number) === classFilter;
     const matchesSection = !sectionFilter || String(r.section_id) === sectionFilter || String(r.section_name) === sectionFilter;
     const matchesSession = studentMatchesSession(r, activeSession);
@@ -7747,7 +7990,11 @@ function Students() {
             onClick={() => {
               setEditingStudent(null);
               const curSess = localStorage.getItem('attendo_academic_session') || activeSession || '2026-2027';
-              setF({ session: curSess, countryCode: '+91' });
+              const activeDbYear = sessions.find(s => s.is_active) ||
+                sessions.find(s => s.id === curSess || s.name === curSess || isSameSession(s.name, curSess)) ||
+                sessions[0];
+              const defaultSessionId = activeDbYear?.id || curSess;
+              setF({ session: defaultSessionId, countryCode: '+91' });
               setOpen(true);
             }}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
@@ -7850,8 +8097,95 @@ function Students() {
       </div>
     )}
 
-    {/* ── UNIFIED STUDENT DIRECTORY BOX WITH INNER SCROLLBAR ── */}
-    <div className="directory-box" ref={directoryTopRef}>
+    {/* ── NAVIGATION TABS: ALL STUDENTS vs DATA COMPLETENESS / MISSING INFORMATION ── */}
+    <div
+      style={{
+        display: 'flex',
+        gap: 8,
+        borderBottom: '2px solid var(--border, #eaeaec)',
+        marginBottom: 16,
+        flexWrap: 'wrap'
+      }}
+      role="tablist"
+      aria-label="Student Management Tabs"
+    >
+      <button
+        type="button"
+        role="tab"
+        aria-selected={studentTab === 'all'}
+        onClick={() => setStudentTab('all')}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          borderBottom: studentTab === 'all' ? '2px solid #e11d55' : '2px solid transparent',
+          marginBottom: -2,
+          padding: '10px 16px',
+          fontSize: 14,
+          fontWeight: studentTab === 'all' ? 700 : 500,
+          color: studentTab === 'all' ? '#e11d55' : 'var(--text-secondary, #696e79)',
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          transition: 'all 0.15s ease'
+        }}
+        id="students-tab-all"
+      >
+        <Users size={16} />
+        <span>All Students</span>
+        <span style={{
+          fontSize: 11,
+          background: studentTab === 'all' ? 'rgba(225, 29, 85, 0.12)' : 'var(--card-subtle, #f0f0f2)',
+          color: studentTab === 'all' ? '#e11d55' : 'var(--text-secondary, #696e79)',
+          padding: '1px 7px',
+          borderRadius: 999,
+          fontWeight: 600
+        }}>
+          {rows.length}
+        </span>
+      </button>
+
+      <button
+        type="button"
+        role="tab"
+        aria-selected={studentTab === 'completeness'}
+        onClick={() => setStudentTab('completeness')}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          borderBottom: studentTab === 'completeness' ? '2px solid #e11d55' : '2px solid transparent',
+          marginBottom: -2,
+          padding: '10px 16px',
+          fontSize: 14,
+          fontWeight: studentTab === 'completeness' ? 700 : 500,
+          color: studentTab === 'completeness' ? '#e11d55' : 'var(--text-secondary, #696e79)',
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          transition: 'all 0.15s ease'
+        }}
+        id="students-tab-completeness"
+      >
+        <AlertTriangle size={16} style={{ color: studentTab === 'completeness' ? '#e11d55' : '#d97706' }} />
+        <span>Missing Information</span>
+      </button>
+    </div>
+
+    {studentTab === 'completeness' ? (
+      <StudentCompletenessTab
+        activeSession={activeSession}
+        classes={classes}
+        sections={sections}
+        sessions={sessions}
+        refreshTrigger={completenessRefreshTrigger}
+        onEditStudent={openEditStudentWithFocus}
+        onSelectSession={handleSelectSession}
+      />
+    ) : (
+      <>
+        {/* ── UNIFIED STUDENT DIRECTORY BOX WITH INNER SCROLLBAR ── */}
+        <div className="directory-box" ref={directoryTopRef}>
       {/* Top Loading Progress Bar */}
       {loading && (
         <div style={{
@@ -8173,7 +8507,7 @@ function Students() {
       </div>
 
       {/* Box Body (Scrollable Table Area) */}
-      <div className="directory-box-body" ref={tableBodyRef} style={{ overflowX: 'hidden' }}>
+      <div className="directory-box-body" ref={tableBodyRef} style={{ overflowX: 'auto' }}>
         {loading && displayedStudents.length > 0 && (
           <div style={{
             position: 'sticky',
@@ -8204,10 +8538,10 @@ function Students() {
             </div>
           </div>
         )}
-        <table>
+        <table style={{ width: '100%', minWidth: 1400, borderCollapse: 'separate', borderSpacing: 0 }}>
           <thead>
             <tr>
-              <th style={{ width: 36, textAlign: 'center' }}>
+              <th style={{ width: 40, textAlign: 'center' }}>
                 <input
                   type="checkbox"
                   checked={displayedStudents.length > 0 && displayedStudents.every(x => selectedIds.has(x.id))}
@@ -8215,17 +8549,17 @@ function Students() {
                   title="Select all on this page"
                 />
               </th>
-              <th style={{ whiteSpace: 'nowrap' }}>Roll No</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Adm No</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Adm Date</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Student Name</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Gender</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Class</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Section</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Student Email</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Parent & Contact</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Status</th>
-              <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
+              <th style={{ minWidth: 80, whiteSpace: 'nowrap' }}>Roll No</th>
+              <th style={{ minWidth: 95, whiteSpace: 'nowrap' }}>Adm No</th>
+              <th style={{ minWidth: 110, whiteSpace: 'nowrap' }}>Adm Date</th>
+              <th style={{ minWidth: 180, whiteSpace: 'nowrap' }}>Student Name</th>
+              <th style={{ minWidth: 90, whiteSpace: 'nowrap' }}>Gender</th>
+              <th style={{ minWidth: 90, whiteSpace: 'nowrap' }}>Class</th>
+              <th style={{ minWidth: 80, whiteSpace: 'nowrap' }}>Section</th>
+              <th style={{ minWidth: 190, whiteSpace: 'nowrap' }}>Student Email</th>
+              <th style={{ minWidth: 190, whiteSpace: 'nowrap' }}>Parent & Contact</th>
+              <th style={{ minWidth: 90, whiteSpace: 'nowrap' }}>Status</th>
+              <th style={{ minWidth: 130, textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -8375,65 +8709,7 @@ function Students() {
                   </button>
                   <button
                     className="table-action-btn"
-                    onClick={() => {
-                      setEditingStudent(x);
-                      const rawPhone = x.father_phone || x.fatherPhone || x.parent_sms_number || x.parentPhone || '';
-                      let cCode = '+91';
-                      let pNum = rawPhone;
-                      const cMatch = rawPhone.match(/^(\+\d{1,4})\s*(.*)$/);
-                      if (cMatch) {
-                        cCode = cMatch[1];
-                        pNum = cMatch[2];
-                      }
-                      const nameParts = (x.name || '').trim().split(/\s+/);
-                      let fName = x.first_name || '';
-                      let mName = x.middle_name || x.middleName || '';
-                      let lName = x.last_name || '';
-                      if (!fName && nameParts.length > 0) {
-                        if (nameParts.length === 1) {
-                          fName = nameParts[0];
-                        } else if (nameParts.length === 2) {
-                          fName = nameParts[0];
-                          lName = nameParts[1];
-                        } else {
-                          fName = nameParts[0];
-                          mName = nameParts.slice(1, -1).join(' ');
-                          lName = nameParts[nameParts.length - 1];
-                        }
-                      }
-                      setF({
-                        name: String(x.name || '').toUpperCase(),
-                        firstName: String(fName || '').toUpperCase(),
-                        middleName: String(mName || '').toUpperCase(),
-                        lastName: String(lName || '').toUpperCase(),
-                        rollNumber: x.roll_number,
-                        admissionNumber: x.admission_number || x.admissionNumber || '',
-                        admissionDate: x.admission_date ? new Date(x.admission_date).toISOString().slice(0, 10) : (x.admissionDate || ''),
-                        studentEmail: x.student_email || x.email || '',
-                        parentName: x.parent_name || '',
-                        fatherName: x.father_name || x.fatherName || '',
-                        fatherPhone: x.father_phone || x.fatherPhone || pNum || '',
-                        fatherOccupation: x.father_occupation || x.fatherOccupation || '',
-                        motherName: x.mother_name || x.motherName || '',
-                        motherPhone: x.mother_phone || x.motherPhone || '',
-                        motherOccupation: x.mother_occupation || x.motherOccupation || '',
-                        guardianName: x.guardian_name || x.guardianName || '',
-                        countryCode: cCode,
-                        parentSmsNumber: pNum,
-                        parentWhatsappNo: x.parent_whatsapp_no || x.parentWhatsappNo || x.parent_whatsapp || x.parentWhatsapp || '',
-                        parentEmail: x.parent_email || '',
-                        classId: x.class_id,
-                        sectionId: x.section_id,
-                        gender: formatGender(x.gender) || '',
-                        dob: x.date_of_birth ? new Date(x.date_of_birth).toISOString().slice(0, 10) : (x.dob || ''),
-                        loginOption: (x.student_email || x.email) ? 'STUDENT' : x.parent_email ? 'PARENT' : 'STUDENT',
-                        sendInviteEmail: true,
-                        is_active: x.is_active !== false,
-                        status: x.status || (x.is_active !== false ? 'ACTIVE' : 'INACTIVE'),
-                        password: ''
-                      });
-                      setOpen(true);
-                    }}
+                    onClick={() => openEditStudentWithFocus(x)}
                     title="Edit student"
                     style={{ marginRight: 6 }}
                   >
@@ -8549,6 +8825,8 @@ function Students() {
         </button>
       </div>
     )}
+    </>
+  )}
 
     {/* SINGLE STUDENT ADD / EDIT MODAL */}
     {open && (() => {
@@ -8566,7 +8844,8 @@ function Students() {
           if (!sameRoll) return false;
           if (f.classId && f.sectionId) {
             const rSession = r.session || r.session_name || r.academic_year_id || r.session_id;
-            const sameSess = isSameSession(rSession, f.session || activeSession);
+            const currentFormSessName = sessions.find(s => s.id === f.session)?.name || f.session || activeSession;
+            const sameSess = isSameSession(rSession, currentFormSessName) || (f.session && (r.academic_year_id === f.session || r.session_id === f.session));
             const sameClass = r.class_id === f.classId || r.classId === f.classId || String(r.class_number || r.classNumber) === String(f.classId);
             const sameSec = r.section_id === f.sectionId || r.sectionId === f.sectionId;
             return sameSess && sameClass && sameSec && r.is_active !== false;
@@ -8616,7 +8895,7 @@ function Students() {
       );
 
       return (
-        <Modal maxWidth={620} title={editingStudent ? "Edit Student Record" : "Add Student"} close={() => { setOpen(false); setEditingStudent(null); }}>
+        <Modal maxWidth={620} title={editingStudent ? "Edit Student Record" : "Add Student"} close={() => { setOpen(false); setEditingStudent(null); setF({}); }}>
           {({ isFull }) => (
             <form className="modal-form" onSubmit={handleInitiateSave}>
               {/* Last Registered Student Banner in Red */}
@@ -8653,6 +8932,7 @@ function Students() {
                     First Name <span style={{ color: '#d32f2f', fontWeight: 600 }}>*</span>
                   </span>
                   <input
+                    id="student-form-first-name"
                     required
                     placeholder="e.g. Aarav"
                     maxLength={15}
@@ -8686,6 +8966,7 @@ function Students() {
                     Middle Name <span style={{ fontSize: 11, color: 'var(--text-muted, #94969f)', fontWeight: 'normal' }}>(Optional)</span>
                   </span>
                   <input
+                    id="student-form-middle-name"
                     placeholder="e.g. Kumar"
                     maxLength={15}
                     value={mnVal}
@@ -8710,6 +8991,7 @@ function Students() {
                     Last Name <span style={{ color: '#d32f2f', fontWeight: 600 }}>*</span>
                   </span>
                   <input
+                    id="student-form-last-name"
                     required
                     placeholder="e.g. Sharma"
                     maxLength={20}
@@ -8759,21 +9041,116 @@ function Students() {
                 <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                   Session <span style={{ color: '#d32f2f' }}>*</span>
                 </span>
-                <select
-                  required
-                  value={f.session || ''}
-                  onChange={e => setF({ ...f, session: e.target.value })}
-                >
-                  <option value="">Select Session</option>
-                  {(sessions.length > 0 ? sessions : [
+                {(() => {
+                  const activeSessionOptions = sessions.length > 0 ? sessions : [
                     { id: 'ay-2024-25', name: '2024-25', label: '2024-25 Academic Session' },
                     { id: 'ay-2025-26', name: '2025-26', label: '2025-26 Academic Session' },
                     { id: 'ay-2026-27', name: '2026-27', label: '2026-27 Academic Session' }
-                  ]).map(s => (
-                    <option key={s.id} value={s.name || s.code || s.id}>{s.label || s.name}</option>
-                  ))}
-                </select>
+                  ];
+                  const selectedOptionValue = activeSessionOptions.find(s => s.id === f.session)?.id ||
+                    activeSessionOptions.find(s => s.name === f.session || s.code === f.session || isSameSession(s.name, f.session))?.id ||
+                    f.session ||
+                    '';
+                  const isSelectedInList = activeSessionOptions.some(s => s.id === selectedOptionValue);
+
+                  return (
+                    <select
+                      id="student-form-session"
+                      required
+                      value={selectedOptionValue}
+                      onChange={e => setF({ ...f, session: e.target.value })}
+                    >
+                      <option value="">Select Session</option>
+                      {activeSessionOptions.map(s => (
+                        <option key={s.id} value={s.id}>{s.name || s.label || s.code || s.id}</option>
+                      ))}
+                      {!isSelectedInList && selectedOptionValue && (
+                        <option value={selectedOptionValue}>
+                          {editingStudent?.session_name || editingStudent?.session || 'Saved Session'} (Current)
+                        </option>
+                      )}
+                    </select>
+                  );
+                })()}
               </label>
+
+              {/* Class & Section Selection */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <label>
+                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    Class <span style={{ color: '#d32f2f' }}>*</span>
+                  </span>
+                  <select
+                    id="student-form-class"
+                    required
+                    value={f.classId || ''}
+                    onChange={e => {
+                      const newClassId = e.target.value;
+                      let newSecId = f.sectionId;
+                      if (newClassId) {
+                        const curName = sections.find(s => s.id === f.sectionId)?.name || (f.sectionId?.endsWith('-b') || f.sectionId === 'B' ? 'B' : 'A');
+                        const targetSec = sections.find(s => (s.class_id === newClassId || s.classId === newClassId) && s.name.toUpperCase() === curName.toUpperCase())
+                          || sections.find(s => s.class_id === newClassId || s.classId === newClassId);
+                        newSecId = targetSec ? targetSec.id : f.sectionId;
+                      }
+                      setF({ ...f, classId: newClassId, sectionId: newSecId });
+                    }}
+                  >
+                    <option value="">Select Class</option>
+                    {classes.map(c => <option key={c.id} value={c.id}>{c.label || (c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`)}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    Section <span style={{ color: '#d32f2f' }}>*</span>
+                  </span>
+                  <select
+                    id="student-form-section"
+                    required
+                    value={(() => {
+                      if (!f.sectionId) return '';
+                      const found = sections.find(s => s.id === f.sectionId);
+                      if (found) return found.id;
+                      if (f.classId) {
+                        const letter = (f.sectionId === 'B' || f.sectionId.endsWith('-b')) ? 'B' : 'A';
+                        const match = sections.find(s => s.class_id === f.classId && s.name.toUpperCase() === letter);
+                        if (match) return match.id;
+                      }
+                      return f.sectionId;
+                    })()}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setF({ ...f, sectionId: val });
+                    }}
+                  >
+                    <option value="">Select Section</option>
+                    {(() => {
+                      const selectedCls = classes.find(c => c.id === f.classId || String(c.class_number) === String(f.classId));
+                      const classNum = selectedCls ? selectedCls.class_number : null;
+                      // If class is chosen, get sections for that specific class; otherwise generic Section A & Section B
+                      const matching = f.classId
+                        ? sections.filter(s => s.class_id === f.classId || (classNum !== null && Number(s.class_number) === Number(classNum)))
+                        : [];
+                      const opts = matching.length > 0 ? matching : [
+                        { id: f.classId ? `sec-${f.classId}-a` : 'sec-a', name: 'A' },
+                        { id: f.classId ? `sec-${f.classId}-b` : 'sec-b', name: 'B' }
+                      ];
+                      // Strictly deduplicate by name ('A', 'B') so only ONE Section A and ONE Section B are displayed
+                      const seen = new Set<string>();
+                      const deduped = [];
+                      for (const opt of opts) {
+                        const name = String(opt.name || '').trim().toUpperCase();
+                        if (name && !seen.has(name)) {
+                          seen.add(name);
+                          deduped.push(opt);
+                        }
+                      }
+                      deduped.sort((a, b) => a.name.localeCompare(b.name));
+                      return deduped.map(s => <option key={s.id} value={s.id}>Section {s.name}</option>);
+                    })()}
+                  </select>
+                </label>
+              </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <label>
@@ -8781,6 +9158,7 @@ function Students() {
                     Roll Number <span style={{ color: '#d32f2f' }}>*</span>
                   </span>
                   <input
+                    id="student-form-roll-number"
                     required
                     inputMode="numeric"
                     placeholder="Roll Number (e.g. 101)"
@@ -8805,6 +9183,7 @@ function Students() {
                     Admission Number <span style={{ color: '#d32f2f' }}>*</span>
                   </span>
                   <input
+                    id="student-form-admission-number"
                     required
                     placeholder="e.g. 1001 or ADM-101"
                     value={f.admissionNumber || ''}
@@ -8831,6 +9210,7 @@ function Students() {
                     Admission Date <span style={{ color: '#d32f2f' }}>*</span>
                   </span>
                   <input
+                    id="student-form-admission-date"
                     type="date"
                     required
                     min="1900-01-01"
@@ -8863,6 +9243,7 @@ function Students() {
                     Date of Birth <span style={{ color: '#d32f2f' }}>*</span>
                   </span>
                   <input
+                    id="student-form-dob"
                     type="date"
                     required
                     min="1900-01-01"
@@ -8898,6 +9279,7 @@ function Students() {
                     Gender
                   </span>
                   <select
+                    id="student-form-gender"
                     value={formatGender(f.gender) || ''}
                     onChange={e => setF({ ...f, gender: formatGender(e.target.value) })}
                   >
@@ -8908,84 +9290,13 @@ function Students() {
                   </select>
                 </label>
               </div>
-              <label>
-                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  Class <span style={{ color: '#d32f2f' }}>*</span>
-                </span>
-                <select
-                  required
-                  value={f.classId || ''}
-                  onChange={e => {
-                    const newClassId = e.target.value;
-                    let newSecId = f.sectionId;
-                    if (newClassId) {
-                      const curName = sections.find(s => s.id === f.sectionId)?.name || (f.sectionId?.endsWith('-b') || f.sectionId === 'B' ? 'B' : 'A');
-                      const targetSec = sections.find(s => (s.class_id === newClassId || s.classId === newClassId) && s.name.toUpperCase() === curName.toUpperCase())
-                        || sections.find(s => s.class_id === newClassId || s.classId === newClassId);
-                      newSecId = targetSec ? targetSec.id : f.sectionId;
-                    }
-                    setF({ ...f, classId: newClassId, sectionId: newSecId });
-                  }}
-                >
-                  <option value="">Select Class</option>
-                  {classes.map(c => <option key={c.id} value={c.id}>{c.label || (c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`)}</option>)}
-                </select>
-              </label>
-              <label>
-                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  Section <span style={{ color: '#d32f2f' }}>*</span>
-                </span>
-                <select
-                  required
-                  value={(() => {
-                    if (!f.sectionId) return '';
-                    const found = sections.find(s => s.id === f.sectionId);
-                    if (found) return found.id;
-                    if (f.classId) {
-                      const letter = (f.sectionId === 'B' || f.sectionId.endsWith('-b')) ? 'B' : 'A';
-                      const match = sections.find(s => s.class_id === f.classId && s.name.toUpperCase() === letter);
-                      if (match) return match.id;
-                    }
-                    return f.sectionId;
-                  })()}
-                  onChange={e => {
-                    const val = e.target.value;
-                    setF({ ...f, sectionId: val });
-                  }}
-                >
-                  <option value="">Select Section</option>
-                  {(() => {
-                    const selectedCls = classes.find(c => c.id === f.classId || String(c.class_number) === String(f.classId));
-                    const classNum = selectedCls ? selectedCls.class_number : null;
-                    // If class is chosen, get sections for that specific class; otherwise generic Section A & Section B
-                    const matching = f.classId
-                      ? sections.filter(s => s.class_id === f.classId || (classNum !== null && Number(s.class_number) === Number(classNum)))
-                      : [];
-                    const opts = matching.length > 0 ? matching : [
-                      { id: f.classId ? `sec-${f.classId}-a` : 'sec-a', name: 'A' },
-                      { id: f.classId ? `sec-${f.classId}-b` : 'sec-b', name: 'B' }
-                    ];
-                    // Strictly deduplicate by name ('A', 'B') so only ONE Section A and ONE Section B are displayed
-                    const seen = new Set<string>();
-                    const deduped = [];
-                    for (const opt of opts) {
-                      const name = String(opt.name || '').trim().toUpperCase();
-                      if (name && !seen.has(name)) {
-                        seen.add(name);
-                        deduped.push(opt);
-                      }
-                    }
-                    deduped.sort((a, b) => a.name.localeCompare(b.name));
-                    return deduped.map(s => <option key={s.id} value={s.id}>Section {s.name}</option>);
-                  })()}
-                </select>
-              </label>
 
               <label>
                 <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                   Student Email Address <span style={{ color: '#d32f2f' }}>*</span>
                 </span>
                 <input
+                  id="student-form-student-email"
                   required
                   type="email"
                   placeholder="student@school.edu"
@@ -9027,6 +9338,7 @@ function Students() {
                       Father Name
                     </span>
                     <input
+                      id="student-form-father-name"
                       placeholder="Father Name (Optional)"
                       value={f.fatherName || ''}
                       style={{
@@ -9046,6 +9358,7 @@ function Students() {
                       Father Contact No.
                     </span>
                     <input
+                      id="student-form-father-phone"
                       placeholder="10-digit mobile"
                       maxLength={10}
                       inputMode="numeric"
@@ -9070,6 +9383,7 @@ function Students() {
                       Father Occupation
                     </span>
                     <input
+                      id="student-form-father-occupation"
                       placeholder="Father Occupation"
                       value={f.fatherOccupation || ''}
                       onChange={e => setF({ ...f, fatherOccupation: e.target.value })}
@@ -9097,6 +9411,7 @@ function Students() {
                       Mother Name
                     </span>
                     <input
+                      id="student-form-mother-name"
                       placeholder="Mother Name (Optional)"
                       value={f.motherName || ''}
                       style={{
@@ -9116,6 +9431,7 @@ function Students() {
                       Mother Contact No.
                     </span>
                     <input
+                      id="student-form-mother-phone"
                       placeholder="10-digit mobile"
                       maxLength={10}
                       inputMode="numeric"
@@ -9140,6 +9456,7 @@ function Students() {
                       Mother Occupation
                     </span>
                     <input
+                      id="student-form-mother-occupation"
                       placeholder="Mother Occupation"
                       value={f.motherOccupation || ''}
                       onChange={e => setF({ ...f, motherOccupation: e.target.value })}
@@ -9167,6 +9484,7 @@ function Students() {
                       Guardian Name
                     </span>
                     <input
+                      id="student-form-guardian-name"
                       placeholder="Guardian Name (Optional)"
                       value={f.guardianName || f.guardian_name || ''}
                       style={{
@@ -9184,14 +9502,40 @@ function Students() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
                 <label>
                   <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    Parent WhatsApp No. <span style={{ color: '#d32f2f' }}>*</span>
+                    Parent SMS Number <span style={{ color: '#d32f2f' }}>*</span>
                   </span>
                   <input
+                    id="student-form-parent-sms"
                     required
-                    placeholder="10-digit mobile"
+                    placeholder="10-digit primary mobile"
+                    maxLength={10}
+                    inputMode="numeric"
+                    value={f.parentSmsNumber || f.parent_sms_number || ''}
+                    style={{
+                      borderColor: (f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10) ? '#d32f2f' : undefined,
+                      boxShadow: (f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10) ? '0 0 0 1px #d32f2f' : undefined
+                    }}
+                    onChange={e => {
+                      const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setF({ ...f, parentSmsNumber: cleaned, parent_sms_number: cleaned });
+                    }}
+                  />
+                  {f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10 && (
+                    <span style={{ color: '#d32f2f', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      Must be 10 digits
+                    </span>
+                  )}
+                </label>
+                <label>
+                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    Parent WhatsApp No.
+                  </span>
+                  <input
+                    id="student-form-parent-whatsapp"
+                    placeholder="10-digit mobile (Optional)"
                     maxLength={10}
                     inputMode="numeric"
                     value={f.parentWhatsappNo || f.parent_whatsapp_no || ''}
@@ -9212,10 +9556,10 @@ function Students() {
                 </label>
                 <label>
                   <span className="label-text">
-                    Parent Email Address (for Login / Absent <span style={{ whiteSpace: 'nowrap' }}>Alerts)&nbsp;<span style={{ color: '#d32f2f' }}>*</span></span>
+                    Parent Email Address (Optional)
                   </span>
                   <input
-                    required
+                    id="student-form-parent-email"
                     type="email"
                     placeholder="parent@example.com"
                     value={f.parentEmail || ''}
@@ -11712,7 +12056,7 @@ function Teachers() {
       </div>
 
       {/* Box Body (Scrollable Table Area) */}
-      <div className="directory-box-body" ref={tableBodyRef}>
+      <div className="directory-box-body" ref={tableBodyRef} style={{ overflowX: 'auto' }}>
         {loading && displayedTeachers.length > 0 && (
           <div style={{
             position: 'sticky',
@@ -11743,10 +12087,10 @@ function Teachers() {
             </div>
           </div>
         )}
-        <table>
+        <table style={{ width: '100%', minWidth: 1380, borderCollapse: 'separate', borderSpacing: 0 }}>
           <thead>
             <tr style={{ verticalAlign: 'middle' }}>
-              <th style={{ width: 36, textAlign: 'center' }}>
+              <th style={{ width: 40, textAlign: 'center' }}>
                 <input
                   type="checkbox"
                   checked={displayedTeachers.length > 0 && displayedTeachers.every(x => selectedIds.has(x.id))}
@@ -11754,20 +12098,20 @@ function Teachers() {
                   title="Select all on this page"
                 />
               </th>
-              <th style={{ lineHeight: 1.25, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+              <th style={{ minWidth: 130, lineHeight: 1.25, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                 Employee Id /<br />Savior_NO
               </th>
-              <th style={{ whiteSpace: 'nowrap' }}>Teacher Name</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Joining Date</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Gender</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Designation</th>
-              <th style={{ lineHeight: 1.25, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+              <th style={{ minWidth: 180, whiteSpace: 'nowrap' }}>Teacher Name</th>
+              <th style={{ minWidth: 110, whiteSpace: 'nowrap' }}>Joining Date</th>
+              <th style={{ minWidth: 90, whiteSpace: 'nowrap' }}>Gender</th>
+              <th style={{ minWidth: 110, whiteSpace: 'nowrap' }}>Designation</th>
+              <th style={{ minWidth: 140, lineHeight: 1.25, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                 Assigned<br />Classes
               </th>
-              <th style={{ whiteSpace: 'nowrap' }}>Email</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Mobile</th>
-              <th style={{ whiteSpace: 'nowrap' }}>Status</th>
-              <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
+              <th style={{ minWidth: 220, whiteSpace: 'nowrap' }}>Email</th>
+              <th style={{ minWidth: 120, whiteSpace: 'nowrap' }}>Mobile</th>
+              <th style={{ minWidth: 90, whiteSpace: 'nowrap' }}>Status</th>
+              <th style={{ minWidth: 140, textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -19937,6 +20281,9 @@ function App() {
         <Route path="/holidays" element={<RoleGuard roles={['SCHOOL_ADMIN', 'SUPER_ADMIN']}><Layout><AcademicYears defaultTab="holidays" /></Layout></RoleGuard>} />
         <Route path="/settings" element={<RoleGuard roles={['SCHOOL_ADMIN', 'SUPER_ADMIN']}><Layout><AcademicYears defaultTab="working-days" /></Layout></RoleGuard>} />
         <Route path="/promotion" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><StudentPromotion /></Layout></RoleGuard>} />
+        <Route path="/grading-system" element={<RoleGuard roles={['SCHOOL_ADMIN', 'SUPER_ADMIN']}><Layout><GradingSystem /></Layout></RoleGuard>} />
+        <Route path="/grading" element={<Navigate to="/grading-system" replace />} />
+        <Route path="/grades" element={<Navigate to="/grading-system" replace />} />
         <Route path="/permissions" element={<RoleGuard roles={['SUPER_ADMIN', 'SCHOOL_ADMIN']}><Layout><Permissions /></Layout></RoleGuard>} />
         <Route path="/subscription-enforcement" element={<RoleGuard roles={['SUPER_ADMIN', 'SCHOOL_ADMIN']}><Layout><SubscriptionEnforcement /></Layout></RoleGuard>} />
         <Route path="/security" element={<RoleGuard roles={['SUPER_ADMIN']}><Layout><Security /></Layout></RoleGuard>} />

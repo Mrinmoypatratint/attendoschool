@@ -1,12 +1,27 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import {
   Users, ShieldCheck, FileText, RefreshCw, AlertCircle, Loader2, Award,
   Plus, Edit2, Trash2, Calendar, BookOpen, Search, ArrowLeft, Save, CheckCircle2,
-  Check, X, TrendingUp, Maximize2, Minimize2
+  Check, X, TrendingUp, Maximize2, Minimize2, Info, Lock, Download, FileSpreadsheet, Send,
+  Bookmark, SlidersHorizontal
 } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../api';
+import { popup } from '../../components/PopupModal';
 import AttendanceReports from '../admin/AttendanceReports';
+
+export interface GradeRangeRule {
+  id: string;
+  grade: string;
+  minScore: number;
+  maxScore: number;
+  gradePoint?: number;
+  remark: string;
+  isPassing: boolean;
+  colorScheme?: 'emerald' | 'blue' | 'indigo' | 'amber' | 'rose' | 'slate';
+}
 
 interface MentoredClass {
   mentor_record_id: string;
@@ -24,13 +39,15 @@ interface MentoredExam {
   subject_name?: string;
   subject_code?: string;
   grading_system?: 'MARKS' | 'CGPA' | 'GRADE';
+  status?: 'DRAFT' | 'PUBLISHED';
   term?: string;
   exam_date: string;
   total_marks: number;
   passing_marks: number;
   graded_count?: number;
   total_students?: number;
-  average_marks?: number;
+  average_marks?: number | string;
+  avg_marks?: number | string;
   pass_count?: number;
   created_at?: string;
 }
@@ -89,6 +106,101 @@ function getGradeBadgeClass(grade?: string) {
 }
 
 export function ClassMentorWorkspace() {
+  const { user } = useAuth();
+  const schoolId = user?.schoolId || 'global';
+
+  // Admin-configured exams strictly from School Admin Grading System
+  const [adminExams, setAdminExams] = useState<any[]>(() => {
+    try {
+      const activeStored = localStorage.getItem('attendo_active_school_exams');
+      if (activeStored) {
+        const parsed = JSON.parse(activeStored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      const key = `attendo_exam_grading_${schoolId}`;
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Failed to parse admin exams from localStorage:', e);
+    }
+    return [];
+  });
+
+  const reloadAdminExams = useCallback(async () => {
+    // 1. First load from Backend API
+    try {
+      const res = await api.get('/teacher/mentor/grading-exams');
+      if (res.data?.success && Array.isArray(res.data.exams) && res.data.exams.length > 0) {
+        setAdminExams(res.data.exams);
+        try {
+          localStorage.setItem('attendo_active_school_exams', JSON.stringify(res.data.exams));
+          localStorage.setItem(`attendo_exam_grading_${schoolId}`, JSON.stringify(res.data.exams));
+        } catch {}
+        return;
+      }
+    } catch {}
+
+    // 2. Fallback to localStorage
+    try {
+      const activeStored = localStorage.getItem('attendo_active_school_exams');
+      if (activeStored) {
+        const parsed = JSON.parse(activeStored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setAdminExams(parsed);
+          return;
+        }
+      }
+      const key = `attendo_exam_grading_${schoolId}`;
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setAdminExams(parsed);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to reload admin exams:', e);
+    }
+    setAdminExams([]);
+  }, [schoolId]);
+
+  useEffect(() => {
+    reloadAdminExams();
+  }, [reloadAdminExams]);
+
+  // State for typing custom exam title
+  const [isCustomExamTitle, setIsCustomExamTitle] = useState(false);
+
+  const handleExamTitleSelect = (val: string) => {
+    setFormTitle(val);
+    if (!val || val === '__CUSTOM__') return;
+
+    const matched = displayExams.find(ex => ex.examTitle === val);
+    if (matched) {
+      if (matched.gradingType) {
+        setFormGradingSystem(matched.gradingType);
+      }
+      if (matched.gradingType === 'MARKS') {
+        const total = matched.marksConfig?.totalMarks ?? 100;
+        const pass = matched.marksConfig?.passingMarks ?? Math.round(total * 0.4);
+        setFormTotalValue(total);
+        setFormPassingMarks(pass);
+      } else if (matched.gradingType === 'CGPA') {
+        const total = matched.cgpaConfig?.maxCgpa ?? 10.0;
+        const pass = matched.cgpaConfig?.passingCgpa ?? 4.0;
+        setFormTotalValue(total);
+        setFormPassingMarks(pass);
+      } else if (matched.gradingType === 'GRADE') {
+        setFormTotalValue('A+');
+        setFormPassingMarks(40);
+      }
+    }
+  };
+
   const [mentoredClasses, setMentoredClasses] = useState<MentoredClass[]>([]);
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [classesError, setClassesError] = useState<string | null>(null);
@@ -106,6 +218,8 @@ export function ClassMentorWorkspace() {
   const [exams, setExams] = useState<MentoredExam[]>([]);
   const [loadingExams, setLoadingExams] = useState(false);
   const [examsError, setExamsError] = useState<string | null>(null);
+  const [selectedExamIds, setSelectedExamIds] = useState<Set<string>>(new Set());
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   // Subject options (strictly from School Admin subjects)
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
@@ -113,6 +227,8 @@ export function ClassMentorWorkspace() {
   // Publishing / Editing View State
   const [isPublishingView, setIsPublishingView] = useState(false);
   const [editingExam, setEditingExam] = useState<MentoredExam | null>(null);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [togglingExamId, setTogglingExamId] = useState<string | null>(null);
 
   // Form Fields
   const [formTitle, setFormTitle] = useState('');
@@ -123,6 +239,37 @@ export function ClassMentorWorkspace() {
   const [formSubjectName, setFormSubjectName] = useState('');
   const [formExamDate, setFormExamDate] = useState(() => new Date().toISOString().slice(0, 10));
 
+  // Resolved list of exams to show in teacher dropdown (strictly from School Admin Grading System)
+  const displayExams = useMemo(() => {
+    // Only show exams configured by School Admin
+    const list = Array.isArray(adminExams) ? [...adminExams] : [];
+    // If editing a specific exam whose title is not in the list, keep it for editing context
+    if (editingExam && !list.some(ex => String(ex.examTitle || '').toLowerCase() === String(editingExam.title || '').toLowerCase())) {
+      list.unshift({
+        id: editingExam.id,
+        examTitle: editingExam.title,
+        gradingType: editingExam.grading_system || 'MARKS',
+        marksConfig: {
+          totalMarks: editingExam.total_marks || 100,
+          passingMarks: editingExam.passing_marks || 40,
+        },
+        cgpaConfig: {
+          maxCgpa: editingExam.total_marks || 10,
+          passingCgpa: editingExam.passing_marks || 4.0,
+        }
+      });
+    }
+    return list;
+  }, [adminExams, editingExam]);
+
+  // Currently selected admin exam matching formTitle
+  const selectedAdminExam = useMemo(() => {
+    return displayExams.find(ex => ex.examTitle === formTitle) || (editingExam && editingExam.title === formTitle ? editingExam : null);
+  }, [displayExams, formTitle, editingExam]);
+
+  // When an exam is selected from the grading system, its grading system & total marks become fixed
+  const isExamFixed = Boolean(selectedAdminExam && formTitle);
+
   // Student Marks Table
   const [studentsWithMarks, setStudentsWithMarks] = useState<StudentWithMark[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
@@ -130,6 +277,84 @@ export function ClassMentorWorkspace() {
   const [studentSearch, setStudentSearch] = useState('');
   const [publishSuccessMsg, setPublishSuccessMsg] = useState<string | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
+
+  // School Admin Grade Ranges & Boundaries State
+  const [schoolGradeRanges, setSchoolGradeRanges] = useState<GradeRangeRule[]>(() => {
+    try {
+      const key = `attendo_school_grade_ranges_${schoolId}`;
+      const stored = localStorage.getItem(key) || localStorage.getItem('attendo_school_grade_ranges_global');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+  const [loadingRanges, setLoadingRanges] = useState(false);
+  const [showGradeRangesModal, setShowGradeRangesModal] = useState(false);
+
+  const loadSchoolGradeRanges = useCallback(async () => {
+    setLoadingRanges(true);
+    try {
+      const res = await api.get('/teacher/mentor/grading-ranges');
+      if (res.data?.success && Array.isArray(res.data.ranges) && res.data.ranges.length > 0) {
+        setSchoolGradeRanges(res.data.ranges);
+        try {
+          localStorage.setItem(`attendo_school_grade_ranges_${schoolId}`, JSON.stringify(res.data.ranges));
+          localStorage.setItem('attendo_school_grade_ranges_global', JSON.stringify(res.data.ranges));
+        } catch {}
+        return;
+      }
+    } catch (err) {
+      console.warn('Failed to load grade ranges from API:', err);
+    }
+
+    try {
+      const key = `attendo_school_grade_ranges_${schoolId}`;
+      const stored = localStorage.getItem(key) || localStorage.getItem('attendo_school_grade_ranges_global');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSchoolGradeRanges(parsed);
+          return;
+        }
+      }
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('attendo_school_grade_ranges')) {
+          const s = localStorage.getItem(k);
+          if (s) {
+            try {
+              const p = JSON.parse(s);
+              if (Array.isArray(p) && p.length > 0) {
+                setSchoolGradeRanges(p);
+                return;
+              }
+            } catch {}
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load grade ranges from localStorage:', e);
+    } finally {
+      setLoadingRanges(false);
+    }
+  }, [schoolId]);
+
+  useEffect(() => {
+    loadSchoolGradeRanges();
+  }, [loadSchoolGradeRanges]);
+
+  // Compute letter grade & remark dynamically using school admin defined boundaries
+  const computeStudentGrade = useCallback((pct: number): { grade: string; remark?: string } => {
+    if (schoolGradeRanges.length > 0) {
+      const matched = schoolGradeRanges.find(r => pct >= r.minScore && pct <= r.maxScore);
+      if (matched) {
+        return { grade: matched.grade, remark: matched.remark };
+      }
+    }
+    return { grade: computeGradeFromPercentage(pct) };
+  }, [schoolGradeRanges]);
 
   // Graded Students View Modal State
   const [showGradedModal, setShowGradedModal] = useState(false);
@@ -277,8 +502,10 @@ export function ClassMentorWorkspace() {
   // Start creating new assessment
   const handleStartNewAssessment = async () => {
     if (!selectedSection) return;
+    reloadAdminExams();
     setEditingExam(null);
     setFormTitle('');
+    setIsCustomExamTitle(false);
     setFormGradingSystem('MARKS');
     setFormTotalValue(100);
     setFormPassingMarks(40);
@@ -324,8 +551,10 @@ export function ClassMentorWorkspace() {
   // Start editing existing assessment
   const handleStartEditAssessment = async (exam: MentoredExam, onlyGraded = false) => {
     if (!selectedSection) return;
+    reloadAdminExams();
     setEditingExam(exam);
     setFormTitle(exam.title);
+    setIsCustomExamTitle(false);
     const sys = (exam.grading_system as 'MARKS' | 'CGPA' | 'GRADE') || 'MARKS';
     setFormGradingSystem(sys);
     setFormTotalValue(exam.total_marks || (sys === 'CGPA' ? 10.0 : 100));
@@ -393,13 +622,13 @@ export function ClassMentorWorkspace() {
       }
       const numVal = Math.min(totalNum, Math.max(0, Number(val)));
       const pct = totalNum > 0 ? (numVal / totalNum) * 100 : 0;
-      const grade = computeGradeFromPercentage(pct);
-      const defaultRemark = numVal >= passNum ? 'Good performance' : 'Needs improvement';
+      const { grade, remark } = computeStudentGrade(pct);
+      const defaultRemark = s.remarks ? s.remarks : (remark || (numVal >= passNum ? 'Good performance' : 'Needs improvement'));
       return {
         ...s,
         marks_obtained: numVal,
         grade,
-        remarks: s.remarks ? s.remarks : defaultRemark
+        remarks: defaultRemark
       };
     }));
   };
@@ -412,11 +641,11 @@ export function ClassMentorWorkspace() {
     setStudentsWithMarks(prev => prev.map(s => s.student_id === studentId ? { ...s, remarks } : s));
   };
 
-  // Publish / Save Results to Backend
-  const handleSaveAndPublish = async () => {
+  // Publish / Save Results to Backend (DRAFT or PUBLISHED)
+  const handleSaveResults = async (targetStatus: 'DRAFT' | 'PUBLISHED' = 'PUBLISHED') => {
     if (!selectedSection) return;
     if (!formTitle.trim()) {
-      setPublishError('Please enter an assessment title.');
+      setPublishError('Please select or enter an exam title.');
       return;
     }
     if (!formExamDate) {
@@ -446,7 +675,12 @@ export function ClassMentorWorkspace() {
       passingScore = 40;
     }
 
-    setSubmittingResults(true);
+    const isDraft = targetStatus === 'DRAFT';
+    if (isDraft) {
+      setSavingDraft(true);
+    } else {
+      setSubmittingResults(true);
+    }
     setPublishError(null);
     setPublishSuccessMsg(null);
 
@@ -456,6 +690,7 @@ export function ClassMentorWorkspace() {
       if (!formSubjectId && !finalSubjectName) {
         setPublishError('Please select a subject.');
         setSubmittingResults(false);
+        setSavingDraft(false);
         return;
       }
 
@@ -467,6 +702,7 @@ export function ClassMentorWorkspace() {
         subjectName: finalSubjectName,
         title: formTitle.trim(),
         gradingSystem: formGradingSystem,
+        status: targetStatus,
         examDate: formExamDate || new Date().toISOString().slice(0, 10),
         totalMarks: totalScore,
         passingMarks: passingScore,
@@ -483,7 +719,23 @@ export function ClassMentorWorkspace() {
       };
 
       const res = await api.post('/teacher/mentor/publish-results', payload);
-      setPublishSuccessMsg(res.data?.message || 'Assessment results published and synced to student profiles successfully!');
+      setPublishSuccessMsg(
+        isDraft
+          ? 'Assessment evaluations saved as draft! Results are preserved and hidden from student portal.'
+          : (res.data?.message || 'Assessment results published and synced to student profiles successfully!')
+      );
+      // Immediately reflect status in local exams state
+      if (res.data?.examId) {
+        setExams(prev => {
+          const idx = prev.findIndex(e => e.id === res.data.examId);
+          if (idx >= 0) {
+            const updated = [...prev];
+            updated[idx] = { ...updated[idx], status: targetStatus, title: formTitle.trim(), subject_name: finalSubjectName };
+            return updated;
+          }
+          return prev;
+        });
+      }
       // Reload exam list
       await loadExams(selectedSection.class_id, selectedSection.section_id);
       setTimeout(() => {
@@ -491,22 +743,51 @@ export function ClassMentorWorkspace() {
       }, 1200);
     } catch (err: any) {
       console.error('Publish error:', err);
-      setPublishError(err?.response?.data?.message || 'Failed to publish assessment results.');
+      setPublishError(err?.response?.data?.message || 'Failed to save assessment results.');
     } finally {
       setSubmittingResults(false);
+      setSavingDraft(false);
+    }
+  };
+
+  const handleSaveAndPublish = () => handleSaveResults('PUBLISHED');
+
+  const handleToggleExamStatus = async (exam: MentoredExam, newStatus: 'DRAFT' | 'PUBLISHED') => {
+    if (!selectedSection) return;
+    setTogglingExamId(exam.id);
+    try {
+      await api.patch(`/teacher/mentor/exams/${exam.id}/status`, { status: newStatus });
+      setExams(prev => prev.map(e => e.id === exam.id ? { ...e, status: newStatus } : e));
+    } catch (err: any) {
+      console.error('Failed to toggle exam status:', err);
+      alert(err?.response?.data?.message || 'Failed to update exam status.');
+    } finally {
+      setTogglingExamId(null);
     }
   };
 
   // Delete Exam
   const handleDeleteExam = async (examId: string, title: string) => {
-    if (!window.confirm(`Are you sure you want to delete "${title}" and all associated student marks?`)) return;
+    const confirmed = await popup.confirm(
+      `Are you sure you want to delete "${title}" and all associated student marks?`,
+      {
+        title: 'Delete Examination',
+        type: 'error',
+        danger: true,
+        confirmText: 'Confirm',
+        cancelText: 'Cancel'
+      }
+    );
+    if (!confirmed) return;
+
     try {
       await api.delete(`/teacher/mentor/exams/${examId}`);
       if (selectedSection) {
         await loadExams(selectedSection.class_id, selectedSection.section_id);
       }
+      popup.success(`"${title}" deleted successfully.`);
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to delete examination.');
+      popup.error(err?.response?.data?.message || 'Failed to delete examination.');
     }
   };
 
@@ -583,6 +864,19 @@ export function ClassMentorWorkspace() {
     }
   };
 
+  // Close modal on Escape key press
+  useEffect(() => {
+    if (!showGradedModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowGradedModal(false);
+        setIsGradedModalMaximized(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showGradedModal]);
+
   // Graded Count for modal
   const modalGradedCount = useMemo(() => {
     return gradedStudentsList.filter(
@@ -624,15 +918,211 @@ export function ClassMentorWorkspace() {
     );
   }, [studentsWithMarks, studentSearch]);
 
-  // Overall class stats from exams list
+  // Overall class stats from exams list (only counting published assessments)
   const examStats = useMemo(() => {
-    if (exams.length === 0) return { totalExams: 0, totalGraded: 0, avgMarks: '0%' };
-    const totalExams = exams.length;
-    const totalGraded = exams.reduce((acc, e) => acc + (Number(e.graded_count) || 0), 0);
-    const avgSum = exams.reduce((acc, e) => acc + (Number(e.average_marks) || 0), 0);
-    const avgMarks = (avgSum / totalExams).toFixed(1) + '%';
+    if (exams.length === 0) return { totalExams: 0, totalGraded: 0, avgMarks: '0.0%' };
+    const publishedExams = exams.filter(e => (e.status || 'PUBLISHED') === 'PUBLISHED');
+    const totalExams = publishedExams.length;
+    const totalGraded = publishedExams.reduce((acc, e) => acc + (Number(e.graded_count) || 0), 0);
+
+    const gradedExams = publishedExams.filter(e => {
+      const val = e.avg_marks !== undefined && e.avg_marks !== null ? e.avg_marks : e.average_marks;
+      return val !== undefined && val !== null && val !== '' && !isNaN(Number(val)) && (Number(e.graded_count) || 0) > 0;
+    });
+
+    let avgMarks = '0.0%';
+    if (gradedExams.length > 0) {
+      const pctSum = gradedExams.reduce((acc, e) => {
+        const rawAvg = Number(e.avg_marks !== undefined && e.avg_marks !== null ? e.avg_marks : e.average_marks);
+        const maxVal = Number(e.total_marks) || (e.grading_system === 'CGPA' ? 10 : 100);
+        const pct = maxVal > 0 ? (rawAvg / maxVal) * 100 : rawAvg;
+        return acc + pct;
+      }, 0);
+      avgMarks = (pctSum / gradedExams.length).toFixed(1) + '%';
+    }
+
     return { totalExams, totalGraded, avgMarks };
   }, [exams]);
+
+  // Helper to format class average according to grading system
+  const renderClassAverage = (exam: MentoredExam) => {
+    const raw = exam.avg_marks !== undefined && exam.avg_marks !== null
+      ? exam.avg_marks
+      : exam.average_marks;
+    if (raw === undefined || raw === null || raw === '' || isNaN(Number(raw))) {
+      return <span className="text-slate-400 font-normal">—</span>;
+    }
+    const num = Number(raw);
+
+    if (exam.grading_system === 'CGPA') {
+      const maxCgpa = Number(exam.total_marks) || 10;
+      const pct = maxCgpa > 0 ? ((num / maxCgpa) * 100).toFixed(0) : null;
+      return (
+        <div className="inline-flex items-center gap-1 font-mono font-bold text-emerald-600 dark:text-emerald-400">
+          <span>{num.toFixed(1)}</span>
+          <span className="text-[10px] text-slate-500 font-semibold">CGPA</span>
+          {pct !== null && (
+            <span className="text-[10.5px] text-slate-400 dark:text-slate-500 font-normal">({pct}%)</span>
+          )}
+        </div>
+      );
+    }
+
+    if (exam.grading_system === 'GRADE') {
+      return <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{num.toFixed(1)}%</span>;
+    }
+
+    const total = Number(exam.total_marks) || 100;
+    if (total !== 100 && total > 0) {
+      const pct = ((num / total) * 100).toFixed(1);
+      return (
+        <div className="inline-flex items-center gap-1 font-mono font-bold text-emerald-600 dark:text-emerald-400">
+          <span>{num.toFixed(1)}</span>
+          <span className="text-[10px] text-slate-500 font-normal">/ {total}</span>
+          <span className="text-[10.5px] text-slate-400 dark:text-slate-500 font-normal">({pct}%)</span>
+        </div>
+      );
+    }
+
+    return <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{num.toFixed(1)}%</span>;
+  };
+
+  // Selection handlers for exams export
+  const handleToggleSelectExam = (id: string) => {
+    setSelectedExamIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleToggleSelectAllExams = () => {
+    if (selectedExamIds.size === exams.length && exams.length > 0) {
+      setSelectedExamIds(new Set());
+    } else {
+      setSelectedExamIds(new Set(exams.map(e => e.id)));
+    }
+  };
+
+  // Export selected or all exams to Excel workbook
+  const handleExportToExcel = async () => {
+    if (!selectedSection) return;
+    const targetExams = selectedExamIds.size > 0
+      ? exams.filter(e => selectedExamIds.has(e.id))
+      : exams;
+
+    if (targetExams.length === 0) {
+      alert('No examinations found to export. Please select at least one exam.');
+      return;
+    }
+
+    setExportingExcel(true);
+    try {
+      const allRows: any[] = [];
+
+      for (const exam of targetExams) {
+        let students: any[] = [];
+        try {
+          const res = await api.get('/teacher/mentor/exam-marks', {
+            params: {
+              class_id: selectedSection.class_id,
+              section_id: selectedSection.section_id,
+              exam_id: exam.id,
+              ...(activeSession ? { session: activeSession } : {}),
+              ...(activeYearId ? { academicYearId: activeYearId } : {})
+            }
+          });
+          if (Array.isArray(res.data?.students)) {
+            students = res.data.students;
+          }
+        } catch (err) {
+          console.warn(`Failed to fetch exam-marks for ${exam.title}:`, err);
+        }
+
+        if (students.length === 0) {
+          try {
+            const res2 = await api.get(`/teacher/classes/${selectedSection.class_id}/${selectedSection.section_id}/students`);
+            if (Array.isArray(res2.data)) {
+              students = res2.data;
+            }
+          } catch (_e) {
+            try {
+              const res3 = await api.get(`/teacher/students/${selectedSection.class_id}/${selectedSection.section_id}`);
+              if (Array.isArray(res3.data)) {
+                students = res3.data;
+              }
+            } catch (_e2) {}
+          }
+        }
+
+        // Sort students by roll number numerically
+        students.sort((a: any, b: any) =>
+          String(a.roll_number || a.rollNumber || '').localeCompare(String(b.roll_number || b.rollNumber || ''), undefined, { numeric: true })
+        );
+
+        const totalNum = Number(exam.total_marks) || (exam.grading_system === 'CGPA' ? 10 : 100);
+        const passNum = Number(exam.passing_marks) || (exam.grading_system === 'CGPA' ? 4 : 40);
+
+        students.forEach((s: any) => {
+          const marksVal = s.marks_obtained !== undefined && s.marks_obtained !== null && s.marks_obtained !== ''
+            ? Number(s.marks_obtained)
+            : null;
+          const pct = marksVal !== null && totalNum > 0
+            ? ((marksVal / totalNum) * 100).toFixed(1) + '%'
+            : '—';
+          const isPass = marksVal !== null ? marksVal >= passNum : null;
+          const resultStatus = isPass === true ? 'PASS' : isPass === false ? 'FAIL' : (s.grade ? 'GRADED' : 'PENDING');
+
+          allRows.push({
+            'Student Name': s.name || s.fullName || 'Student',
+            'Class': `Class ${selectedSection.class_number}`,
+            'Section': `Section ${selectedSection.section_name}`,
+            'Roll No': String(s.roll_number || s.rollNumber || '—'),
+            'Admission No': String(s.admission_number || s.admissionNumber || s.admission_no || '—'),
+            'Subject': exam.subject_name || 'General',
+            'Exam Title': exam.title,
+            'Grading System': exam.grading_system === 'CGPA' ? 'CGPA System' : exam.grading_system === 'GRADE' ? 'Letter Grade' : 'Marks System',
+            'Max Marks / Scale': totalNum,
+            'Passing Marks': passNum,
+            'Score / Marks Obtained': marksVal !== null ? marksVal : 'Not Graded',
+            'Percentage': pct,
+            'Letter Grade': s.grade || '—',
+            'Result Status': resultStatus,
+            'Mentor Remarks': s.remarks || '—'
+          });
+        });
+      }
+
+      if (allRows.length === 0) {
+        alert('No student marks data found to export for the selected examination(s).');
+        return;
+      }
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(allRows);
+
+      // Auto-fit column widths
+      const colKeys = Object.keys(allRows[0]);
+      ws['!cols'] = colKeys.map(k => ({
+        wch: Math.max(k.length + 4, ...allRows.map(r => String(r[k] || '').length + 2), 12)
+      }));
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Assessment Results');
+
+      const classLabel = `Class_${selectedSection.class_number}_${selectedSection.section_name}`;
+      const examLabel = targetExams.length === 1 ? `_${targetExams[0].title.replace(/\s+/g, '_')}` : `_${targetExams.length}_Exams`;
+      const dateLabel = new Date().toISOString().slice(0, 10);
+      const fileName = `Assessment_Results_${classLabel}${examLabel}_${dateLabel}.xlsx`;
+
+      XLSX.writeFile(wb, fileName);
+    } catch (err: any) {
+      console.error('Failed to export to Excel:', err);
+      alert('Failed to export to Excel: ' + (err.message || 'Unknown error'));
+    } finally {
+      setExportingExcel(false);
+    }
+  };
 
   if (loadingClasses) {
     return (
@@ -850,9 +1340,22 @@ export function ClassMentorWorkspace() {
                   >
                     <ArrowLeft size={16} /> <span>Back to Assessment List</span>
                   </button>
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white m-0">
-                    {editingExam ? `Edit Evaluation: ${editingExam.title}` : `Publish Assessment Results`}
-                  </h2>
+                  <div className="flex items-center gap-2.5">
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white m-0">
+                      {editingExam ? `Edit Evaluation: ${editingExam.title}` : `Publish Assessment Results`}
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        loadSchoolGradeRanges();
+                        setShowGradeRangesModal(true);
+                      }}
+                      className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 transition-all shadow-xs cursor-pointer !min-h-0 !p-0"
+                      title="View School Grade Ranges & Boundaries (Configured by School Admin)"
+                    >
+                      <Info size={15} />
+                    </button>
+                  </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 m-0 mt-0.5">
                     Class {selectedSection?.class_number} — Section {selectedSection?.section_name} · {activeSession ? `Session ${activeSession} · ` : ''}Enter student performance records to publish to student portal.
                   </p>
@@ -861,18 +1364,41 @@ export function ClassMentorWorkspace() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
+                    onClick={() => {
+                      loadSchoolGradeRanges();
+                      setShowGradeRangesModal(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-blue-200 dark:border-blue-800 !bg-blue-50 hover:!bg-blue-100 dark:!bg-blue-950/60 dark:hover:!bg-blue-900/60 !text-blue-700 dark:!text-blue-300 font-semibold text-xs cursor-pointer transition-colors !min-h-0 shadow-xs"
+                    title="View School Grade Ranges & Boundaries (Decided by School Admin)"
+                  >
+                    <Info size={14} />
+                    <span>Grade Ranges</span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setIsPublishingView(false)}
-                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 !bg-white hover:!bg-slate-50 dark:!bg-slate-800 dark:hover:!bg-slate-700 !text-slate-700 dark:!text-slate-300 font-semibold text-xs cursor-pointer transition-colors !min-h-0"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
-                    onClick={handleSaveAndPublish}
-                    disabled={submittingResults}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold text-xs cursor-pointer shadow-sm transition-colors"
+                    onClick={() => handleSaveResults('DRAFT')}
+                    disabled={submittingResults || savingDraft}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-amber-300 dark:border-amber-700 !bg-amber-50 hover:!bg-amber-100 dark:!bg-amber-950/60 dark:hover:!bg-amber-900/60 disabled:opacity-60 !text-amber-800 dark:!text-amber-300 font-semibold text-xs cursor-pointer shadow-xs transition-colors !min-h-0"
+                    title="Save evaluations as a draft without publishing to students"
                   >
-                    {submittingResults ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                    {savingDraft ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
+                    <span>{savingDraft ? 'Saving Draft...' : 'Save Draft'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveResults('PUBLISHED')}
+                    disabled={submittingResults || savingDraft}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl !bg-blue-600 hover:!bg-blue-700 disabled:opacity-60 !text-white font-semibold text-xs cursor-pointer shadow-sm transition-colors !min-h-0"
+                    title="Publish and sync results to student portals immediately"
+                  >
+                    {submittingResults ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
                     <span>{submittingResults ? 'Publishing...' : 'Publish Results'}</span>
                   </button>
                 </div>
@@ -894,18 +1420,60 @@ export function ClassMentorWorkspace() {
 
               {/* Assessment Meta Fields Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
-                {/* 1. Assessment Title (Clean input, no hardcoded suggestions) */}
+                {/* 1. Exam Title (Dropdown fetched strictly from School Admin Grading System) */}
                 <div className="lg:col-span-2">
-                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                    Assessment Title *
-                  </label>
-                  <input
-                    type="text"
-                    value={formTitle}
-                    onChange={e => setFormTitle(e.target.value)}
-                    placeholder="Enter assessment title..."
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-blue-500"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                      Exam Title *
+                    </label>
+                    {isCustomExamTitle && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCustomExamTitle(false);
+                          setFormTitle('');
+                        }}
+                        className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold hover:underline bg-transparent border-none p-0 cursor-pointer !min-h-0"
+                      >
+                        ← Choose from dropdown
+                      </button>
+                    )}
+                  </div>
+
+                  {!isCustomExamTitle ? (
+                    <select
+                      value={formTitle}
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (val === '__CUSTOM__') {
+                          setIsCustomExamTitle(true);
+                          setFormTitle('');
+                        } else {
+                          handleExamTitleSelect(val);
+                        }
+                      }}
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-blue-500 font-semibold cursor-pointer"
+                    >
+                      <option value="">-- Select Exam Title (from Grading System) --</option>
+                      {displayExams.map((ex: any) => (
+                        <option key={ex.id || ex.examTitle} value={ex.examTitle}>
+                          {ex.examTitle} ({ex.gradingType} Basis{ex.marksConfig?.totalMarks ? ` · Max ${ex.marksConfig.totalMarks} Marks` : ex.cgpaConfig?.maxCgpa ? ` · Max ${ex.cgpaConfig.maxCgpa} CGPA` : ''})
+                        </option>
+                      ))}
+                      <option value="__CUSTOM__">+ Type Custom Exam Title...</option>
+                    </select>
+                  ) : (
+                    <div>
+                      <input
+                        type="text"
+                        value={formTitle}
+                        onChange={e => setFormTitle(e.target.value)}
+                        placeholder="Enter exam title (e.g. Mid-Term Examination 2026-27)..."
+                        autoFocus
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-blue-500 font-medium"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* 2. Subject (Strictly from School Admin) */}
@@ -937,13 +1505,35 @@ export function ClassMentorWorkspace() {
                   </select>
                 </div>
 
-                {/* 3. Grading System Concept: Marks, CGPA, Grade */}
+                {/* 3. Grading System Concept: Marks, CGPA, Grade (Fixed when exam is selected) */}
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                    Grading System *
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                        Grading System *
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          loadSchoolGradeRanges();
+                          setShowGradeRangesModal(true);
+                        }}
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 bg-transparent border-none p-0 cursor-pointer inline-flex items-center"
+                        title="View School Grade Ranges & Boundaries"
+                      >
+                        <Info size={12} />
+                      </button>
+                    </div>
+                    {isExamFixed && (
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold inline-flex items-center gap-1" title="Grading system is locked by School Admin configuration">
+                        <Lock size={10} className="text-slate-400" />
+                        Fixed
+                      </span>
+                    )}
+                  </div>
                   <select
                     value={formGradingSystem}
+                    disabled={isExamFixed}
                     onChange={e => {
                       const sys = e.target.value as 'MARKS' | 'CGPA' | 'GRADE';
                       setFormGradingSystem(sys);
@@ -957,7 +1547,11 @@ export function ClassMentorWorkspace() {
                         setFormTotalValue('A+');
                       }
                     }}
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-blue-500 font-semibold"
+                    className={`w-full px-3 py-2 text-xs rounded-lg border font-semibold outline-none transition-colors ${
+                      isExamFixed
+                        ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 cursor-not-allowed select-none shadow-none'
+                        : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-blue-500'
+                    }`}
                   >
                     <option value="MARKS">Marks (Numeric score)</option>
                     <option value="CGPA">CGPA (Point scale)</option>
@@ -965,18 +1559,27 @@ export function ClassMentorWorkspace() {
                   </select>
                 </div>
 
-                {/* 4. Total CGPA / Grade / Marks input (Customizable by user) */}
+                {/* 4. Total CGPA / Grade / Marks input (Fixed when exam is selected) */}
                 <div>
                   {formGradingSystem === 'MARKS' && (
                     <>
-                      <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                        Total Marks *
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                          Total Marks *
+                        </label>
+                        {isExamFixed && (
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold inline-flex items-center gap-1" title="Total marks are locked by School Admin configuration">
+                            <Lock size={10} className="text-slate-400" />
+                            Fixed
+                          </span>
+                        )}
+                      </div>
                       <input
                         type="number"
                         min="1"
                         max="1000"
                         value={formTotalValue}
+                        disabled={isExamFixed}
                         onChange={e => {
                           const t = e.target.value;
                           setFormTotalValue(t);
@@ -986,7 +1589,11 @@ export function ClassMentorWorkspace() {
                           }
                         }}
                         placeholder="e.g. 100"
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-blue-500 font-mono font-bold"
+                        className={`w-full px-3 py-2 text-xs rounded-lg border font-mono font-bold outline-none transition-colors ${
+                          isExamFixed
+                            ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 cursor-not-allowed select-none shadow-none'
+                            : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-blue-500'
+                        }`}
                       />
                       <span className="text-[10px] text-slate-500 mt-1 block">
                         Pass: {formPassingMarks} marks
@@ -996,15 +1603,24 @@ export function ClassMentorWorkspace() {
 
                   {formGradingSystem === 'CGPA' && (
                     <>
-                      <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                        Total CGPA Scale *
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                          Total CGPA Scale *
+                        </label>
+                        {isExamFixed && (
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold inline-flex items-center gap-1" title="CGPA scale is locked by School Admin configuration">
+                            <Lock size={10} className="text-slate-400" />
+                            Fixed
+                          </span>
+                        )}
+                      </div>
                       <input
                         type="number"
                         step="0.1"
                         min="1"
                         max="100"
                         value={formTotalValue}
+                        disabled={isExamFixed}
                         onChange={e => {
                           const t = e.target.value;
                           setFormTotalValue(t);
@@ -1014,7 +1630,11 @@ export function ClassMentorWorkspace() {
                           }
                         }}
                         placeholder="e.g. 10.0 or 4.0"
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-blue-500 font-mono font-bold"
+                        className={`w-full px-3 py-2 text-xs rounded-lg border font-mono font-bold outline-none transition-colors ${
+                          isExamFixed
+                            ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 cursor-not-allowed select-none shadow-none'
+                            : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-blue-500'
+                        }`}
                       />
                       <span className="text-[10px] text-slate-500 mt-1 block">
                         Pass: {formPassingMarks} CGPA
@@ -1024,15 +1644,28 @@ export function ClassMentorWorkspace() {
 
                   {formGradingSystem === 'GRADE' && (
                     <>
-                      <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                        Highest Grade Scale *
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                          Highest Grade Scale *
+                        </label>
+                        {isExamFixed && (
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold inline-flex items-center gap-1" title="Grade scale is locked by School Admin configuration">
+                            <Lock size={10} className="text-slate-400" />
+                            Fixed
+                          </span>
+                        )}
+                      </div>
                       <input
                         type="text"
                         value={formTotalValue}
+                        disabled={isExamFixed}
                         onChange={e => setFormTotalValue(e.target.value)}
                         placeholder="e.g. A+ or O (Outstanding)"
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-blue-500 font-bold"
+                        className={`w-full px-3 py-2 text-xs rounded-lg border font-bold outline-none transition-colors ${
+                          isExamFixed
+                            ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 cursor-not-allowed select-none shadow-none'
+                            : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-blue-500'
+                        }`}
                       />
                       <span className="text-[10px] text-slate-500 mt-1 block">
                         Top grade achievable
@@ -1253,15 +1886,25 @@ export function ClassMentorWorkspace() {
                   <button
                     type="button"
                     onClick={() => setIsPublishingView(false)}
-                    className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
+                    className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 !bg-white hover:!bg-slate-50 dark:!bg-slate-800 dark:hover:!bg-slate-700 !text-slate-700 dark:!text-slate-300 font-semibold text-xs cursor-pointer !min-h-0"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
-                    onClick={handleSaveAndPublish}
-                    disabled={submittingResults}
-                    className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold text-xs cursor-pointer shadow-sm transition-colors"
+                    onClick={() => handleSaveResults('DRAFT')}
+                    disabled={submittingResults || savingDraft}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-amber-300 dark:border-amber-700 !bg-amber-50 hover:!bg-amber-100 dark:!bg-amber-950/60 dark:hover:!bg-amber-900/60 disabled:opacity-60 !text-amber-800 dark:!text-amber-300 font-semibold text-xs cursor-pointer shadow-xs transition-colors !min-h-0"
+                    title="Save evaluations as a draft without publishing to students"
+                  >
+                    {savingDraft ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+                    <span>{savingDraft ? 'Saving Draft...' : 'Save Draft'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveResults('PUBLISHED')}
+                    disabled={submittingResults || savingDraft}
+                    className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl !bg-blue-600 hover:!bg-blue-700 disabled:opacity-60 !text-white font-semibold text-xs cursor-pointer shadow-sm transition-colors !min-h-0"
                   >
                     {submittingResults ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                     <span>{submittingResults ? 'Publishing...' : 'Publish & Sync to Student Portals'}</span>
@@ -1284,6 +1927,27 @@ export function ClassMentorWorkspace() {
                 </div>
 
                 <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={handleExportToExcel}
+                    disabled={exportingExcel || exams.length === 0}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-300 dark:border-emerald-700/80 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-semibold text-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
+                    title={selectedExamIds.size > 0 ? `Export ${selectedExamIds.size} selected exam(s) with student marks to Excel` : 'Export all exams with student marks to Excel'}
+                  >
+                    {exportingExcel ? (
+                      <Loader2 size={13} className="animate-spin text-emerald-600 dark:text-emerald-400" />
+                    ) : (
+                      <FileSpreadsheet size={13} className="text-emerald-600 dark:text-emerald-400" />
+                    )}
+                    <span>
+                      {exportingExcel
+                        ? 'Exporting...'
+                        : selectedExamIds.size > 0
+                        ? `Export Excel (${selectedExamIds.size})`
+                        : 'Export Excel'}
+                    </span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => selectedSection && loadExams(selectedSection.class_id, selectedSection.section_id)}
@@ -1367,28 +2031,93 @@ export function ClassMentorWorkspace() {
                     </button>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 font-bold text-slate-600 dark:text-slate-300">
-                          <th className="p-3">ASSESSMENT TITLE</th>
-                          <th className="p-3">SUBJECT</th>
-                          <th className="p-3">EXAM DATE</th>
-                          <th className="p-3 text-right">EVALUATION SCALE</th>
-                          <th className="p-3 text-center">STUDENTS GRADED</th>
-                          <th className="p-3 text-center">CLASS AVERAGE</th>
-                          <th className="p-3 text-right">ACTIONS</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {exams.map(exam => (
-                          <tr key={exam.id} className="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                            <td className="p-3">
-                              <div className="font-bold text-slate-900 dark:text-white text-sm">{exam.title}</div>
-                              <span className="inline-block mt-0.5 px-2 py-0.2 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                                {exam.grading_system === 'CGPA' ? 'CGPA System' : exam.grading_system === 'GRADE' ? 'Letter Grade' : 'Marks System'}
-                              </span>
-                            </td>
+                  <div>
+                    {selectedExamIds.size > 0 && (
+                      <div className="mb-4 px-3.5 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <FileSpreadsheet size={15} className="text-blue-600 dark:text-blue-400" />
+                          <span>
+                            <strong>{selectedExamIds.size}</strong> of {exams.length} exam(s) selected for Excel export
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handleExportToExcel}
+                            disabled={exportingExcel}
+                            className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold cursor-pointer shadow-xs inline-flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                          >
+                            {exportingExcel ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                            <span>Download Excel (.xlsx)</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedExamIds(new Set())}
+                            className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 !bg-white hover:!bg-slate-100 dark:!bg-slate-800 dark:hover:!bg-slate-700 !text-slate-700 dark:!text-slate-200 text-xs font-semibold cursor-pointer shadow-xs transition-colors inline-flex items-center gap-1"
+                            title="Clear exam selection"
+                          >
+                            <X size={13} className="text-slate-500 dark:text-slate-400" />
+                            <span>Clear Selection</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 font-bold text-slate-600 dark:text-slate-300">
+                            <th className="p-3 w-10 text-center">
+                              <input
+                                type="checkbox"
+                                checked={exams.length > 0 && selectedExamIds.size === exams.length}
+                                onChange={handleToggleSelectAllExams}
+                                className="w-4 h-4 rounded text-blue-600 cursor-pointer accent-blue-600 align-middle"
+                                title={selectedExamIds.size === exams.length ? 'Deselect all' : 'Select all exams'}
+                              />
+                            </th>
+                            <th className="p-3">EXAM TITLE</th>
+                            <th className="p-3">SUBJECT</th>
+                            <th className="p-3">EXAM DATE</th>
+                            <th className="p-3 text-right">EVALUATION SCALE</th>
+                            <th className="p-3 text-center">STUDENTS GRADED</th>
+                            <th className="p-3 text-center">CLASS AVERAGE</th>
+                            <th className="p-3 text-right">ACTIONS</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {exams.map(exam => (
+                            <tr
+                              key={exam.id}
+                              className={`border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors ${
+                                selectedExamIds.has(exam.id) ? 'bg-blue-50/40 dark:bg-blue-950/20' : ''
+                              }`}
+                            >
+                              <td className="p-3 w-10 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedExamIds.has(exam.id)}
+                                  onChange={() => handleToggleSelectExam(exam.id)}
+                                  className="w-4 h-4 rounded text-blue-600 cursor-pointer accent-blue-600 align-middle"
+                                  title={`Select ${exam.title} for export`}
+                                />
+                              </td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-bold text-slate-900 dark:text-white text-sm">{exam.title}</span>
+                                  {exam.status === 'DRAFT' ? (
+                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                      DRAFT
+                                    </span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                      PUBLISHED
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="inline-block mt-0.5 px-2 py-0.2 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                  {exam.grading_system === 'CGPA' ? 'CGPA System' : exam.grading_system === 'GRADE' ? 'Letter Grade' : 'Marks System'}
+                                </span>
+                              </td>
                             <td className="p-3 font-semibold text-slate-700 dark:text-slate-300">
                               {exam.subject_name || 'General'}
                             </td>
@@ -1413,27 +2142,74 @@ export function ClassMentorWorkspace() {
                                 <span>{exam.graded_count || 0} Graded</span>
                               </button>
                             </td>
-                            <td className="p-3 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                              {exam.average_marks ? `${exam.average_marks}%` : '—'}
+                            <td className="p-3 text-center">
+                              {renderClassAverage(exam)}
                             </td>
                             <td className="p-3 text-right">
                               <div className="flex items-center justify-end gap-1.5">
+                                {/* 1. Draft Button */}
                                 <button
                                   type="button"
-                                  onClick={() => handleStartEditAssessment(exam)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-50 cursor-pointer"
-                                  title="Enter / Edit Marks"
+                                  onClick={() => {
+                                    if (exam.status === 'DRAFT') {
+                                      handleStartEditAssessment(exam);
+                                    } else {
+                                      handleToggleExamStatus(exam, 'DRAFT');
+                                    }
+                                  }}
+                                  disabled={togglingExamId === exam.id}
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-semibold cursor-pointer transition-colors !min-h-0 ${
+                                    exam.status === 'DRAFT'
+                                      ? '!bg-amber-50 hover:!bg-amber-100 dark:!bg-amber-950/60 dark:hover:!bg-amber-900/60 !text-amber-800 dark:!text-amber-300 border-amber-300 dark:border-amber-700 shadow-xs'
+                                      : '!bg-white hover:!bg-slate-50 dark:!bg-slate-800 dark:hover:!bg-slate-700 !text-slate-700 dark:!text-slate-300 border-slate-200 dark:border-slate-700'
+                                  }`}
+                                  title={exam.status === 'DRAFT' ? 'Edit Draft Marks' : 'Set to Draft (Hide from student portal)'}
                                 >
-                                  <Edit2 size={13} />
-                                  <span>Edit Marks</span>
+                                  {togglingExamId === exam.id && exam.status !== 'DRAFT' ? (
+                                    <Loader2 size={12} className="animate-spin text-amber-600" />
+                                  ) : (
+                                    <FileText size={12} className={exam.status === 'DRAFT' ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400 dark:text-slate-400'} />
+                                  )}
+                                  <span>Draft</span>
                                 </button>
+
+                                {/* 2. Publish Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (exam.status === 'DRAFT') {
+                                      handleToggleExamStatus(exam, 'PUBLISHED');
+                                    } else {
+                                      handleStartEditAssessment(exam);
+                                    }
+                                  }}
+                                  disabled={togglingExamId === exam.id}
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-semibold cursor-pointer transition-colors shadow-xs !min-h-0 ${
+                                    exam.status === 'DRAFT'
+                                      ? '!bg-blue-600 hover:!bg-blue-700 !text-white border-blue-600 dark:border-blue-700'
+                                      : '!bg-emerald-50 hover:!bg-emerald-100 dark:!bg-emerald-950/60 dark:hover:!bg-emerald-900/60 !text-emerald-700 dark:!text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                                  }`}
+                                  title={exam.status === 'DRAFT' ? 'Publish and sync results to students immediately' : 'Published to students (Click to edit & update)'}
+                                >
+                                  {togglingExamId === exam.id && exam.status === 'DRAFT' ? (
+                                    <Loader2 size={12} className="animate-spin text-white" />
+                                  ) : exam.status === 'DRAFT' ? (
+                                    <Send size={12} />
+                                  ) : (
+                                    <CheckCircle2 size={12} className="text-emerald-600 dark:text-emerald-400" />
+                                  )}
+                                  <span>{exam.status === 'DRAFT' ? 'Publish' : 'Published'}</span>
+                                </button>
+
+                                {/* Delete Button */}
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteExam(exam.id, exam.title)}
-                                  className="p-1 rounded-lg border border-transparent text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-rose-200 dark:border-rose-900/60 !bg-rose-50 hover:!bg-rose-100 dark:!bg-rose-950/60 dark:hover:!bg-rose-900/60 !text-rose-700 hover:!text-rose-800 dark:!text-rose-300 dark:hover:!text-rose-200 text-xs font-semibold cursor-pointer !min-h-0 shadow-xs transition-colors"
                                   title="Delete Exam"
                                 >
-                                  <Trash2 size={14} />
+                                  <Trash2 size={13} className="text-rose-600 dark:text-rose-400 shrink-0" />
+                                  <span>Delete</span>
                                 </button>
                               </div>
                             </td>
@@ -1442,7 +2218,8 @@ export function ClassMentorWorkspace() {
                       </tbody>
                     </table>
                   </div>
-                )}
+                </div>
+              )}
               </div>
             </div>
           )}
@@ -1451,23 +2228,23 @@ export function ClassMentorWorkspace() {
 
       {/* ── Modal for Graded Students & Marks Viewer ── */}
       {showGradedModal && (
-        <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs transition-all ${isGradedModalMaximized ? 'p-2 sm:p-3' : 'p-4'}`}>
-          <div className={`bg-white dark:bg-slate-900 flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 transition-all duration-200 ${
+        <div className={`fixed inset-0 z-[10050] flex items-center justify-center bg-black/70 backdrop-blur-sm transition-all overflow-y-auto ${isGradedModalMaximized ? 'p-2 sm:p-4' : 'p-4'}`}>
+          <div className={`bg-white dark:bg-slate-900 flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 transition-all duration-200 overflow-hidden ${
             isGradedModalMaximized
-              ? 'w-full h-full max-w-[98vw] max-h-[96vh] rounded-2xl p-6'
-              : 'rounded-2xl max-w-3xl w-full p-6 max-h-[90vh]'
+              ? 'w-full h-full max-w-[98vw] max-h-[96vh] rounded-2xl p-5 sm:p-6'
+              : 'rounded-2xl max-w-3xl w-full p-5 sm:p-6 max-h-[90vh]'
           }`}>
             {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+            <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center flex-shrink-0">
                   <Award size={18} />
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white m-0">
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white m-0 truncate">
                     {selectedExamForGradedView?.title} — Student Marks
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 m-0 mt-0.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 m-0 mt-0.5 truncate">
                     {selectedExamForGradedView?.subject_name || 'General'} · Class {selectedSection?.class_number} - Section {selectedSection?.section_name} ·{' '}
                     {selectedExamForGradedView?.exam_date ? formatDate(selectedExamForGradedView.exam_date) : ''} · Scale:{' '}
                     {selectedExamForGradedView?.grading_system === 'CGPA'
@@ -1478,14 +2255,20 @@ export function ClassMentorWorkspace() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsGradedModalMaximized((prev) => !prev)}
-                  className="bg-transparent border-none text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="inline-flex items-center justify-center !w-8 !h-8 !min-h-0 !p-0 rounded-lg !border !border-slate-300 hover:!border-slate-400 dark:!border-slate-700 dark:hover:!border-slate-600 !bg-slate-100 hover:!bg-slate-200 dark:!bg-slate-800 dark:hover:!bg-slate-700 !text-slate-700 hover:!text-slate-900 dark:!text-slate-200 dark:hover:!text-white transition-colors cursor-pointer shadow-xs"
+                  style={{ width: 32, height: 32, minHeight: 32, padding: 0, color: '#334155' }}
                   title={isGradedModalMaximized ? "Restore default size" : "Maximize dialog"}
+                  aria-label={isGradedModalMaximized ? "Restore default size" : "Maximize dialog"}
                 >
-                  {isGradedModalMaximized ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                  {isGradedModalMaximized ? (
+                    <Minimize2 size={16} className="text-slate-700 dark:text-slate-200 shrink-0" strokeWidth={2.2} />
+                  ) : (
+                    <Maximize2 size={16} className="text-slate-700 dark:text-slate-200 shrink-0" strokeWidth={2.2} />
+                  )}
                 </button>
                 <button
                   type="button"
@@ -1493,10 +2276,12 @@ export function ClassMentorWorkspace() {
                     setShowGradedModal(false);
                     setIsGradedModalMaximized(false);
                   }}
-                  className="bg-transparent border-none text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  title="Close"
+                  className="inline-flex items-center justify-center !w-8 !h-8 !min-h-0 !p-0 rounded-lg !border !border-slate-300 hover:!border-rose-300 dark:!border-slate-700 dark:hover:!border-rose-800 !bg-slate-100 hover:!bg-rose-50 dark:!bg-slate-800 dark:hover:!bg-rose-950/40 !text-slate-700 hover:!text-rose-600 dark:!text-slate-200 dark:hover:!text-rose-400 transition-colors cursor-pointer shadow-xs"
+                  style={{ width: 32, height: 32, minHeight: 32, padding: 0, color: '#334155' }}
+                  title="Close (Esc)"
+                  aria-label="Close dialog"
                 >
-                  <X size={20} />
+                  <X size={18} className="text-slate-700 hover:text-rose-600 dark:text-slate-200 dark:hover:text-rose-400 shrink-0" strokeWidth={2.2} />
                 </button>
               </div>
             </div>
@@ -1516,7 +2301,7 @@ export function ClassMentorWorkspace() {
                   <button
                     type="button"
                     onClick={() => setGradedModalSearch('')}
-                    className="bg-transparent border-none cursor-pointer text-slate-400 hover:text-slate-600"
+                    className="!bg-transparent hover:!bg-transparent border-none cursor-pointer text-slate-400 hover:text-slate-600 !p-1 !min-h-0"
                   >
                     <X size={12} />
                   </button>
@@ -1528,22 +2313,24 @@ export function ClassMentorWorkspace() {
                 <button
                   type="button"
                   onClick={() => setGradedModalFilter('GRADED')}
-                  className={`px-3 py-1 rounded-lg border-none cursor-pointer transition-colors ${
+                  className={`px-3 py-1.5 rounded-lg border-none cursor-pointer transition-all !min-h-0 ${
                     gradedModalFilter === 'GRADED'
-                      ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs font-bold'
-                      : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                      ? '!bg-white dark:!bg-slate-900 hover:!bg-white dark:hover:!bg-slate-900 !text-rose-600 dark:!text-rose-400 hover:!text-rose-700 dark:hover:!text-rose-300 shadow-xs font-bold'
+                      : '!bg-transparent hover:!bg-slate-200/80 dark:hover:!bg-slate-700/70 !text-slate-600 dark:text-slate-400 hover:!text-slate-900 dark:hover:!text-white'
                   }`}
+                  style={{ opacity: 1 }}
                 >
                   Graded ({modalGradedCount})
                 </button>
                 <button
                   type="button"
                   onClick={() => setGradedModalFilter('ALL')}
-                  className={`px-3 py-1 rounded-lg border-none cursor-pointer transition-colors ${
+                  className={`px-3 py-1.5 rounded-lg border-none cursor-pointer transition-all !min-h-0 ${
                     gradedModalFilter === 'ALL'
-                      ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs font-bold'
-                      : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                      ? '!bg-white dark:!bg-slate-900 hover:!bg-white dark:hover:!bg-slate-900 !text-rose-600 dark:!text-rose-400 hover:!text-rose-700 dark:hover:!text-rose-300 shadow-xs font-bold'
+                      : '!bg-transparent hover:!bg-slate-200/80 dark:hover:!bg-slate-700/70 !text-slate-600 dark:text-slate-400 hover:!text-slate-900 dark:hover:!text-white'
                   }`}
+                  style={{ opacity: 1 }}
                 >
                   All Students ({gradedStudentsList.length})
                 </button>
@@ -1671,29 +2458,184 @@ export function ClassMentorWorkspace() {
               <span className="text-slate-500 font-medium">
                 Showing {modalFilteredStudents.length} of {gradedStudentsList.length} students ({modalGradedCount} graded)
               </span>
-              <div className="flex items-center gap-2">
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: SCHOOL GRADE RANGES & BOUNDARIES (Strictly from School Admin) */}
+      {showGradeRangesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div
+            className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 flex flex-col max-h-[90vh] overflow-hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="grade-ranges-modal-title"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs">
+                  <SlidersHorizontal size={20} />
+                </div>
+                <div>
+                  <h3 id="grade-ranges-modal-title" className="text-base font-bold text-slate-900 dark:text-white m-0">
+                    School Grade Ranges &amp; Boundaries
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 m-0 mt-0.5">
+                    Configured by School Admin · Applied automatically during marks entry
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowGradedModal(false);
-                    setIsGradedModalMaximized(false);
-                    if (selectedExamForGradedView) {
-                      handleStartEditAssessment(selectedExamForGradedView, true);
-                    }
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs cursor-pointer shadow-sm transition-colors"
+                  onClick={() => loadSchoolGradeRanges()}
+                  disabled={loadingRanges}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors bg-transparent border-none cursor-pointer"
+                  title="Reload Grade Ranges from Server"
                 >
-                  <Edit2 size={13} />
-                  <span>Edit Marks</span>
+                  <RefreshCw size={16} className={loadingRanges ? 'animate-spin text-blue-600' : ''} />
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowGradedModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-50 cursor-pointer shadow-xs"
+                  onClick={() => setShowGradeRangesModal(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors bg-transparent border-none cursor-pointer"
+                  title="Close"
                 >
-                  Close
+                  <X size={18} />
                 </button>
               </div>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto pr-1">
+              {loadingRanges ? (
+                <div className="py-12 text-center text-sm text-slate-500">
+                  <Loader2 size={24} className="animate-spin mx-auto mb-2 text-blue-600" />
+                  Fetching grade boundaries from School Admin...
+                </div>
+              ) : schoolGradeRanges.length === 0 ? (
+                <div className="py-10 px-4 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-800/20">
+                  <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-3">
+                    <AlertCircle size={22} />
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 m-0 mb-1">
+                    No Custom Grade Ranges Configured
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto m-0 mb-3 leading-relaxed">
+                    The School Administrator has not defined custom grade boundaries in <strong>School Admin → Grading System</strong> yet.
+                  </p>
+                  <div className="inline-block p-3 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-[11px] text-blue-800 dark:text-blue-300 text-left">
+                    <p className="font-semibold m-0 mb-1">Standard System Defaults in Effect:</p>
+                    <ul className="m-0 pl-4 list-disc space-y-0.5">
+                      <li><strong>Grade A</strong>: 80% and above</li>
+                      <li><strong>Grade B</strong>: 60% – 79%</li>
+                      <li><strong>Grade C</strong>: 40% – 59% (Passing threshold)</li>
+                      <li><strong>Grade F</strong>: Below 40%</li>
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Visual Spectrum Bar */}
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
+                    <div className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
+                      Active Score Spectrum (0% – 100%)
+                    </div>
+                    <div className="flex h-8 rounded-lg overflow-hidden border border-slate-300 dark:border-slate-700 shadow-inner">
+                      {schoolGradeRanges.map((r, idx) => {
+                        const widthPct = Math.max(4, r.maxScore - r.minScore + 1);
+                        const colors = [
+                          '#10b981', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#d97706', '#ef4444'
+                        ];
+                        const bg = colors[idx % colors.length];
+                        return (
+                          <div
+                            key={r.id}
+                            style={{ width: `${widthPct}%`, backgroundColor: bg }}
+                            className="flex items-center justify-center text-white text-[10px] font-bold border-r border-white/40 shadow-xs px-1 overflow-hidden whitespace-nowrap"
+                            title={`${r.grade}: ${r.minScore}% – ${r.maxScore}% (${r.remark || 'No remark'})`}
+                          >
+                            {r.grade} ({r.minScore}–{r.maxScore}%)
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Boundaries Table */}
+                  <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 font-bold text-slate-600 dark:text-slate-300">
+                          <th className="p-3">GRADE</th>
+                          <th className="p-3">PERCENTAGE RANGE</th>
+                          <th className="p-3">GRADE POINT</th>
+                          <th className="p-3">OFFICIAL REMARK</th>
+                          <th className="p-3 text-center">STATUS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {schoolGradeRanges.map((r) => (
+                          <tr
+                            key={r.id}
+                            className="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/40"
+                          >
+                            <td className="p-3">
+                              <span
+                                className={`inline-block px-2.5 py-0.5 rounded text-xs font-black ${
+                                  r.isPassing
+                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                                    : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                                }`}
+                              >
+                                {r.grade}
+                              </span>
+                            </td>
+                            <td className="p-3 font-bold text-slate-800 dark:text-slate-100 font-mono">
+                              {r.minScore}% &nbsp;—&nbsp; {r.maxScore}%
+                            </td>
+                            <td className="p-3 font-semibold text-slate-600 dark:text-slate-300 font-mono">
+                              {r.gradePoint !== undefined && r.gradePoint !== null ? Number(r.gradePoint).toFixed(1) : '—'}
+                            </td>
+                            <td className="p-3 text-slate-600 dark:text-slate-300">
+                              {r.remark || <span className="text-slate-400 italic">—</span>}
+                            </td>
+                            <td className="p-3 text-center">
+                              <span
+                                className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  r.isPassing
+                                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                                    : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                                }`}
+                              >
+                                {r.isPassing ? 'PASS' : 'FAIL'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0">
+                    <Info size={12} className="inline mr-1 text-blue-500" />
+                    When entering numeric marks or CGPA, the student's letter grade and remarks automatically update according to these School Admin boundaries.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2 pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowGradeRangesModal(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 !bg-white hover:!bg-slate-50 dark:!bg-slate-800 dark:hover:!bg-slate-700 !text-slate-700 dark:!text-slate-300 font-semibold text-xs cursor-pointer transition-colors !min-h-0"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

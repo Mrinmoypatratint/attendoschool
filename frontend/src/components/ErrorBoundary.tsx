@@ -48,6 +48,16 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="text-sm text-slate-400 mb-6 leading-relaxed">
               A temporary display error occurred. Please refresh the page to restore your dashboard.
             </p>
+            {this.state.error && (
+              <div className="mb-6 p-3 bg-red-950/60 border border-red-500/30 rounded-lg text-left overflow-auto max-h-48 text-xs font-mono text-red-300">
+                <div className="font-bold text-red-200 mb-1">{this.state.error.name}: {this.state.error.message}</div>
+                {this.state.error.stack && (
+                  <div className="text-[10px] text-red-400 whitespace-pre-wrap leading-tight max-h-32 overflow-y-auto">
+                    {this.state.error.stack}
+                  </div>
+                )}
+              </div>
+            )}
             <button
               onClick={this.handleReset}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold cursor-pointer transition-colors shadow-sm"

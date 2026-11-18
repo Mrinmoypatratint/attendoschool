@@ -170,9 +170,14 @@ export async function updateStudent(schoolId: string, id: string, body: any) {
   const targetEmail = body.email !== undefined ? body.email : (body.student_email !== undefined ? body.student_email : stu.email);
   const targetPhone = body.parent_sms_number !== undefined ? body.parent_sms_number : (body.parent_phone !== undefined ? body.parent_phone : (body.phone !== undefined ? body.phone : stu.parent_sms_number));
 
+  const candidateAyUuid = [body.academic_year_id, body.sessionId, body.session_id].find(
+    (v: any) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v.trim())
+  );
+  const targetAcademicYearId = candidateAyUuid ? String(candidateAyUuid).trim() : stu.academic_year_id;
+
   const validation = await validateStudentUniqueness({
     schoolId,
-    academicYearId: stu.academic_year_id,
+    academicYearId: targetAcademicYearId,
     classId: targetClassId,
     sectionId: targetSectionId,
     admissionNumber: targetAdmission,
@@ -220,6 +225,7 @@ export async function updateStudent(schoolId: string, id: string, body: any) {
   if (body.emergency_contact !== undefined) fieldMap['emergency_contact'] = body.emergency_contact === '' ? null : body.emergency_contact;
   if (body.photo_url !== undefined) fieldMap['photo_url'] = body.photo_url === '' ? null : body.photo_url;
   if (body.is_active !== undefined) fieldMap['is_active'] = Boolean(body.is_active);
+  if (candidateAyUuid) fieldMap['academic_year_id'] = String(candidateAyUuid).trim();
 
   const fields: string[] = [];
   const values: any[] = [];
