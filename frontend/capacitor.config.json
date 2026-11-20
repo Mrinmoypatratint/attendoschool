@@ -5,10 +5,18 @@
   "backgroundColor": "#ffffff",
   "loggingBehavior": "debug",
   "server": {
+    "url": "https://attendoschool.online",
     "hostname": "localhost",
     "androidScheme": "https",
     "iosScheme": "capacitor",
-    "cleartext": false
+    "cleartext": false,
+    "allowNavigation": [
+      "attendoschool.online",
+      "www.attendoschool.online",
+      "checkout.razorpay.com",
+      "api.razorpay.com"
+    ],
+    "errorPath": "offline.html"
   },
   "android": {
     "allowMixedContent": false
