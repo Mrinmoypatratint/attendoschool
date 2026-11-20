@@ -251,11 +251,18 @@ export class SqlAccessStore implements AccessStore {
 
   /** Delegates to the EXISTING subscription service — no plan/expiry logic re-implemented. */
   async getPlanKey(schoolId: string): Promise<string | null> {
-    if (!isPostgresConfigured || !/^[0-9a-f-]{36}$/i.test(schoolId)) return null;
+    if (!isPostgresConfigured) return null;
+    // The subscription row may be stored under any alias of the canonical school id (see schoolIdCandidates).
+    const { schoolIdCandidates } = await import('./principalDirectory');
+    const uuids = schoolIdCandidates(schoolId).filter((x) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x));
+    if (!uuids.length) return null;
     try {
       const { getSubscription } = await import('../services/subscriptionEnforcementService');
-      const s: any = await getSubscription(schoolId);
-      return s?.plan_id ? String(s.plan_id) : null;
+      for (const id of uuids) {
+        const s: any = await getSubscription(id);
+        if (s?.plan_id) return String(s.plan_id);
+      }
+      return null;
     } catch (err: any) {
       console.warn('[RBAC] Unable to resolve subscription plan; using feature defaults:', err?.code || err?.message);
       return null;
