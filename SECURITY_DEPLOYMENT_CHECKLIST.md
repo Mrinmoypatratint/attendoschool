@@ -49,6 +49,8 @@
 
 ## 2a. RBAC & Feature Control (2026-11-08)
 
+> **Automated since 2026-11-20:** the deploy applies the RBAC schema and PM2 runs `RBAC_ENFORCEMENT=enforce`. The items below are for manual recovery only.
+
 - [ ] Backup, then apply `database/migrations/051_rbac_feature_control.sql` manually (`npm --prefix backend run db:migrate` applies **all** pending migrations — review the pending list first). The CD workflow does not run migrations.
 - [ ] `GET /api/health` shows `"rbac": "READY"` (it shows `NOT_INSTALLED` until 051 is applied; the app then uses legacy access).
 - [ ] Keep `RBAC_ENFORCEMENT=shadow` (default) for the shadow period; review `pm2 logs | grep '\[RBAC_SHADOW\]'`.

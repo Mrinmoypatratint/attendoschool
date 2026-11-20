@@ -235,8 +235,8 @@ COMPANY_GSTIN="19AAACB1234P1Z5"
 COMPANY_ADDRESS="Campus 4, Tech Park Boulevard, Bengaluru, Karnataka"
 COMPANY_PHONE="+91 90000 00000"
 
-# RBAC enforcement: off | shadow (default, log only) | enforce — see docs/rbac/ROLLOUT.md
-RBAC_ENFORCEMENT=shadow
+# RBAC enforcement: off | shadow (log only) | enforce (default) — see docs/rbac/ROLLOUT.md
+RBAC_ENFORCEMENT=enforce
 COMPANY_GST_RATE=18
 ```
 

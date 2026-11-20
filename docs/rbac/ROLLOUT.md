@@ -20,9 +20,17 @@ Nothing changes for any user until (a) the migration is applied, (b) someone fli
 (c) `RBAC_ENFORCEMENT=enforce`. With empty tables every role has exactly today's access (proven by
 `backend/tests/rbac-baseline.test.ts` in all three modes).
 
+## 0. Current state (2026-11-20)
+
+> **Automated since 2026-11-20:** every production deploy runs `node backend/dist/scripts/applyRbacMigration.js --apply`
+> (idempotent; a failure aborts the deploy before the PM2 reload, so the old version keeps serving), and
+> `ecosystem.config.cjs` sets `RBAC_ENFORCEMENT` to **`enforce`** (code default is also `enforce`), so every toggle takes
+> effect within the documented TTL with no manual step. Migration 051 was applied to production on 2026-11-20.
+> Rollback: `RBAC_ENFORCEMENT=off pm2 reload ecosystem.config.cjs --env production --update-env` (or `shadow` to log only).
+
 ## 1. Deploy the code (default mode = shadow)
 
-`RBAC_ENFORCEMENT` defaults to `shadow` when unset. Shadow computes every decision, never blocks, and
+`RBAC_ENFORCEMENT` now defaults to `enforce` (set explicitly in `ecosystem.config.cjs`). Historical note: it originally defaulted to `shadow`. Shadow computes every decision, never blocks, and
 logs any would-be denial. Deploying without the migration is safe: the app logs one warning
 `[RBAC] RBAC tables are not installed …`, serves legacy behaviour, `/api/health` shows
 `"rbac": "NOT_INSTALLED"`, and RBAC write endpoints return `503 ACCESS_STORE_UNAVAILABLE`.

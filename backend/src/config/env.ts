@@ -136,8 +136,8 @@ export const env = {
   // Supabase Storage
   supabaseUrl: cleanEnv(process.env.SUPABASE_URL, ''),
   supabaseServiceRoleKey: cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY, ''),
-  // RBAC enforcement: off | shadow (default) | enforce. Read per request by rbac/accessService getEnforcementMode().
-  rbacEnforcement: cleanEnv(process.env.RBAC_ENFORCEMENT, 'shadow').toLowerCase(),
+  // RBAC enforcement: off | shadow | enforce (default). Read per request by rbac/accessService getEnforcementMode().
+  rbacEnforcement: cleanEnv(process.env.RBAC_ENFORCEMENT, 'enforce').toLowerCase(),
 };
 
 
