@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { requireAuth, requireRoles } from '../middleware/auth';
 import { checkPostgresHealth, isPostgresConfigured } from '../db';
 import { checkFirestoreHealth, isFirebaseConfigured } from '../firebase';
 import { env } from '../config/env';
@@ -89,7 +90,8 @@ r.get('/email-status', (_req, res) => {
 });
 
 // ── Send a real test email to verify SMTP on the live server ──
-r.post('/email-test', async (req, res) => {
+// Security fix (2026-11-20): was public — anyone could send mail through the platform SMTP.
+r.post('/email-test', requireAuth, requireRoles('SUPER_ADMIN'), async (req, res) => {
   const { to, port, host, encryption, brevoApiKey, brevoSenderEmail, brevoSenderName } = req.body || {};
   const recipient = to || env.smtpUser;
   if (!recipient) {

@@ -66,6 +66,263 @@
         "STUDENT": "ALLOW",
         "PARENT": "ALLOW"
       }
+    },
+    "GET /api/analytics-v24/export-students": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/analytics/export-students": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports-v12": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports-v12/daily": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports-v12/defaulters": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports-v12/export/csv": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports-v12/export/pdf": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports-v12/monthly": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports-v12/students": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports-v12/summary": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports-v12/template": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports/daily": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports/defaulters": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports/export/csv": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports/export/pdf": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports/monthly": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports/students": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports/summary": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports/template": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/reviews/leaves": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/reviews/photos": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/reviews/teacher-leaves": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/reviews/teacher-leaves/export-excel": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "POST /api/attendance-reports-v12/import-offline": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "POST /api/attendance-reports/import-offline": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "POST /api/health/email-test": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "ANON": "DENY_401",
+        "SCHOOL_ADMIN": "DENY_403",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "DENY_403"
+      }
+    },
+    "POST /api/subscriptions-v19/run-worker": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "SCHOOL_ADMIN": "DENY_403",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "DENY_403"
+      }
+    },
+    "POST /api/subscriptions/run-worker": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "SCHOOL_ADMIN": "DENY_403",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "DENY_403"
+      }
+    },
+    "PUT /api/reviews/leaves/:id/approve": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "PUT /api/reviews/leaves/:id/reject": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "PUT /api/reviews/leaves/:id/seen": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "PUT /api/reviews/leaves/mark-all-seen": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "PUT /api/reviews/photos/:id/approve": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "PUT /api/reviews/photos/:id/reject": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
     }
   },
   "additions": {
