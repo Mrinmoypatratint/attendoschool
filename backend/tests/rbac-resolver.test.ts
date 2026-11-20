@@ -179,5 +179,30 @@ test('R1: empty tables ⇒ every in-ceiling role allowed for every permission', 
   }
 });
 
+console.log('\n== School id aliases (directory / plan lookup) ==');
+test('a demo school stored under an alias UUID resolves to the same candidates as its canonical id', () => {
+  const { schoolIdCandidates } = require('../src/rbac/principalDirectory');
+  const { canonicalSchoolId } = require('../src/utils/tenant');
+  const tintUuid = '00000000-0000-0000-0000-000000000002';
+  const canon = canonicalSchoolId(tintUuid);
+  assert.notStrictEqual(canon, tintUuid, 'TINT UUID canonicalises to a different id');
+  assert.ok(schoolIdCandidates(canon).includes(tintUuid), 'canonical → alias UUID');
+  assert.ok(schoolIdCandidates(tintUuid).includes(canon), 'alias UUID → canonical');
+});
+test('a normal school id has no extra candidates', () => {
+  const { schoolIdCandidates } = require('../src/rbac/principalDirectory');
+  assert.deepStrictEqual(schoolIdCandidates('8f0c2d1e-1111-4222-8333-944455556666'), ['8f0c2d1e-1111-4222-8333-944455556666']);
+});
+test('exams/grading/mentor/completeness aliases fold to one binding (no attendance/mentor mis-binding)', () => {
+  const cases: [string, string, string][] = [
+    ['GET', '/api/teacher/exams', 'exams.view'], ['GET', '/api/attendance/mentor/exams', 'exams.view'], ['GET', '/api/exam-marks', 'exams.view'],
+    ['POST', '/api/publish-results', 'results.publish'], ['DELETE', '/api/exams/x1', 'exams.manage'], ['PATCH', '/api/teacher/mentor/exams/x1/status', 'exams.manage'],
+    ['GET', '/api/grading-system/ranges', 'grading.view'], ['POST', '/api/teacher/mentor/grading-exams', 'grading.manage'],
+    ['GET', '/api/mentors', 'mentors.manage'], ['GET', '/api/teacher/mentor/teacher/mentor/my-classes', 'mentors.workspace'],
+    ['GET', '/api/students/completeness/summary', 'students.view'], ['GET', '/api/students/completeness/export', 'students.export'],
+  ];
+  for (const [m, p, perm] of cases) assert.strictEqual(findRouteBinding(m, p)?.permission, perm, `${m} ${p}`);
+});
+
 console.log(`\n[rbac-resolver] ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

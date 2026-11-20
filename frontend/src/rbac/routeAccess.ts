@@ -33,6 +33,7 @@ export const PATH_PERMISSIONS: Record<string, string> = {
   '/parent-portal': 'parent.portal.view',
   '/parent-communication': 'announcements.view',
   '/permissions': 'access.manage',
+  '/grading-system': 'grading.view',
   '/student/attendance': 'attendance.view',
   '/student/timetable': 'timetable.view',
   '/student/assignments': 'student.assignments.view',

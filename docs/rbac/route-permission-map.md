@@ -13,8 +13,8 @@ changes (`backend/tests/fixtures/rbac-baseline.*.json`). Bindings come from `bac
 - Compatibility roles: tokens are only ever signed with the 5 base roles (login maps ADMIN/ADMINISTRATOR→SUPER_ADMIN);
   `attendanceAuth` additionally accepts ADMIN/PRINCIPAL literals that no token carries today.
 
-Totals: 574 route keys (incl. aliases) → 385 canonical method+path rows,
-78 distinct permission bindings across 27 features (incl. UNGATED).
+Totals: 641 route keys (incl. aliases) → 443 canonical method+path rows,
+83 distinct permission bindings across 28 features (incl. UNGATED).
 
 ## Permission summary by feature
 
@@ -33,6 +33,7 @@ Totals: 574 route keys (incl. aliases) → 385 canonical method+path rows,
 | classes_subjects | academic_years.manage, academic_years.view, classes.manage, classes.view, subjects.assign |
 | dashboard | dashboard.view |
 | designations | designations.manage, designations.promote, designations.view |
+| exams_results | exams.manage, exams.view, grading.manage, grading.view, results.publish |
 | leave_policy | leave.policy.manage, leave.policy.view |
 | mentors_and_temporary_assignments | mentors.manage, mentors.permissions.manage, mentors.workspace, temporary_assignments.manage |
 | notification_logs | notifications.attendance_email.send, notifications.logs.view, notifications.settings.manage |
@@ -52,13 +53,13 @@ Totals: 574 route keys (incl. aliases) → 385 canonical method+path rows,
 
 | Method | Path (+aliases) | Middleware roles | Inline check | Feature | Permission | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| GET | /api/calendar/calculate | SA,AD,T |  | academic_calendar | calendar.view |  |
-| GET | /api/calendar/check-date | SA,AD,T |  | academic_calendar | calendar.view |  |
+| GET | /api/calendar/calculate | SA,AD,T,S,P |  | academic_calendar | calendar.view |  |
+| GET | /api/calendar/check-date | SA,AD,T,S,P |  | academic_calendar | calendar.view |  |
 | DELETE | /api/calendar/holidays/:id | SA,AD |  | academic_calendar | calendar.manage |  |
 | PUT | /api/calendar/holidays/:id | SA,AD |  | academic_calendar | calendar.manage |  |
-| GET | /api/calendar/holidays | SA,AD,T |  | academic_calendar | calendar.view |  |
+| GET | /api/calendar/holidays | SA,AD,T,S,P |  | academic_calendar | calendar.view |  |
 | POST | /api/calendar/holidays | SA,AD |  | academic_calendar | calendar.manage |  |
-| GET | /api/calendar/working-days | SA,AD,T |  | academic_calendar | calendar.view |  |
+| GET | /api/calendar/working-days | SA,AD,T,S,P |  | academic_calendar | calendar.view |  |
 | PUT | /api/calendar/working-days | SA,AD |  | academic_calendar | calendar.manage |  |
 | POST | /api/permissions/assign<br><sub>/api/permissions-v18/assign</sub> | SA,AD | router.use: SCHOOL_ADMIN\|SUPER_ADMIN | access_control | access.manage | legacy permission API; legacy permission API (not used for enforcement) |
 | GET | /api/permissions/me<br><sub>/api/permissions-v18/me</sub> | SA,AD | router.use: SCHOOL_ADMIN\|SUPER_ADMIN | access_control | access.manage | legacy permission API; legacy permission API (not used for enforcement) |
@@ -66,6 +67,7 @@ Totals: 574 route keys (incl. aliases) → 385 canonical method+path rows,
 | GET | /api/permissions/roles<br><sub>/api/permissions-v18/roles</sub> | SA,AD | router.use: SCHOOL_ADMIN\|SUPER_ADMIN | access_control | access.manage | legacy permission API; legacy permission API (not used for enforcement) |
 | POST | /api/permissions/seed<br><sub>/api/permissions-v18/seed</sub> | SA,AD | router.use: SCHOOL_ADMIN\|SUPER_ADMIN | access_control | access.manage | legacy permission API; legacy permission API (not used for enforcement) |
 | GET | /api/permissions<br><sub>/api/permissions-v18</sub> | SA,AD | router.use: SCHOOL_ADMIN\|SUPER_ADMIN | access_control | access.manage | legacy permission API; legacy permission API (not used for enforcement) |
+| PUT | /api/permissions | AD | router.use: SCHOOL_ADMIN\|SUPER_ADMIN | access_control | access.manage | legacy permission API; legacy permission API (not used for enforcement) |
 | GET | /api/analytics/school<br><sub>/api/analytics-v24/school</sub> | SA,AD,T,S,P | school context only (any role) | analytics | analytics.view |  |
 | POST | /api/analytics/snapshot<br><sub>/api/analytics-v24/snapshot</sub> | SA,AD,T,S,P | SA\|AD | analytics | analytics.manage |  |
 | GET | /api/analytics/summary<br><sub>/api/analytics-v24/summary</sub> | SA,AD,T,S,P | school context only (any role) | analytics | analytics.view |  |
@@ -198,6 +200,42 @@ Totals: 574 route keys (incl. aliases) → 385 canonical method+path rows,
 | GET | /api/designations/promotions<br><sub>/designations/promotions</sub> | SA,AD,T |  | designations | designations.view |  |
 | GET | /api/designations<br><sub>/designations</sub> | SA,AD,T |  | designations | designations.view |  |
 | POST | /api/designations<br><sub>/designations</sub> | SA,AD |  | designations | designations.manage |  |
+| GET | /api/exam-marks | AD,T |  | exams_results | exams.view |  |
+| PATCH | /api/exams/:id/status | AD,T |  | exams_results | exams.manage |  |
+| DELETE | /api/exams/:id | AD,T |  | exams_results | exams.manage |  |
+| GET | /api/exams | AD,T |  | exams_results | exams.view |  |
+| GET | /api/grading-exams | AD,T |  | exams_results | grading.view |  |
+| GET | /api/grading-system/exams | AD,T |  | exams_results | grading.view |  |
+| POST | /api/grading-system/exams | SA,AD,T,S,P |  | exams_results | grading.manage |  |
+| GET | /api/grading-system/ranges | AD,T |  | exams_results | grading.view |  |
+| POST | /api/grading-system/ranges | SA,AD,T,S,P |  | exams_results | grading.manage |  |
+| POST | /api/publish-results | AD,T |  | exams_results | results.publish |  |
+| GET | /api/teacher/exam-marks<br><sub>/api/attendance/exam-marks</sub> | SA,AD,T |  | exams_results | exams.view |  |
+| DELETE | /api/teacher/exams/:id<br><sub>/api/attendance/exams/:id</sub> | SA,AD,T |  | exams_results | exams.manage |  |
+| GET | /api/teacher/exams<br><sub>/api/attendance/exams</sub> | SA,AD,T |  | exams_results | exams.view |  |
+| GET | /api/teacher/mentor/exam-marks<br><sub>/api/attendance/mentor/exam-marks</sub> | SA,AD,T |  | exams_results | exams.view | alias /api/teacher/mentor/exam-marks roles=AD,T |
+| PATCH | /api/teacher/mentor/exams/:id/status | AD,T |  | exams_results | exams.manage |  |
+| DELETE | /api/teacher/mentor/exams/:id<br><sub>/api/attendance/mentor/exams/:id</sub> | SA,AD,T |  | exams_results | exams.manage | alias /api/teacher/mentor/exams/:id roles=AD,T |
+| GET | /api/teacher/mentor/exams<br><sub>/api/attendance/mentor/exams</sub> | SA,AD,T |  | exams_results | exams.view | alias /api/teacher/mentor/exams roles=AD,T |
+| GET | /api/teacher/mentor/grading-exams | AD,T |  | exams_results | grading.view |  |
+| POST | /api/teacher/mentor/grading-exams | SA,AD,T,S,P |  | exams_results | grading.manage | requireAttendanceTeacher (class-teacher/mentor/temporary) for TEACHER |
+| GET | /api/teacher/mentor/grading-ranges | AD,T |  | exams_results | grading.view |  |
+| POST | /api/teacher/mentor/grading-ranges | SA,AD,T,S,P |  | exams_results | grading.manage | requireAttendanceTeacher (class-teacher/mentor/temporary) for TEACHER |
+| GET | /api/teacher/mentor/grading-system/exams | AD,T |  | exams_results | grading.view |  |
+| POST | /api/teacher/mentor/grading-system/exams | SA,AD,T,S,P |  | exams_results | grading.manage | requireAttendanceTeacher (class-teacher/mentor/temporary) for TEACHER |
+| GET | /api/teacher/mentor/grading-system/ranges | AD,T |  | exams_results | grading.view |  |
+| POST | /api/teacher/mentor/grading-system/ranges | SA,AD,T,S,P |  | exams_results | grading.manage | requireAttendanceTeacher (class-teacher/mentor/temporary) for TEACHER |
+| POST | /api/teacher/mentor/publish-results<br><sub>/api/attendance/mentor/publish-results</sub> | SA,AD,T |  | exams_results | results.publish | requireAttendanceTeacher (class-teacher/mentor/temporary) for TEACHER; alias /api/teacher/mentor/publish-results roles=AD,T |
+| GET | /api/teacher/mentor/teacher/mentor/exam-marks | AD,T |  | exams_results | exams.view |  |
+| PATCH | /api/teacher/mentor/teacher/mentor/exams/:id/status | AD,T |  | exams_results | exams.manage |  |
+| DELETE | /api/teacher/mentor/teacher/mentor/exams/:id | AD,T |  | exams_results | exams.manage |  |
+| GET | /api/teacher/mentor/teacher/mentor/exams | AD,T |  | exams_results | exams.view |  |
+| GET | /api/teacher/mentor/teacher/mentor/grading-exams | AD,T |  | exams_results | grading.view |  |
+| POST | /api/teacher/mentor/teacher/mentor/grading-exams | SA,AD,T,S,P |  | exams_results | grading.manage | requireAttendanceTeacher (class-teacher/mentor/temporary) for TEACHER |
+| GET | /api/teacher/mentor/teacher/mentor/grading-ranges | AD,T |  | exams_results | grading.view |  |
+| POST | /api/teacher/mentor/teacher/mentor/grading-ranges | SA,AD,T,S,P |  | exams_results | grading.manage | requireAttendanceTeacher (class-teacher/mentor/temporary) for TEACHER |
+| POST | /api/teacher/mentor/teacher/mentor/publish-results | AD,T |  | exams_results | results.publish | requireAttendanceTeacher (class-teacher/mentor/temporary) for TEACHER |
+| POST | /api/teacher/publish-results<br><sub>/api/attendance/publish-results</sub> | SA,AD,T |  | exams_results | results.publish | requireAttendanceTeacher (class-teacher/mentor/temporary) for TEACHER |
 | PATCH | /api/leave-policies/:id/toggle-status<br><sub>/leave-policies/:id/toggle-status</sub> | SA,AD |  | leave_policy | leave.policy.manage |  |
 | DELETE | /api/leave-policies/:id<br><sub>/leave-policies/:id</sub> | SA,AD |  | leave_policy | leave.policy.manage |  |
 | PUT | /api/leave-policies/:id<br><sub>/leave-policies/:id</sub> | SA,AD |  | leave_policy | leave.policy.manage |  |
@@ -210,11 +248,27 @@ Totals: 574 route keys (incl. aliases) → 385 canonical method+path rows,
 | PATCH | /api/admin/temporary-assignments/:id | SA,AD |  | mentors_and_temporary_assignments | temporary_assignments.manage |  |
 | GET | /api/admin/temporary-assignments | SA,AD |  | mentors_and_temporary_assignments | temporary_assignments.manage |  |
 | POST | /api/admin/temporary-assignments | SA,AD |  | mentors_and_temporary_assignments | temporary_assignments.manage |  |
+| GET | /api/attendance-analysis | AD,T |  | mentors_and_temporary_assignments | mentors.workspace |  |
+| DELETE | /api/mentors | AD |  | mentors_and_temporary_assignments | mentors.manage |  |
+| GET | /api/mentors | AD |  | mentors_and_temporary_assignments | mentors.manage |  |
+| POST | /api/mentors | AD |  | mentors_and_temporary_assignments | mentors.manage |  |
+| GET | /api/my-classes | AD,T |  | mentors_and_temporary_assignments | mentors.workspace |  |
+| DELETE | /api/teacher/mentor/admin/mentors | AD |  | mentors_and_temporary_assignments | mentors.manage |  |
+| GET | /api/teacher/mentor/admin/mentors | AD |  | mentors_and_temporary_assignments | mentors.manage |  |
+| POST | /api/teacher/mentor/admin/mentors | AD |  | mentors_and_temporary_assignments | mentors.manage | requireAttendanceTeacher (class-teacher/mentor/temporary) for TEACHER |
 | GET | /api/teacher/mentor/attendance-analysis | AD,T | isClassMentor or admin | mentors_and_temporary_assignments | mentors.workspace |  |
+| DELETE | /api/teacher/mentor/mentors | AD |  | mentors_and_temporary_assignments | mentors.manage |  |
+| GET | /api/teacher/mentor/mentors | AD |  | mentors_and_temporary_assignments | mentors.manage |  |
+| POST | /api/teacher/mentor/mentors | AD |  | mentors_and_temporary_assignments | mentors.manage | requireAttendanceTeacher (class-teacher/mentor/temporary) for TEACHER |
 | GET | /api/teacher/mentor/my-classes | AD,T |  | mentors_and_temporary_assignments | mentors.workspace |  |
 | GET | /api/teacher/mentor/permissions | AD,T |  | mentors_and_temporary_assignments | mentors.workspace |  |
 | PUT | /api/teacher/mentor/permissions | AD,T |  | mentors_and_temporary_assignments | mentors.permissions.manage | requireAttendanceTeacher (class-teacher/mentor/temporary) for TEACHER |
 | GET | /api/teacher/mentor/teacher-assignments | AD,T |  | mentors_and_temporary_assignments | mentors.workspace |  |
+| GET | /api/teacher/mentor/teacher/mentor/attendance-analysis | AD,T |  | mentors_and_temporary_assignments | mentors.workspace |  |
+| GET | /api/teacher/mentor/teacher/mentor/my-classes | AD,T |  | mentors_and_temporary_assignments | mentors.workspace |  |
+| GET | /api/teacher/mentor/teacher/mentor/permissions | AD,T |  | mentors_and_temporary_assignments | mentors.workspace |  |
+| PUT | /api/teacher/mentor/teacher/mentor/permissions | AD,T |  | mentors_and_temporary_assignments | mentors.permissions.manage | requireAttendanceTeacher (class-teacher/mentor/temporary) for TEACHER |
+| GET | /api/teacher/mentor/teacher/mentor/teacher-assignments | AD,T |  | mentors_and_temporary_assignments | mentors.workspace |  |
 | GET | /api/notification-channels/analytics<br><sub>/api/notifications-channels/analytics<br>/api/notifications-v11/analytics</sub> | SA,AD |  | notification_logs | notifications.logs.view |  |
 | POST | /api/notification-channels/attendance-email<br><sub>/api/notifications-channels/attendance-email<br>/api/notifications-v11/attendance-email</sub> | SA,AD,T |  | notification_logs | notifications.attendance_email.send |  |
 | GET | /api/notification-channels/channels<br><sub>/api/notifications-channels/channels<br>/api/notifications-v11/channels</sub> | SA,AD |  | notification_logs | notifications.settings.manage |  |
@@ -291,6 +345,10 @@ Totals: 574 route keys (incl. aliases) → 385 canonical method+path rows,
 | PUT | /api/students/:id | AD |  | students | students.edit |  |
 | POST | /api/students/bulk-delete | AD |  | students | students.delete |  |
 | POST | /api/students/bulk-import | AD |  | students | students.create |  |
+| GET | /api/students/completeness/export | SA,AD |  | students | students.export |  |
+| GET | /api/students/completeness/fields | SA,AD |  | students | students.view |  |
+| GET | /api/students/completeness/missing-students | SA,AD |  | students | students.view |  |
+| GET | /api/students/completeness/summary | SA,AD |  | students | students.view |  |
 | GET | /api/students/registered-emails | SA,AD,T |  | students | students.view |  |
 | GET | /api/students/template | SA,AD,T |  | students | students.create |  |
 | GET | /api/students | SA,AD,T |  | students | students.view |  |
@@ -356,6 +414,7 @@ Totals: 574 route keys (incl. aliases) → 385 canonical method+path rows,
 | POST | /api/auth/request-password-reset | PUBLIC |  | UNGATED | - | auth core |
 | POST | /api/auth/reset-password | PUBLIC |  | UNGATED | - | auth core |
 | GET | /api/auth/verify-reset-token | PUBLIC |  | UNGATED | - | auth core |
+| GET | /api/backups/:id/download<br><sub>/api/backups-v21/:id/download</sub> | SA |  | UNGATED | - | platform; SUPER_ADMIN only |
 | POST | /api/backups/cleanup<br><sub>/api/backups-v21/cleanup</sub> | SA |  | UNGATED | - | platform; SUPER_ADMIN only |
 | POST | /api/backups/create<br><sub>/api/backups-v21/create</sub> | SA |  | UNGATED | - | platform; SUPER_ADMIN only |
 | GET | /api/backups/jobs<br><sub>/api/backups-v21/jobs</sub> | SA |  | UNGATED | - | platform; SUPER_ADMIN only |

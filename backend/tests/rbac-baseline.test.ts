@@ -113,6 +113,10 @@ async function main() {
       if (!expected[k]) throw new Error(`approved change for unknown route ${k}`);
       expected[k] = { ...expected[k], ...v.principals };
     }
+    for (const k of Object.keys(file.removals || {})) {
+      if (!expected[k]) throw new Error(`approved removal for unknown route ${k}`);
+      delete expected[k];
+    }
     const additions = file.additions as Record<string, { reason: string; principals: Record<string, string> }>;
     for (const [k, v] of Object.entries(additions || {})) {
       if (expected[k]) throw new Error(`approved addition already in baseline ${k}`);

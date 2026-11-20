@@ -29,6 +29,18 @@ logs any would-be denial. Deploying without the migration is safe: the app logs 
 
 ## 2. Apply the migration (manual — the deploy workflow does NOT run migrations)
 
+> **Production database (checked 2026-11-20): it has no `schema_migrations` table**, so `npm run db:migrate` would try to
+> replay every migration. Use the targeted script instead — it applies only 051, in one transaction, and verifies:
+>
+> ```bash
+> cd backend
+> npx tsx src/scripts/applyRbacMigration.ts           # dry run (changes nothing)
+> npx tsx src/scripts/applyRbacMigration.ts --apply   # apply + verify
+> ```
+>
+> Until this runs, `/#/permissions` shows "Access-control storage is not installed" and nothing can be saved.
+
+
 On the server, against the production database, after a backup:
 
 ```bash

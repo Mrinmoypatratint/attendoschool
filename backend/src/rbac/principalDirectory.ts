@@ -5,6 +5,18 @@
  */
 import { pool, isPostgresConfigured } from '../db';
 import { AccessStoreUnavailableError } from './accessStore';
+import { GREENWOOD_TEST_ALIASES, TINT_TEST_ALIASES, DAV_TEST_ALIASES, canonicalSchoolId } from '../utils/tenant';
+
+/**
+ * Every id a school may be stored under in SQL. RBAC keys schools by the CANONICAL id (utils/tenant.ts), but
+ * `users.school_id` / `schools.id` may hold an alias of it (e.g. a demo school's UUID whose canonical id is a
+ * non-UUID code). Matching all aliases keeps the directory, owner and lock-out checks correct for every school.
+ */
+export function schoolIdCandidates(schoolId: string): string[] {
+  const c = canonicalSchoolId(schoolId) || schoolId;
+  const aliases = [...GREENWOOD_TEST_ALIASES, ...TINT_TEST_ALIASES, ...DAV_TEST_ALIASES].filter((a) => canonicalSchoolId(a) === c);
+  return Array.from(new Set([schoolId, c, ...aliases]));
+}
 
 export type Principal = { id: string; name: string; email: string | null; role: string; isActive: boolean; createdAt: string | null; detail?: string | null };
 
@@ -26,7 +38,7 @@ const map = (r: any): Principal => ({
 export class SqlPrincipalDirectory implements PrincipalDirectory {
   async schoolExists(schoolId: string) {
     requireSql();
-    const r = await pool.query(`SELECT 1 FROM schools WHERE id::text=$1 OR LOWER(code)=LOWER($1) LIMIT 1`, [schoolId]);
+    const r = await pool.query(`SELECT 1 FROM schools WHERE id::text = ANY($1::text[]) OR LOWER(code) = ANY($2::text[]) LIMIT 1`, [schoolIdCandidates(schoolId), schoolIdCandidates(schoolId).map((x) => x.toLowerCase())]);
     return (r.rowCount || 0) > 0;
   }
   async getPrincipal(schoolId: string, role: string, id: string) {
@@ -35,13 +47,13 @@ export class SqlPrincipalDirectory implements PrincipalDirectory {
       `SELECT u.id, COALESCE(st.name,u.name) AS name, u.email, u.role, u.is_active, u.created_at,
               CASE WHEN st.id IS NOT NULL THEN COALESCE(st.admission_number,'') ELSE NULL END AS detail
          FROM users u LEFT JOIN students st ON st.user_id=u.id
-        WHERE u.id::text=$1 AND u.school_id::text=$2 AND u.role::text=$3 LIMIT 1`, [id, schoolId, role]);
+        WHERE u.id::text=$1 AND u.school_id::text = ANY($2::text[]) AND u.role::text=$3 LIMIT 1`, [id, schoolIdCandidates(schoolId), role]);
     return r.rows[0] ? map(r.rows[0]) : null;
   }
   async listPrincipals(schoolId: string, role: string, search: string, page: number, pageSize: number) {
     requireSql();
-    const params: any[] = [schoolId, role];
-    let where = `u.school_id::text=$1 AND u.role::text=$2`;
+    const params: any[] = [schoolIdCandidates(schoolId), role];
+    let where = `u.school_id::text = ANY($1::text[]) AND u.role::text=$2`;
     if (search) {
       params.push(`%${search.toLowerCase()}%`);
       where += ` AND (LOWER(COALESCE(st.name,u.name)) LIKE $3 OR LOWER(u.email) LIKE $3 OR LOWER(COALESCE(st.admission_number,'')) LIKE $3)`;
@@ -56,18 +68,18 @@ export class SqlPrincipalDirectory implements PrincipalDirectory {
   }
   async listActiveAdmins(schoolId: string) {
     requireSql();
-    const r = await pool.query(`SELECT id,name,email,role,is_active,created_at FROM users WHERE school_id::text=$1 AND role='SCHOOL_ADMIN' AND is_active=TRUE ORDER BY created_at`, [schoolId]);
+    const r = await pool.query(`SELECT id,name,email,role,is_active,created_at FROM users WHERE school_id::text = ANY($1::text[]) AND role='SCHOOL_ADMIN' AND is_active=TRUE ORDER BY created_at`, [schoolIdCandidates(schoolId)]);
     return r.rows.map(map);
   }
   /** Owner admin = earliest-created SCHOOL_ADMIN (same rule superAdmin.ts uses for the school's admin). */
   async getOwnerAdminId(schoolId: string) {
     requireSql();
-    const r = await pool.query(`SELECT id FROM users WHERE school_id::text=$1 AND role='SCHOOL_ADMIN' ORDER BY created_at ASC, id ASC LIMIT 1`, [schoolId]);
+    const r = await pool.query(`SELECT id FROM users WHERE school_id::text = ANY($1::text[]) AND role='SCHOOL_ADMIN' ORDER BY created_at ASC, id ASC LIMIT 1`, [schoolIdCandidates(schoolId)]);
     return r.rows[0] ? String(r.rows[0].id) : null;
   }
   async countByRole(schoolId: string, role: string) {
     requireSql();
-    const r = await pool.query(`SELECT COUNT(*)::int AS n FROM users WHERE school_id::text=$1 AND role::text=$2 AND is_active=TRUE`, [schoolId, role]);
+    const r = await pool.query(`SELECT COUNT(*)::int AS n FROM users WHERE school_id::text = ANY($1::text[]) AND role::text=$2 AND is_active=TRUE`, [schoolIdCandidates(schoolId), role]);
     return Number(r.rows[0]?.n || 0);
   }
 }
