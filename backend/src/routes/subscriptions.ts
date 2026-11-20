@@ -1,6 +1,7 @@
 import {Router,Request} from 'express';
 import {getSubscription,subscriptionSummary,enforceSubscriptions} from '../services/subscriptionEnforcementService';
 import {requireSubscription} from '../middleware/subscriptionEnforcement';
+import {requireRoles} from '../middleware/auth';
 const router=Router();
 const user=(r:Request)=>(r as any).user;
 
@@ -25,7 +26,8 @@ router.get('/status',async(req,res)=>{
 router.get('/access',requireSubscription('GENERAL'),async(req,res)=>{
  res.json({allowed:true,status:(req as any).subscription?.effective_status});
 });
-router.post('/run-worker',async(req,res)=>{
+// Security fix (2026-11-20): global worker trigger is SUPER_ADMIN only (was any authenticated role).
+router.post('/run-worker',requireRoles('SUPER_ADMIN'),async(req,res)=>{
  try{res.json(await enforceSubscriptions())}
  catch(e:any){res.status(500).json({message:e.message||'Worker failed'})}
 });

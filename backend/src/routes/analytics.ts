@@ -2,6 +2,7 @@ import {Router,Request} from 'express';
 import * as XLSX from 'xlsx';
 import * as svc from '../services/analyticsService';
 import { isTestSchool } from '../utils/tenant';
+import { requireRoles } from '../middleware/auth';
 
 const router=Router();const u=(r:Request)=>(r as any).user;
 router.get('/platform',async(req,res)=>{
@@ -38,7 +39,8 @@ router.get('/school',async(req,res)=>{
  }
 });
 
-router.get('/export-students', async (req, res) => {
+// Security fix (2026-11-20): student list export is staff-only (was any school role).
+router.get('/export-students', requireRoles('SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'), async (req, res) => {
   const sid = u(req)?.schoolId;
   if (!sid) return res.status(401).json({ message: 'School context required' });
   try {

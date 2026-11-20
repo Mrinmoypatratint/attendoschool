@@ -124,15 +124,15 @@ Totals: 641 route keys (incl. aliases) → 443 canonical method+path rows,
 | GET | /api/attendance-corrections/history<br><sub>/api/attendance-corrections-v13/history</sub> | SA,AD,T,S,P | school context only; /:id/review: SA\|AD | attendance_corrections | attendance.corrections.view |  |
 | GET | /api/attendance-corrections<br><sub>/api/attendance-corrections-v13</sub> | SA,AD,T,S,P | school context only; /:id/review: SA\|AD | attendance_corrections | attendance.corrections.view |  |
 | POST | /api/attendance-corrections<br><sub>/api/attendance-corrections-v13</sub> | SA,AD,T,S,P | school context only; /:id/review: SA\|AD | attendance_corrections | attendance.corrections.request |  |
-| GET | /api/attendance-reports/daily<br><sub>/api/attendance-reports-v12/daily</sub> | SA,AD,T,S,P |  | attendance_reports | attendance.reports.view | ⚠️ known issue: no role check; ?schoolId honoured for any role |
-| GET | /api/attendance-reports/defaulters<br><sub>/api/attendance-reports-v12/defaulters</sub> | SA,AD,T,S,P |  | attendance_reports | attendance.reports.view | ⚠️ known issue: no role check; ?schoolId honoured for any role |
-| GET | /api/attendance-reports/export/csv<br><sub>/api/attendance-reports-v12/export/csv</sub> | SA,AD,T,S,P |  | attendance_reports | attendance.reports.export | ⚠️ known issue: no role check; ?schoolId honoured for any role |
-| GET | /api/attendance-reports/export/pdf<br><sub>/api/attendance-reports-v12/export/pdf</sub> | SA,AD,T,S,P |  | attendance_reports | attendance.reports.export | ⚠️ known issue: no role check; ?schoolId honoured for any role |
-| GET | /api/attendance-reports/monthly<br><sub>/api/attendance-reports-v12/monthly</sub> | SA,AD,T,S,P |  | attendance_reports | attendance.reports.view | ⚠️ known issue: no role check; ?schoolId honoured for any role |
-| GET | /api/attendance-reports/students<br><sub>/api/attendance-reports-v12/students</sub> | SA,AD,T,S,P |  | attendance_reports | attendance.reports.view | ⚠️ known issue: no role check; ?schoolId honoured for any role |
-| GET | /api/attendance-reports/summary<br><sub>/api/attendance-reports-v12/summary</sub> | SA,AD,T,S,P |  | attendance_reports | attendance.reports.view | ⚠️ known issue: no role check; ?schoolId honoured for any role |
-| GET | /api/attendance-reports/template<br><sub>/api/attendance-reports-v12/template</sub> | SA,AD,T,S,P |  | attendance_reports | attendance.reports.view | ⚠️ known issue: no role check; ?schoolId honoured for any role |
-| GET | /api/attendance-reports<br><sub>/api/attendance-reports-v12</sub> | SA,AD,T,S,P |  | attendance_reports | attendance.reports.view | ⚠️ known issue: no role check; ?schoolId honoured for any role |
+| GET | /api/attendance-reports/daily<br><sub>/api/attendance-reports-v12/daily</sub> | SA,AD,T |  | attendance_reports | attendance.reports.view | ⚠️ known issue: no role check; ?schoolId honoured for any role |
+| GET | /api/attendance-reports/defaulters<br><sub>/api/attendance-reports-v12/defaulters</sub> | SA,AD,T |  | attendance_reports | attendance.reports.view | ⚠️ known issue: no role check; ?schoolId honoured for any role |
+| GET | /api/attendance-reports/export/csv<br><sub>/api/attendance-reports-v12/export/csv</sub> | SA,AD,T |  | attendance_reports | attendance.reports.export | ⚠️ known issue: no role check; ?schoolId honoured for any role |
+| GET | /api/attendance-reports/export/pdf<br><sub>/api/attendance-reports-v12/export/pdf</sub> | SA,AD,T |  | attendance_reports | attendance.reports.export | ⚠️ known issue: no role check; ?schoolId honoured for any role |
+| GET | /api/attendance-reports/monthly<br><sub>/api/attendance-reports-v12/monthly</sub> | SA,AD,T |  | attendance_reports | attendance.reports.view | ⚠️ known issue: no role check; ?schoolId honoured for any role |
+| GET | /api/attendance-reports/students<br><sub>/api/attendance-reports-v12/students</sub> | SA,AD,T |  | attendance_reports | attendance.reports.view | ⚠️ known issue: no role check; ?schoolId honoured for any role |
+| GET | /api/attendance-reports/summary<br><sub>/api/attendance-reports-v12/summary</sub> | SA,AD,T |  | attendance_reports | attendance.reports.view | ⚠️ known issue: no role check; ?schoolId honoured for any role |
+| GET | /api/attendance-reports/template<br><sub>/api/attendance-reports-v12/template</sub> | SA,AD,T |  | attendance_reports | attendance.reports.view | ⚠️ known issue: no role check; ?schoolId honoured for any role |
+| GET | /api/attendance-reports<br><sub>/api/attendance-reports-v12</sub> | SA,AD,T |  | attendance_reports | attendance.reports.view | ⚠️ known issue: no role check; ?schoolId honoured for any role |
 | GET | /api/student/attendance | S |  | attendance | attendance.view |  |
 | GET | /api/teacher/:sessionId/audit-trail/export<br><sub>/api/attendance/:sessionId/audit-trail/export</sub> | SA,AD,T |  | attendance | attendance.audit.export |  |
 | POST | /api/teacher/:sessionId/reattendance<br><sub>/api/attendance/:sessionId/reattendance</sub> | SA,AD,T |  | attendance | attendance.edit_past | requireAttendanceTeacher (class-teacher/mentor/temporary) for TEACHER |
@@ -163,7 +163,7 @@ Totals: 641 route keys (incl. aliases) → 443 canonical method+path rows,
 | GET | /api/subscriptions/access<br><sub>/api/subscriptions-v19/access</sub> | — |  | billing | billing.view | SCHOOL_ADMIN:MW_402; TEACHER:MW_402; STUDENT:MW_402; PARENT:MW_402; SCHOOL_ADMIN_B:MW_402 |
 | GET | /api/subscriptions/current<br><sub>/api/subscriptions-v19/current</sub> | SA,AD,T,S,P |  | billing | billing.view |  |
 | GET | /api/subscriptions/details<br><sub>/api/subscriptions-v19/details</sub> | SA,AD,T,S,P |  | billing | billing.view |  |
-| POST | /api/subscriptions/run-worker<br><sub>/api/subscriptions-v19/run-worker</sub> | SA,AD,T,S,P |  | billing | billing.view | known issue: any role can run worker; ⚠️ known issue: any authenticated role can run the global subscription worker |
+| POST | /api/subscriptions/run-worker<br><sub>/api/subscriptions-v19/run-worker</sub> | SA |  | billing | billing.view | SUPER_ADMIN only (2026-11-20 fix); ⚠️ known issue: any authenticated role can run the global subscription worker |
 | GET | /api/subscriptions/status<br><sub>/api/subscriptions-v19/status</sub> | SA,AD,T,S,P |  | billing | billing.view |  |
 | GET | /api/subscriptions<br><sub>/api/subscriptions-v19</sub> | SA,AD,T,S,P |  | billing | billing.view |  |
 | POST | /api/academic-years/:id/:action<br><sub>/api/academic-years-v15/:id/:action</sub> | SA,AD |  | classes_subjects | academic_years.manage |  |
@@ -291,7 +291,7 @@ Totals: 641 route keys (incl. aliases) → 443 canonical method+path rows,
 | GET | /api/notifications/settings | AD |  | notification_logs | notifications.settings.manage |  |
 | PUT | /api/notifications/settings | AD |  | notification_logs | notifications.settings.manage |  |
 | GET | /api/notifications | AD |  | notification_logs | notifications.logs.view |  |
-| POST | /api/attendance-reports/import-offline<br><sub>/api/attendance-reports-v12/import-offline</sub> | SA,AD,T,S,P |  | offline_attendance | attendance.offline.import | ⚠️ known issue: no role check; ?schoolId honoured for any role |
+| POST | /api/attendance-reports/import-offline<br><sub>/api/attendance-reports-v12/import-offline</sub> | SA,AD,T |  | offline_attendance | attendance.offline.import | ⚠️ known issue: no role check; ?schoolId honoured for any role |
 | POST | /api/offline-attendance/sync/:id/process<br><sub>/api/offline-attendance-v23/sync/:id/process</sub> | AD,T | router.use: schoolId AND SA\|AD\|T | offline_attendance | attendance.offline.sync |  |
 | GET | /api/offline-attendance/sync/:id<br><sub>/api/offline-attendance-v23/sync/:id</sub> | AD,T | router.use: schoolId AND SA\|AD\|T | offline_attendance | attendance.offline.sync |  |
 | POST | /api/offline-attendance/sync<br><sub>/api/offline-attendance-v23/sync</sub> | AD,T | router.use: schoolId AND SA\|AD\|T | offline_attendance | attendance.offline.sync |  |
@@ -300,9 +300,9 @@ Totals: 641 route keys (incl. aliases) → 443 canonical method+path rows,
 | POST | /api/parent-onboarding<br><sub>/api/parent-onboarding-v27</sub> | SA,AD |  | parent_portal | parents.manage | P6 fix: school-scoped list/create/link |
 | GET | /api/parent-portal/children/:id/attendance<br><sub>/api/parent-portal-v17/children/:id/attendance</sub> | P | router.use: PARENT with schoolId | parent_portal | parent.portal.view |  |
 | GET | /api/parent-portal/children<br><sub>/api/parent-portal-v17/children</sub> | P | router.use: PARENT with schoolId | parent_portal | parent.portal.view |  |
-| PUT | /api/reviews/photos/:id/approve | SA,AD,T,S,P |  | photo_approvals | photos.review | ⚠️ known issue: STUDENT/PARENT fall into the admin branch |
-| PUT | /api/reviews/photos/:id/reject | SA,AD,T,S,P |  | photo_approvals | photos.review | ⚠️ known issue: STUDENT/PARENT fall into the admin branch |
-| GET | /api/reviews/photos | SA,AD,T,S,P |  | photo_approvals | photos.view | ⚠️ known issue: STUDENT/PARENT fall into the admin branch |
+| PUT | /api/reviews/photos/:id/approve | SA,AD,T |  | photo_approvals | photos.review | ⚠️ known issue: STUDENT/PARENT fall into the admin branch |
+| PUT | /api/reviews/photos/:id/reject | SA,AD,T |  | photo_approvals | photos.review | ⚠️ known issue: STUDENT/PARENT fall into the admin branch |
+| GET | /api/reviews/photos | SA,AD,T |  | photo_approvals | photos.view | ⚠️ known issue: STUDENT/PARENT fall into the admin branch |
 | POST | /api/reviews/photos | SA,AD,T,S,P |  | photo_approvals | photos.request | ⚠️ known issue: STUDENT/PARENT fall into the admin branch |
 | PUT | /api/school-profile/change-password | AD |  | profile | profile.school.manage |  |
 | DELETE | /api/school-profile/photo | AD |  | profile | profile.school.manage |  |
@@ -323,17 +323,17 @@ Totals: 641 route keys (incl. aliases) → 443 canonical method+path rows,
 | POST | /api/student-promotions/execute<br><sub>/api/student-promotions-v16/execute</sub> | SA,AD,T,S,P | SA\|AD | promotions | promotions.manage |  |
 | POST | /api/student-promotions/process<br><sub>/api/student-promotions-v16/process</sub> | SA,AD,T,S,P | SA\|AD | promotions | promotions.manage |  |
 | GET | /api/student-promotions<br><sub>/api/student-promotions-v16</sub> | SA,AD,T,S,P | school context only (any role) | promotions | promotions.view |  |
-| PUT | /api/reviews/leaves/:id/approve | SA,AD,T,S,P |  | student_leave | leave.student.review | ⚠️ known issue: STUDENT/PARENT fall into the admin branch |
-| PUT | /api/reviews/leaves/:id/reject | SA,AD,T,S,P |  | student_leave | leave.student.review | ⚠️ known issue: STUDENT/PARENT fall into the admin branch |
-| PUT | /api/reviews/leaves/:id/seen | SA,AD,T,S,P |  | student_leave | leave.student.review | ⚠️ known issue: STUDENT/PARENT fall into the admin branch |
-| PUT | /api/reviews/leaves/mark-all-seen | SA,AD,T,S,P |  | student_leave | leave.student.review | ⚠️ known issue: STUDENT/PARENT fall into the admin branch |
-| GET | /api/reviews/leaves | SA,AD,T,S,P |  | student_leave | leave.student.view | ⚠️ known issue: STUDENT/PARENT fall into the admin branch |
+| PUT | /api/reviews/leaves/:id/approve | SA,AD,T |  | student_leave | leave.student.review | ⚠️ known issue: STUDENT/PARENT fall into the admin branch |
+| PUT | /api/reviews/leaves/:id/reject | SA,AD,T |  | student_leave | leave.student.review | ⚠️ known issue: STUDENT/PARENT fall into the admin branch |
+| PUT | /api/reviews/leaves/:id/seen | SA,AD,T |  | student_leave | leave.student.review | ⚠️ known issue: STUDENT/PARENT fall into the admin branch |
+| PUT | /api/reviews/leaves/mark-all-seen | SA,AD,T |  | student_leave | leave.student.review | ⚠️ known issue: STUDENT/PARENT fall into the admin branch |
+| GET | /api/reviews/leaves | SA,AD,T |  | student_leave | leave.student.view | ⚠️ known issue: STUDENT/PARENT fall into the admin branch |
 | POST | /api/reviews/leaves | SA,AD,T,S,P |  | student_leave | student.leave.apply | ⚠️ known issue: STUDENT/PARENT fall into the admin branch |
 | GET | /api/student/leave-requests | S |  | student_leave | student.leave.apply |  |
 | POST | /api/student/leave-requests | S |  | student_leave | student.leave.apply |  |
 | GET | /api/student/dashboard | S |  | student_portal | student.portal.view |  |
 | GET | /api/student/exams | S |  | student_portal | student.portal.view |  |
-| GET | /api/analytics/export-students<br><sub>/api/analytics-v24/export-students</sub> | SA,AD,T,S,P | school context only (no role check); school context only (any role) | students | students.export | ⚠️ known issue |
+| GET | /api/analytics/export-students<br><sub>/api/analytics-v24/export-students</sub> | SA,AD,T | school context only (no role check); school context only (any role) | students | students.export | ⚠️ known issue |
 | PATCH | /api/people/students/:id/status<br><sub>/api/people-v14/students/:id/status</sub> | SA,AD |  | students | students.edit |  |
 | GET | /api/people/students/:id<br><sub>/api/people-v14/students/:id</sub> | SA,AD,T |  | students | students.view |  |
 | PUT | /api/people/students/:id<br><sub>/api/people-v14/students/:id</sub> | SA,AD |  | students | students.edit |  |
@@ -355,9 +355,9 @@ Totals: 641 route keys (incl. aliases) → 443 canonical method+path rows,
 | POST | /api/students | AD |  | students | students.create |  |
 | PUT | /api/reviews/teacher-leaves/:id/approve | SA,AD |  | teacher_leave | leave.teacher.review | P6 fix: SCHOOL_ADMIN\|SUPER_ADMIN only |
 | PUT | /api/reviews/teacher-leaves/:id/reject | SA,AD |  | teacher_leave | leave.teacher.review | P6 fix: SCHOOL_ADMIN\|SUPER_ADMIN only |
-| GET | /api/reviews/teacher-leaves/export-excel | SA,AD,T,S,P |  | teacher_leave | leave.teacher.view | ⚠️ known issue: any school role can list/export teacher leaves |
+| GET | /api/reviews/teacher-leaves/export-excel | SA,AD |  | teacher_leave | leave.teacher.view | ⚠️ known issue: any school role can list/export teacher leaves |
 | GET | /api/reviews/teacher-leaves/my | SA,AD,T,S,P |  | teacher_leave | leave.teacher.apply |  |
-| GET | /api/reviews/teacher-leaves | SA,AD,T,S,P |  | teacher_leave | leave.teacher.view | ⚠️ known issue: any school role can list/export teacher leaves |
+| GET | /api/reviews/teacher-leaves | SA,AD |  | teacher_leave | leave.teacher.view | ⚠️ known issue: any school role can list/export teacher leaves |
 | POST | /api/reviews/teacher-leaves | SA,AD,T,S,P |  | teacher_leave | leave.teacher.apply |  |
 | PATCH | /api/people/teachers/:id/status<br><sub>/api/people-v14/teachers/:id/status</sub> | SA,AD |  | teachers | teachers.edit |  |
 | PUT | /api/people/teachers/:id<br><sub>/api/people-v14/teachers/:id</sub> | SA,AD |  | teachers | teachers.edit |  |
@@ -429,7 +429,7 @@ Totals: 641 route keys (incl. aliases) → 443 canonical method+path rows,
 | GET | /api/final-integration/migration-smoke<br><sub>/api/final-v28/migration-smoke</sub> | SA |  | UNGATED | - | platform diagnostics |
 | GET | /api/final-integration/parent-isolation/:parentUserId/:studentId<br><sub>/api/final-v28/parent-isolation/:parentUserId/:studentId</sub> | SA |  | UNGATED | - | platform diagnostics |
 | GET | /api/health/email-status | PUBLIC |  | UNGATED | - | health |
-| POST | /api/health/email-test | PUBLIC |  | UNGATED | - | health; ⚠️ PUBLIC: sends mail via platform SMTP to any address (known issue) |
+| POST | /api/health/email-test | SA |  | UNGATED | - | health; ⚠️ PUBLIC: sends mail via platform SMTP to any address (known issue) |
 | GET | /api/health | PUBLIC |  | UNGATED | - | health |
 | GET | /api/production/health<br><sub>/api/production-v26/health</sub> | PUBLIC |  | UNGATED | - | ops probes |
 | GET | /api/production/jobs<br><sub>/api/production-v26/jobs</sub> | SA |  | UNGATED | - | ops probes; P6 fix: requireAuth + SUPER_ADMIN |

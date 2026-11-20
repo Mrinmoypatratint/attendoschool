@@ -4,6 +4,7 @@ import { collections, isFirebaseConfigured } from '../firebase';
 import { memAttendanceSessions, memAttendanceRecords } from './teacher';
 import { demoStudents } from './schoolData';
 import { Router, Request, Response } from 'express';
+import { requireRoles } from '../middleware/auth';
 import {
   attendanceSummary,
   studentAttendanceReport,
@@ -13,12 +14,16 @@ import { isTestSchool } from './auth';
 import { fastCache } from '../utils/cache';
 
 const router = Router();
+// Security fix (2026-11-20): reports/exports/offline import are staff-only (STUDENT/PARENT had school-wide access).
+router.use(requireRoles('SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'));
 
-function schoolId(req: Request) {
+export function schoolId(req: Request) {
+  const user = (req as any).user;
+  // Security fix (2026-11-20): only SUPER_ADMIN may choose the school via ?schoolId (was honoured for any role → cross-tenant).
+  if (user?.role !== 'SUPER_ADMIN') return user?.schoolId || null;
   const qId = (req as any).query?.schoolId;
   if (qId === 'all') return 'all';
   if (qId) return qId;
-  const user = (req as any).user;
   if (user?.role === 'SUPER_ADMIN') {
     return 'all';
   }
