@@ -464,6 +464,9 @@ function Login() {
   const [forgotNotice, setForgotNotice] = useState<{ type: 'success' | 'error'; message: string; resetUrl?: string } | null>(null);
 
   const lookupAbortRef = useRef<AbortController | null>(null);
+  // Server lookup results per identifier. The effect below re-runs when `institutes` changes (which a successful
+  // lookup itself causes); reusing the cached answer stops the clear → re-lookup loop.
+  const lookupCacheRef = useRef<Map<string, Institute | null>>(new Map());
 
   const currentConfig = LOGIN_ROLES[loginRole];
 
@@ -503,6 +506,14 @@ function Login() {
     }
 
     // 2. Server-side database lookup for arbitrary database accounts / admission numbers
+    if (cleanInput.length >= 3 && lookupCacheRef.current.has(cleanInput.toLowerCase())) {
+      const cached = lookupCacheRef.current.get(cleanInput.toLowerCase()) || null;
+      setInstituteId(cached ? cached.id : '');
+      setDetectedInstitute(cached);
+      setLookupNotFound(!cached);
+      setLookupLoading(false);
+      return;
+    }
     if (cleanInput.length >= 3) {
       if (lookupAbortRef.current) {
         lookupAbortRef.current.abort();
@@ -529,12 +540,16 @@ function Login() {
               code: res.data.instituteCode || 'SCH',
               photoUrl: res.data.instituteLogo || res.data.photoUrl || res.data.photo_url || undefined
             };
+            lookupCacheRef.current.set(cleanInput.toLowerCase(), instObj);
             setDetectedInstitute(instObj);
             setInstitutes(prev => {
               const idx = prev.findIndex(i => i.id === serverId);
               if (idx === -1) {
                 return [...prev, instObj];
               }
+              const cur = prev[idx];
+              // Keep the same array when nothing changed, otherwise this effect re-runs forever.
+              if (cur.name === instObj.name && cur.code === instObj.code && (cur.photoUrl || undefined) === instObj.photoUrl) return prev;
               const next = [...prev];
               next[idx] = { ...next[idx], ...instObj };
               return next;
@@ -543,6 +558,7 @@ function Login() {
               localStorage.setItem('attendoschool_last_institute_id', serverId);
             } catch { }
           } else {
+            lookupCacheRef.current.set(cleanInput.toLowerCase(), null);
             setInstituteId('');
             setDetectedInstitute(null);
             setLookupNotFound(true);
@@ -20348,4 +20364,4 @@ function App() {
   );
 }
 
-export default App;
+export default App;
