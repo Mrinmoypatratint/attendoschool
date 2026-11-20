@@ -157,6 +157,8 @@ jobs:
             npm --prefix frontend install --include=dev --no-audit
             echo "🔨 Compiling Backend TypeScript..."
             npm --prefix backend run build
+            echo "🗄️  Applying RBAC schema (migration 051, idempotent; aborts the deploy before reload on failure)..."
+            node backend/dist/scripts/applyRbacMigration.js --apply
             echo "🔨 Building Frontend React SPA with Vite..."
             npm --prefix frontend run build
             echo "⚡ Reloading PM2 backend cluster..."

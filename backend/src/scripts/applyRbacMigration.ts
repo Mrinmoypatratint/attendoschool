@@ -5,7 +5,10 @@
  * applied by hand), so the runner would try to replay every migration. 051 is additive and idempotent
  * (CREATE TABLE IF NOT EXISTS / ON CONFLICT), so running this twice is safe.
  *
- * Usage (from backend/, with the production DATABASE_URL / SUPABASE_DATABASE_URL in backend/.env):
+ * Runs automatically on every production deploy (.github/workflows/deploy.yml, after the backend build and
+ * before the PM2 reload) — idempotent, so new plans/catalog keys are seeded on each deploy.
+ *
+ * Manual usage (from backend/, with the production DATABASE_URL / SUPABASE_DATABASE_URL in backend/.env):
  *   npx tsx src/scripts/applyRbacMigration.ts            # dry run: shows what exists, changes nothing
  *   npx tsx src/scripts/applyRbacMigration.ts --apply    # applies 051 and verifies
  */
@@ -22,7 +25,11 @@ async function present(): Promise<string[]> {
 }
 
 async function main() {
-  if (!isPostgresConfigured) throw new Error('SQL is not configured (DATABASE_URL / SUPABASE_DATABASE_URL).');
+  if (!isPostgresConfigured) {
+    // Firestore-only deployments have no SQL store: RBAC then runs on legacy defaults (see accessStore.ts).
+    console.warn('[051] SQL is not configured (DATABASE_URL / SUPABASE_DATABASE_URL) — skipping RBAC schema.');
+    return;
+  }
   const apply = process.argv.includes('--apply');
   const prereq = await pool.query(`SELECT to_regclass('public.subscription_plans') sp, to_regclass('public.permission_definitions') pd, to_regclass('public.platform_settings') ps`);
   const missing = Object.entries(prereq.rows[0]).filter(([, v]) => !v).map(([k]) => k);
