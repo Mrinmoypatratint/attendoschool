@@ -361,7 +361,7 @@ export function TeacherProfile() {
 
             {/* Title & Info */}
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
                 <h3 style={{ margin: 0, fontSize: 18, fontWeight: 750, color: "var(--text, var(--foreground))" }}>
                   {profile?.name || 'Faculty Teacher'}
                 </h3>
@@ -369,9 +369,6 @@ export function TeacherProfile() {
                   <ShieldCheck size={12} /> {profile?.designation || 'Teacher'} · {profile?.department || 'Academic Faculty'}
                 </span>
               </div>
-              <p className="muted" style={{ margin: '0 0 10px', fontSize: 13 }}>
-                Official faculty display picture and institutional profile badge. Faculty ID: <code>{employeeIdValue}</code>
-              </p>
 
               {/* Action Buttons */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
