@@ -895,9 +895,6 @@ export default function AttendanceReports({
           <h1 className="m-0 text-2xl font-bold text-slate-900 dark:text-white" style={{ fontSize: embedded ? 19 : 24 }}>
             {embedded ? 'Class Attendance Reports' : 'Attendance Reports'}
           </h1>
-          <p className="muted m-0 mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Student-wise attendance verified from institutional Firestore logs.
-          </p>
         </div>
 
         {/* Right Corner Buttons: Combined Export Report & Import Excel/CSV */}

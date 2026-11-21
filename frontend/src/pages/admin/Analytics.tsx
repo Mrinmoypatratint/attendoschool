@@ -388,7 +388,6 @@ export default function Analytics() {
             <BarChart3 size={28} className="text-blue-600 dark:text-blue-400" />
             Academic & Attendance Analytics
           </h1>
-          <p className="muted text-xs text-slate-500 dark:text-slate-400 mt-1">Accurate real-time metrics, class distribution, daily trends, and at-risk student monitoring.</p>
         </div>
         <button
           onClick={() => load()}

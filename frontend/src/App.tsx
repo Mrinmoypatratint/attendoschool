@@ -3939,11 +3939,11 @@ function Stat({ label, value, trend, sub }: { label: string; value: any; trend?:
     )}
   </div>
 }
-function PageHead({ title, sub, button, onClick, schoolName }: { title: string; sub: string; button?: string; onClick?: () => void; schoolName?: string }) {
+function PageHead({ title, sub, button, onClick, schoolName }: { title: string; sub?: string; button?: string; onClick?: () => void; schoolName?: string }) {
   return <div className="page-head">
     <div>
       <h1>{title}</h1>
-      <p className="muted">{sub}</p>
+      {sub && <p className="muted">{sub}</p>}
     </div>
     {button && <button onClick={onClick}><Plus size={16} />{button}</button>}
   </div>;
@@ -4219,9 +4219,6 @@ function AdminHome() {
               <span className="school-status-tag">{school?.status || 'ACTIVE'}</span>
             </div>
             <h1 className="hero-school-name">{school?.name || (user as any)?.schoolName || 'Institutional Campus'}</h1>
-            <p className="hero-school-desc">
-              Official attendance monitoring, student & faculty directories, curriculum setup, and timetable scheduling.
-            </p>
             <div className="hero-meta-row">
               <span>🏛️ School Code: <b>{school?.code || (user as any)?.schoolCode || '—'}</b></span>
               <span>📅 Session: <b>{data?.activeAcademicYear?.name || currentSessionName || 'Current Session'}</b></span>
@@ -7970,7 +7967,6 @@ function Students() {
         </Link>
         <p className="eyebrow">STUDENT DIRECTORY</p>
         <h1 style={{ margin: 0, fontSize: 24 }}>Students Directory</h1>
-        <p className="muted" style={{ margin: '4px 0 0' }}>Manage enrolled students, section assignments, parent contacts, and batch Excel imports.</p>
       </div>
       {(user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN') ? (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -11793,7 +11789,6 @@ function Teachers() {
         </Link>
         <p className="eyebrow">FACULTY & STAFF</p>
         <h1 style={{ margin: 0, fontSize: 24 }}>Teachers & Faculty</h1>
-        <p className="muted" style={{ margin: '4px 0 0' }}>Appointed faculty accounts, classroom attendance permissions, and bulk onboarding.</p>
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <button
@@ -14158,7 +14153,7 @@ function Classes() {
       >
         <ArrowLeft size={16} /> <span>Dashboard</span>
       </Link>
-      <PageHead title="Classes, Sections & Teachers" sub="Manage school classes, sections, and class teacher assignments." />
+      <PageHead title="Classes, Sections & Teachers" />
     </div>
 
     {/* Tab Navigation */}
@@ -15049,7 +15044,7 @@ function Subjects() {
       >
         <ArrowLeft size={16} /> <span>Dashboard</span>
       </Link>
-      <PageHead title="Subjects" sub="Subjects used by class routines." />
+      <PageHead title="Subjects" />
     </div>
     <div className="panel narrow">
       <form className="inline" onSubmit={initiateAddSubject}>
@@ -16326,14 +16321,6 @@ function Attendance() {
             <p className="eyebrow" style={{ margin: 0 }}>ATTENDANCE CONTROL & RE-ATTENDANCE STATION</p>
           </div>
           <h1 style={{ margin: 0, fontSize: 24 }}>Daily Class Attendance</h1>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="secondary" onClick={() => nav('/dashboard')}>
-            ← Back to Dashboard
-          </button>
-          {/* <button className="secondary" onClick={() => nav('/teacher-history')}>
-            Session History →
-          </button> */}
         </div>
       </div>
 
@@ -19657,7 +19644,6 @@ function SchoolProfile() {
         </Link>
         <PageHead
           title="School Profile & Settings"
-          sub="Institutional credentials, contact coordinates, campus address, and official communication channels."
         />
       {msg && (
         <div className={msg.type === 'success' ? 'success' : 'error'} style={{ marginBottom: 16 }}>
