@@ -473,6 +473,35 @@ export async function updateTeacher(schoolId: string, id: string, body: any) {
       );
     }
     await client.query('COMMIT');
+    // Synchronize class mentor assignment if class and section are provided
+    const targetClass = body.className || body.class_name || body.class || body.class_id;
+    const targetSection = body.sectionName || body.section_name || body.section || body.section_id;
+    if (targetClass && targetSection) {
+      try {
+        const cleanClassNum = parseInt(String(targetClass).replace(/^(class|grade|std)\s*/i, ''), 10);
+        const cleanSecName = String(targetSection).replace(/^(section)\s*/i, '').trim().toUpperCase();
+        if (!isNaN(cleanClassNum) && cleanSecName) {
+          const matchQ = await client.query(
+            `SELECT c.id AS class_id, s.id AS section_id
+             FROM classes c
+             JOIN sections s ON s.class_id = c.id
+             WHERE c.school_id = $1 AND c.class_number = $2 AND UPPER(s.name) = UPPER($3)
+             LIMIT 1`,
+            [schoolId, cleanClassNum, cleanSecName]
+          );
+          if (matchQ.rowCount && matchQ.rows.length > 0) {
+            await client.query(
+              `INSERT INTO class_mentors (school_id, class_id, section_id, teacher_id, assigned_at, updated_at)
+               VALUES ($1, $2, $3, $4, NOW(), NOW())
+               ON CONFLICT (school_id, class_id, section_id) DO UPDATE SET teacher_id = EXCLUDED.teacher_id, updated_at = NOW()`,
+              [schoolId, matchQ.rows[0].class_id, matchQ.rows[0].section_id, id]
+            );
+          }
+        }
+      } catch (_cmErr: any) {
+        console.warn('[updateTeacher] Class mentor sync notice:', _cmErr.message);
+      }
+    }
     return (await listTeachers(schoolId, '', false)).find(t => t.id === id);
   } catch (e: any) {
     await client.query('ROLLBACK');

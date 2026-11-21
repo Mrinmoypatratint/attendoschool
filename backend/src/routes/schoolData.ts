@@ -2168,72 +2168,106 @@ r.post("/students", ...admin, async (req: AuthRequest, res) => {
       targetLoginEmail = cleanParentEmail;
     }
 
-    // Handle Student Portal Login Account Creation
-    if (targetLoginEmail && loginOpt !== "NONE") {
-      try {
-        const userCheck = await pool.query(
-          `SELECT id FROM users WHERE LOWER(email)=$1 LIMIT 1`,
-          [targetLoginEmail],
-        );
-        if (userCheck.rowCount && userCheck.rowCount > 0) {
-          linkedUserId = userCheck.rows[0].id;
-        } else {
-          const tempPass = crypto.randomBytes(8).toString("hex") + "Aa1!";
-          const tempHash = await bcrypt.hash(tempPass, 10);
-          const uq = await pool.query(
-            `INSERT INTO users(school_id, name, email, password_hash, role) VALUES($1, $2, $3, $4, 'STUDENT') RETURNING id`,
-            [schoolId, name, targetLoginEmail, tempHash],
-          );
-          linkedUserId = uq.rows[0].id;
-        }
-      } catch (uErr: any) {
-        console.warn(
-          "[StudentEnrollment] User creation warning:",
-          uErr.message,
-        );
-      }
+    // Always guarantee a target login email for student portal authentication
+    if (!targetLoginEmail) {
+      const safeAdm = cleanAdmissionNumber
+        ? cleanAdmissionNumber.toLowerCase().replace(/[^a-z0-9]/g, "")
+        : (cleanRollNumber || `s${Date.now()}`);
+      targetLoginEmail = `student.${safeAdm}@${schoolId}.portal`;
+    }
 
-      if (sendInviteEmail) {
-        try {
-          resetInfo = await createAndSendPasswordReset({
-            email: targetLoginEmail,
-            name,
-            role: loginOpt === "PARENT" ? "PARENT" : "STUDENT",
-            userId: linkedUserId || undefined,
-            schoolId: req.user?.schoolId || undefined,
-            schoolName: req.user?.schoolName || "School",
-            req,
-            sendEmail: false,
-          });
-          if (resetInfo?.resetUrl) {
-            const isParent = loginOpt === "PARENT";
-            queueEmailNotification({
-              schoolId: req.user?.schoolId || "school-default",
-              recipientEmail: targetLoginEmail,
-              recipientName: isParent ? parentName || "Parent" : name,
-              recipientType: isParent ? "PARENT" : "STUDENT",
-              templateKey: isParent ? "PARENT_CREATED" : "STUDENT_CREATED",
-              templateData: {
-                student_name: name,
-                school_name: req.user?.schoolName || "School",
-                admission_number: cleanAdmissionNumber || "—",
-                class_name: String(clsNum),
-                section_name: secName,
-                roll_number: String(rollNumber),
-                login_email: targetLoginEmail,
-                reset_link: resetInfo.resetUrl,
-                login_url: resetInfo.resetUrl,
-              },
-              idempotencyKey: `stu-welcome-${req.user?.schoolId || "default"}-${targetLoginEmail}`,
-            }).catch(() => {});
-            welcomeEmailSent = true;
-          }
-        } catch (e: any) {
-          console.warn(
-            "[StudentEnrollment] Failed to send student reset email:",
-            e.message,
-          );
+    // Resolve initial password: use provided password if valid, otherwise universal initial default ChangeMe123!
+    const rawStuPw = (b.password && String(b.password).trim().length >= 6)
+      ? String(b.password).trim()
+      : "ChangeMe123!";
+
+    // Handle Student Portal Login Account Creation
+    try {
+      const userCheck = await pool.query(
+        `SELECT u.id, s.id AS linked_student_id FROM users u LEFT JOIN students s ON s.user_id = u.id WHERE LOWER(u.email)=$1 LIMIT 1`,
+        [targetLoginEmail],
+      );
+      if (userCheck.rowCount && userCheck.rowCount > 0 && !userCheck.rows[0].linked_student_id) {
+        linkedUserId = userCheck.rows[0].id;
+        const studentHash = await bcrypt.hash(rawStuPw, 10);
+        await pool.query(`UPDATE users SET password_hash=$1, is_active=true, updated_at=NOW() WHERE id=$2`, [studentHash, linkedUserId]);
+      } else {
+        let emailToUse = targetLoginEmail;
+        if (userCheck.rowCount && userCheck.rowCount > 0 && userCheck.rows[0].linked_student_id) {
+          const safeAdm = cleanAdmissionNumber
+            ? cleanAdmissionNumber.toLowerCase().replace(/[^a-z0-9]/g, "")
+            : (cleanRollNumber || `s${Date.now()}`);
+          emailToUse = `student.${safeAdm}.${Date.now().toString().slice(-4)}@${schoolId}.portal`;
         }
+        const studentHash = await bcrypt.hash(rawStuPw, 10);
+        const uq = await pool.query(
+          `INSERT INTO users(school_id, name, email, password_hash, role, is_active, created_at, updated_at)
+           VALUES($1, $2, $3, $4, 'STUDENT', true, NOW(), NOW())
+           ON CONFLICT (email) DO UPDATE SET password_hash=EXCLUDED.password_hash, is_active=true, updated_at=NOW()
+           RETURNING id`,
+          [schoolId, name, emailToUse, studentHash],
+        );
+        linkedUserId = uq.rows[0].id;
+      }
+    } catch (uErr: any) {
+      console.warn(
+        "[StudentEnrollment] User creation warning:",
+        uErr.message,
+      );
+    }
+
+    if (linkedUserId) {
+      registerDemoUser({
+        id: linkedUserId,
+        name,
+        email: targetLoginEmail,
+        role: "STUDENT",
+        schoolId,
+        password: rawStuPw,
+        admissionNumber: cleanAdmissionNumber,
+      });
+    }
+
+    if (sendInviteEmail && targetLoginEmail && !targetLoginEmail.endsWith(".portal")) {
+      try {
+        resetInfo = await createAndSendPasswordReset({
+          email: targetLoginEmail,
+          name,
+          role: loginOpt === "PARENT" ? "PARENT" : "STUDENT",
+          userId: linkedUserId || undefined,
+          schoolId: req.user?.schoolId || undefined,
+          schoolName: req.user?.schoolName || "School",
+          req,
+          sendEmail: false,
+        });
+        if (resetInfo?.resetUrl) {
+          const isParent = loginOpt === "PARENT";
+          queueEmailNotification({
+            schoolId: req.user?.schoolId || "school-default",
+            recipientEmail: targetLoginEmail,
+            recipientName: isParent ? parentName || "Parent" : name,
+            recipientType: isParent ? "PARENT" : "STUDENT",
+            templateKey: isParent ? "PARENT_CREATED" : "STUDENT_CREATED",
+            templateData: {
+              student_name: name,
+              school_name: req.user?.schoolName || "School",
+              admission_number: cleanAdmissionNumber || "—",
+              class_name: String(clsNum),
+              section_name: secName,
+              roll_number: String(rollNumber),
+              login_email: targetLoginEmail,
+              reset_link: resetInfo.resetUrl,
+              login_url: resetInfo.resetUrl,
+            },
+            idempotencyKey: `stu-welcome-${req.user?.schoolId || "default"}-${targetLoginEmail}`,
+          }).catch(() => {});
+          welcomeEmailSent = true;
+        }
+      } catch (e: any) {
+        console.warn(
+          "[StudentEnrollment] Failed to send student reset email:",
+          e.message,
+        );
       }
     } else {
       console.log(
@@ -2285,13 +2319,7 @@ r.post("/students", ...admin, async (req: AuthRequest, res) => {
           String(linkedUserId),
         )
       ) {
-        const uLinkChk = await pool.query(
-          "SELECT id FROM students WHERE user_id=$1 LIMIT 1",
-          [linkedUserId],
-        );
-        if (!uLinkChk.rowCount) {
-          pgUserId = linkedUserId;
-        }
+        pgUserId = linkedUserId;
       }
 
       if (isPostgresConfigured) {
@@ -3294,15 +3322,39 @@ r.post("/students/bulk-import", ...admin, async (req: AuthRequest, res) => {
       // Fast Bulk Multi-Row Direct Insert for all validated records (all-or-nothing)
       if (validRows.length > 0) {
         const CHUNK_SIZE = 500;
+        const defaultStudentHash = await bcrypt.hash("ChangeMe123!", 8);
         for (let c = 0; c < validRows.length; c += CHUNK_SIZE) {
           const chunk = validRows.slice(c, c + CHUNK_SIZE);
           const valuesChunks: string[] = [];
           const params: any[] = [schoolId, safeAyId];
           let pIdx = 3;
 
+          const chunkUserIds: (string | null)[] = [];
           for (const st of chunk) {
+            let uId: string | null = null;
+            try {
+              const loginEmail = st.studentEmail || (st.admissionNumber
+                ? `student.${String(st.admissionNumber).toLowerCase().replace(/[^a-z0-9]/g, "")}@${schoolId}.portal`
+                : `student.${st.classId}.${st.sectionId}.${st.rollNumber}@${schoolId}.portal`);
+              const uRes = await client.query(
+                `INSERT INTO users (school_id, name, email, password_hash, role, is_active, created_at, updated_at)
+                 VALUES ($1, $2, $3, $4, 'STUDENT', true, NOW(), NOW())
+                 ON CONFLICT (email) DO UPDATE SET is_active = true, updated_at = NOW()
+                 RETURNING id`,
+                [schoolId, st.name, loginEmail, defaultStudentHash],
+              );
+              if (uRes.rowCount && uRes.rows[0]) {
+                uId = uRes.rows[0].id;
+              }
+            } catch {}
+            chunkUserIds.push(uId);
+          }
+
+          for (let i = 0; i < chunk.length; i++) {
+            const st = chunk[i];
+            const uId = chunkUserIds[i] || null;
             valuesChunks.push(
-              `($1, $2, ${pIdx}, ${pIdx + 1}, ${pIdx + 2}, ${pIdx + 3}, ${pIdx + 4}, ${pIdx + 5}, ${pIdx + 6}, ${pIdx + 7}, ${pIdx + 8}, ${pIdx + 9}, ${pIdx + 10}, ${pIdx + 11}, ${pIdx + 12}, ${pIdx + 13}, ${pIdx + 14}, ${pIdx + 15}, ${pIdx + 16}, ${pIdx + 17}, ${pIdx + 18}, ${pIdx + 19}, ${pIdx + 20}, ${pIdx + 21}, ${pIdx + 22}, null)`,
+              `($1, $2, $${pIdx}, $${pIdx + 1}, $${pIdx + 2}, $${pIdx + 3}, $${pIdx + 4}, $${pIdx + 5}, $${pIdx + 6}, $${pIdx + 7}, $${pIdx + 8}, $${pIdx + 9}, $${pIdx + 10}, $${pIdx + 11}, $${pIdx + 12}, $${pIdx + 13}, $${pIdx + 14}, $${pIdx + 15}, $${pIdx + 16}, $${pIdx + 17}, $${pIdx + 18}, $${pIdx + 19}, $${pIdx + 20}, $${pIdx + 21}, $${pIdx + 22}, $${pIdx + 23})`,
             );
             params.push(
               st.classId,
@@ -3328,8 +3380,9 @@ r.post("/students/bulk-import", ...admin, async (req: AuthRequest, res) => {
               st.middleName || null,
               st.lastName || null,
               st.guardianName || null,
+              uId,
             );
-            pIdx += 23;
+            pIdx += 24;
           }
 
           const insertSql = `
@@ -5606,7 +5659,7 @@ r.post("/teachers", ...admin, async (req: AuthRequest, res) => {
   }
 
   const rawPassword =
-    password || crypto.randomBytes(8).toString("hex") + "Tt1!";
+    (password && String(password).trim()) ? String(password).trim() : "ChangeMe123!";
   let resetInfo: any = null;
   let emailDeliveryStatus: "Sent" | "Failed" | "Pending" = "Pending";
 
@@ -5649,9 +5702,17 @@ r.post("/teachers", ...admin, async (req: AuthRequest, res) => {
       await client.query("BEGIN");
       const hash = await bcrypt.hash(rawPassword, 10);
       const u = await client.query(
-        `INSERT INTO users(school_id,name,email,password_hash,role) VALUES($1,$2,$3,$4,'TEACHER') RETURNING id,name,email`,
+        `INSERT INTO users(school_id,name,email,password_hash,role,is_active) VALUES($1,$2,$3,$4,'TEACHER',true) RETURNING id,name,email`,
         [req.user!.schoolId, name, cleanEmail, hash],
       );
+      registerDemoUser({
+        id: u.rows[0].id,
+        name,
+        email: cleanEmail,
+        role: "TEACHER",
+        schoolId: req.user!.schoolId,
+        password: rawPassword,
+      });
       await client.query(
         `INSERT INTO teacher_profiles(user_id,employee_id,mobile,gender,qualification,joining_date,designation,class_name,section_name,first_name,middle_name,last_name) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
         [
@@ -6424,7 +6485,7 @@ r.post("/teachers/bulk-import", ...admin, async (req: AuthRequest, res) => {
       // Pre-compute password hashes in parallel with rounds 8
       const preparedRows = await Promise.all(
         validRows.map(async (t) => {
-          const tempPassword = crypto.randomBytes(8).toString("hex") + "Tt1!";
+          const tempPassword = (t.password && String(t.password).trim()) ? String(t.password).trim() : "ChangeMe123!";
           const hash = await bcrypt.hash(tempPassword, 8);
           return { t, tempPassword, hash };
         }),
@@ -6432,7 +6493,7 @@ r.post("/teachers/bulk-import", ...admin, async (req: AuthRequest, res) => {
 
       for (const { t, tempPassword, hash } of preparedRows) {
         const u = await client.query(
-          `INSERT INTO users(school_id, name, email, password_hash, role) VALUES($1, $2, $3, $4, 'TEACHER')
+          `INSERT INTO users(school_id, name, email, password_hash, role, is_active) VALUES($1, $2, $3, $4, 'TEACHER', true)
            RETURNING id, name, email`,
           [schoolId, t.name, t.email, hash],
         );
@@ -6441,6 +6502,14 @@ r.post("/teachers/bulk-import", ...admin, async (req: AuthRequest, res) => {
             `Failed to insert user record for faculty member ${t.name} (${t.email})`,
           );
         }
+        registerDemoUser({
+          id: u.rows[0].id,
+          name: t.name,
+          email: t.email,
+          role: "TEACHER",
+          schoolId,
+          password: tempPassword,
+        });
 
         const { className: parsedClass, sectionName: parsedSection } =
           parseImportClassAndSection(t.class, t.section);

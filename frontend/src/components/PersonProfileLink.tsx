@@ -14,6 +14,7 @@ type PersonProfileLinkProps = {
   activeSession?: string;
   children?: React.ReactNode;
   mode?: 'student' | 'report';
+  variant?: 'directory' | 'attendance';
 };
 
 const cache: Record<PersonKind, Map<string, Record<string, unknown>>> = {
@@ -56,7 +57,7 @@ async function loadDirectory(kind: PersonKind) {
 
 /** Clickable student/teacher name for staff-only screens. Full profile data is
  * resolved lazily from the tenant-scoped people API and cached for the session. */
-export function PersonProfileLink({ kind, id, name, person, activeSession, children, mode }: PersonProfileLinkProps) {
+export function PersonProfileLink({ kind, id, name, person, activeSession, children, mode, variant }: PersonProfileLinkProps) {
   const { user } = useAuth();
   const effectiveId = id || (person?.id as string) || ((person as any)?.student_id as string) || ((person as any)?.studentId as string) || ((person as any)?.teacher_id as string) || ((person as any)?.teacherId as string);
   const personRoll = person?.roll_number ?? (person as any)?.roll ?? (person as any)?.rollNo;
@@ -130,6 +131,7 @@ export function PersonProfileLink({ kind, id, name, person, activeSession, child
         student={resolved as unknown as StudentHoverData}
         activeSession={activeSession || (resolved as any).session_name || (resolved as any).session || (person as any)?.session}
         mode={mode}
+        variant={variant}
       >
         {label}
       </StudentProfileHoverCard>

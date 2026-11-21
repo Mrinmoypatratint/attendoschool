@@ -39,8 +39,12 @@ import {
   ChevronRight,
   ChevronUp,
   Activity,
-  FileCheck2
+  FileCheck2,
+  Award
 } from 'lucide-react';
+
+// In-memory cache for resolved student average marks to optimize repeat hovers
+const studentAverageMarksCache = new Map<string, string>();
 
 export interface StudentHoverData {
   id?: string;
@@ -50,6 +54,9 @@ export interface StudentHoverData {
   assignment_submissions_count?: number;
   assignmentSubmissionsCount?: number;
   submission_count?: number;
+  average_marks?: number | string;
+  averageMarks?: number | string;
+  avg_marks?: number | string;
   first_name?: string;
   last_name?: string;
   roll_number?: string | number;
@@ -61,6 +68,8 @@ export interface StudentHoverData {
   class_name?: string;
   class_label?: string;
   className?: string;
+  section_id?: string;
+  sectionId?: string;
   section_name?: string;
   sectionName?: string;
   section?: string;
@@ -96,13 +105,19 @@ interface StudentProfileHoverCardProps {
    *  'report': initial condensed view with 'View Details' button to expand attendance percentage and assignment counts.
    */
   mode?: 'student' | 'report';
+  /** 'attendance': custom variant for Admin Attendance and Teacher Mentor Workspace popups
+   *  (Average Marks card, Gender in badge row, no Active SIS badge).
+   *  'directory': original student directory layout (Gender card, Active SIS badge, no Average Marks).
+   */
+  variant?: 'directory' | 'attendance';
 }
 
 export function StudentProfileHoverCard({
   student,
   activeSession,
   children,
-  mode
+  mode,
+  variant
 }: StudentProfileHoverCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [studentData, setStudentData] = useState<StudentHoverData>(student);
@@ -114,6 +129,146 @@ export function StudentProfileHoverCard({
   const effectiveMode: 'student' | 'report' = mode || (isHashReport ? 'report' : 'student');
   const isReportMode = effectiveMode === 'report';
   const isExpanded = !isReportMode || showDetails;
+
+  // Determine if this is an Attendance or Teacher Mentor Workspace profile popup
+  const isHashAttendanceOrMentor = typeof window !== 'undefined' && (
+    window.location.hash.toLowerCase().includes('/attendance') ||
+    window.location.hash.toLowerCase().includes('/mentor-workspace') ||
+    window.location.pathname.toLowerCase().includes('/attendance') ||
+    window.location.pathname.toLowerCase().includes('/mentor-workspace')
+  );
+  const isAttendanceOrMentor =
+    variant === 'attendance' ||
+    (variant !== 'directory' && mode !== 'student' && (mode === 'report' || isHashAttendanceOrMentor));
+
+  // Average Marks state for Attendance / Mentor Workspace
+  const [avgMarks, setAvgMarks] = useState<string | null>(() => {
+    const direct =
+      studentData.average_marks ??
+      studentData.averageMarks ??
+      studentData.avg_marks ??
+      (studentData as any).marks_average ??
+      (studentData as any).marks_percentage;
+    if (direct !== undefined && direct !== null && String(direct).trim() !== '') {
+      const num = Number(String(direct).replace('%', '').trim());
+      return !isNaN(num) ? `${num.toFixed(1).replace(/\.0$/, '')}%` : String(direct);
+    }
+    const studentId = studentData.id || (studentData as any).student_id || (studentData as any).studentId;
+    if (studentId && studentAverageMarksCache.has(studentId)) {
+      return studentAverageMarksCache.get(studentId)!;
+    }
+    return null;
+  });
+  const [avgMarksLoading, setAvgMarksLoading] = useState(false);
+
+  // Resolve student real average marks for Attendance & Mentor Workspace
+  useEffect(() => {
+    if (!isOpen || !isAttendanceOrMentor) return;
+
+    // 1. Direct marks from studentData
+    const direct =
+      studentData.average_marks ??
+      studentData.averageMarks ??
+      studentData.avg_marks ??
+      (studentData as any).marks_average ??
+      (studentData as any).marks_percentage;
+    if (direct !== undefined && direct !== null && String(direct).trim() !== '') {
+      const num = Number(String(direct).replace('%', '').trim());
+      setAvgMarks(!isNaN(num) ? `${num.toFixed(1).replace(/\.0$/, '')}%` : String(direct));
+      return;
+    }
+
+    const studentId = studentData.id || (studentData as any).student_id || (studentData as any).studentId;
+    if (!studentId) {
+      setAvgMarks('N/A');
+      return;
+    }
+
+    // 2. Check in-memory cache for this session
+    if (studentAverageMarksCache.has(studentId)) {
+      setAvgMarks(studentAverageMarksCache.get(studentId)!);
+      return;
+    }
+
+    const classId = studentData.class_id || (studentData as any).classId;
+    const sectionId = studentData.section_id || (studentData as any).sectionId;
+    const session = studentData.session || studentData.session_name || activeSession;
+
+    if (classId && sectionId) {
+      setAvgMarksLoading(true);
+      let isMounted = true;
+
+      api.get('/teacher/mentor/exams', {
+        params: { class_id: classId, section_id: sectionId, session: session || undefined }
+      }).then(async ({ data: examsList }) => {
+        if (!isMounted) return;
+        const exams = Array.isArray(examsList) ? examsList : [];
+        const publishedExams = exams.filter((e: any) => (e.status || 'PUBLISHED') === 'PUBLISHED' && (Number(e.graded_count) || 0) > 0);
+
+        if (publishedExams.length === 0) {
+          studentAverageMarksCache.set(studentId, 'N/A');
+          if (isMounted) {
+            setAvgMarks('N/A');
+            setAvgMarksLoading(false);
+          }
+          return;
+        }
+
+        const markPromises = publishedExams.map((ex: any) =>
+          api.get('/teacher/mentor/exam-marks', {
+            params: { class_id: classId, section_id: sectionId, exam_id: ex.id, session: session || undefined }
+          }).then(res => ({
+            exam: ex,
+            students: Array.isArray(res.data?.students) ? res.data.students : []
+          })).catch(() => null)
+        );
+
+        const examResults = await Promise.all(markPromises);
+        if (!isMounted) return;
+
+        let totalObtained = 0;
+        let totalMax = 0;
+        let validMarksCount = 0;
+
+        for (const item of examResults) {
+          if (!item) continue;
+          const match = item.students.find((s: any) =>
+            (s.student_id && (s.student_id === studentId || String(s.student_id) === String(studentId))) ||
+            (s.id && (s.id === studentId || String(s.id) === String(studentId)))
+          );
+          if (match && match.marks_obtained !== null && match.marks_obtained !== undefined && match.marks_obtained !== '' && !isNaN(Number(match.marks_obtained))) {
+            const obt = Number(match.marks_obtained);
+            const maxVal = Number(item.exam.total_marks) || (item.exam.grading_system === 'CGPA' ? 10 : 100);
+            if (maxVal > 0) {
+              totalObtained += obt;
+              totalMax += maxVal;
+              validMarksCount++;
+            }
+          }
+        }
+
+        const resultVal = (validMarksCount > 0 && totalMax > 0)
+          ? `${((totalObtained / totalMax) * 100).toFixed(1).replace(/\.0$/, '')}%`
+          : 'N/A';
+
+        studentAverageMarksCache.set(studentId, resultVal);
+        if (isMounted) {
+          setAvgMarks(resultVal);
+          setAvgMarksLoading(false);
+        }
+      }).catch(() => {
+        if (isMounted) {
+          studentAverageMarksCache.set(studentId, 'N/A');
+          setAvgMarks('N/A');
+          setAvgMarksLoading(false);
+        }
+      });
+
+      return () => { isMounted = false; };
+    } else {
+      setAvgMarks('N/A');
+    }
+  }, [isOpen, isAttendanceOrMentor, studentData.id, (studentData as any).student_id, (studentData as any).studentId, studentData.class_id, studentData.section_id, activeSession]);
 
   useEffect(() => {
     if (!isOpen) setShowDetails(false);
@@ -393,36 +548,38 @@ export function StudentProfileHoverCard({
                   <span>Student Profile</span>
                 </div>
 
-                {/* Right Controls: Active SIS Status + Close Button */}
+                {/* Right Controls: Active SIS Status (Student Directory only) + Close Button */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, zIndex: 2 }}>
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: '#fff2f4',
-                      fontWeight: 650,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 5,
-                      background: 'rgba(255, 255, 255, 0.16)',
-                      backdropFilter: 'blur(8px)',
-                      WebkitBackdropFilter: 'blur(8px)',
-                      border: '1px solid rgba(255, 255, 255, 0.2)',
-                      padding: '4px 9px',
-                      borderRadius: 999
-                    }}
-                  >
-                    <span
+                  {!isAttendanceOrMentor && (
+                    <div
                       style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: '50%',
-                        backgroundColor: '#339988',
-                        boxShadow: 'none',
-                        display: 'inline-block'
+                        fontSize: 11,
+                        color: '#fff2f4',
+                        fontWeight: 650,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        background: 'rgba(255, 255, 255, 0.16)',
+                        backdropFilter: 'blur(8px)',
+                        WebkitBackdropFilter: 'blur(8px)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        padding: '4px 9px',
+                        borderRadius: 999
                       }}
-                    />
-                    <span>Active SIS</span>
-                  </div>
+                    >
+                      <span
+                        style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: '50%',
+                          backgroundColor: '#339988',
+                          boxShadow: 'none',
+                          display: 'inline-block'
+                        }}
+                      />
+                      <span>Active SIS</span>
+                    </div>
+                  )}
 
                   <button
                     type="button"
@@ -572,6 +729,52 @@ export function StudentProfileHoverCard({
                         <span>Adm: {adm}</span>
                       </div>
                     )}
+                    {isAttendanceOrMentor && genderStr && (
+                      <div
+                        style={{
+                          fontSize: 11.5,
+                          fontWeight: 750,
+                          color:
+                            genderStr.toLowerCase() === 'female'
+                              ? '#e11d55'
+                              : genderStr.toLowerCase() === 'male'
+                              ? '#5c6bc0'
+                              : 'var(--text-secondary, #696e79)',
+                          backgroundColor:
+                            genderStr.toLowerCase() === 'female'
+                              ? 'rgba(225, 29, 85, 0.12)'
+                              : genderStr.toLowerCase() === 'male'
+                              ? 'rgba(92, 107, 192, 0.12)'
+                              : 'rgba(105, 110, 121, 0.12)',
+                          border: `1px solid ${
+                            genderStr.toLowerCase() === 'female'
+                              ? 'rgba(225, 29, 85, 0.25)'
+                              : genderStr.toLowerCase() === 'male'
+                              ? 'rgba(92, 107, 192, 0.25)'
+                              : 'rgba(105, 110, 121, 0.25)'
+                          }`,
+                          padding: '3px 9px',
+                          borderRadius: 4,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          boxShadow: 'none'
+                        }}
+                        title={`Student Gender: ${genderStr}`}
+                      >
+                        <User
+                          size={12}
+                          color={
+                            genderStr.toLowerCase() === 'female'
+                              ? '#e11d55'
+                              : genderStr.toLowerCase() === 'male'
+                              ? '#5c6bc0'
+                              : '#696e79'
+                          }
+                        />
+                        <span>{genderStr}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -708,7 +911,7 @@ export function StudentProfileHoverCard({
                       </div>
                     )}
 
-                    {/* Quick Attributes 2-Column Cards (Gender & Date of Birth) */}
+                    {/* Quick Attributes 2-Column Cards (Average Marks or Gender & Date of Birth) */}
                     <div
                       style={{
                         display: 'grid',
@@ -717,52 +920,92 @@ export function StudentProfileHoverCard({
                         marginBottom: 10
                       }}
                     >
-                      {/* Gender Card */}
-                      <div
-                        style={{
-                          backgroundColor: 'var(--card-subtle, #f9f9fa)',
-                          padding: '8px 12px',
-                          borderRadius: 4,
-                          border: '1px solid var(--border, #eaeaec)'
-                        }}
-                      >
+                      {isAttendanceOrMentor ? (
+                        /* Average Marks Card (Attendance & Mentor Workspace) */
                         <div
                           style={{
-                            fontSize: 10,
-                            fontWeight: 700,
-                            color: 'var(--text-muted, #696e79)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em'
+                            backgroundColor: 'var(--card-subtle, #f9f9fa)',
+                            padding: '8px 12px',
+                            borderRadius: 4,
+                            border: '1px solid var(--border, #eaeaec)'
                           }}
                         >
-                          Gender
-                        </div>
-                        <div style={{ marginTop: 2 }}>
-                          <span
+                          <div
                             style={{
-                              fontSize: 12,
+                              fontSize: 10,
                               fontWeight: 700,
-                              color:
-                                genderStr.toLowerCase() === 'female'
-                                  ? '#e11d55'
-                                  : genderStr.toLowerCase() === 'male'
-                                  ? '#e11d55'
-                                  : 'var(--text, #3e4152)',
-                              backgroundColor:
-                                genderStr.toLowerCase() === 'female'
-                                  ? 'rgba(225, 29, 85, 0.12)'
-                                  : genderStr.toLowerCase() === 'male'
-                                  ? 'rgba(225, 29, 85, 0.12)'
-                                  : 'var(--bg-card, #f5f5f6)',
-                              padding: '1px 6px',
-                              borderRadius: 4,
-                              display: 'inline-block'
+                              color: 'var(--text-muted, #696e79)',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.05em',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4
                             }}
                           >
-                            {genderStr}
-                          </span>
+                            <Award size={11} color="#e11d55" />
+                            <span>Average Marks</span>
+                          </div>
+                          <div style={{ marginTop: 2 }}>
+                            <span
+                              style={{
+                                fontSize: 13,
+                                fontWeight: 800,
+                                color: avgMarks && avgMarks !== 'N/A' ? '#03806a' : 'var(--text-muted, #94969f)',
+                                fontFamily: 'Inter, system-ui, sans-serif'
+                              }}
+                            >
+                              {avgMarksLoading ? '...' : (avgMarks || 'N/A')}
+                            </span>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        /* Gender Card (Student Directory) */
+                        <div
+                          style={{
+                            backgroundColor: 'var(--card-subtle, #f9f9fa)',
+                            padding: '8px 12px',
+                            borderRadius: 4,
+                            border: '1px solid var(--border, #eaeaec)'
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              color: 'var(--text-muted, #696e79)',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.05em'
+                            }}
+                          >
+                            Gender
+                          </div>
+                          <div style={{ marginTop: 2 }}>
+                            <span
+                              style={{
+                                fontSize: 12,
+                                fontWeight: 700,
+                                color:
+                                  genderStr.toLowerCase() === 'female'
+                                    ? '#e11d55'
+                                    : genderStr.toLowerCase() === 'male'
+                                    ? '#e11d55'
+                                    : 'var(--text, #3e4152)',
+                                backgroundColor:
+                                  genderStr.toLowerCase() === 'female'
+                                    ? 'rgba(225, 29, 85, 0.12)'
+                                    : genderStr.toLowerCase() === 'male'
+                                    ? 'rgba(225, 29, 85, 0.12)'
+                                    : 'var(--bg-card, #f5f5f6)',
+                                padding: '1px 6px',
+                                borderRadius: 4,
+                                display: 'inline-block'
+                              }}
+                            >
+                              {genderStr}
+                            </span>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Date of Birth Card */}
                       <div
