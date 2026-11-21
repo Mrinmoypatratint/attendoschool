@@ -78,7 +78,6 @@ export default function AccessControl() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="m-0 text-xl md:text-2xl font-extrabold text-slate-900 dark:text-slate-100">Permissions &amp; Access</h1>
-          <p className="m-0 mt-1 text-sm text-slate-500">Turn features off per role or per person, and control who can sign in. Changes apply within a minute.</p>
         </div>
         {scope.isSA && (
           <select value={scope.schoolId} onChange={(e) => scope.setSchoolId(e.target.value)} aria-label="School"

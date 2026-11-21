@@ -8,7 +8,6 @@ import {
   RotateCw,
   TrendingUp,
   FileText,
-  Sparkles,
   X
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -458,12 +457,7 @@ export function StudentResults() {
           >
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="student-subpage-title text-2xl font-bold text-slate-900 dark:text-white m-0">Result</h1>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-              <Sparkles size={12} /> Academic Session {academicSession}
-            </span>
-          </div>
+          <h1 className="student-subpage-title text-2xl font-bold text-slate-900 dark:text-white m-0">Result</h1>
         </div>
 
         {/* Action Controls */}

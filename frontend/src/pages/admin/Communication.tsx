@@ -1015,9 +1015,6 @@ export default function Communication() {
       <div className="as-communication-header-row flex flex-wrap items-center justify-between gap-3 mb-4" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 m-0" style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "var(--text, var(--foreground))" }}>Announcement</h1>
-          <p className="muted text-xs md:text-sm text-slate-500 m-0 mt-1" style={{ margin: '4px 0 0', fontSize: 13, color: "var(--text-muted, var(--muted-foreground))" }}>
-            Multi-channel institutional announcements and role-based audience broadcasts.
-          </p>
         </div>
       </div>
 

@@ -619,9 +619,6 @@ export default function Designations() {
             <h1 className="m-0 text-xl font-bold text-slate-900 dark:text-white">
               Staff Designations
             </h1>
-            <p className="m-0 mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Create and manage institutional designations. These will automatically appear in the Add Teacher designation dropdown.
-            </p>
           </div>
         </div>
 

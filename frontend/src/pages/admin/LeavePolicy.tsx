@@ -294,9 +294,6 @@ export default function LeavePolicy() {
               ADMIN CONFIGURATION
             </span>
           </div>
-          <p className="m-0 mt-1.5 text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
-            Define school leave types, allowed entitlement counts, and renewal frequency on a <b>Yearly</b> or <b>Half-Yearly</b> basis. All rules are fully dynamic.
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">

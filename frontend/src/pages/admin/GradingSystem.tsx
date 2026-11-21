@@ -672,9 +672,6 @@ export default function GradingSystem() {
               <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text-primary, #0f172a)' }}>
                 Grading System & Examination Evaluation
               </h1>
-              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary, #64748b)' }}>
-                Create exams, configure their evaluation basis (Marks, CGPA, Grade), and decide custom grading ranges (e.g. 90–100 = Grade A).
-              </p>
             </div>
           </div>
         </div>

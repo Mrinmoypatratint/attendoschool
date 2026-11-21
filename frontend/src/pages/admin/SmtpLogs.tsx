@@ -463,9 +463,6 @@ export default function SmtpLogs() {
               <h1 className="m-0 text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                 SMTP Email Activity Logs
               </h1>
-              <p className="m-0 text-xs text-slate-500 dark:text-slate-400">
-                School-isolated delivery audit trail. Every record dynamically reflects admission no. / employee ID, recipient name, email ID, and delivery status.
-              </p>
             </div>
           </div>
         </div>

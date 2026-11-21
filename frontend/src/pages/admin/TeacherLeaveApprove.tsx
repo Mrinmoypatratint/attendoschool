@@ -954,9 +954,6 @@ export default function TeacherLeaveApprove() {
           <h1 className="student-subpage-title text-2xl font-extrabold text-slate-900 dark:text-white my-1">
             Teacher's Leave Review
           </h1>
-          <p className="student-subpage-desc text-sm text-slate-500 dark:text-slate-400 m-0">
-            Review, approve, or reject leave applications submitted by faculty members across all departments.
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">

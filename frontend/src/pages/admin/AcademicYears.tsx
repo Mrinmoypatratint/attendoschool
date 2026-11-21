@@ -827,9 +827,6 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
         <h1 className="text-3xl font-extrabold m-0 text-slate-900 dark:text-white tracking-tight">
           Academic Calendar &amp; Holidays
         </h1>
-        <p className="muted m-0 mt-1.5 text-sm text-slate-500 dark:text-slate-400">
-          Authoritative institutional calendar: Configure academic sessions, weekly working days, weekend policies, gazetted holidays, and verify working day calculations without double counting.
-        </p>
       </div>
 
       {/* Tabs Navigation */}

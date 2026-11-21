@@ -459,9 +459,6 @@ export default function StudentPromotion() {
         <div>
           <p className="eyebrow m-0 mb-1 text-xs text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider">ACADEMIC TRANSITION</p>
           <h1 className="m-0 text-2xl font-bold text-slate-900 dark:text-white">Student Promotion</h1>
-          <p className="muted m-0 mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Transition students into a new academic session while preserving historical records and attendance.
-          </p>
         </div>
         <div className="flex gap-2 items-center flex-wrap">
           <button

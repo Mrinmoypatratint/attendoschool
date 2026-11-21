@@ -44,9 +44,6 @@ export default function Backup() {
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--text, #1c1f2e)' }}>
             Backups &amp; Data Security
           </h1>
-          <p style={{ margin: '3px 0 0', fontSize: 13, color: 'var(--text-secondary, #64748b)' }}>
-            System snapshot management, disaster recovery archives, and backup audit logs.
-          </p>
         </div>
       </div>
 
