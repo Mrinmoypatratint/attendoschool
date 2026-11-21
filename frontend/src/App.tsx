@@ -70,6 +70,7 @@ const StudentLeaveRequest = lazy(() => import('./pages/student/StudentLeaveReque
 const StudentProfile = lazy(() => import('./pages/student/StudentProfile').then(m => ({ default: m.StudentProfile })));
 import { StudentProfileHoverCard } from './components/StudentProfileHoverCard';
 import StudentCompletenessTab from './components/student/StudentCompletenessTab';
+import TeacherCompletenessTab from './components/teacher/TeacherCompletenessTab';
 import { TeacherProfileHoverCard } from './components/TeacherProfileHoverCard';
 import { formatGender } from './utils/gender';
 import { formatCapitalizedName, formatStudentFullName, formatTeacherFullName } from './utils/formatters';
@@ -8628,7 +8629,7 @@ function Students() {
                   ) : '—'}
                 </td>
                 <td>
-                  <StudentProfileHoverCard student={x} activeSession={activeSession} mode="student">
+                  <StudentProfileHoverCard student={x} activeSession={activeSession} mode="student" variant="directory">
                     <b style={{ textTransform: 'uppercase' }}>
                       <HighlightMatch text={String(x.name || '').toUpperCase()} query={search} />
                     </b>
@@ -10511,9 +10512,36 @@ function toDdMmYyyy(val: any): string {
   return s;
 }
 
+const FIELD_TO_TEACHER_INPUT_ID: Record<string, string> = {
+  first_name: 'teacher-form-first-name',
+  middle_name: 'teacher-form-middle-name',
+  last_name: 'teacher-form-last-name',
+  employee_id: 'teacher-form-employee-id',
+  email: 'teacher-form-email',
+  mobile: 'teacher-form-mobile',
+  phone: 'teacher-form-mobile',
+  designation: 'teacher-form-designation',
+  joining_date: 'teacher-form-joining-date',
+  joiningDate: 'teacher-form-joining-date',
+  gender: 'teacher-form-gender',
+  date_of_birth: 'teacher-form-dob',
+  dob: 'teacher-form-dob',
+  qualification: 'teacher-form-qualification',
+  address: 'teacher-form-address',
+  photo_url: 'teacher-form-photo',
+  assigned_class: 'teacher-form-class'
+};
+
 /* ────── Teachers ────── */
 function Teachers() {
   const { user } = useAuth();
+  const [teacherTab, setTeacherTab] = useState<'all' | 'completeness'>(() => {
+    const urlTab = new URLSearchParams(window.location.search).get('tab');
+    return (urlTab === 'completeness' || urlTab === 'missing-info' || urlTab === 'missing-information') ? 'completeness' : 'all';
+  });
+  const [completenessRefreshTrigger, setCompletenessRefreshTrigger] = useState<number>(0);
+  const pendingFocusFieldRef = useRef<string | null>(null);
+  const activeFocusAttemptRef = useRef<{ teacherId: string; fieldKey: string; cancelled: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(() => {
@@ -11017,6 +11045,115 @@ function Teachers() {
     };
   }
 
+  // One-click edit and redirect helper from Faculty Missing Information tab
+  const openEditTeacherWithFocus = useCallback((x: any, focusFieldKey?: string) => {
+    setTeacherTab('all');
+    const fullTeacher = rows.find(r => r.id === x.id) || x;
+    setEditingTeacher(fullTeacher);
+    const directAssign = allAssignments.find(a => a.teacher_id === fullTeacher.id);
+    const rawCls = fullTeacher.class_name || fullTeacher.class || (directAssign ? directAssign.class_number : '');
+    const rawSec = fullTeacher.section_name || fullTeacher.section || (directAssign ? directAssign.section_name : '');
+    const matchingClass = allocClasses.find(c => {
+      const cName = c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`;
+      const rawNum = String(c.class_number);
+      const target = String(rawCls || '').replace(/^Class\s*/i, '').trim();
+      return String(c.id) === String(fullTeacher.class_id) || cName.toLowerCase() === String(rawCls || '').toLowerCase() || rawNum === target;
+    });
+    const matchingSec = allocSections.find(s => {
+      return String(s.id) === String(fullTeacher.section_id) || (String(s.name).trim().toUpperCase() === String(rawSec || '').trim().toUpperCase() && (!matchingClass || String(s.class_id) === String(matchingClass.id)));
+    });
+    const cVal = rawCls || (matchingClass ? (matchingClass.class_number === -1 ? 'Class L KG' : matchingClass.class_number === 0 ? 'Class U KG' : `Class ${matchingClass.class_number}`) : '');
+    const sVal = rawSec || (matchingSec ? matchingSec.name : '');
+    const nameParts = (fullTeacher.name || '').trim().split(/\s+/);
+    let fName = fullTeacher.first_name || fullTeacher.firstName || '';
+    let mName = fullTeacher.middle_name || fullTeacher.middleName || '';
+    let lName = fullTeacher.last_name || fullTeacher.lastName || '';
+    if (!fName && nameParts.length > 0) {
+      if (nameParts.length === 1) {
+        fName = nameParts[0];
+      } else if (nameParts.length === 2) {
+        fName = nameParts[0];
+        lName = nameParts[1];
+      } else {
+        fName = nameParts[0];
+        mName = nameParts.slice(1, -1).join(' ');
+        lName = nameParts[nameParts.length - 1];
+      }
+    }
+    setF({
+      name: fullTeacher.name,
+      firstName: fName,
+      middleName: mName,
+      lastName: lName,
+      email: fullTeacher.email,
+      employeeId: fullTeacher.employee_id || fullTeacher.employeeId || fullTeacher.savior_no || fullTeacher.Savior_No || '',
+      saviorNo: fullTeacher.employee_id || fullTeacher.employeeId || fullTeacher.savior_no || fullTeacher.Savior_No || '',
+      mobile: fullTeacher.mobile || fullTeacher.phone || '',
+      gender: formatGender(fullTeacher.gender) || '',
+      joiningDate: toDdMmYyyy(fullTeacher.joining_date || fullTeacher.joiningDate),
+      joining_date: toDdMmYyyy(fullTeacher.joining_date || fullTeacher.joiningDate),
+      designation: fullTeacher.designation || 'Teacher',
+      class_id: matchingClass ? String(matchingClass.id) : (fullTeacher.class_id || ''),
+      class_name: cVal,
+      class: cVal,
+      section_id: matchingSec ? String(matchingSec.id) : (fullTeacher.section_id || ''),
+      section_name: sVal,
+      section: sVal,
+      is_active: fullTeacher.is_active !== false
+    });
+
+    pendingFocusFieldRef.current = focusFieldKey || null;
+    setOpen(true);
+  }, [rows, allAssignments, allocClasses, allocSections]);
+
+  useEffect(() => {
+    if (!open) {
+      if (activeFocusAttemptRef.current) {
+        activeFocusAttemptRef.current.cancelled = true;
+        activeFocusAttemptRef.current = null;
+      }
+      return;
+    }
+
+    if (pendingFocusFieldRef.current && editingTeacher?.id) {
+      const fieldKey = pendingFocusFieldRef.current;
+      const targetTeacherId = editingTeacher.id;
+      pendingFocusFieldRef.current = null;
+
+      const attempt = { teacherId: targetTeacherId, fieldKey, cancelled: false };
+      activeFocusAttemptRef.current = attempt;
+
+      const targetId = FIELD_TO_TEACHER_INPUT_ID[fieldKey] || `teacher-form-${fieldKey.replace(/_/g, '-')}`;
+      const startTime = performance.now();
+      const maxWaitMs = 2500;
+
+      const checkAndFocus = () => {
+        if (attempt.cancelled) return;
+        if (!editingTeacher || editingTeacher.id !== attempt.teacherId) return;
+
+        const el = document.getElementById(targetId) as HTMLElement | null;
+        if (el) {
+          try {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.focus();
+            el.classList.add('field-highlight-pulse');
+            setTimeout(() => {
+              if (el) el.classList.remove('field-highlight-pulse');
+            }, 2500);
+          } catch { }
+          activeFocusAttemptRef.current = null;
+          return;
+        }
+
+        if (performance.now() - startTime < maxWaitMs) {
+          requestAnimationFrame(checkAndFocus);
+        }
+      };
+
+      requestAnimationFrame(checkAndFocus);
+    }
+  }, [open, editingTeacher]);
+
   async function handleInitiateTeacherSave(e: React.FormEvent) {
     if (e && e.preventDefault) e.preventDefault();
     // STAGE 1 VALIDATION
@@ -11310,6 +11447,7 @@ function Teachers() {
           is_active: payload.is_active
         } : r));
         load();
+        setCompletenessRefreshTrigger(prev => prev + 1);
         setToastNotice({
           type: 'success',
           message: `Faculty member ${payload.name} updated successfully.`
@@ -11319,6 +11457,7 @@ function Teachers() {
         const created = res.data;
         setRows(prev => [created, ...prev.filter(r => r.id !== created.id)]);
         load();
+        setCompletenessRefreshTrigger(prev => prev + 1);
         try {
           localStorage.setItem('attendo_last_registered_teacher', JSON.stringify({
             name: created.name || payload.name,
@@ -11452,11 +11591,18 @@ function Teachers() {
   }, [allocDesignations, rows]);
 
   const filtered = rows.filter(r => {
-    const q = search.toLowerCase();
+    const q = search.trim().toLowerCase();
+    const joiningDateFormatted = toDdMmYyyy(r.joining_date || r.joiningDate) || '';
+    const allocSummary = getTeacherAllocSummary(r) || '';
     const matchesSearch = !q || (
-      r.name.toLowerCase().includes(q) ||
-      r.email.toLowerCase().includes(q) ||
-      String(r.employee_id || r.savior_no || '').toLowerCase().includes(q)
+      String(r.name || '').toLowerCase().includes(q) ||
+      String(r.email || '').toLowerCase().includes(q) ||
+      String(r.employee_id || r.savior_no || r.Savior_No || '').toLowerCase().includes(q) ||
+      String(r.mobile || r.phone || '').toLowerCase().includes(q) ||
+      String(r.designation || '').toLowerCase().includes(q) ||
+      String(r.gender || '').toLowerCase().includes(q) ||
+      joiningDateFormatted.toLowerCase().includes(q) ||
+      allocSummary.toLowerCase().includes(q)
     );
     const g = formatGender(r.gender);
     const matchesGender = !genderFilter || g === genderFilter;
@@ -11467,7 +11613,10 @@ function Teachers() {
 
   useEffect(() => {
     setDirectoryPage(1);
-  }, [search, genderFilter, designationFilter]);
+    if (search.trim()) {
+      scrollToDirectoryTop();
+    }
+  }, [search, genderFilter, designationFilter, scrollToDirectoryTop]);
 
   const totalDirectoryPages = Math.max(1, Math.ceil(filtered.length / (directoryPageSize || 25)));
   const currentDirectoryPage = Math.min(Math.max(1, directoryPage), totalDirectoryPages);
@@ -11891,8 +12040,80 @@ function Teachers() {
       </div>
     )}
 
-    {/* ── UNIFIED TEACHER DIRECTORY BOX WITH INNER SCROLLBAR ── */}
-    <div className="directory-box" ref={directoryTopRef}>
+    {/* ── SUB-TABS: ALL FACULTY VS MISSING INFORMATION ── */}
+    <div style={{ display: 'flex', gap: 4, borderBottom: '2px solid var(--border)', marginBottom: 16 }}>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={teacherTab === 'all'}
+        onClick={() => setTeacherTab('all')}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          borderBottom: teacherTab === 'all' ? '2px solid #e11d55' : '2px solid transparent',
+          marginBottom: -2,
+          padding: '10px 16px',
+          fontSize: 14,
+          fontWeight: teacherTab === 'all' ? 700 : 500,
+          color: teacherTab === 'all' ? '#e11d55' : 'var(--text-secondary, #696e79)',
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          transition: 'all 0.15s ease'
+        }}
+        id="teachers-tab-all"
+      >
+        <span>All Faculty</span>
+        <span style={{
+          fontSize: 11,
+          background: teacherTab === 'all' ? 'rgba(225, 29, 85, 0.12)' : 'var(--card-subtle, #f0f0f2)',
+          color: teacherTab === 'all' ? '#e11d55' : 'var(--text-secondary, #696e79)',
+          padding: '1px 7px',
+          borderRadius: 999,
+          fontWeight: 600
+        }}>
+          {rows.length}
+        </span>
+      </button>
+
+      <button
+        type="button"
+        role="tab"
+        aria-selected={teacherTab === 'completeness'}
+        onClick={() => setTeacherTab('completeness')}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          borderBottom: teacherTab === 'completeness' ? '2px solid #e11d55' : '2px solid transparent',
+          marginBottom: -2,
+          padding: '10px 16px',
+          fontSize: 14,
+          fontWeight: teacherTab === 'completeness' ? 700 : 500,
+          color: teacherTab === 'completeness' ? '#e11d55' : 'var(--text-secondary, #696e79)',
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          transition: 'all 0.15s ease'
+        }}
+        id="teachers-tab-completeness"
+      >
+        <AlertTriangle size={16} style={{ color: teacherTab === 'completeness' ? '#e11d55' : '#d97706' }} />
+        <span>Missing Information</span>
+      </button>
+    </div>
+
+    {teacherTab === 'completeness' ? (
+      <TeacherCompletenessTab
+        designations={allocDesignations}
+        refreshTrigger={completenessRefreshTrigger}
+        onEditTeacher={openEditTeacherWithFocus}
+      />
+    ) : (
+      <>
+        {/* ── UNIFIED TEACHER DIRECTORY BOX WITH INNER SCROLLBAR ── */}
+        <div className="directory-box" ref={directoryTopRef}>
       {/* Top Loading Progress Bar */}
       {loading && (
         <div style={{
@@ -12160,14 +12381,22 @@ function Teachers() {
                     onChange={() => toggleSelect(x.id)}
                   />
                 </td>
-                <td style={{ whiteSpace: 'nowrap' }}><code>{x.savior_no || x.employee_id || x.Savior_No || '—'}</code></td>
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  <code>
+                    <HighlightMatch text={x.savior_no || x.employee_id || x.Savior_No || '—'} query={search} />
+                  </code>
+                </td>
                 <td>
                   <TeacherProfileHoverCard teacher={x} allocationsSummary={getTeacherAllocSummary(x)}>
-                    <b style={{ textTransform: 'uppercase' }}>{String(x.name || '').toUpperCase()}</b>
+                    <b style={{ textTransform: 'uppercase' }}>
+                      <HighlightMatch text={String(x.name || '').toUpperCase()} query={search} />
+                    </b>
                   </TeacherProfileHoverCard>
                 </td>
                 <td style={{ whiteSpace: 'nowrap', fontSize: 12.5, color: 'var(--text-secondary, #535766)' }}>
-                  {toDdMmYyyy(x.joining_date || x.joiningDate) || '—'}
+                  {x.joining_date || x.joiningDate ? (
+                    <HighlightMatch text={toDdMmYyyy(x.joining_date || x.joiningDate)} query={search} />
+                  ) : '—'}
                 </td>
                 <td>
                   {x.gender ? (
@@ -12185,22 +12414,30 @@ function Teachers() {
                         border: `1px solid ${formatGender(x.gender) === 'Female' ? '#fcc3d1' : formatGender(x.gender) === 'Male' ? '#c9cee9' : '#eaeaec'}`
                       }}
                     >
-                      {formatGender(x.gender)}
+                      <HighlightMatch text={formatGender(x.gender)} query={search} />
                     </span>
                   ) : (
                     <span className="muted" style={{ fontSize: 12 }}>—</span>
                   )}
                 </td>
                 <td>
-                  <span className="teacher-designation" style={{ fontWeight: 500, color: 'var(--text-secondary, #d4d5d9)' }}>{x.designation || 'Teacher'}</span>
+                  <span className="teacher-designation" style={{ fontWeight: 500, color: 'var(--text-secondary, #d4d5d9)' }}>
+                    <HighlightMatch text={x.designation || 'Teacher'} query={search} />
+                  </span>
                 </td>
                 <td style={{ fontSize: 12, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  <span title={getTeacherAllocSummary(x)}>{getTeacherAllocSummary(x)}</span>
+                  <span title={getTeacherAllocSummary(x)}>
+                    <HighlightMatch text={getTeacherAllocSummary(x)} query={search} />
+                  </span>
                 </td>
                 <td style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={x.email}>
-                  {x.email}
+                  <HighlightMatch text={x.email} query={search} />
                 </td>
-                <td style={{ whiteSpace: 'nowrap', fontSize: 12.5 }}>{x.mobile || '—'}</td>
+                <td style={{ whiteSpace: 'nowrap', fontSize: 12.5 }}>
+                  {x.mobile ? (
+                    <HighlightMatch text={x.mobile} query={search} />
+                  ) : '—'}
+                </td>
                 <td><span className={`badge ${x.is_active !== false ? 'active' : 'inactive'}`}>{x.is_active !== false ? 'ACTIVE' : 'INACTIVE'}</span></td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                   <button
@@ -12390,6 +12627,8 @@ function Teachers() {
         </button>
       </div>
     )}
+    </>
+    )}
 
     {/* SINGLE TEACHER ADD / EDIT MODAL */}
     {open && (() => {
@@ -12473,6 +12712,7 @@ function Teachers() {
                   </span>
                   <input
                     required
+                    id="teacher-form-first-name"
                     placeholder="e.g. Rahul"
                     maxLength={15}
                     value={fnVal || ''}
@@ -12506,6 +12746,7 @@ function Teachers() {
                     Middle Name <span style={{ fontSize: 11, color: 'var(--text-muted, #94969f)', fontWeight: 'normal' }}>(Optional)</span>
                   </span>
                   <input
+                    id="teacher-form-middle-name"
                     placeholder="e.g. Kumar"
                     maxLength={15}
                     value={mnVal}
@@ -12532,6 +12773,7 @@ function Teachers() {
                   </span>
                   <input
                     required
+                    id="teacher-form-last-name"
                     placeholder="e.g. Sharma"
                     maxLength={20}
                     value={lnVal || ''}
@@ -12582,6 +12824,7 @@ function Teachers() {
                 </span>
                 <input
                   required
+                  id="teacher-form-email"
                   type="email"
                   placeholder="teacher@school.local"
                   value={f.email || ''}
@@ -12607,6 +12850,7 @@ function Teachers() {
                 </span>
                 <input
                   required
+                  id="teacher-form-employee-id"
                   placeholder="e.g. EMP001 or SAVIOR_101"
                   value={f.employeeId || f.saviorNo || ''}
                   style={{
@@ -12628,6 +12872,7 @@ function Teachers() {
                     Gender
                   </span>
                   <select
+                    id="teacher-form-gender"
                     value={formatGender(f.gender) || ''}
                     onChange={e => setF({ ...f, gender: formatGender(e.target.value) })}
                     style={{ width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
@@ -12645,6 +12890,7 @@ function Teachers() {
                   <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginTop: 4 }}>
                     <input
                       required
+                      id="teacher-form-joining-date"
                       type="text"
                       placeholder="DD-MM-YYYY (e.g. 01-07-2022)"
                       maxLength={10}
@@ -12713,6 +12959,7 @@ function Teachers() {
                   </span>
                   <select
                     required
+                    id="teacher-form-designation"
                     value={f.designation || ''}
                     onChange={e => setF({ ...f, designation: e.target.value })}
                     style={{ width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
@@ -12734,6 +12981,7 @@ function Teachers() {
                   </span>
                   <input
                     required
+                    id="teacher-form-mobile"
                     placeholder="10-digit mobile number"
                     maxLength={10}
                     inputMode="numeric"
@@ -12761,6 +13009,7 @@ function Teachers() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <label>Assign Class
                   <select
+                    id="teacher-form-class"
                     value={f.class_id || (allocClasses.find(c => {
                       const cName = c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`;
                       return cName.toLowerCase() === String(f.class_name || f.class || '').toLowerCase() || String(c.class_number) === String(f.class_name || f.class || '').replace(/^Class\s*/i, '').trim();
@@ -12809,6 +13058,7 @@ function Teachers() {
                 </label>
                 <label>Assign Section
                   <select
+                    id="teacher-form-section"
                     value={f.section_name || f.section || ''}
                     onChange={e => {
                       const sName = e.target.value;
@@ -20260,10 +20510,380 @@ function RouteFallbackLoader() {
   );
 }
 
+/* ────── First Login Password Change Modal ────── */
+function FirstLoginPasswordModal() {
+  const { user, updateUser } = useAuth();
+  const [currentPassword, setCurrentPassword] = useState('ChangeMe123!');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  const policy = useMemo(() => validatePassword(newPassword), [newPassword]);
+  const passwordsMatch = newPassword.length > 0 && newPassword === confirmPassword;
+  const isDefaultPassword = newPassword === 'ChangeMe123!';
+
+  useEffect(() => {
+    if (user?.id) {
+      const isDismissed = sessionStorage.getItem(`pwd_remind_later_${user.id}`) === 'true';
+      if (isDismissed) setDismissed(true);
+    }
+  }, [user?.id]);
+
+  if (!user || !user.mustChangePassword || dismissed) return null;
+
+  const handleDismiss = () => {
+    if (user?.id) {
+      sessionStorage.setItem(`pwd_remind_later_${user.id}`, 'true');
+    }
+    setDismissed(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!currentPassword) {
+      setError('Please provide your current temporary password.');
+      return;
+    }
+    if (isDefaultPassword) {
+      setError('Your new password cannot be the default "ChangeMe123!". Please choose a distinct secure password.');
+      return;
+    }
+    if (!policy.valid) {
+      setError(policy.message || 'Please fulfill all password requirements.');
+      return;
+    }
+    if (!passwordsMatch) {
+      setError('New password and confirmation do not match.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await api.put('/auth/change-password', {
+        currentPassword,
+        newPassword
+      });
+      if (res.data?.token) {
+        localStorage.setItem('attendance_token', res.data.token);
+      }
+      setSuccess(true);
+      setTimeout(() => {
+        updateUser({ mustChangePassword: false });
+      }, 1200);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Failed to update password. Please check your credentials.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      backgroundColor: 'rgba(15, 23, 42, 0.75)',
+      backdropFilter: 'blur(6px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 99999,
+      padding: '1rem',
+      animation: 'fadeIn 0.2s ease-out'
+    }}>
+      <div style={{
+        backgroundColor: '#ffffff',
+        borderRadius: '1rem',
+        maxWidth: '480px',
+        width: '100%',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        overflow: 'hidden',
+        border: '1px solid #e2e8f0',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        <div style={{
+          padding: '1.25rem 1.5rem',
+          background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
+          color: '#ffffff',
+          position: 'relative'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <ShieldCheck size={22} color="#ffffff" />
+            </div>
+            <div>
+              <h2 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: '#ffffff' }}>First Login Security Setup</h2>
+              <p style={{ fontSize: '0.825rem', margin: '0.2rem 0 0', color: 'rgba(255, 255, 255, 0.85)' }}>
+                Protect your account & set your personal password
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ padding: '1.5rem' }}>
+          {success ? (
+            <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+              <div style={{
+                width: '56px',
+                height: '56px',
+                borderRadius: '50%',
+                backgroundColor: '#dcfce7',
+                color: '#16a34a',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem'
+              }}>
+                <CheckCircle2 size={32} />
+              </div>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#166534', margin: '0 0 0.5rem' }}>
+                Password Updated Successfully!
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: '#4b5563', margin: 0 }}>
+                Your account is now secure. Returning to dashboard...
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{
+                fontSize: '0.85rem',
+                color: '#475569',
+                backgroundColor: '#f1f5f9',
+                padding: '0.75rem 1rem',
+                borderRadius: '0.5rem',
+                lineHeight: 1.4
+              }}>
+                Welcome, <strong>{user.name}</strong>! Your account was initialized with the default temporary password (<code>ChangeMe123!</code>). Please choose a new secure password.
+              </div>
+
+              {error && (
+                <div style={{
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '0.5rem',
+                  padding: '0.75rem 1rem',
+                  color: '#991b1b',
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '0.5rem'
+                }}>
+                  <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
+                  Current Temporary Password
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showCurrent ? 'text' : 'password'}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '0.625rem 2.5rem 0.625rem 0.75rem',
+                      borderRadius: '0.375rem',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.875rem',
+                      boxSizing: 'border-box'
+                    }}
+                    placeholder="Enter current password (ChangeMe123!)"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrent(!showCurrent)}
+                    style={{
+                      position: 'absolute',
+                      right: '0.75rem',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#64748b'
+                    }}
+                  >
+                    {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
+                  New Secure Password
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showNew ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '0.625rem 2.5rem 0.625rem 0.75rem',
+                      borderRadius: '0.375rem',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.875rem',
+                      boxSizing: 'border-box'
+                    }}
+                    placeholder="Min 8 chars, 1 uppercase, 1 number, 1 symbol"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNew(!showNew)}
+                    style={{
+                      position: 'absolute',
+                      right: '0.75rem',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#64748b'
+                    }}
+                  >
+                    {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+
+                {newPassword.length > 0 && (
+                  <div style={{
+                    marginTop: '0.5rem',
+                    padding: '0.6rem 0.75rem',
+                    backgroundColor: '#f8fafc',
+                    borderRadius: '0.375rem',
+                    border: '1px solid #e2e8f0',
+                    fontSize: '0.75rem',
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '0.35rem'
+                  }}>
+                    <span style={{ color: policy.hasMinLength ? '#16a34a' : '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Check size={12} /> 8+ Characters
+                    </span>
+                    <span style={{ color: policy.hasUpperCase ? '#16a34a' : '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Check size={12} /> Uppercase (A-Z)
+                    </span>
+                    <span style={{ color: policy.hasLowerCase ? '#16a34a' : '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Check size={12} /> Lowercase (a-z)
+                    </span>
+                    <span style={{ color: policy.hasNumber ? '#16a34a' : '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Check size={12} /> Number (0-9)
+                    </span>
+                    <span style={{ color: policy.hasSpecialChar ? '#16a34a' : '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Check size={12} /> Symbol (!@#$)
+                    </span>
+                    <span style={{ color: !isDefaultPassword ? '#16a34a' : '#dc2626', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Check size={12} /> Not Default
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '0.625rem 0.75rem',
+                    borderRadius: '0.375rem',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.875rem',
+                    boxSizing: 'border-box'
+                  }}
+                  placeholder="Re-enter your new password"
+                />
+                {confirmPassword.length > 0 && (
+                  <p style={{
+                    fontSize: '0.75rem',
+                    margin: '0.25rem 0 0',
+                    color: passwordsMatch ? '#16a34a' : '#dc2626',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    {passwordsMatch ? <Check size={12} /> : <AlertCircle size={12} />}
+                    {passwordsMatch ? 'Passwords match' : 'Passwords do not match'}
+                  </p>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={handleDismiss}
+                  disabled={loading}
+                  style={{
+                    padding: '0.55rem 1rem',
+                    fontSize: '0.825rem',
+                    fontWeight: 500,
+                    color: '#64748b',
+                    backgroundColor: 'transparent',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '0.375rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Remind Me Later
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading || !policy.valid || !passwordsMatch || isDefaultPassword}
+                  style={{
+                    padding: '0.55rem 1.25rem',
+                    fontSize: '0.825rem',
+                    fontWeight: 600,
+                    color: '#ffffff',
+                    backgroundColor: (!policy.valid || !passwordsMatch || isDefaultPassword || loading) ? '#94a3b8' : '#4f46e5',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    cursor: (!policy.valid || !passwordsMatch || isDefaultPassword || loading) ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  {loading && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />}
+                  Save & Secure Account
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ────── Routes ────── */
 function App() {
   return (
     <Suspense fallback={<RouteFallbackLoader />}>
+      <FirstLoginPasswordModal />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/landing" element={<Navigate to="/" replace />} />

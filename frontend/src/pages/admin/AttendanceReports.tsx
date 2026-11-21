@@ -1405,7 +1405,7 @@ export default function AttendanceReports({
                     style={{ cursor: 'pointer', width: 16, height: 16 }}
                   />
                 </td>
-                <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 600, color: "var(--text, var(--foreground))" }}><PersonProfileLink kind="student" id={r.student_id} name={r.student_name} person={{ ...r, roll_number: r.roll, roll: r.roll } as any} activeSession={sessions.find(s => s.id === selectedSession)?.name || sessions[0]?.name} mode="report" /></td>
+                <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 600, color: "var(--text, var(--foreground))" }}><PersonProfileLink kind="student" id={r.student_id} name={r.student_name} person={{ ...r, roll_number: r.roll, roll: r.roll } as any} activeSession={sessions.find(s => s.id === selectedSession)?.name || sessions[0]?.name} mode="report" variant="attendance" /></td>
                 <td style={{ padding: '12px 14px', fontSize: 13, color: "var(--text-muted, var(--muted-foreground))" }}>{r.roll}</td>
                 <td style={{ padding: '12px 14px', fontSize: 13, color: "var(--text-secondary, var(--muted-foreground))" }}>{r.class_name || '-'}</td>
                 <td style={{ padding: '12px 14px', fontSize: 13, color: "var(--text-secondary, var(--muted-foreground))" }}>{r.section_name || '-'}</td>
@@ -1638,7 +1638,7 @@ export default function AttendanceReports({
                 <tbody>
                   {filteredRows.map((r, i) => (
                     <tr key={r.student_id || i} style={{ borderBottom: "1px solid var(--border, var(--border))" }}>
-                      <td style={{ padding: '8px 12px', fontWeight: 600, color: "var(--text, var(--foreground))" }}><PersonProfileLink kind="student" id={r.student_id} name={r.student_name} person={{ ...r, roll_number: r.roll, roll: r.roll } as any} activeSession={sessions.find(s => s.id === selectedSession)?.name || sessions[0]?.name} mode="report" /></td>
+                      <td style={{ padding: '8px 12px', fontWeight: 600, color: "var(--text, var(--foreground))" }}><PersonProfileLink kind="student" id={r.student_id} name={r.student_name} person={{ ...r, roll_number: r.roll, roll: r.roll } as any} activeSession={sessions.find(s => s.id === selectedSession)?.name || sessions[0]?.name} mode="report" variant="attendance" /></td>
                       <td style={{ padding: '8px 12px', color: "var(--text-muted, var(--muted-foreground))" }}>{r.roll}</td>
                       <td style={{ padding: '8px 12px', color: "var(--text-secondary, var(--muted-foreground))" }}>{r.class_name || '-'}</td>
                       <td style={{ padding: '8px 12px', color: "var(--text-secondary, var(--muted-foreground))" }}>{r.section_name || '-'}</td>
@@ -1902,7 +1902,7 @@ export default function AttendanceReports({
                         <tr key={r.rowNum} style={{ borderBottom: "1px solid var(--border, var(--border))" }}>
                           <td style={{ padding: '6px 10px', color: "var(--text-muted, var(--muted-foreground))" }}>{r.rowNum}</td>
                           <td style={{ padding: '6px 10px', fontFamily: 'monospace', color: "var(--text, var(--foreground))" }}>{r.admissionNumber}</td>
-                          <td style={{ padding: '6px 10px', fontWeight: 600, color: "var(--text, var(--foreground))" }}><PersonProfileLink kind="student" id={r.studentId} name={r.studentName} person={r as any} /></td>
+                          <td style={{ padding: '6px 10px', fontWeight: 600, color: "var(--text, var(--foreground))" }}><PersonProfileLink kind="student" id={r.studentId} name={r.studentName} person={r as any} mode="report" variant="attendance" /></td>
                           <td style={{ padding: '6px 10px' }}>
                             <span style={{
                               padding: '2px 6px',
