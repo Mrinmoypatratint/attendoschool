@@ -7965,7 +7965,6 @@ function Students() {
         >
           <ArrowLeft size={16} /> <span>Dashboard</span>
         </Link>
-        <p className="eyebrow">STUDENT DIRECTORY</p>
         <h1 style={{ margin: 0, fontSize: 24 }}>Students Directory</h1>
       </div>
       {(user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN') ? (
@@ -11787,7 +11786,6 @@ function Teachers() {
         >
           <ArrowLeft size={16} /> <span>Dashboard</span>
         </Link>
-        <p className="eyebrow">FACULTY & STAFF</p>
         <h1 style={{ margin: 0, fontSize: 24 }}>Teachers & Faculty</h1>
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -16316,10 +16314,6 @@ function Attendance() {
           >
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: existingSession ? "var(--success)" : "var(--warning)" }}></span>
-            <p className="eyebrow" style={{ margin: 0 }}>ATTENDANCE CONTROL & RE-ATTENDANCE STATION</p>
-          </div>
           <h1 style={{ margin: 0, fontSize: 24 }}>Daily Class Attendance</h1>
         </div>
       </div>
@@ -19716,7 +19710,7 @@ function SchoolProfile() {
 
                 {/* Title & Info */}
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
                     <h3 style={{ margin: 0, fontSize: 18, fontWeight: 750, color: 'var(--text, #1c1f2e)' }}>
                       {adminName}
                     </h3>
@@ -19724,9 +19718,6 @@ function SchoolProfile() {
                       <ShieldCheck size={12} /> School Admin Only
                     </span>
                   </div>
-                  <p className="muted" style={{ margin: '0 0 10px', fontSize: 13 }}>
-                    Official administrator display picture and institutional profile badge. Only the School Admin has privileges to upload or modify this image.
-                  </p>
 
                   {/* Action Buttons */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>

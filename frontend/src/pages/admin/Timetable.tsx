@@ -675,7 +675,6 @@ export default function Timetable() {
         >
           <ArrowLeft size={16} /> <span>Dashboard</span>
         </Link>
-        <p className="eyebrow text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">{isSchoolAdmin ? 'TIMETABLE MANAGEMENT' : 'FACULTY TIMETABLE'}</p>
         <h1 className="m-0 text-2xl font-bold text-slate-900 dark:text-white">{isSchoolAdmin ? 'Weekly Class Timetable' : 'My Teaching Timetable'}</h1>
       </div>
       {isSchoolAdmin && (

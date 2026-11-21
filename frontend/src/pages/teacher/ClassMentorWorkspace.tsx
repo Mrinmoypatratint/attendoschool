@@ -1185,9 +1185,6 @@ export function ClassMentorWorkspace() {
               Mentor Access
             </span>
           </div>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0' }}>
-            Inspect section attendance reports and publish academic examination results.
-          </p>
         </div>
 
         {/* Section Switcher (Supports multiple mentored sections) */}
@@ -1965,36 +1962,6 @@ export function ClassMentorWorkspace() {
                     <Plus size={15} />
                     <span>Publish Assessment Marks</span>
                   </button>
-                </div>
-              </div>
-
-              {/* KPI Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <div className="flex items-center justify-between text-xs text-slate-500 mb-1 font-semibold">
-                    <span>Published Assessments</span>
-                    <Award size={15} className="text-blue-600" />
-                  </div>
-                  <div className="text-2xl font-black text-slate-900 dark:text-white">{examStats.totalExams}</div>
-                  <div className="text-[11px] text-slate-400 mt-1">Subject examination papers recorded</div>
-                </div>
-
-                <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <div className="flex items-center justify-between text-xs text-slate-500 mb-1 font-semibold">
-                    <span>Total Graded Entries</span>
-                    <Users size={15} className="text-emerald-600" />
-                  </div>
-                  <div className="text-2xl font-black text-slate-900 dark:text-white">{examStats.totalGraded}</div>
-                  <div className="text-[11px] text-slate-400 mt-1">Student evaluations published</div>
-                </div>
-
-                <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <div className="flex items-center justify-between text-xs text-slate-500 mb-1 font-semibold">
-                    <span>Average Class Score</span>
-                    <TrendingUp size={15} className="text-sky-600" />
-                  </div>
-                  <div className="text-2xl font-black text-slate-900 dark:text-white">{examStats.avgMarks}</div>
-                  <div className="text-[11px] text-slate-400 mt-1">Cumulative section performance</div>
                 </div>
               </div>
 
