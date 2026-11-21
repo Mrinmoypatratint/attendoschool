@@ -86,6 +86,7 @@ export const FEATURES: FeatureDef[] = [
   F('photo_approvals', 'Photo approvals', 'Profile photo change requests and reviews'),
   F('promotions', 'Student promotions', 'Promote students to the next class', { dependsOn: ['students'] }),
   F('analytics', 'Analytics', 'School analytics'),
+  F('exams_results', 'Exams, grading & results', 'Exams, exam marks, grading system and result publishing'),
   F('parent_portal', 'Parent portal', 'Parent portal and parent onboarding'),
   F('student_portal', 'Student portal', 'Student dashboard and exams'),
 ];
@@ -118,7 +119,7 @@ export const PERMISSIONS: PermissionDef[] = [
   PERM('students.create', 'students', 'Add / import students', [AD]),
   PERM('students.edit', 'students', 'Edit students', [AD]),
   PERM('students.delete', 'students', 'Delete students', [AD], { dangerous: true }),
-  PERM('students.export', 'students', 'Export student list', ALL, { knownIssue: HOLE }),
+  PERM('students.export', 'students', 'Export student list', [AD, T]),
   PERM('parents.manage', 'parent_portal', 'Onboard & link parents', [AD]),
   // teachers / designations
   PERM('teachers.view', 'teachers', 'View teachers', [AD, T]),
@@ -135,7 +136,7 @@ export const PERMISSIONS: PermissionDef[] = [
   PERM('academic_years.view', 'classes_subjects', 'View academic years', ALL),
   PERM('academic_years.manage', 'classes_subjects', 'Manage academic years', [AD], { dangerous: true }),
   // calendar
-  PERM('calendar.view', 'academic_calendar', 'View academic calendar', [AD, T]),
+  PERM('calendar.view', 'academic_calendar', 'View academic calendar', ALL),
   PERM('calendar.manage', 'academic_calendar', 'Manage holidays & working days', [AD]),
   // timetable
   PERM('timetable.view', 'timetable', 'View timetable', ALL),
@@ -148,9 +149,9 @@ export const PERMISSIONS: PermissionDef[] = [
   PERM('attendance.edit_past', 'attendance', 'Re-take (re-attendance) past sessions', [AD, T], { dangerous: true }),
   PERM('attendance.audit.export', 'attendance', 'Export attendance audit trail', [AD, T]),
   PERM('attendance.offline.sync', 'offline_attendance', 'Offline attendance sync', [AD, T]),
-  PERM('attendance.offline.import', 'offline_attendance', 'Import offline attendance', ALL, { knownIssue: HOLE }),
-  PERM('attendance.reports.view', 'attendance_reports', 'View attendance reports', ALL, { knownIssue: HOLE }),
-  PERM('attendance.reports.export', 'attendance_reports', 'Export attendance reports', ALL, { knownIssue: HOLE }),
+  PERM('attendance.offline.import', 'offline_attendance', 'Import offline attendance', [AD, T]),
+  PERM('attendance.reports.view', 'attendance_reports', 'View attendance reports', [AD, T]),
+  PERM('attendance.reports.export', 'attendance_reports', 'Export attendance reports', [AD, T]),
   PERM('attendance.corrections.view', 'attendance_corrections', 'View correction requests', ALL),
   PERM('attendance.corrections.request', 'attendance_corrections', 'Request attendance corrections', ALL),
   PERM('attendance.corrections.review', 'attendance_corrections', 'Review attendance corrections', [AD]),
@@ -178,21 +179,26 @@ export const PERMISSIONS: PermissionDef[] = [
   PERM('notifications.settings.manage', 'notification_logs', 'Manage channels, templates & SMTP', [AD], { dangerous: true }),
   PERM('notifications.attendance_email.send', 'notification_logs', 'Send attendance e-mails', [AD, T]),
   // leave
-  PERM('leave.student.view', 'student_leave', 'View student leave requests', ALL, { knownIssue: HOLE }),
-  PERM('leave.student.review', 'student_leave', 'Approve / reject student leave', ALL, { knownIssue: HOLE }),
+  PERM('leave.student.view', 'student_leave', 'View student leave requests', [AD, T]),
+  PERM('leave.student.review', 'student_leave', 'Approve / reject student leave', [AD, T]),
   PERM('student.leave.apply', 'student_leave', 'Apply for student leave', ALL),
   PERM('leave.teacher.apply', 'teacher_leave', 'Apply for teacher leave', ALL),
-  PERM('leave.teacher.view', 'teacher_leave', 'View / export teacher leave', ALL, { knownIssue: HOLE }),
+  PERM('leave.teacher.view', 'teacher_leave', 'View / export teacher leave', [AD]),
   PERM('leave.teacher.review', 'teacher_leave', 'Approve / reject teacher leave', [AD]),
   PERM('leave.policy.view', 'leave_policy', 'View leave policy', [AD, T]),
   PERM('leave.policy.manage', 'leave_policy', 'Manage leave policy', [AD]),
   // photos
   PERM('photos.request', 'photo_approvals', 'Request photo change', ALL),
-  PERM('photos.view', 'photo_approvals', 'View photo requests', ALL, { knownIssue: HOLE }),
-  PERM('photos.review', 'photo_approvals', 'Approve / reject photos', ALL, { knownIssue: HOLE }),
+  PERM('photos.view', 'photo_approvals', 'View photo requests', [AD, T]),
+  PERM('photos.review', 'photo_approvals', 'Approve / reject photos', [AD, T]),
   // promotions / analytics / portals
   PERM('promotions.view', 'promotions', 'View promotion candidates', ALL),
   PERM('promotions.manage', 'promotions', 'Execute promotions', [AD], { dangerous: true }),
+  PERM('exams.view', 'exams_results', 'View exams & marks', [AD, T]),
+  PERM('exams.manage', 'exams_results', 'Change exam status / delete exams', [AD, T], { dangerous: true }),
+  PERM('results.publish', 'exams_results', 'Publish results', [AD, T], { dangerous: true }),
+  PERM('grading.view', 'exams_results', 'View grading system', [AD, T]),
+  PERM('grading.manage', 'exams_results', 'Manage grading system', [AD, T]),
   PERM('analytics.view', 'analytics', 'View analytics', ALL),
   PERM('analytics.manage', 'analytics', 'Capture analytics snapshots', [AD]),
   PERM('parent.portal.view', 'parent_portal', 'Parent portal', [P]),
@@ -275,7 +281,7 @@ export const ROUTE_BINDINGS: RouteBinding[] = [
   // ---- core ----
   B(ANY, /^\/api\/permissions(\/|$)/, 'access_control', 'access.manage', 'legacy permission API'),
   B('GET', /^\/api\/subscriptions(\/|$)/, 'billing', 'billing.view'),
-  B('POST', /^\/api\/subscriptions\/run-worker$/, 'billing', 'billing.view', 'known issue: any role can run worker'),
+  B('POST', /^\/api\/subscriptions\/run-worker$/, 'billing', 'billing.view', 'SUPER_ADMIN only (2026-11-20 fix)'),
   B('GET', /^\/api\/invoices(\/|$)/, 'billing', 'billing.view'),
   B(W, /^\/api\/invoices(\/|$)/, 'billing', 'billing.pay'),
   B('GET', /^\/api\/dashboard\/(school|overview)$/, 'dashboard', 'dashboard.view'),
@@ -286,6 +292,8 @@ export const ROUTE_BINDINGS: RouteBinding[] = [
   B(ANY, /^\/api\/student\/(me|profile|change-password|photo)$/, 'profile', 'profile.self'),
 
   // ---- students / parents ----
+  B('GET', /^\/api\/students\/completeness\/export$/, 'students', 'students.export'),
+  B('GET', /^\/api\/students\/completeness\//, 'students', 'students.view'),
   B('GET', /^\/api\/students\/template$/, 'students', 'students.create'),
   B('GET', new RegExp(`^\\/api\\/(students|people\\/students)(\\/${X})?$|^\\/api\\/people$`), 'students', 'students.view'),
   B('POST', /^\/api\/students(\/bulk-import)?$/, 'students', 'students.create'),
@@ -340,6 +348,13 @@ export const ROUTE_BINDINGS: RouteBinding[] = [
   B('GET', /^\/api\/attendance-corrections(\/|$)/, 'attendance_corrections', 'attendance.corrections.view'),
   B('POST', /^\/api\/attendance-corrections$/, 'attendance_corrections', 'attendance.corrections.request'),
   B('POST', new RegExp(`^\\/api\\/attendance-corrections\\/${X}\\/review$`), 'attendance_corrections', 'attendance.corrections.review'),
+
+  // ---- exams, grading & results (mentor router + teacher router; aliases folded by canonicalPath) ----
+  B('GET', /^\/api\/teacher\/mentor\/(exams|exam-marks)$/, 'exams_results', 'exams.view'),
+  B('PATCH|DELETE', new RegExp(`^\/api\/teacher\/mentor\/exams\/${X}(\/status)?$`), 'exams_results', 'exams.manage'),
+  B('POST', /^\/api\/teacher\/mentor\/publish-results$/, 'exams_results', 'results.publish'),
+  B('GET', /^\/api\/teacher\/mentor\/grading-/, 'exams_results', 'grading.view'),
+  B(W, /^\/api\/teacher\/mentor\/grading-/, 'exams_results', 'grading.manage'),
 
   // ---- mentors / temporary assignments ----
   B(ANY, /^\/api\/admin\/mentors$/, 'mentors_and_temporary_assignments', 'mentors.manage'),
@@ -408,7 +423,14 @@ export function canonicalPath(rawPath: string): string {
     .replace(/^\/api\/attendance(?=\/|$)/, '/api/teacher')
     .replace(/^\/designations(?=\/|$)/, '/api/designations')
     .replace(/^\/leave-policies(?=\/|$)/, '/api/leave-policies')
-    .replace(/^\/demo-request(?=\/|$)/, '/api/demo-request');
+    .replace(/^\/demo-request(?=\/|$)/, '/api/demo-request')
+    // mentor router is mounted at /api AND /api/teacher/mentor (array paths) → one canonical spelling
+    .replace(/^\/api\/teacher\/mentor\/teacher\/mentor(?=\/|$)/, '/api/teacher/mentor')
+    .replace(/^\/api(\/teacher\/mentor)?\/(admin\/mentors|mentors)$/, '/api/admin/mentors')
+    .replace(/^\/api\/(my-classes|attendance-analysis)$/, '/api/teacher/mentor/$1')
+    .replace(/^\/api(?:\/teacher(?:\/mentor)?)?\/(exams|exam-marks|publish-results)(?=\/|$)/, '/api/teacher/mentor/$1')
+    .replace(/^\/api\/(grading-exams|grading-ranges|grading-system)(?=\/|$)/, '/api/teacher/mentor/$1')
+    .replace(/^\/api\/teacher\/mentor\/grading-system\/(exams|ranges)$/, '/api/teacher/mentor/grading-$1');
 }
 
 export function findRouteBinding(method: string, rawPath: string): RouteBinding | null {

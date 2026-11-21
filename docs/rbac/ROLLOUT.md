@@ -20,14 +20,34 @@ Nothing changes for any user until (a) the migration is applied, (b) someone fli
 (c) `RBAC_ENFORCEMENT=enforce`. With empty tables every role has exactly today's access (proven by
 `backend/tests/rbac-baseline.test.ts` in all three modes).
 
+## 0. Current state (2026-11-20)
+
+> **Automated since 2026-11-20:** every production deploy runs `node backend/dist/scripts/applyRbacMigration.js --apply`
+> (idempotent; a failure aborts the deploy before the PM2 reload, so the old version keeps serving), and
+> `ecosystem.config.cjs` sets `RBAC_ENFORCEMENT` to **`enforce`** (code default is also `enforce`), so every toggle takes
+> effect within the documented TTL with no manual step. Migration 051 was applied to production on 2026-11-20.
+> Rollback: `RBAC_ENFORCEMENT=off pm2 reload ecosystem.config.cjs --env production --update-env` (or `shadow` to log only).
+
 ## 1. Deploy the code (default mode = shadow)
 
-`RBAC_ENFORCEMENT` defaults to `shadow` when unset. Shadow computes every decision, never blocks, and
+`RBAC_ENFORCEMENT` now defaults to `enforce` (set explicitly in `ecosystem.config.cjs`). Historical note: it originally defaulted to `shadow`. Shadow computes every decision, never blocks, and
 logs any would-be denial. Deploying without the migration is safe: the app logs one warning
 `[RBAC] RBAC tables are not installed …`, serves legacy behaviour, `/api/health` shows
 `"rbac": "NOT_INSTALLED"`, and RBAC write endpoints return `503 ACCESS_STORE_UNAVAILABLE`.
 
 ## 2. Apply the migration (manual — the deploy workflow does NOT run migrations)
+
+> **Production database (checked 2026-11-20): it has no `schema_migrations` table**, so `npm run db:migrate` would try to
+> replay every migration. Use the targeted script instead — it applies only 051, in one transaction, and verifies:
+>
+> ```bash
+> cd backend
+> npx tsx src/scripts/applyRbacMigration.ts           # dry run (changes nothing)
+> npx tsx src/scripts/applyRbacMigration.ts --apply   # apply + verify
+> ```
+>
+> Until this runs, `/#/permissions` shows "Access-control storage is not installed" and nothing can be saved.
+
 
 On the server, against the production database, after a backup:
 
@@ -93,22 +113,22 @@ The tables can stay; they are ignored. Data is never deleted by a feature switch
 with or without Redis. Existing tokens of disabled users are rejected within that window (JWTs remain valid
 for 30 days otherwise — see known issues).
 
-## Known issues found during the audit (not fixed — need owner decision)
+## Known issues found during the audit — all fixed (2026-11-20)
 
-These are legacy behaviours kept for backward compatibility (R1). Each is a separately toggleable permission,
-so a school admin can already switch them off per role:
+| Issue | Fix | Test |
+| --- | --- | --- |
+| Login demo fallback accepted any password ≥ 4 chars | production accepts only exact demo passwords, no synthesis | `tests/auth-demo-fallback.test.ts` |
+| `/api/attendance-reports/*` + `import-offline` open to every role, `?schoolId` honoured for any role | router `requireRoles('SUPER_ADMIN','SCHOOL_ADMIN','TEACHER')`; only SUPER_ADMIN may pick the school | `tests/rbac-security-fixes.test.ts` (bug 4) |
+| Student-leave / photo review queues reachable by STUDENT/PARENT | `requireRoles('SCHOOL_ADMIN','SUPER_ADMIN','TEACHER')` on list/approve/reject/seen/mark-all-seen | same |
+| `POST /reviews/leaves` trusted body `studentId` | a STUDENT always applies for themselves | code review |
+| Teacher-leave list / export open to any role | `requireRoles('SCHOOL_ADMIN','SUPER_ADMIN')` (teachers keep `/teacher-leaves/my`) | same |
+| `POST /api/health/email-test` public | `requireAuth + SUPER_ADMIN` | same |
+| `POST /api/subscriptions/run-worker` open to any role | `SUPER_ADMIN` only | same |
+| `GET /api/analytics/export-students` open to any school role | staff only | same |
+| `createParent` writes a non-existent `users.active` column | **still open** (pre-existing schema mismatch; not an access issue) | — |
 
-1. ~~Login demo fallback accepted any password ≥ 4 characters (incl. the demo SUPER_ADMIN) and synthesised accounts.~~
-   **Fixed** (2026-11-08, `tests/auth-demo-fallback.test.ts`): in production only a demo account's exact stored password
-   is accepted and nothing is synthesised; development keeps the demo conveniences. Remaining: the demo accounts and their
-   passwords are still hard-coded in `backend/src/store/demoUsers.ts` — rotate/remove them for production (owner decision).
-2. `/api/attendance-reports/*` and `POST /api/attendance-reports/import-offline`: no role check and `?schoolId` is honoured for any role (cross-tenant read/write).
-3. `reviews.ts` student-leave and photo approve/reject: STUDENT/PARENT tokens fall into the admin branch; `POST /reviews/leaves` trusts body `studentId`.
-4. `GET /reviews/teacher-leaves` and `/export-excel`: any school role can list/export teacher leaves.
-5. `POST /api/health/email-test` is public and sends mail through the platform SMTP to any address.
-6. `POST /api/subscriptions/run-worker`: any authenticated role can run the global subscription worker.
-7. `GET /api/analytics/export-students`: any school role can export the student list.
-8. `parentOnboardingService.createParent` inserts into a `users.active` column that does not exist in `schema.sql` (pre-existing; untouched apart from tenant scoping).
+Catalog ceilings for the affected permissions were narrowed to match (restrict-only still holds; baseline deviations are
+recorded in `backend/tests/fixtures/rbac-baseline.approved-changes.json`).
 
 ## Fixed in this change (P6)
 

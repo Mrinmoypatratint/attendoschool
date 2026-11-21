@@ -48,7 +48,7 @@ export function ToggleSwitch({
         type="button" role="switch" aria-checked={value} aria-label={label} aria-busy={pending}
         aria-disabled={isDisabled} disabled={isDisabled} onClick={click} data-testid={testId}
         className={`relative inline-flex shrink-0 ${w} rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${
-          value ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'} ${isDisabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+          value ? 'bg-emerald-500 hover:bg-emerald-500' : 'bg-slate-300 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-600'} ${isDisabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
       >
         <span className={`absolute top-0.5 left-0.5 ${knob} rounded-full bg-white shadow transition-transform flex items-center justify-center ${value ? shift : ''}`}>
           {pending && <Loader2 size={11} className="animate-spin text-slate-500" />}
@@ -79,9 +79,9 @@ export function TriState({
     finally { setPending(false); setOptimistic(null); }
   };
   const opts: { v: TriValue; text: string; cls: string }[] = [
-    { v: 'INHERIT', text: labels?.INHERIT || 'Inherit', cls: 'bg-slate-600 text-white' },
-    { v: 'ALLOW', text: labels?.ALLOW || 'Allow', cls: 'bg-emerald-600 text-white' },
-    { v: 'DENY', text: labels?.DENY || 'Deny', cls: 'bg-rose-600 text-white' },
+    { v: 'INHERIT', text: labels?.INHERIT || 'Inherit', cls: 'bg-slate-600 hover:bg-slate-600 text-white' },
+    { v: 'ALLOW', text: labels?.ALLOW || 'Allow', cls: 'bg-emerald-600 hover:bg-emerald-600 text-white' },
+    { v: 'DENY', text: labels?.DENY || 'Deny', cls: 'bg-rose-600 hover:bg-rose-600 text-white' },
   ];
   return (
     <div role="radiogroup" aria-label={label} title={lockReason || label} data-testid={testId}
@@ -141,7 +141,7 @@ export function ConfirmChangeModal({ req, onCancel, onConfirm }: {
             <AlertTriangle size={20} className={danger ? 'text-rose-600' : 'text-amber-500'} />
             <h3 className="m-0 text-base font-extrabold text-slate-900 dark:text-slate-100">{req.title}</h3>
           </div>
-          <button type="button" onClick={close} aria-label="Close" className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800"><X size={18} /></button>
+          <button type="button" onClick={close} aria-label="Close" className="p-1 rounded bg-transparent text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"><X size={18} /></button>
         </div>
         <div className="px-5 py-4 space-y-3 text-sm text-slate-700 dark:text-slate-300">
           <div>{req.body}</div>
@@ -162,7 +162,7 @@ export function ConfirmChangeModal({ req, onCancel, onConfirm }: {
           )}
         </div>
         <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
-          <button type="button" onClick={close} className="px-4 py-2 rounded-lg text-sm font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">Cancel</button>
+          <button type="button" onClick={close} className="px-4 py-2 rounded-lg text-sm font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200">Cancel</button>
           <button type="button" onClick={confirm} disabled={!reasonOk} data-testid="confirm-change"
             className={`px-4 py-2 rounded-lg text-sm font-bold text-white disabled:opacity-50 ${danger ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
             {req.confirmText}

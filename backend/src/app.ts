@@ -214,8 +214,21 @@ app.use('/leave-policies', requireAuth, leavePolicies);
 const frontendDistDir = path.resolve(__dirname, '../../frontend/dist');
 const frontendIndexHtml = path.join(frontendDistDir, 'index.html');
 if (fs.existsSync(frontendIndexHtml)) {
-  app.use(express.static(frontendDistDir, { maxAge: '7d', index: false }));
-  app.get('/', (_req, res) => res.sendFile(frontendIndexHtml));
+  // Deploys must reach users immediately: the HTML shell, service worker and manifest always revalidate;
+  // content-hashed Vite assets (/assets/*-<hash>.*) are immutable because a new build gets new file names.
+  app.use(express.static(frontendDistDir, {
+    maxAge: '7d',
+    index: false,
+    setHeaders: (res, filePath) => {
+      const file = path.basename(filePath);
+      if (file === 'index.html' || file === 'sw.js' || file.endsWith('.webmanifest')) {
+        res.setHeader('Cache-Control', 'no-cache');
+      } else if (/[\\/]assets[\\/][^\\/]+-[A-Za-z0-9_-]{8,}\.(js|css|woff2?|png|svg|jpg)$/.test(filePath)) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+    },
+  }));
+  app.get('/', (_req, res) => { res.setHeader('Cache-Control', 'no-cache'); res.sendFile(frontendIndexHtml); });
 } else {
   // Info endpoints
   app.get('/', (_q, res) => res.json({
@@ -277,6 +290,7 @@ if (fs.existsSync(frontendIndexHtml)) {
   app.use((req, res, next) => {
     if (req.method !== 'GET') return next();
     if (req.path.startsWith('/api') || req.path === '/health') return next();
+    res.setHeader('Cache-Control', 'no-cache');
     res.sendFile(frontendIndexHtml);
   });
 }

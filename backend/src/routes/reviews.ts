@@ -99,7 +99,11 @@ const inMemoryPhotos: any[] = [];
    ========================================================================= */
 
 // GET /api/reviews/photos
-router.get('/photos', async (req: AuthRequest, res: Response) => {
+// Security fix (2026-11-20): review queues are staff-only (STUDENT/PARENT fell into the admin branch).
+const leaveAndPhotoReviewers = requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER');
+const teacherLeaveAdmins = requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN');
+
+router.get('/photos', leaveAndPhotoReviewers, async (req: AuthRequest, res: Response) => {
   try {
     await ensureReviewTables();
     const schoolId = req.user?.schoolId;
@@ -235,7 +239,7 @@ router.get('/photos', async (req: AuthRequest, res: Response) => {
 });
 
 // PUT /api/reviews/photos/:id/approve
-router.put('/photos/:id/approve', async (req: AuthRequest, res: Response) => {
+router.put('/photos/:id/approve', leaveAndPhotoReviewers, async (req: AuthRequest, res: Response) => {
   try {
     await ensureReviewTables();
     const { id } = req.params;
@@ -385,7 +389,7 @@ router.put('/photos/:id/approve', async (req: AuthRequest, res: Response) => {
 });
 
 // PUT /api/reviews/photos/:id/reject
-router.put('/photos/:id/reject', async (req: AuthRequest, res: Response) => {
+router.put('/photos/:id/reject', leaveAndPhotoReviewers, async (req: AuthRequest, res: Response) => {
   try {
     await ensureReviewTables();
     const { id } = req.params;
@@ -542,7 +546,7 @@ router.post('/photos', async (req: AuthRequest, res: Response) => {
    ========================================================================= */
 
 // GET /api/reviews/leaves
-router.get('/leaves', async (req: AuthRequest, res: Response) => {
+router.get('/leaves', leaveAndPhotoReviewers, async (req: AuthRequest, res: Response) => {
   try {
     await ensureReviewTables();
     const schoolId = req.user?.schoolId;
@@ -771,7 +775,7 @@ router.get('/leaves', async (req: AuthRequest, res: Response) => {
 });
 
 // PUT /api/reviews/leaves/:id/approve
-router.put('/leaves/:id/approve', async (req: AuthRequest, res: Response) => {
+router.put('/leaves/:id/approve', leaveAndPhotoReviewers, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { notes } = req.body;
@@ -848,7 +852,7 @@ router.put('/leaves/:id/approve', async (req: AuthRequest, res: Response) => {
 });
 
 // PUT /api/reviews/leaves/:id/reject
-router.put('/leaves/:id/reject', async (req: AuthRequest, res: Response) => {
+router.put('/leaves/:id/reject', leaveAndPhotoReviewers, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { reason, notes } = req.body;
@@ -925,7 +929,7 @@ router.put('/leaves/:id/reject', async (req: AuthRequest, res: Response) => {
 });
 
 // PUT /api/reviews/leaves/:id/seen - Mark leave request as seen by faculty
-router.put('/leaves/:id/seen', async (req: AuthRequest, res: Response) => {
+router.put('/leaves/:id/seen', leaveAndPhotoReviewers, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const schoolId = req.user?.schoolId;
@@ -1000,7 +1004,7 @@ router.put('/leaves/:id/seen', async (req: AuthRequest, res: Response) => {
 });
 
 // PUT /api/reviews/leaves/mark-all-seen - Mark all pending leaves in the school as seen
-router.put('/leaves/mark-all-seen', async (req: AuthRequest, res: Response) => {
+router.put('/leaves/mark-all-seen', leaveAndPhotoReviewers, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.user?.schoolId;
     const reviewerId = req.user?.id;
@@ -1069,7 +1073,8 @@ router.post('/leaves', async (req: AuthRequest, res: Response) => {
     }
 
     const pgSchoolId = resolvePostgresSchoolId(schoolId) || schoolId;
-    let targetStudentId = studentId || req.user?.id;
+    // Security fix (2026-11-20): a STUDENT can only apply for their own leave (body studentId was trusted).
+    let targetStudentId = req.user?.role === 'STUDENT' ? ((req.user as any).studentId || req.user?.id) : (studentId || req.user?.id);
     if (isPostgresConfigured) {
       // Check if targetStudentId exists in students table. If not, match by user_id or admission number or fallback to an existing student in this school
       const stCheck = await pool.query(
@@ -1273,7 +1278,7 @@ router.get('/teacher-leaves/my', async (req: AuthRequest, res: Response) => {
 });
 
 // GET /api/reviews/teacher-leaves/export-excel - School Admin downloads Excel report of teacher leaves
-router.get('/teacher-leaves/export-excel', async (req: AuthRequest, res: Response) => {
+router.get('/teacher-leaves/export-excel', teacherLeaveAdmins, async (req: AuthRequest, res: Response) => {
   try {
     await ensureReviewTables();
     const schoolId = req.user?.schoolId;
@@ -1547,7 +1552,7 @@ router.get('/teacher-leaves/export-excel', async (req: AuthRequest, res: Respons
 });
 
 // GET /api/reviews/teacher-leaves - School Admin views all teacher leaves
-router.get('/teacher-leaves', async (req: AuthRequest, res: Response) => {
+router.get('/teacher-leaves', teacherLeaveAdmins, async (req: AuthRequest, res: Response) => {
   try {
     await ensureReviewTables();
     const schoolId = req.user?.schoolId;

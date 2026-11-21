@@ -38,6 +38,291 @@
         "STUDENT": "DENY_403",
         "PARENT": "DENY_403"
       }
+    },
+    "GET /api/calendar/calculate": {
+      "reason": "Changed on main after the P0 snapshot: students/parents may now read the academic calendar (calendar.view ceiling widened accordingly). Captured 2026-11-20.",
+      "principals": {
+        "STUDENT": "ALLOW",
+        "PARENT": "ALLOW"
+      }
+    },
+    "GET /api/calendar/check-date": {
+      "reason": "Changed on main after the P0 snapshot: students/parents may now read the academic calendar (calendar.view ceiling widened accordingly). Captured 2026-11-20.",
+      "principals": {
+        "STUDENT": "ALLOW",
+        "PARENT": "ALLOW"
+      }
+    },
+    "GET /api/calendar/holidays": {
+      "reason": "Changed on main after the P0 snapshot: students/parents may now read the academic calendar (calendar.view ceiling widened accordingly). Captured 2026-11-20.",
+      "principals": {
+        "STUDENT": "ALLOW",
+        "PARENT": "ALLOW"
+      }
+    },
+    "GET /api/calendar/working-days": {
+      "reason": "Changed on main after the P0 snapshot: students/parents may now read the academic calendar (calendar.view ceiling widened accordingly). Captured 2026-11-20.",
+      "principals": {
+        "STUDENT": "ALLOW",
+        "PARENT": "ALLOW"
+      }
+    },
+    "GET /api/analytics-v24/export-students": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/analytics/export-students": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports-v12": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports-v12/daily": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports-v12/defaulters": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports-v12/export/csv": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports-v12/export/pdf": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports-v12/monthly": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports-v12/students": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports-v12/summary": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports-v12/template": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports/daily": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports/defaulters": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports/export/csv": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports/export/pdf": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports/monthly": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports/students": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports/summary": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/attendance-reports/template": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/reviews/leaves": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/reviews/photos": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/reviews/teacher-leaves": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "GET /api/reviews/teacher-leaves/export-excel": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "POST /api/attendance-reports-v12/import-offline": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "POST /api/attendance-reports/import-offline": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "POST /api/health/email-test": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "ANON": "DENY_401",
+        "SCHOOL_ADMIN": "DENY_403",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "DENY_403"
+      }
+    },
+    "POST /api/subscriptions-v19/run-worker": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "SCHOOL_ADMIN": "DENY_403",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "DENY_403"
+      }
+    },
+    "POST /api/subscriptions/run-worker": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "SCHOOL_ADMIN": "DENY_403",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "DENY_403"
+      }
+    },
+    "PUT /api/reviews/leaves/:id/approve": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "PUT /api/reviews/leaves/:id/reject": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "PUT /api/reviews/leaves/:id/seen": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "PUT /api/reviews/leaves/mark-all-seen": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "PUT /api/reviews/photos/:id/approve": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
+    },
+    "PUT /api/reviews/photos/:id/reject": {
+      "reason": "Security fix 2026-11-20: closed documented authorization hole (staff-only review queues / reports / exports; SUPER_ADMIN-only worker and SMTP test; no cross-tenant ?schoolId).",
+      "principals": {
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403"
+      }
     }
   },
   "additions": {
@@ -256,6 +541,816 @@
         "PARENT": "DENY_403",
         "SCHOOL_ADMIN_B": "DENY_403"
       }
+    },
+    "DELETE /api/attendance/exams/:id": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "DELETE /api/attendance/mentor/exams/:id": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "DELETE /api/exams/:id": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "DELETE /api/mentors": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "DELETE /api/teacher/exams/:id": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "DELETE /api/teacher/mentor/admin/mentors": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "DELETE /api/teacher/mentor/exams/:id": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "DELETE /api/teacher/mentor/mentors": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "DELETE /api/teacher/mentor/teacher/mentor/exams/:id": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/attendance-analysis": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/attendance/exam-marks": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/attendance/exams": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/attendance/mentor/exam-marks": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/attendance/mentor/exams": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/backups-v21/:id/download": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "DENY_403",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "DENY_403"
+      }
+    },
+    "GET /api/backups/:id/download": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "DENY_403",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "DENY_403"
+      }
+    },
+    "GET /api/exam-marks": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/exams": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/grading-exams": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/grading-system/exams": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/grading-system/ranges": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/mentors": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/my-classes": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/students/completeness/export": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/students/completeness/fields": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/students/completeness/missing-students": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/students/completeness/summary": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/teacher/exam-marks": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/teacher/exams": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/teacher/mentor/admin/mentors": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/teacher/mentor/exam-marks": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/teacher/mentor/exams": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/teacher/mentor/grading-exams": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/teacher/mentor/grading-ranges": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/teacher/mentor/grading-system/exams": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/teacher/mentor/grading-system/ranges": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/teacher/mentor/mentors": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/teacher/mentor/teacher/mentor/attendance-analysis": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/teacher/mentor/teacher/mentor/exam-marks": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/teacher/mentor/teacher/mentor/exams": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/teacher/mentor/teacher/mentor/grading-exams": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/teacher/mentor/teacher/mentor/grading-ranges": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/teacher/mentor/teacher/mentor/my-classes": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/teacher/mentor/teacher/mentor/permissions": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "GET /api/teacher/mentor/teacher/mentor/teacher-assignments": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "PATCH /api/exams/:id/status": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "PATCH /api/teacher/mentor/exams/:id/status": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "PATCH /api/teacher/mentor/teacher/mentor/exams/:id/status": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "POST /api/attendance/mentor/publish-results": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "POST /api/attendance/publish-results": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "POST /api/grading-system/exams": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "ALLOW",
+        "PARENT": "ALLOW",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "POST /api/grading-system/ranges": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "ALLOW",
+        "PARENT": "ALLOW",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "POST /api/mentors": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "POST /api/publish-results": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "POST /api/teacher/mentor/admin/mentors": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "POST /api/teacher/mentor/grading-exams": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "ALLOW",
+        "PARENT": "ALLOW",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "POST /api/teacher/mentor/grading-ranges": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "ALLOW",
+        "PARENT": "ALLOW",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "POST /api/teacher/mentor/grading-system/exams": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "ALLOW",
+        "PARENT": "ALLOW",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "POST /api/teacher/mentor/grading-system/ranges": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "ALLOW",
+        "PARENT": "ALLOW",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "POST /api/teacher/mentor/mentors": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "POST /api/teacher/mentor/publish-results": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "POST /api/teacher/mentor/teacher/mentor/grading-exams": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "ALLOW",
+        "PARENT": "ALLOW",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "POST /api/teacher/mentor/teacher/mentor/grading-ranges": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "ALLOW",
+        "PARENT": "ALLOW",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "POST /api/teacher/mentor/teacher/mentor/publish-results": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "POST /api/teacher/publish-results": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "ALLOW",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "PUT /api/permissions": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "DENY_403",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
+    },
+    "PUT /api/teacher/mentor/teacher/mentor/permissions": {
+      "reason": "Route added on main after the P0 snapshot by teammates (exams/results, grading system, student completeness, mentor router mounted at /api/teacher/mentor, backup download). Captured 2026-11-20.",
+      "principals": {
+        "ANON": "DENY_401",
+        "SUPER_ADMIN": "DENY_403",
+        "SCHOOL_ADMIN": "ALLOW",
+        "TEACHER": "ALLOW",
+        "STUDENT": "DENY_403",
+        "PARENT": "DENY_403",
+        "SCHOOL_ADMIN_B": "ALLOW"
+      }
     }
+  },
+  "removals": {
+    "POST /api/backups/cleanup": "Route removed on main after the P0 snapshot by teammates (backup cleanup / restore-test). Captured 2026-11-20.",
+    "POST /api/backups-v21/cleanup": "Route removed on main after the P0 snapshot by teammates (backup cleanup / restore-test). Captured 2026-11-20.",
+    "POST /api/backups/restore-test/:id": "Route removed on main after the P0 snapshot by teammates (backup cleanup / restore-test). Captured 2026-11-20.",
+    "POST /api/backups-v21/restore-test/:id": "Route removed on main after the P0 snapshot by teammates (backup cleanup / restore-test). Captured 2026-11-20."
   }
 }

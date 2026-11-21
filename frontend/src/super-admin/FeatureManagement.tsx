@@ -14,7 +14,7 @@ function Loading() { return <div className="flex items-center gap-2 text-sm text
 function ErrorBox({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div className="rounded-xl border border-rose-200 bg-rose-50 dark:bg-rose-950/40 px-4 py-3 text-sm text-rose-700 dark:text-rose-300 flex items-center justify-between">
-      <span>{message}</span><button type="button" onClick={onRetry} className="inline-flex items-center gap-1 font-semibold"><RefreshCw size={14} /> Retry</button>
+      <span>{message}</span><button type="button" onClick={onRetry} className="inline-flex items-center gap-1 font-semibold bg-transparent hover:bg-transparent text-rose-700 dark:text-rose-300"><RefreshCw size={14} /> Retry</button>
     </div>
   );
 }
@@ -40,7 +40,7 @@ export function FeatureManagement() {
       <div role="tablist" className="flex gap-1 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
         {tabs.map((t) => (
           <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
-            className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap ${tab === t.id ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500'}`}>
+            className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap rounded-none bg-transparent hover:bg-transparent ${tab === t.id ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
             <t.icon size={16} /> {t.label}
           </button>
         ))}

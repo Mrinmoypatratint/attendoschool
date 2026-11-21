@@ -115,6 +115,27 @@ async function main() {
     assert.strictEqual((await call('GET', '/api/production-v26/jobs', U.SA)).status, 200);
   });
 
+  console.log('\n== Bug 4 (2026-11-20): attendance reports honoured ?schoolId for any role ==');
+  await test('only SUPER_ADMIN can choose the school; everyone else is pinned to their own school', async () => {
+    const { schoolId } = await import('../src/routes/attendanceReports');
+    const req = (user: any, q: any = {}) => ({ user, query: q } as any);
+    assert.strictEqual(schoolId(req(U.ADM_A, { schoolId: SCHOOL_B })), SCHOOL_A, 'admin cannot read school B');
+    assert.strictEqual(schoolId(req(U.TCH_A, { schoolId: 'all' })), SCHOOL_A, 'teacher cannot read all schools');
+    assert.strictEqual(schoolId(req(U.SA, { schoolId: SCHOOL_B })), SCHOOL_B, 'super admin may choose');
+    assert.strictEqual(schoolId(req(U.SA)), 'all');
+  });
+  await test('STUDENT / PARENT get 403 on reports, review queues and exports; email-test is not public', async () => {
+    const eps: [string, string][] = [['GET', '/api/attendance-reports/summary'], ['GET', '/api/reviews/leaves'], ['PUT', '/api/reviews/leaves/x/approve'],
+      ['GET', '/api/reviews/photos'], ['PUT', '/api/reviews/photos/x/approve'], ['GET', '/api/reviews/teacher-leaves'],
+      ['GET', '/api/analytics/export-students'], ['POST', '/api/subscriptions/run-worker']];
+    for (const u of [U.STU_A, U.PAR_A]) for (const [m, p] of eps) {
+      assert.strictEqual((await call(m, p, u, m === 'GET' ? undefined : {})).status, 403, `${u.role} ${m} ${p}`);
+    }
+    assert.strictEqual((await call('GET', '/api/reviews/teacher-leaves', U.TCH_A)).status, 403, 'teacher cannot list all teacher leaves');
+    assert.strictEqual((await call('POST', '/api/subscriptions/run-worker', U.ADM_A, {})).status, 403, 'school admin cannot run global worker');
+    assert.strictEqual((await call('POST', '/api/health/email-test', null, { to: 'x@example.org' })).status, 401, 'email-test no longer public');
+  });
+
   server.close();
   console.log(`\n[rbac-security-fixes] ${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);

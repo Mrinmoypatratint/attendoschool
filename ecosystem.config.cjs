@@ -17,12 +17,16 @@ module.exports = {
       merge_logs: true,
       env: {
         NODE_ENV: 'production',
+        // RBAC: toggles take effect immediately. Rollback: RBAC_ENFORCEMENT=off pm2 reload ecosystem.config.cjs --env production --update-env
+        RBAC_ENFORCEMENT: process.env.RBAC_ENFORCEMENT || 'enforce',
         PORT: process.env.PORT || 3000,
         APP_BASE_URL: 'https://attendoschool.online',
         CORS_ORIGIN: 'https://attendoschool.online,https://www.attendoschool.online,http://localhost:5173',
       },
       env_production: {
         NODE_ENV: 'production',
+        // RBAC: toggles take effect immediately. Rollback: RBAC_ENFORCEMENT=off pm2 reload ecosystem.config.cjs --env production --update-env
+        RBAC_ENFORCEMENT: process.env.RBAC_ENFORCEMENT || 'enforce',
         PORT: process.env.PORT || 3000,
         APP_BASE_URL: 'https://attendoschool.online',
         CORS_ORIGIN: 'https://attendoschool.online,https://www.attendoschool.online,http://localhost:5173',

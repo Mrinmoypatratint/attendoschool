@@ -32,8 +32,8 @@ import { getPrincipalDirectory } from './principalDirectory';
 // ---------------------------------------------------------------------------
 export type EnforcementMode = 'off' | 'shadow' | 'enforce';
 export function getEnforcementMode(): EnforcementMode {
-  const v = String(process.env.RBAC_ENFORCEMENT || 'shadow').trim().toLowerCase();
-  return v === 'off' || v === 'enforce' ? v : 'shadow';
+  const v = String(process.env.RBAC_ENFORCEMENT || 'enforce').trim().toLowerCase();
+  return v === 'off' || v === 'shadow' ? v : 'enforce';
 }
 
 // ---------------------------------------------------------------------------
