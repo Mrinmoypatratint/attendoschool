@@ -585,8 +585,8 @@ router.get('/leaves', leaveAndPhotoReviewers, async (req: AuthRequest, res: Resp
             s.admission_number as identifier,
             c.class_number,
             CASE 
-              WHEN c.class_number = -1 THEN 'Class L KG'
-              WHEN c.class_number = 0 THEN 'Class U KG'
+              WHEN c.class_number = -1 THEN 'Class LKG'
+              WHEN c.class_number = 0 THEN 'Class UKG'
               WHEN c.class_number IS NOT NULL THEN CONCAT('Class ', c.class_number)
               ELSE NULL 
             END as class_name,
@@ -641,8 +641,8 @@ router.get('/leaves', leaveAndPhotoReviewers, async (req: AuthRequest, res: Resp
             s.admission_number as identifier,
             c.class_number,
             CASE 
-              WHEN c.class_number = -1 THEN 'Class L KG'
-              WHEN c.class_number = 0 THEN 'Class U KG'
+              WHEN c.class_number = -1 THEN 'Class LKG'
+              WHEN c.class_number = 0 THEN 'Class UKG'
               WHEN c.class_number IS NOT NULL THEN CONCAT('Class ', c.class_number)
               ELSE NULL 
             END as class_name,

@@ -202,8 +202,8 @@ export default function StudentPromotion() {
     const parseClassRank = (className: string): number => {
       const norm = String(className || '').trim().toLowerCase();
       if (norm.includes('nursery') || norm.includes('pre-kg') || norm.includes('play')) return -3;
-      if (norm.includes('l-kg') || norm.includes('lkg') || norm.includes('lower kg')) return -2;
-      if (norm.includes('u-kg') || norm.includes('ukg') || norm.includes('upper kg')) return -1;
+      if (norm.includes('l-kg') || norm.includes('lkg') || norm.includes('l kg') || norm.includes('lower kg')) return -2;
+      if (norm.includes('u-kg') || norm.includes('ukg') || norm.includes('u kg') || norm.includes('upper kg')) return -1;
       if (norm.includes('kg')) return -1;
       const numMatch = norm.match(/\d+/);
       if (numMatch) return parseInt(numMatch[0], 10);

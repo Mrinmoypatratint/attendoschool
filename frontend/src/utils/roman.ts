@@ -40,11 +40,11 @@ export function convertRomanClassToDigital(val: any): string {
       if (!trimmed) return '';
 
       // Preserve special kindergarten values
-      if (/^class\s*l\s*kg/i.test(trimmed) || /^-1/i.test(trimmed)) {
-        return trimmed.replace(/^-1/, 'Class L KG');
+      if (/^(?:class\s*)?l[-.\s]*kg/i.test(trimmed) || /^-1/i.test(trimmed)) {
+        return trimmed.replace(/^class\s*l[-.\s]*kg/i, 'Class LKG').replace(/^-1/, 'Class LKG');
       }
-      if (/^class\s*u\s*kg/i.test(trimmed) || /^0/i.test(trimmed)) {
-        return trimmed.replace(/^0/, 'Class U KG');
+      if (/^(?:class\s*)?u[-.\s]*kg/i.test(trimmed) || /^0/i.test(trimmed)) {
+        return trimmed.replace(/^class\s*u[-.\s]*kg/i, 'Class UKG').replace(/^0/, 'Class UKG');
       }
 
       // Match Roman numerals with optional prefix "Class", "Grade", "Std" and optional section suffix
@@ -115,10 +115,10 @@ export function parseImportClassAndSection(
   } else if (/^(?:Class|Grade|Std|Standard)\s*[:.-]?\s*(\d+)$/i.test(cls)) {
     const num = cls.match(/(\d+)$/)?.[1];
     if (num) cls = `Class ${num}`;
-  } else if (/^l\s*kg$/i.test(cls)) {
-    cls = 'Class L KG';
-  } else if (/^u\s*kg$/i.test(cls)) {
-    cls = 'Class U KG';
+  } else if (/^(?:class\s*)?l[-.\s]*kg$/i.test(cls)) {
+    cls = 'Class LKG';
+  } else if (/^(?:class\s*)?u[-.\s]*kg$/i.test(cls)) {
+    cls = 'Class UKG';
   }
 
   return { className: cls, sectionName: sec || 'A' };

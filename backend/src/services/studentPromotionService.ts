@@ -42,8 +42,8 @@ export async function listPromotionCandidates(schoolId: string, fromYearId: stri
            st.parent_name, st.parent_sms_number,
            st.class_id AS from_class_id, st.section_id AS from_section_id,
            CASE 
-             WHEN c.class_number = -1 THEN 'Class-L-KG'
-             WHEN c.class_number = 0 THEN 'U-KG'
+             WHEN c.class_number = -1 THEN 'Class LKG'
+             WHEN c.class_number = 0 THEN 'Class UKG'
              WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number::text
              ELSE '—'
            END AS from_class_name,
@@ -81,8 +81,8 @@ export async function listPromotionCandidates(schoolId: string, fromYearId: stri
               st.parent_name, st.parent_sms_number,
               st.class_id AS from_class_id, st.section_id AS from_section_id,
               CASE 
-                WHEN c.class_number = -1 THEN 'Class-L-KG'
-                WHEN c.class_number = 0 THEN 'U-KG'
+                WHEN c.class_number = -1 THEN 'Class LKG'
+                WHEN c.class_number = 0 THEN 'Class UKG'
                 WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number::text
                 ELSE '—'
               END AS from_class_name,
@@ -118,7 +118,7 @@ export async function listPromotionCandidates(schoolId: string, fromYearId: stri
       from_class_id: s.class_id,
       from_section_id: s.section_id,
       from_class_name: s.class_number !== undefined 
-        ? (s.class_number === -1 ? 'L-KG' : s.class_number === 0 ? 'U-KG' : `Class ${s.class_number}`) 
+        ? (s.class_number === -1 ? 'Class LKG' : s.class_number === 0 ? 'Class UKG' : `Class ${s.class_number}`) 
         : (s.class_name || 'Class 10'),
       from_section_name: s.section_name || 'A',
       enrollment_status: s.enrollment_status || 'ACTIVE',

@@ -198,8 +198,8 @@ export function StudentProfileHoverCard({
   const cNum = Number(studentData.class_number);
   const cId = String(studentData.class_id || '');
   let classStr = 'Class 1';
-  if (cNum === -1 || /l.?kg/i.test(cId)) classStr = 'L-KG';
-  else if (cNum === 0 || /u.?kg/i.test(cId)) classStr = 'U-KG';
+  if (cNum === -1 || /l.?kg/i.test(cId)) classStr = 'Class LKG';
+  else if (cNum === 0 || /u.?kg/i.test(cId)) classStr = 'Class UKG';
   else if (!isNaN(cNum) && cNum > 0) classStr = 'Class ' + cNum;
   else if (studentData.class_label || studentData.class_name || studentData.className) {
     const raw = String(studentData.class_label || studentData.class_name || studentData.className);

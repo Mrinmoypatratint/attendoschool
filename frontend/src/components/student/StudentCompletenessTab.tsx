@@ -817,7 +817,7 @@ export const StudentCompletenessTab: React.FC<StudentCompletenessTabProps> = ({
               <option value="">All Classes</option>
               {classes.map(c => (
                 <option key={c.id} value={c.id}>
-                  {c.label || (c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`)}
+                  {c.label || (c.class_number === -1 ? 'Class LKG' : c.class_number === 0 ? 'Class UKG' : `Class ${c.class_number}`)}
                 </option>
               ))}
             </select>

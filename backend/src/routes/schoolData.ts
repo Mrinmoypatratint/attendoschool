@@ -128,10 +128,10 @@ export function isSameSession(s1?: string | null, s2?: string | null): boolean {
   );
 }
 
-// Class grades: Class-L-KG (id: cls-lkg, class_number: -1), U-KG (id: cls-ukg, class_number: 0), Class 1-12
+// Class grades: Class LKG (id: cls-lkg, class_number: -1), Class UKG (id: cls-ukg, class_number: 0), Class 1-12
 export const CLASS_GRADES = [
-  { id: "cls-lkg", class_number: -1, label: "Class L KG" },
-  { id: "cls-ukg", class_number: 0, label: "Class U KG" },
+  { id: "cls-lkg", class_number: -1, label: "Class LKG" },
+  { id: "cls-ukg", class_number: 0, label: "Class UKG" },
   ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => ({
     id: `cls-${n}`,
     class_number: n,
@@ -298,7 +298,7 @@ r.get("/classes", ...reader, async (req: AuthRequest, res) => {
       const list = q.rows.map((r: any) => {
         const cNum = Number(r.class_number);
         const matchGrade = CLASS_GRADES.find((g) => g.class_number === cNum);
-        const lbl = matchGrade?.label || (cNum === -1 ? "Class L KG" : cNum === 0 ? "Class U KG" : `Class ${cNum}`);
+        const lbl = matchGrade?.label || (cNum === -1 ? "Class LKG" : cNum === 0 ? "Class UKG" : `Class ${cNum}`);
         return {
           id: r.id,
           class_number: cNum,
@@ -374,7 +374,7 @@ r.get("/classes", ...reader, async (req: AuthRequest, res) => {
             const data = d.data();
             const cNum = Number(data.class_number ?? data.classNumber ?? 1);
             const lbl =
-              cNum === -1 ? "L-KG" : cNum === 0 ? "U-KG" : `Class ${cNum}`;
+              cNum === -1 ? "Class LKG" : cNum === 0 ? "Class UKG" : `Class ${cNum}`;
             return {
               id: d.id,
               class_number: cNum,
@@ -417,7 +417,7 @@ r.post("/classes", ...admin, async (req: AuthRequest, res) => {
   if (!Number.isInteger(n) || n < -1 || n > 12)
     return res
       .status(400)
-      .json({ message: "Class must be between L-KG (-1) and 12" });
+      .json({ message: "Class must be between LKG (-1) and 12" });
   try {
     const q = await pool.query(
       "INSERT INTO classes(school_id,class_number) VALUES($1,$2) ON CONFLICT (school_id, class_number) DO UPDATE SET class_number=EXCLUDED.class_number RETURNING *",
@@ -1572,14 +1572,14 @@ r.get("/students/template", ...reader, (_req, res) => {
       "Student Email": "rohan@school.edu",
     },
     {
-      "First Name": "L-KG",
+      "First Name": "LKG",
       "Last Name": "Example",
-      "Full Name": "L-KG Example",
+      "Full Name": "LKG Example",
       "Admission Number": "ADM-2025-004",
       "Admission Date": "2025-04-05",
       "Roll Number": "104",
       Session: "2025-26",
-      Class: "L-KG",
+      Class: "LKG",
       Section: "A",
       "Date of Birth": "2021-02-14",
       Gender: "Female",
@@ -1594,14 +1594,14 @@ r.get("/students/template", ...reader, (_req, res) => {
       "Student Email": "",
     },
     {
-      "First Name": "U-KG",
+      "First Name": "UKG",
       "Last Name": "Example",
-      "Full Name": "U-KG Example",
+      "Full Name": "UKG Example",
       "Admission Number": "ADM-2025-005",
       "Admission Date": "2025-04-05",
       "Roll Number": "105",
       Session: "2025-26",
-      Class: "U-KG",
+      Class: "UKG",
       Section: "B",
       "Date of Birth": "2020-06-30",
       Gender: "Male",
@@ -2134,7 +2134,7 @@ r.post("/students", ...admin, async (req: AuthRequest, res) => {
           [
             schoolId,
             clsNum,
-            clsNum === -1 ? "L-KG" : clsNum === 0 ? "U-KG" : `Class ${clsNum}`,
+            clsNum === -1 ? "Class LKG" : clsNum === 0 ? "Class UKG" : `Class ${clsNum}`,
           ],
         );
       }
@@ -2595,27 +2595,23 @@ function parseClassValue(
 
   // Kindergarten string checks
   if (
-    /^l\.?kg$/i.test(val) ||
-    /^l-kg$/i.test(val) ||
-    /^lower\s*kg$/i.test(val)
+    /^(class\s*)?(l\.?kg|l-kg|l\s*kg|lower\s*kg)$/i.test(val)
   ) {
     return {
       valid: true,
       classNumber: -1,
       classId: "cls-lkg",
-      classLabel: "L-KG",
+      classLabel: "Class LKG",
     };
   }
   if (
-    /^u\.?kg$/i.test(val) ||
-    /^u-kg$/i.test(val) ||
-    /^upper\s*kg$/i.test(val)
+    /^(class\s*)?(u\.?kg|u-kg|u\s*kg|upper\s*kg)$/i.test(val)
   ) {
     return {
       valid: true,
       classNumber: 0,
       classId: "cls-ukg",
-      classLabel: "U-KG",
+      classLabel: "Class UKG",
     };
   }
 
@@ -2670,14 +2666,14 @@ function parseClassValue(
         valid: true,
         classNumber: -1,
         classId: "cls-lkg",
-        classLabel: "L-KG",
+        classLabel: "Class LKG",
       };
     if (rawVal === 0)
       return {
         valid: true,
         classNumber: 0,
         classId: "cls-ukg",
-        classLabel: "U-KG",
+        classLabel: "Class UKG",
       };
     if (rawVal >= 1 && rawVal <= 12) {
       return {
@@ -3757,8 +3753,8 @@ r.get("/students/:id", ...admin, async (req: AuthRequest, res) => {
       `SELECT st.*, st.email AS student_email,
        c.id AS class_id, c.class_number, sec.id AS section_id, sec.name AS section_name,
        ay.name AS session_name,
-       CASE WHEN c.class_number = -1 THEN 'L-KG' 
-            WHEN c.class_number = 0 THEN 'U-KG' 
+       CASE WHEN c.class_number = -1 THEN 'Class LKG' 
+            WHEN c.class_number = 0 THEN 'Class UKG' 
             WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number 
             ELSE '' END AS class_name
        FROM students st 
@@ -4128,7 +4124,7 @@ r.put("/students/:id", ...admin, async (req: AuthRequest, res) => {
       ? "B"
       : "A";
   const putClassLabel =
-    putClsNum === -1 ? "L-KG" : putClsNum === 0 ? "U-KG" : `Class ${putClsNum}`;
+    putClsNum === -1 ? "Class LKG" : putClsNum === 0 ? "Class UKG" : `Class ${putClsNum}`;
 
   const resolvedSession = String(
     session || sessionId || academic_year_id || "",
@@ -5332,7 +5328,7 @@ export async function checkMentorConflict(
         [schoolId, targetClassId, targetSectionId]
       );
 
-      const clsLabel = targetClassNumber === -1 ? 'Class L-KG' : targetClassNumber === 0 ? 'Class U-KG' : `Class ${targetClassNumber}`;
+      const clsLabel = targetClassNumber === -1 ? 'Class LKG' : targetClassNumber === 0 ? 'Class UKG' : `Class ${targetClassNumber}`;
       const secLabel = targetSectionName || rawS;
 
       if (cmRes.rowCount && cmRes.rowCount > 0) {

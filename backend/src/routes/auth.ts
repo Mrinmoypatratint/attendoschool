@@ -549,7 +549,7 @@ router.post('/login', loginRateLimit, loginAccountGate, async (req, res) => {
             classId: stu.class_id,
             sectionId: stu.section_id,
             className: stu.class_number !== undefined && stu.class_number !== null
-              ? (stu.class_number === -1 ? 'L-KG' : stu.class_number === 0 ? 'U-KG' : `Class ${stu.class_number}`)
+              ? (stu.class_number === -1 ? 'Class LKG' : stu.class_number === 0 ? 'Class UKG' : `Class ${stu.class_number}`)
               : 'Class 10',
             sectionName: stu.section_name || 'A',
             rollNumber: stu.roll_number || '25',
