@@ -11049,7 +11049,7 @@ function Teachers() {
     const rawCls = fullTeacher.class_name || fullTeacher.class || (directAssign ? directAssign.class_number : '');
     const rawSec = fullTeacher.section_name || fullTeacher.section || (directAssign ? directAssign.section_name : '');
     const matchingClass = allocClasses.find(c => {
-      const cName = c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`;
+      const cName = c.class_number === -1 ? 'Class LKG' : c.class_number === 0 ? 'Class UKG' : `Class ${c.class_number}`;
       const rawNum = String(c.class_number);
       const target = String(rawCls || '').replace(/^Class\s*/i, '').trim();
       return String(c.id) === String(fullTeacher.class_id) || cName.toLowerCase() === String(rawCls || '').toLowerCase() || rawNum === target;
@@ -11057,7 +11057,7 @@ function Teachers() {
     const matchingSec = allocSections.find(s => {
       return String(s.id) === String(fullTeacher.section_id) || (String(s.name).trim().toUpperCase() === String(rawSec || '').trim().toUpperCase() && (!matchingClass || String(s.class_id) === String(matchingClass.id)));
     });
-    const cVal = rawCls || (matchingClass ? (matchingClass.class_number === -1 ? 'Class L KG' : matchingClass.class_number === 0 ? 'Class U KG' : `Class ${matchingClass.class_number}`) : '');
+    const cVal = rawCls || (matchingClass ? (matchingClass.class_number === -1 ? 'Class LKG' : matchingClass.class_number === 0 ? 'Class UKG' : `Class ${matchingClass.class_number}`) : '');
     const sVal = rawSec || (matchingSec ? matchingSec.name : '');
     const nameParts = (fullTeacher.name || '').trim().split(/\s+/);
     let fName = fullTeacher.first_name || fullTeacher.firstName || '';
