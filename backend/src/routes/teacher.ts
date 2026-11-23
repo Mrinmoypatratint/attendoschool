@@ -3569,7 +3569,7 @@ r.put('/change-password', ...teacher, async (req: AuthRequest, res) => {
     }
 
     const hashed = await bcrypt.hash(newPassword, 10);
-    await pool.query(`UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`, [hashed, userId]);
+    await pool.query(`UPDATE users SET password_hash = $1, password_changed_at = NOW(), updated_at = NOW() WHERE id = $2`, [hashed, userId]);
 
     res.json({ success: true, message: 'Password updated successfully!' });
   } catch (err: any) {

@@ -1115,7 +1115,7 @@ export default function PeopleManagement() {
                         )}
                       </td>
                       <td>
-                        <StudentProfileHoverCard student={r} mode="student">
+                        <StudentProfileHoverCard student={r} mode="student" variant="directory">
                           <b>{r.name}</b>
                         </StudentProfileHoverCard>
                       </td>

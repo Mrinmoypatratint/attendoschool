@@ -55,6 +55,7 @@ import demoRequest from './routes/demoRequest';
 import access from './routes/access';
 import superAdminFeatures from './routes/superAdminFeatures';
 import studentCompleteness from './routes/studentCompleteness';
+import teacherCompleteness from './routes/teacherCompleteness';
 
 const app = express();
 app.disable('x-powered-by');
@@ -264,6 +265,7 @@ app.use('/api/school-payment', schoolPayment);
 app.use('/api/webhooks', razorpayWebhook);
 app.use('/api/school-payment', razorpaySchool);
 app.use('/api/students/completeness', studentCompleteness);
+app.use('/api/teachers/completeness', teacherCompleteness);
 app.use('/api', schoolData);
 app.use('/api/routines', routines);
 app.use('/api/teacher/mentor', mentor);

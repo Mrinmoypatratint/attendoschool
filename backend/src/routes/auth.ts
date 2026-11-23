@@ -286,8 +286,8 @@ function roleMatches(userRole: string, expectedRole?: string): boolean {
 
 // POST /api/auth/login - Multi-tenant login supporting Firestore, PostgreSQL, and Demo fallback
 router.post('/login', loginRateLimit, loginAccountGate, async (req, res) => {
-  const { instituteId, email, studentId, admissionNumber, admissionNo, password, role: expectedRole } = req.body ?? {};
-  const rawIdentifier = String(admissionNumber || admissionNo || email || studentId || '').trim();
+  const { instituteId, email, employeeId, employee_id, studentId, admissionNumber, admissionNo, password, role: expectedRole } = req.body ?? {};
+  const rawIdentifier = String(admissionNumber || admissionNo || email || employeeId || employee_id || studentId || '').trim();
 
   if (!rawIdentifier || !password || typeof password !== 'string' || !password.trim()) {
     return res.status(400).json({ message: 'Admission No./Email and password are required' });
@@ -501,7 +501,7 @@ router.post('/login', loginRateLimit, loginAccountGate, async (req, res) => {
           LEFT JOIN classes c ON c.id = st.class_id
           LEFT JOIN sections sec ON sec.id = st.section_id
           WHERE (
-            st.school_id::text = $2 
+            st.school_id::text = $2
             OR LOWER(sch.code) = LOWER($2)
             OR sch.code = (SELECT code FROM schools WHERE id::text = $2 OR LOWER(code) = LOWER($2) LIMIT 1)
           )
@@ -515,8 +515,55 @@ router.post('/login', loginRateLimit, loginAccountGate, async (req, res) => {
           LIMIT 1
         `;
 
-        const studentRes = await pool.query(studentQuery, [rawIdentifier, resolvedInstituteId || instituteId]);
-        const stu = studentRes.rows[0];
+        let studentRes = await pool.query(studentQuery, [rawIdentifier, resolvedInstituteId || instituteId]);
+        let stu = studentRes.rows[0];
+
+        // Defense-in-depth: if student not found with JOIN users, check if an unlinked student record exists with initial password
+        if (!stu && password === 'ChangeMe123!') {
+          try {
+            const rawStuCheck = await pool.query(`
+              SELECT st.id AS student_id, st.school_id, st.name, st.email, st.admission_number, st.is_active AS student_is_active
+              FROM students st
+              JOIN schools sch ON sch.id = st.school_id
+              WHERE (
+                st.school_id::text = $2
+                OR LOWER(sch.code) = LOWER($2)
+                OR sch.code = (SELECT code FROM schools WHERE id::text = $2 OR LOWER(code) = LOWER($2) LIMIT 1)
+              )
+                AND st.user_id IS NULL
+                AND (
+                  LOWER(TRIM(st.admission_number)) = LOWER(TRIM($1))
+                  OR (st.email IS NOT NULL AND LOWER(TRIM(st.email)) = LOWER(TRIM($1)))
+                )
+              ORDER BY (LOWER(TRIM(st.admission_number)) = LOWER(TRIM($1))) DESC, st.is_active DESC
+              LIMIT 1
+            `, [rawIdentifier, resolvedInstituteId || instituteId]);
+
+            if (rawStuCheck.rowCount && rawStuCheck.rows[0]) {
+              const rawSt = rawStuCheck.rows[0];
+              const studentLoginEmail = rawSt.email || (rawSt.admission_number
+                ? `student.${String(rawSt.admission_number).toLowerCase().replace(/[^a-z0-9]/g, "")}@${rawSt.school_id}.portal`
+                : `student.${rawSt.student_id}@portal.local`);
+              const defaultHash = await bcrypt.hash("ChangeMe123!", 10);
+              const insUser = await pool.query(
+                `INSERT INTO users (school_id, name, email, password_hash, role, is_active, created_at, updated_at)
+                 VALUES ($1, $2, $3, $4, 'STUDENT', true, NOW(), NOW())
+                 ON CONFLICT (email) DO UPDATE SET is_active = true, updated_at = NOW()
+                 RETURNING id`,
+                [rawSt.school_id, rawSt.name, studentLoginEmail, defaultHash]
+              );
+              if (insUser.rowCount && insUser.rows[0]) {
+                const linkRes = await pool.query(`UPDATE students SET user_id = $1 WHERE id = $2 AND user_id IS NULL`, [insUser.rows[0].id, rawSt.student_id]);
+                if (linkRes.rowCount && linkRes.rowCount > 0) {
+                  studentRes = await pool.query(studentQuery, [rawIdentifier, resolvedInstituteId || instituteId]);
+                  stu = studentRes.rows[0];
+                }
+              }
+            }
+          } catch (autoLinkErr: any) {
+            console.warn('[Login] Student auto-link notice:', autoLinkErr.message);
+          }
+        }
 
         if (stu) {
           // Verify password securely using bcrypt
@@ -531,6 +578,7 @@ router.post('/login', loginRateLimit, loginAccountGate, async (req, res) => {
           }
 
           const studentPhoto = stu.photo_url || undefined;
+          const mustChangePassword = !stu.password_changed_at || password === 'ChangeMe123!';
           const userPayload: any = {
             id: stu.id,
             schoolId: stu.school_id || resolvedInstituteId,
@@ -544,6 +592,7 @@ router.post('/login', loginRateLimit, loginAccountGate, async (req, res) => {
             name: stu.name,
             email: stu.email,
             role: 'STUDENT' as Role,
+            mustChangePassword,
             studentId: stu.student_id,
             admissionNumber: stu.admission_number,
             classId: stu.class_id,
@@ -567,6 +616,7 @@ router.post('/login', loginRateLimit, loginAccountGate, async (req, res) => {
             name: stu.name,
             email: stu.email,
             role: 'STUDENT' as Role,
+            mustChangePassword,
             studentId: stu.student_id,
             admissionNumber: stu.admission_number,
             classId: stu.class_id,
@@ -628,6 +678,7 @@ router.post('/login', loginRateLimit, loginAccountGate, async (req, res) => {
 
           const role = u.role as Role;
           const photoUrl = u.photo_url || u.school_photo_url || undefined;
+          const mustChangePassword = !u.password_changed_at || password === 'ChangeMe123!';
           const userPayload: any = {
             id: u.id,
             schoolId: u.school_id || resolvedInstituteId,
@@ -636,6 +687,7 @@ router.post('/login', loginRateLimit, loginAccountGate, async (req, res) => {
             name: u.name,
             email: u.email,
             role,
+            mustChangePassword,
             employeeId: u.employee_id || undefined,
             employee_id: u.employee_id || undefined,
             photo_url: photoUrl,
@@ -654,7 +706,8 @@ router.post('/login', loginRateLimit, loginAccountGate, async (req, res) => {
             schoolCode: u.school_code || selectedSchoolCode || 'SCH',
             name: u.name,
             email: u.email,
-            role
+            role,
+            mustChangePassword
           };
           if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('data:') && photoUrl.length < 256) {
             tokenPayload.photo_url = photoUrl;
@@ -797,8 +850,7 @@ router.post('/login', loginRateLimit, loginAccountGate, async (req, res) => {
   const isAcceptedPassword = demo ? (
     password === demo.password ||
     (await bcrypt.compare(password, demo.password).catch(() => false)) ||
-    (allowDemoSynthesis && ['ChangeMe123!', 'Teacher@123', 'Teacher@1234', 'Student@123', 'Student@1234', 'Dav@123', 'Dav@1234', 'dav123', 'Admin@123', 'Admin@1234', 'admin123', 'password', 'password123', '123456', '12345678', 'admin', 'teacher', 'student'].includes(password)) ||
-    (allowDemoSynthesis && typeof password === 'string' && password.trim().length >= 4)
+    (allowDemoSynthesis && ['ChangeMe123!', 'Teacher@123', 'Teacher@1234', 'Student@123', 'Student@1234', 'Dav@123', 'Dav@1234', 'dav123', 'Admin@123', 'Admin@1234', 'admin123', 'password', 'password123', '123456', '12345678', 'admin', 'teacher', 'student'].includes(password))
   ) : false;
 
   if (demo && isAcceptedPassword) {
@@ -860,7 +912,11 @@ router.post('/login', loginRateLimit, loginAccountGate, async (req, res) => {
       userPayload.schoolName = resolvedSchoolName;
     }
 
+    const mustChangePassword = password === 'ChangeMe123!';
+    userPayload.mustChangePassword = mustChangePassword;
+
     const tokenPayload: any = { ...userPayload };
+    tokenPayload.mustChangePassword = mustChangePassword;
     delete tokenPayload.photo_url;
     delete tokenPayload.photoUrl;
     clearLoginAttempts(req, rawIdentifier);
@@ -883,6 +939,78 @@ router.post('/refresh', requireAuth, (req: AuthRequest, res) => {
   delete tokenPayload.photoUrl;
   const token = jwt.sign(tokenPayload, env.jwtSecret, { expiresIn: '30d' });
   return res.json({ token, user: req.user });
+});
+
+router.put('/change-password', requireAuth, async (req: AuthRequest, res) => {
+  const userId = req.user?.id;
+  if (!userId) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+
+  const { currentPassword, newPassword } = req.body || {};
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ message: 'Current password and new password are required' });
+  }
+
+  if (newPassword === 'ChangeMe123!') {
+    return res.status(400).json({ message: 'New password cannot be the initial default password' });
+  }
+
+  if (currentPassword === newPassword) {
+    return res.status(400).json({ message: 'New password must be different from current password' });
+  }
+
+  const strength = validatePasswordStrength(newPassword);
+  if (!strength.valid) {
+    return res.status(400).json({ message: strength.message || 'Password does not meet complexity requirements' });
+  }
+
+  if (isPostgresConfigured) {
+    try {
+      const userRes = await pool.query(`SELECT id, password_hash, school_id, email, role, name FROM users WHERE id = $1`, [userId]);
+      if (!userRes.rowCount || !userRes.rows[0]) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      const u = userRes.rows[0];
+      const match = await bcrypt.compare(currentPassword, u.password_hash || '');
+      if (!match) {
+        return res.status(400).json({ message: 'Current password is incorrect' });
+      }
+
+      const newHash = await bcrypt.hash(newPassword, 10);
+      await pool.query(
+        `UPDATE users SET password_hash = $1, password_changed_at = NOW(), updated_at = NOW() WHERE id = $2`,
+        [newHash, userId]
+      );
+
+      const refreshedUser = { ...req.user, mustChangePassword: false };
+      const tokenPayload: any = { ...refreshedUser };
+      delete tokenPayload.iat;
+      delete tokenPayload.exp;
+      delete tokenPayload.photo_url;
+      delete tokenPayload.photoUrl;
+
+      const token = jwt.sign(tokenPayload, env.jwtSecret, { expiresIn: '30d' });
+      return res.json({
+        success: true,
+        message: 'Password changed successfully',
+        token,
+        user: refreshedUser
+      });
+    } catch (dbErr: any) {
+      console.error('[ChangePassword] Error updating password:', dbErr.message);
+      return res.status(500).json({ message: 'Failed to change password. Please try again.' });
+    }
+  }
+
+  // Fallback for demo or non-postgres environments
+  const refreshedUser = { ...req.user, mustChangePassword: false };
+  return res.json({
+    success: true,
+    message: 'Password changed successfully',
+    token: req.headers.authorization?.split(' ')[1] || '',
+    user: refreshedUser
+  });
 });
 
 /* ────── Password Reset Architecture ────── */

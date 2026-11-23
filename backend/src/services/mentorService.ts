@@ -414,6 +414,56 @@ export async function getMentoredClasses(
         [schoolId, teacherId],
       );
       if (q.rowCount && q.rowCount > 0) return q.rows;
+
+      // Auto-reconciliation fallback: if class_mentors has no rows, check teacher_profiles scoped strictly to active teacher in this school
+      const tpQ = await pool.query(
+        `SELECT tp.class_name, tp.section_name
+         FROM teacher_profiles tp
+         JOIN users u ON u.id = tp.user_id
+         WHERE tp.user_id = $1 AND u.school_id = $2 AND u.role = 'TEACHER' AND u.is_active = true
+         LIMIT 1`,
+        [teacherId, schoolId]
+      );
+      if (tpQ.rowCount && tpQ.rows[0]?.class_name && tpQ.rows[0]?.section_name) {
+        const rawClass = String(tpQ.rows[0].class_name).trim();
+        const rawSec = String(tpQ.rows[0].section_name).trim();
+        const cleanClassNum = parseInt(rawClass.replace(/^(class|grade|std)\s*/i, ''), 10);
+        const cleanSecName = rawSec.replace(/^(section)\s*/i, '').trim();
+
+        if (!isNaN(cleanClassNum) && cleanSecName) {
+          const matchQ = await pool.query(
+            `SELECT c.id AS class_id, c.class_number, s.id AS section_id, s.name AS section_name
+             FROM classes c
+             JOIN sections s ON s.class_id = c.id
+             WHERE c.school_id = $1 AND c.class_number = $2 AND UPPER(s.name) = UPPER($3)
+             LIMIT 1`,
+            [schoolId, cleanClassNum, cleanSecName]
+          );
+          if (matchQ.rowCount && matchQ.rows.length > 0) {
+            const m = matchQ.rows[0];
+            const insertRes = await pool.query(
+              `INSERT INTO class_mentors (school_id, class_id, section_id, teacher_id, assigned_at)
+               VALUES ($1, $2, $3, $4, NOW())
+               ON CONFLICT (school_id, class_id, section_id) DO NOTHING
+               RETURNING id`,
+              [schoolId, m.class_id, m.section_id, teacherId]
+            ).catch((e) => {
+              console.warn('[MentorService] Auto-reconciliation insert error:', e.message);
+              return { rowCount: 0, rows: [] };
+            });
+            if (insertRes.rowCount && insertRes.rowCount > 0) {
+              return [{
+                mentor_record_id: insertRes.rows[0]?.id || 'auto-reconciled',
+                class_id: m.class_id,
+                section_id: m.section_id,
+                class_number: m.class_number,
+                section_name: m.section_name,
+                assigned_at: new Date().toISOString()
+              }];
+            }
+          }
+        }
+      }
     } catch (err: any) {
       console.warn(
         "[MentorService] DB query for mentored classes failed:",

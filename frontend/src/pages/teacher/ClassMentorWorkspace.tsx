@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import {
-  Users, ShieldCheck, FileText, RefreshCw, AlertCircle, Loader2, Award,
+  Users, ShieldCheck, ShieldAlert, FileText, RefreshCw, AlertCircle, Loader2, Award,
   Plus, Edit2, Trash2, Calendar, BookOpen, Search, ArrowLeft, Save, CheckCircle2,
   Check, X, TrendingUp, Maximize2, Minimize2, Info, Lock, Download, FileSpreadsheet, Send,
   Bookmark, SlidersHorizontal
@@ -11,6 +11,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../api';
 import { popup } from '../../components/PopupModal';
 import AttendanceReports from '../admin/AttendanceReports';
+import { PersonProfileLink } from '../../components/PersonProfileLink';
 
 export interface GradeRangeRule {
   id: string;
@@ -1145,26 +1146,6 @@ export function ClassMentorWorkspace() {
     );
   }
 
-  // EMPTY STATE: Logged-In Teacher is not assigned as mentor for any section
-  if (mentoredClasses.length === 0) {
-    return (
-      <div className="panel" style={{ textAlign: 'center', padding: '60px 20px', maxWidth: 640, margin: '40px auto' }}>
-        <div style={{ width: 56, height: 56, borderRadius: '50%', background: "var(--secondary)", border: "1px solid var(--border-focus, var(--border))", display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--sidebar-accent)', margin: '0 auto 16px' }}>
-          <Users size={28} />
-        </div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px' }}>
-          No Class Mentor Assignments
-        </h2>
-        <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 24px' }}>
-          You are not currently assigned as a Class Mentor for any class or section. Class Mentors oversee section attendance reports and result publications.
-        </p>
-        <button type="button" className="btn-secondary" onClick={loadMyClasses} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <RefreshCw size={15} /> Check For New Assignments
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="as-mentor-workspace" style={{ padding: '24px 24px 48px', boxSizing: 'border-box' }}>
       {/* Workspace Header */}
@@ -1181,8 +1162,8 @@ export function ClassMentorWorkspace() {
             <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: 'var(--text)' }}>
               Class Mentor Workspace
             </h1>
-            <span style={{ fontSize: 11.5, fontWeight: 700, background: "var(--accent)", color: 'var(--sidebar-accent)', border: '1px solid var(--border-focus)', padding: '2px 8px', borderRadius: 9999 }}>
-              Mentor Access
+            <span style={{ fontSize: 11.5, fontWeight: 700, background: mentoredClasses.length > 0 ? "var(--accent)" : "var(--secondary, #fef3c7)", color: mentoredClasses.length > 0 ? 'var(--sidebar-accent)' : '#92400e', border: '1px solid var(--border-focus)', padding: '2px 8px', borderRadius: 9999 }}>
+              {mentoredClasses.length > 0 ? "Mentor Access" : "Class Teacher Required"}
             </span>
           </div>
         </div>
@@ -1309,20 +1290,77 @@ export function ClassMentorWorkspace() {
 
       {/* TAB 1: ATTENDANCE & SECTION REPORTS */}
       {activeTab === 'REPORTS' && (
-        <div className="as-reports-pane">
-          <AttendanceReports
-            embedded={true}
-            defaultClassId={selectedSection?.class_id}
-            defaultSectionId={selectedSection?.section_id}
-            defaultClassNumber={selectedSection?.class_number}
-            defaultSectionName={selectedSection?.section_name}
-          />
-        </div>
+        mentoredClasses.length === 0 ? (
+          <div className="panel" style={{ textAlign: 'center', padding: '60px 20px', maxWidth: 640, margin: '30px auto' }}>
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: "var(--secondary)", border: "1px solid var(--border-focus, var(--border))", display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--sidebar-accent)', margin: '0 auto 16px' }}>
+              <Users size={28} />
+            </div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 999, background: '#fef3c7', color: '#92400e', fontSize: 12, fontWeight: 700, marginBottom: 12 }}>
+              <ShieldAlert size={14} /> Class Teacher Assignment Required
+            </div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px' }}>
+              No Class Mentor Assignments
+            </h2>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 20px' }}>
+              You are currently registered as a faculty teacher without an active Class Teacher assignment. Class Mentors oversee section attendance reports and result publications.
+            </p>
+            <div style={{ background: 'var(--card-subtle, #f8fafc)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 18px', textAlign: 'left', marginBottom: 20, fontSize: 13, color: 'var(--text-secondary)' }}>
+              <b style={{ color: 'var(--text)' }}>How to get assigned:</b>
+              <ol style={{ margin: '6px 0 0 18px', padding: 0, lineHeight: 1.6 }}>
+                <li>Contact your School Administrator to allocate your class and section.</li>
+                <li>In the Admin Portal: <b>Teachers &amp; Faculty Directory → Edit Faculty → Assign Class &amp; Section</b>.</li>
+                <li>Once saved by your administrator, click the refresh button below to unlock your workspace.</li>
+              </ol>
+            </div>
+            <button type="button" className="btn-secondary" onClick={loadMyClasses} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <RefreshCw size={15} /> Check For New Assignments
+            </button>
+          </div>
+        ) : (
+          <div className="as-reports-pane">
+            <AttendanceReports
+              embedded={true}
+              defaultClassId={selectedSection?.class_id}
+              defaultSectionId={selectedSection?.section_id}
+              defaultClassNumber={selectedSection?.class_number}
+              defaultSectionName={selectedSection?.section_name}
+            />
+          </div>
+        )
       )}
 
       {/* TAB 2: RESULT PUBLISH */}
       {activeTab === 'RESULTS' && (
-        <div className="as-results-pane">
+        mentoredClasses.length === 0 ? (
+          <div className="panel" style={{ textAlign: 'center', padding: '60px 20px', maxWidth: 640, margin: '30px auto' }}>
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: "var(--secondary)", border: "1px solid var(--border-focus, var(--border))", display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e11d48', margin: '0 auto 16px' }}>
+              <Award size={28} />
+            </div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 999, background: '#fef3c7', color: '#92400e', fontSize: 12, fontWeight: 700, marginBottom: 12 }}>
+              <ShieldAlert size={14} /> Class Mentor Privilege
+            </div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px' }}>
+              Result Publication Restricted
+            </h2>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 20px' }}>
+              Official result publication and student mark sheet generation is managed by designated <b>Class Mentors / Class Teachers</b> for their assigned sections.
+            </p>
+            <div style={{ background: 'var(--card-subtle, #f8fafc)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 18px', textAlign: 'left', marginBottom: 20, fontSize: 13, color: 'var(--text-secondary)' }}>
+              <b style={{ color: 'var(--text)' }}>Why this option is restricted:</b>
+              <p style={{ margin: '6px 0 8px 0', lineHeight: 1.5 }}>
+                To maintain institutional data integrity, only faculty designated as the primary mentor for a section may officially publish term exams and assessments to the Student Portal.
+              </p>
+              <b style={{ color: 'var(--text)' }}>Granting this access:</b>
+              <p style={{ margin: '6px 0 0 0', lineHeight: 1.5 }}>
+                Your School Administrator can designate you as a Class Mentor in the Admin Portal under <b>Teachers &amp; Faculty Directory → Edit Teacher → Assign Class &amp; Section</b>.
+              </p>
+            </div>
+            <button type="button" className="btn-secondary" onClick={loadMyClasses} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <RefreshCw size={15} /> Check For New Assignments
+            </button>
+          </div>
+        ) : (
+          <div className="as-results-pane">
           {/* Sub-view: Publishing / Editing Marks Form */}
           {isPublishingView ? (
             <div className="student-card rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
@@ -2191,6 +2229,7 @@ export function ClassMentorWorkspace() {
             </div>
           )}
         </div>
+        )
       )}
 
       {/* ── Modal for Graded Students & Marks Viewer ── */}
@@ -2352,9 +2391,19 @@ export function ClassMentorWorkspace() {
                                 {s.name.charAt(0)}
                               </div>
                               <div>
-                                <span className="font-bold text-slate-900 dark:text-white block text-sm">
-                                  {s.name}
-                                </span>
+                                <PersonProfileLink
+                                  kind="student"
+                                  id={s.student_id}
+                                  name={s.name}
+                                  person={s as any}
+                                  activeSession={activeSession}
+                                  mode="report"
+                                  variant="attendance"
+                                >
+                                  <span className="font-bold text-slate-900 dark:text-white block text-sm hover:underline cursor-pointer">
+                                    {s.name}
+                                  </span>
+                                </PersonProfileLink>
                                 <span className="text-[11px] text-slate-400">
                                   Adm: {s.admission_number || '—'}
                                 </span>

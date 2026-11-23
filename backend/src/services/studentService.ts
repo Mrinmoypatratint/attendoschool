@@ -2019,7 +2019,7 @@ export async function changeStudentPassword(userId: string, currentPass: string,
       const match = await bcrypt.compare(currentPass, q.rows[0].password_hash);
       if (!match) throw new Error('Current password is incorrect');
       const hash = await bcrypt.hash(newPass, 10);
-      await pool.query(`UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`, [hash, userId]);
+      await pool.query(`UPDATE users SET password_hash = $1, password_changed_at = NOW(), updated_at = NOW() WHERE id = $2`, [hash, userId]);
       return { success: true, message: 'Password updated successfully' };
     }
   } catch (err: any) {
