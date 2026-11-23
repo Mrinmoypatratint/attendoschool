@@ -152,7 +152,7 @@ router.get('/eligible-options', async (req: AuthRequest, res: Response) => {
     if (isPostgresConfigured) {
       const q = await pool.query(
         `SELECT c.id AS class_id, c.class_number,
-                COALESCE(c.label, CASE WHEN c.class_number = -1 THEN 'L-KG' WHEN c.class_number = 0 THEN 'U-KG' ELSE 'Class ' || c.class_number END) AS class_label,
+                COALESCE(c.label, CASE WHEN c.class_number = -1 THEN 'Class LKG' WHEN c.class_number = 0 THEN 'Class UKG' ELSE 'Class ' || c.class_number END) AS class_label,
                 sec.id AS section_id, sec.name AS section_name,
                 NULL::uuid AS subject_id, 'General' AS subject_name
          FROM classes c
@@ -711,7 +711,7 @@ router.get('/mentor-info', async (req: AuthRequest, res: Response) => {
       );
       mentoredClasses = (q.rows || []).map((row: any) => {
         const num = Number(row.class_number ?? 1);
-        const classLabel = num === -1 ? 'Class L-KG' : num === 0 ? 'Class U-KG' : `Class ${num}`;
+        const classLabel = num === -1 ? 'Class LKG' : num === 0 ? 'Class UKG' : `Class ${num}`;
         return {
           ...row,
           class_label: classLabel,
@@ -726,7 +726,7 @@ router.get('/mentor-info', async (req: AuthRequest, res: Response) => {
         const cls = demoClasses.find((c) => c.id === m.class_id);
         const sec = demoSections.find((s) => s.id === m.section_id);
         const num = cls?.class_number ?? 10;
-        const classLabel = num === -1 ? 'Class L-KG' : num === 0 ? 'Class U-KG' : `Class ${num}`;
+        const classLabel = num === -1 ? 'Class LKG' : num === 0 ? 'Class UKG' : `Class ${num}`;
         return {
           mentor_record_id: m.id,
           class_id: m.class_id,

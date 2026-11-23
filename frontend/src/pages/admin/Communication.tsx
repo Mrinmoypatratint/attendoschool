@@ -71,8 +71,8 @@ interface ReplyItem {
 }
 
 export const STANDARD_CLASS_LIST = [
-  { classNumber: -1, label: 'Class L KG' },
-  { classNumber: 0, label: 'Class U KG' },
+  { classNumber: -1, label: 'Class LKG' },
+  { classNumber: 0, label: 'Class UKG' },
   { classNumber: 1, label: 'Class 1' },
   { classNumber: 2, label: 'Class 2' },
   { classNumber: 3, label: 'Class 3' },
@@ -88,8 +88,8 @@ export const STANDARD_CLASS_LIST = [
 ];
 
 export function formatClassGrade(num?: number | null): string {
-  if (num === -1) return 'Class L KG';
-  if (num === 0) return 'Class U KG';
+  if (num === -1) return 'Class LKG';
+  if (num === 0) return 'Class UKG';
   if (num !== null && num !== undefined && !isNaN(Number(num))) return `Class ${num}`;
   return '';
 }
@@ -444,7 +444,7 @@ export default function Communication() {
     api.get('/sections').then(r => setSections(r.data || [])).catch(() => {});
   }, []);
 
-  // Map standard grade list L-KG → Class 12 to live DB class records
+  // Map standard grade list LKG → Class 12 to live DB class records
   const resolvedClasses = useMemo(() => {
     return STANDARD_CLASS_LIST.map(opt => {
       const found = classes.find(c => Number(c.class_number) === opt.classNumber || c.label === opt.label);
@@ -765,7 +765,7 @@ export default function Communication() {
       return;
     }
     if (editForm.audienceType === 'CLASS' && !editForm.classId) {
-      setEditError('Please select a target class (L-KG to Class 12).');
+      setEditError('Please select a target class (LKG to Class 12).');
       return;
     }
     setEditSaving(true);
@@ -811,7 +811,7 @@ export default function Communication() {
       return;
     }
     if (form.audienceType === 'CLASS' && !form.classId) {
-      alert('Please select a target class (L-KG to Class 12).');
+      alert('Please select a target class (LKG to Class 12).');
       return;
     }
     setPreviewError(null);
@@ -1204,7 +1204,7 @@ export default function Communication() {
                   </select>
                 </div>
 
-                {/* Class selector: L-KG to Class 12 */}
+                {/* Class selector: LKG to Class 12 */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 140px', minWidth: 0, maxWidth: '100%' }}>
                   <label style={{
                     fontSize: 11.5,
@@ -1234,7 +1234,7 @@ export default function Communication() {
                       color: "var(--text, var(--foreground))"
                     }}
                   >
-                    <option value="">{form.audienceType === 'CLASS' || form.audienceType === 'SECTION' ? 'Select Class (L-KG to 12)' : 'All Classes'}</option>
+                    <option value="">{form.audienceType === 'CLASS' || form.audienceType === 'SECTION' ? 'Select Class (LKG to 12)' : 'All Classes'}</option>
                     {resolvedClasses.map(c => (
                       <option key={c.id} value={c.id}>{c.label}</option>
                     ))}
@@ -1362,7 +1362,7 @@ export default function Communication() {
                   )
                 ) : form.audienceType === 'CLASS' ? (
                   <span style={{ color: "var(--warning)" }}>
-                    Please select a target <b>Class (L-KG to Class 12)</b>.
+                    Please select a target <b>Class (LKG to Class 12)</b>.
                   </span>
                 ) : form.audienceType === 'TEACHER' ? (
                   <span><b>Faculty Only</b> — Visible exclusively to verified teachers.</span>
@@ -2580,7 +2580,7 @@ export default function Communication() {
                       boxSizing: 'border-box'
                     }}
                   >
-                    <option value="">{editForm.audienceType === 'CLASS' || editForm.audienceType === 'SECTION' ? 'Select Class (L-KG to 12)' : 'All Classes'}</option>
+                    <option value="">{editForm.audienceType === 'CLASS' || editForm.audienceType === 'SECTION' ? 'Select Class (LKG to 12)' : 'All Classes'}</option>
                     {resolvedClasses.map(c => (
                       <option key={c.id} value={c.id}>{c.label}</option>
                     ))}

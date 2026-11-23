@@ -65,8 +65,8 @@ export async function listStudents(schoolId: string, search = '', activeOnly = t
   }
   const { rows } = await pool.query(
     `SELECT st.*, c.class_number, sec.name AS section_name,
-            CASE WHEN c.class_number = -1 THEN 'L-KG' 
-                 WHEN c.class_number = 0 THEN 'U-KG' 
+            CASE WHEN c.class_number = -1 THEN 'Class LKG' 
+                 WHEN c.class_number = 0 THEN 'Class UKG' 
                  WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number 
                  ELSE '' END AS class_name,
             ay.name AS session_name
@@ -86,8 +86,8 @@ export async function getStudentById(schoolId: string, id: string) {
   try {
     const q = await pool.query(
       `SELECT st.*, c.class_number, sec.name AS section_name,
-              CASE WHEN c.class_number = -1 THEN 'L-KG' 
-                   WHEN c.class_number = 0 THEN 'U-KG' 
+              CASE WHEN c.class_number = -1 THEN 'Class LKG' 
+                   WHEN c.class_number = 0 THEN 'Class UKG' 
                    WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number 
                    ELSE '' END AS class_name,
               ay.name AS session_name,
@@ -122,8 +122,8 @@ export async function getStudentById(schoolId: string, id: string) {
     try {
       const fallbackQ = await pool.query(
         `SELECT st.*, c.class_number, sec.name AS section_name,
-                CASE WHEN c.class_number = -1 THEN 'L-KG' 
-                     WHEN c.class_number = 0 THEN 'U-KG' 
+                CASE WHEN c.class_number = -1 THEN 'Class LKG' 
+                     WHEN c.class_number = 0 THEN 'Class UKG' 
                      WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number 
                      ELSE '' END AS class_name,
                 ay.name AS session_name
@@ -325,8 +325,8 @@ export async function listTeachers(schoolId: string, search = '', activeOnly = t
             (
               SELECT STRING_AGG(
                 CASE 
-                  WHEN cl.class_number = -1 THEN 'Class L-KG'
-                  WHEN cl.class_number = 0 THEN 'Class U-KG'
+                  WHEN cl.class_number = -1 THEN 'Class LKG'
+                  WHEN cl.class_number = 0 THEN 'Class UKG'
                   ELSE 'Class ' || cl.class_number
                 END || '-' || sec.name,
                 ', '

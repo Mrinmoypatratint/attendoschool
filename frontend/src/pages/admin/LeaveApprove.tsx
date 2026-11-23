@@ -69,8 +69,8 @@ function formatDate(d: string) {
 function getStudentClass(leave: LeaveRequest) {
   if (leave.class_number !== undefined && leave.class_number !== null && String(leave.class_number).trim() !== '') {
     const num = Number(leave.class_number);
-    if (num === -1) return 'Class L KG';
-    if (num === 0) return 'Class U KG';
+    if (num === -1) return 'Class LKG';
+    if (num === 0) return 'Class UKG';
     return `Class ${num}`;
   }
   if (leave.class_name) return leave.class_name;

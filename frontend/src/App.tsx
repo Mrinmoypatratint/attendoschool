@@ -5863,8 +5863,8 @@ function TeacherHome() {
 }
 
 const DEFAULT_CLASSES = [
-  { id: 'cls-lkg', class_number: -1, label: 'Class L KG' },
-  { id: 'cls-ukg', class_number: 0, label: 'Class U KG' },
+  { id: 'cls-lkg', class_number: -1, label: 'Class LKG' },
+  { id: 'cls-ukg', class_number: 0, label: 'Class UKG' },
   ...([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => ({ id: `cls-${n}`, class_number: n, label: `Class ${n}` })))
 ];
 
@@ -6830,7 +6830,7 @@ function Students() {
 
     const cls = classes.find(c => c.id === f.classId || String(c.class_number) === String(f.classId));
     const sec = sections.find(s => s.id === finalSectionId || s.name === finalSectionId);
-    const classLabel = cls ? (cls.label || (cls.class_number === -1 ? 'Class L KG' : cls.class_number === 0 ? 'Class U KG' : `Class ${cls.class_number}`)) : `Class ${f.classId}`;
+    const classLabel = cls ? (cls.label || (cls.class_number === -1 ? 'Class LKG' : cls.class_number === 0 ? 'Class UKG' : `Class ${cls.class_number}`)) : `Class ${f.classId}`;
     const secLabel = sec ? `Section ${sec.name}` : `Section ${finalSectionId || 'A'}`;
 
     const previewSections: PreviewSectionData[] = [
@@ -7234,8 +7234,8 @@ function Students() {
       const cNum = Number(r.class_number);
       const cId = String(r.class_id || '');
       let classLabel = 'Class ' + (cNum || 1);
-      if (cNum === -1 || /l.?kg/i.test(cId)) classLabel = 'L-KG';
-      else if (cNum === 0 || /u.?kg/i.test(cId)) classLabel = 'U-KG';
+      if (cNum === -1 || /l.?kg/i.test(cId)) classLabel = 'Class LKG';
+      else if (cNum === 0 || /u.?kg/i.test(cId)) classLabel = 'Class UKG';
       else if (!isNaN(cNum) && cNum > 0) classLabel = `Class ${cNum}`;
       else if (r.class_label || r.class_name) classLabel = String(r.class_label || r.class_name);
 
@@ -7336,7 +7336,7 @@ function Students() {
         "Admission Date": "2025-04-01",
         "Roll Number": "102",
         "Session": "2025-26",
-        "Class": "L-KG",
+        "Class": "LKG",
         "Section": "A",
         "Date of Birth": "2021-08-20",
         "Gender": "Female",
@@ -7360,7 +7360,7 @@ function Students() {
         "Admission Date": "2025-04-02",
         "Roll Number": "103",
         "Session": "2025-26",
-        "Class": "U-KG",
+        "Class": "UKG",
         "Section": "B",
         "Date of Birth": "2020-11-10",
         "Gender": "Male",
@@ -7467,11 +7467,11 @@ function Students() {
     }
 
     // Kindergarten string checks
-    if (/^l\.?kg$/i.test(val) || /^l-kg$/i.test(val) || /^lower\s*kg$/i.test(val)) {
-      return { valid: true, classNumber: -1, classId: 'cls-lkg', classLabel: 'L-KG' };
+    if (/^(class\s*)?(l\.?kg|l-kg|l\s*kg|lower\s*kg)$/i.test(val)) {
+      return { valid: true, classNumber: -1, classId: 'cls-lkg', classLabel: 'Class LKG' };
     }
-    if (/^u\.?kg$/i.test(val) || /^u-kg$/i.test(val) || /^upper\s*kg$/i.test(val)) {
-      return { valid: true, classNumber: 0, classId: 'cls-ukg', classLabel: 'U-KG' };
+    if (/^(class\s*)?(u\.?kg|u-kg|u\s*kg|upper\s*kg)$/i.test(val)) {
+      return { valid: true, classNumber: 0, classId: 'cls-ukg', classLabel: 'Class UKG' };
     }
 
     const clean = val.toLowerCase();
@@ -7508,8 +7508,8 @@ function Students() {
 
     // Numeric classNumber passed directly e.g. -1 (LKG) or 0 (UKG) or 1..12
     if (typeof rawVal === 'number') {
-      if (rawVal === -1) return { valid: true, classNumber: -1, classId: 'cls-lkg', classLabel: 'L-KG' };
-      if (rawVal === 0) return { valid: true, classNumber: 0, classId: 'cls-ukg', classLabel: 'U-KG' };
+      if (rawVal === -1) return { valid: true, classNumber: -1, classId: 'cls-lkg', classLabel: 'Class LKG' };
+      if (rawVal === 0) return { valid: true, classNumber: 0, classId: 'cls-ukg', classLabel: 'Class UKG' };
       if (rawVal >= 1 && rawVal <= 12) {
         return { valid: true, classNumber: rawVal, classId: `cls-${rawVal}`, classLabel: `Class ${rawVal}` };
       }
@@ -7618,7 +7618,7 @@ function Students() {
           const gender = formatGender(rawGender);
           const session = String(r['Session'] || r['Academic Session'] || importSession || '2025-26').trim();
 
-          // Class parsing: supports 'L-KG','U-KG','Class 1','1', Roman numerals (I-XII), etc.
+          // Class parsing: supports 'LKG','UKG','Class 1','1', Roman numerals (I-XII), etc.
           let excelClassVal: any = undefined;
           if (r && typeof r === 'object') {
             for (const k of Object.keys(r)) {
@@ -8382,7 +8382,7 @@ function Students() {
               style={{ padding: '7px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, minWidth: 110 }}
             >
               <option value="">All Classes</option>
-              {classes.map(c => <option key={c.id} value={c.id}>{c.label || (c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`)}</option>)}
+              {classes.map(c => <option key={c.id} value={c.id}>{c.label || (c.class_number === -1 ? 'Class LKG' : c.class_number === 0 ? 'Class UKG' : `Class ${c.class_number}`)}</option>)}
             </select>
             <select
               value={sectionFilter}
@@ -8657,8 +8657,8 @@ function Students() {
                     const cNum = Number(x.class_number);
                     const cId = String(x.class_id || '');
                     let classNameStr = 'Class ' + (cNum || 1);
-                    if (cNum === -1 || /l.?kg/i.test(cId)) classNameStr = 'L-KG';
-                    else if (cNum === 0 || /u.?kg/i.test(cId)) classNameStr = 'U-KG';
+                    if (cNum === -1 || /l.?kg/i.test(cId)) classNameStr = 'Class LKG';
+                    else if (cNum === 0 || /u.?kg/i.test(cId)) classNameStr = 'Class UKG';
                     else if (!isNaN(cNum) && cNum > 0) classNameStr = `Class ${cNum}`;
                     else {
                       const m = cId.match(/cls-(\d+)/);
@@ -9109,7 +9109,7 @@ function Students() {
                     }}
                   >
                     <option value="">Select Class</option>
-                    {classes.map(c => <option key={c.id} value={c.id}>{c.label || (c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`)}</option>)}
+                    {classes.map(c => <option key={c.id} value={c.id}>{c.label || (c.class_number === -1 ? 'Class LKG' : c.class_number === 0 ? 'Class UKG' : `Class ${c.class_number}`)}</option>)}
                   </select>
                 </label>
                 <label>
@@ -10869,8 +10869,8 @@ function Teachers() {
     if (allocs.length > 0) {
       return allocs.map(a => {
         let clsNum = a.class_number !== undefined && a.class_number !== null ? String(a.class_number).trim() : '';
-        if (clsNum === '-1') clsNum = 'Class L KG';
-        else if (clsNum === '0') clsNum = 'Class U KG';
+        if (clsNum === '-1') clsNum = 'Class LKG';
+        else if (clsNum === '0') clsNum = 'Class UKG';
         else if (clsNum && !clsNum.toLowerCase().startsWith('class')) clsNum = `Class ${clsNum}`;
         const sec = a.section_name ? `-${String(a.section_name).trim().toUpperCase()}` : '';
         const classSec = `${clsNum}${sec}`.trim();
@@ -10881,8 +10881,8 @@ function Teachers() {
     // 2. Check direct class_name / section_name on teacher profile (e.g. from Excel import)
     if (teacherObj?.class_name || teacherObj?.class) {
       let rawCls = String(teacherObj.class_name || teacherObj.class || '').trim();
-      if (rawCls === '-1') rawCls = 'Class L KG';
-      else if (rawCls === '0') rawCls = 'Class U KG';
+      if (rawCls === '-1') rawCls = 'Class LKG';
+      else if (rawCls === '0') rawCls = 'Class UKG';
       else if (rawCls && !rawCls.toLowerCase().startsWith('class')) rawCls = `Class ${rawCls}`;
       const sec = (teacherObj.section_name || teacherObj.section) ? `-${String(teacherObj.section_name || teacherObj.section).trim().toUpperCase()}` : '';
       return convertRomanClassToDigital(`${rawCls}${sec}`);
@@ -10894,8 +10894,8 @@ function Teachers() {
 
     if (teacherObj?.assignedClass !== undefined && teacherObj?.assignedClass !== null) {
       let rawCls = String(teacherObj.assignedClass).trim();
-      if (rawCls === '-1') rawCls = 'Class L KG';
-      else if (rawCls === '0') rawCls = 'Class U KG';
+      if (rawCls === '-1') rawCls = 'Class LKG';
+      else if (rawCls === '0') rawCls = 'Class UKG';
       else if (rawCls && !rawCls.toLowerCase().startsWith('class')) rawCls = `Class ${rawCls}`;
       const sec = teacherObj.assignedSection ? `-${String(teacherObj.assignedSection).trim().toUpperCase()}` : '';
       return convertRomanClassToDigital(`${rawCls}${sec}`);
@@ -11025,7 +11025,7 @@ function Teachers() {
 
     if (!matchedMentor) return null;
 
-    const cDisplay = matchedMentor.class_number === -1 ? 'Class L-KG' : matchedMentor.class_number === 0 ? 'Class U-KG' : `Class ${matchedMentor.class_number}`;
+    const cDisplay = matchedMentor.class_number === -1 ? 'Class LKG' : matchedMentor.class_number === 0 ? 'Class UKG' : `Class ${matchedMentor.class_number}`;
     const sDisplay = matchedMentor.section_name || sectionIdOrName;
     const tDisplay = matchedMentor.teacher_name || 'Another Teacher';
     const empDisplay = matchedMentor.employee_id ? ` [${matchedMentor.employee_id}]` : '';
@@ -11049,7 +11049,7 @@ function Teachers() {
     const rawCls = fullTeacher.class_name || fullTeacher.class || (directAssign ? directAssign.class_number : '');
     const rawSec = fullTeacher.section_name || fullTeacher.section || (directAssign ? directAssign.section_name : '');
     const matchingClass = allocClasses.find(c => {
-      const cName = c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`;
+      const cName = c.class_number === -1 ? 'Class LKG' : c.class_number === 0 ? 'Class UKG' : `Class ${c.class_number}`;
       const rawNum = String(c.class_number);
       const target = String(rawCls || '').replace(/^Class\s*/i, '').trim();
       return String(c.id) === String(fullTeacher.class_id) || cName.toLowerCase() === String(rawCls || '').toLowerCase() || rawNum === target;
@@ -11057,7 +11057,7 @@ function Teachers() {
     const matchingSec = allocSections.find(s => {
       return String(s.id) === String(fullTeacher.section_id) || (String(s.name).trim().toUpperCase() === String(rawSec || '').trim().toUpperCase() && (!matchingClass || String(s.class_id) === String(matchingClass.id)));
     });
-    const cVal = rawCls || (matchingClass ? (matchingClass.class_number === -1 ? 'Class L KG' : matchingClass.class_number === 0 ? 'Class U KG' : `Class ${matchingClass.class_number}`) : '');
+    const cVal = rawCls || (matchingClass ? (matchingClass.class_number === -1 ? 'Class LKG' : matchingClass.class_number === 0 ? 'Class UKG' : `Class ${matchingClass.class_number}`) : '');
     const sVal = rawSec || (matchingSec ? matchingSec.name : '');
     const nameParts = (fullTeacher.name || '').trim().split(/\s+/);
     let fName = fullTeacher.first_name || fullTeacher.firstName || '';
@@ -12449,7 +12449,7 @@ function Teachers() {
                       const rawCls = x.class_name || x.class || (directAssign ? directAssign.class_number : '');
                       const rawSec = x.section_name || x.section || (directAssign ? directAssign.section_name : '');
                       const matchingClass = allocClasses.find(c => {
-                        const cName = c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`;
+                        const cName = c.class_number === -1 ? 'Class LKG' : c.class_number === 0 ? 'Class UKG' : `Class ${c.class_number}`;
                         const rawNum = String(c.class_number);
                         const target = String(rawCls || '').replace(/^Class\s*/i, '').trim();
                         return String(c.id) === String(x.class_id) || cName.toLowerCase() === String(rawCls || '').toLowerCase() || rawNum === target;
@@ -12457,7 +12457,7 @@ function Teachers() {
                       const matchingSec = allocSections.find(s => {
                         return String(s.id) === String(x.section_id) || (String(s.name).trim().toUpperCase() === String(rawSec || '').trim().toUpperCase() && (!matchingClass || String(s.class_id) === String(matchingClass.id)));
                       });
-                      const cVal = rawCls || (matchingClass ? (matchingClass.class_number === -1 ? 'Class L KG' : matchingClass.class_number === 0 ? 'Class U KG' : `Class ${matchingClass.class_number}`) : '');
+                      const cVal = rawCls || (matchingClass ? (matchingClass.class_number === -1 ? 'Class LKG' : matchingClass.class_number === 0 ? 'Class UKG' : `Class ${matchingClass.class_number}`) : '');
                       const sVal = rawSec || (matchingSec ? matchingSec.name : '');
                       const nameParts = (x.name || '').trim().split(/\s+/);
                       let fName = x.first_name || x.firstName || '';
@@ -13004,7 +13004,7 @@ function Teachers() {
                   <select
                     id="teacher-form-class"
                     value={f.class_id || (allocClasses.find(c => {
-                      const cName = c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`;
+                      const cName = c.class_number === -1 ? 'Class LKG' : c.class_number === 0 ? 'Class UKG' : `Class ${c.class_number}`;
                       return cName.toLowerCase() === String(f.class_name || f.class || '').toLowerCase() || String(c.class_number) === String(f.class_name || f.class || '').replace(/^Class\s*/i, '').trim();
                     })?.id) || ''}
                     onChange={e => {
@@ -13012,8 +13012,8 @@ function Teachers() {
                       const clsObj = allocClasses.find(c => String(c.id) === String(selectedClassId));
                       let clsName = '';
                       if (clsObj) {
-                        if (clsObj.class_number === -1) clsName = 'Class L KG';
-                        else if (clsObj.class_number === 0) clsName = 'Class U KG';
+                        if (clsObj.class_number === -1) clsName = 'Class LKG';
+                        else if (clsObj.class_number === 0) clsName = 'Class UKG';
                         else clsName = `Class ${clsObj.class_number}`;
                       } else if (selectedClassId) {
                         clsName = selectedClassId.startsWith('Class') ? selectedClassId : `Class ${selectedClassId}`;
@@ -13033,15 +13033,15 @@ function Teachers() {
                     <option value="">Select Class (Optional)</option>
                     {allocClasses.length > 0 ? (
                       allocClasses.map(c => {
-                        const label = c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`;
+                        const label = c.class_number === -1 ? 'Class LKG' : c.class_number === 0 ? 'Class UKG' : `Class ${c.class_number}`;
                         return (
                           <option key={c.id} value={c.id}>{label}</option>
                         );
                       })
                     ) : (
                       <>
-                        <option value="Class L KG">Class L KG</option>
-                        <option value="Class U KG">Class U KG</option>
+                        <option value="Class LKG">Class LKG</option>
+                        <option value="Class UKG">Class UKG</option>
                         {Array.from({ length: 12 }, (_, i) => (
                           <option key={i + 1} value={`Class ${i + 1}`}>Class {i + 1}</option>
                         ))}
@@ -13908,10 +13908,10 @@ function Teachers() {
 function formatClassTitle(classNumber: any, label?: string): string {
   const num = Number(classNumber);
   if (num === -1 || classNumber === '-1' || (typeof classNumber === 'string' && /l.?kg/i.test(classNumber)) || (typeof label === 'string' && /l.?kg/i.test(label))) {
-    return 'Class L KG';
+    return 'Class LKG';
   }
   if (num === 0 || classNumber === '0' || (typeof classNumber === 'string' && /u.?kg/i.test(classNumber)) || (typeof label === 'string' && /u.?kg/i.test(label))) {
-    return 'Class U KG';
+    return 'Class UKG';
   }
   if (!isNaN(num) && num > 0) {
     return `Class ${num}`;
@@ -16710,8 +16710,8 @@ function Attendance() {
                   color: "var(--text, var(--foreground))"
                 }}>
                   {currentClass
-                    ? (currentClass.class_number === -1 || currentClass.class_number === '-1' ? 'Class L KG' :
-                       currentClass.class_number === 0 || currentClass.class_number === '0' ? 'Class U KG' :
+                    ? (currentClass.class_number === -1 || currentClass.class_number === '-1' ? 'Class LKG' :
+                       currentClass.class_number === 0 || currentClass.class_number === '0' ? 'Class UKG' :
                        `Class ${currentClass.class_number ?? currentClass.classNumber ?? ''}`)
                     : (authorizedSections[0] ? `Class ${authorizedSections[0].classNumber}` : 'Class 2')}
                 </span>
@@ -16774,8 +16774,8 @@ function Attendance() {
                     })
                     .map(c => {
                       const num = c.class_number ?? c.classNumber;
-                      const label = num === -1 || num === '-1' || /l.?kg/i.test(String(c.label || c.id || c.name)) ? 'Class L KG' :
-                        num === 0 || num === '0' || /u.?kg/i.test(String(c.label || c.id || c.name)) ? 'Class U KG' :
+                      const label = num === -1 || num === '-1' || /l.?kg/i.test(String(c.label || c.id || c.name)) ? 'Class LKG' :
+                        num === 0 || num === '0' || /u.?kg/i.test(String(c.label || c.id || c.name)) ? 'Class UKG' :
                           num !== undefined && num !== null && !isNaN(Number(num)) ? `Class ${num}` :
                             c.name || `Class ${c.id}`;
                       return (
@@ -18057,8 +18057,8 @@ function formatAttendanceHistoryDate(raw: any): string {
 
 function formatHistoryClassLabel(classNum: any): string {
   const n = Number(classNum);
-  if (n === -1 || classNum === '-1') return 'Class L KG';
-  if (n === 0 || classNum === '0') return 'Class U KG';
+  if (n === -1 || classNum === '-1') return 'Class LKG';
+  if (n === 0 || classNum === '0') return 'Class UKG';
   if (classNum !== undefined && classNum !== null && classNum !== '') return `Class ${classNum}`;
   return 'Class';
 }

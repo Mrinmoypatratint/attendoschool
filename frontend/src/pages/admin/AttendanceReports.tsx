@@ -97,12 +97,12 @@ export default function AttendanceReports({
   const displayClassLabel = useMemo(() => {
     if (defaultClassNumber !== undefined && defaultClassNumber !== null) {
       const n = Number(defaultClassNumber);
-      return n === -1 ? 'Class L KG' : n === 0 ? 'Class U KG' : `Class ${n}`;
+      return n === -1 ? 'Class LKG' : n === 0 ? 'Class UKG' : `Class ${n}`;
     }
     const found = classes.find(c => c.id === selectedClass);
     if (found) {
       const num = found.class_number !== undefined ? Number(found.class_number) : (found.classNumber !== undefined ? Number(found.classNumber) : null);
-      return num === -1 ? 'Class L KG' : num === 0 ? 'Class U KG' : (found.label || (num !== null ? `Class ${num}` : found.id));
+      return num === -1 ? 'Class LKG' : num === 0 ? 'Class UKG' : (found.label || (num !== null ? `Class ${num}` : found.id));
     }
     return selectedClass !== 'ALL' ? `Class ${selectedClass}` : 'Assigned Class';
   }, [defaultClassNumber, classes, selectedClass]);
@@ -181,8 +181,8 @@ export default function AttendanceReports({
         }
 
         const rawCls = Array.isArray(clsRes.data) && clsRes.data.length > 0 ? clsRes.data : [
-          { id: 'cls-lkg', class_number: -1, label: 'Class L KG' },
-          { id: 'cls-ukg', class_number: 0, label: 'Class U KG' },
+          { id: 'cls-lkg', class_number: -1, label: 'Class LKG' },
+          { id: 'cls-ukg', class_number: 0, label: 'Class UKG' },
           ...Array.from({ length: 12 }, (_, i) => ({ id: `cls-${i + 1}`, class_number: i + 1, label: `Class ${i + 1}` }))
         ];
         const clsList = [...rawCls].sort((a: any, b: any) => {
@@ -1071,8 +1071,8 @@ export default function AttendanceReports({
               <option value="ALL">All Classes</option>
               {classes.map(c => {
                 const num = c.class_number !== undefined ? Number(c.class_number) : (c.classNumber !== undefined ? Number(c.classNumber) : null);
-                const label = num === -1 || /l.?kg/i.test(String(c.label || c.id || '')) ? 'Class L KG' :
-                  num === 0 || /u.?kg/i.test(String(c.label || c.id || '')) ? 'Class U KG' :
+                const label = num === -1 || /l.?kg/i.test(String(c.label || c.id || '')) ? 'Class LKG' :
+                  num === 0 || /u.?kg/i.test(String(c.label || c.id || '')) ? 'Class UKG' :
                   (c.label || (num !== null ? `Class ${num}` : c.id));
                 return <option key={c.id} value={c.id}>{label}</option>;
               })}

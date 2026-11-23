@@ -200,8 +200,8 @@ export async function studentAttendanceReport(
            c.class_number,
            COALESCE(
              CASE 
-               WHEN c.class_number = -1 THEN 'Class L-KG'
-               WHEN c.class_number = 0 THEN 'Class U-KG'
+               WHEN c.class_number = -1 THEN 'Class LKG'
+               WHEN c.class_number = 0 THEN 'Class UKG'
                WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number::text
                ELSE NULL
              END,
@@ -304,9 +304,9 @@ export async function studentAttendanceReport(
   schoolStudents.forEach(s => {
     if (studentId && s.id !== studentId) return;
     const rawCls = s.class_number !== undefined && s.class_number !== null
-      ? (s.class_number === -1 ? 'L-KG' : s.class_number === 0 ? 'U-KG' : `Class ${s.class_number}`)
+      ? (s.class_number === -1 ? 'Class LKG' : s.class_number === 0 ? 'Class UKG' : `Class ${s.class_number}`)
       : (s.className || s.class_name || (s.class_id ? `Class ${String(s.class_id).replace(/^cls-/, '')}` : 'Class 10'));
-    const formattedCls = String(rawCls).startsWith('Class ') || rawCls === 'L-KG' || rawCls === 'U-KG'
+    const formattedCls = String(rawCls).startsWith('Class ') || rawCls === 'LKG' || rawCls === 'UKG'
       ? String(rawCls)
       : `Class ${String(rawCls).replace(/^cls-/, '')}`;
     studentMap.set(s.id, {
@@ -345,7 +345,7 @@ export async function studentAttendanceReport(
 
     if (!studentMap.has(stId)) {
       const rawCls = sess?.className || sess?.classNumber || sess?.class_number || '10';
-      const formattedCls = (rawCls === -1 || rawCls === '-1') ? 'L-KG' : (rawCls === 0 || rawCls === '0') ? 'U-KG' : (String(rawCls).startsWith('Class ') ? String(rawCls) : `Class ${String(rawCls).replace(/^cls-/, '')}`);
+      const formattedCls = (rawCls === -1 || rawCls === '-1') ? 'Class LKG' : (rawCls === 0 || rawCls === '0') ? 'Class UKG' : (String(rawCls).startsWith('Class ') ? String(rawCls) : `Class ${String(rawCls).replace(/^cls-/, '')}`);
       studentMap.set(stId, {
         student_id: stId,
         student_name: r.studentName || r.student_name || 'Student',

@@ -599,8 +599,8 @@ export async function getIncompleteStudents(
       c.id AS class_id,
       c.class_number,
       CASE
-        WHEN c.class_number = -1 THEN 'Class L-KG'
-        WHEN c.class_number = 0 THEN 'Class U-KG'
+        WHEN c.class_number = -1 THEN 'Class LKG'
+        WHEN c.class_number = 0 THEN 'Class UKG'
         WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number
         ELSE ''
       END AS class_name,

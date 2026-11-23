@@ -424,7 +424,7 @@ export async function schoolOverview(
         const tot = (p + a + le) > 0 ? (p + a + le) : (r.total || 0);
         const pct = tot > 0 ? Number(((p / tot) * 100).toFixed(1)) : 0;
         const cNum = Number(r.class_number);
-        const cName = cNum === -1 ? 'Class L-KG' : cNum === 0 ? 'Class U-KG' : `Class ${r.class_number}`;
+        const cName = cNum === -1 ? 'Class LKG' : cNum === 0 ? 'Class UKG' : `Class ${r.class_number}`;
         return {
           classId: r.class_id,
           classNumber: r.class_number,
@@ -444,7 +444,7 @@ export async function schoolOverview(
             ? Number(((st.present_days / st.total_sessions) * 100).toFixed(1))
             : 0;
           const cNum = st.class_number !== null && st.class_number !== undefined ? Number(st.class_number) : null;
-          const cName = cNum === -1 ? 'Class L-KG' : cNum === 0 ? 'Class U-KG' : (cNum !== null ? `Class ${cNum}` : '—');
+          const cName = cNum === -1 ? 'Class LKG' : cNum === 0 ? 'Class UKG' : (cNum !== null ? `Class ${cNum}` : '—');
           return {
             id: st.id,
             name: st.name,
@@ -464,7 +464,7 @@ export async function schoolOverview(
 
       classes = (classes.length > 0 ? classes : classesRes.rows || []).map((c: any) => {
         const num = Number(c.class_number);
-        const lbl = num === -1 ? 'Class L-KG' : num === 0 ? 'Class U-KG' : `Class ${c.class_number}`;
+        const lbl = num === -1 ? 'Class LKG' : num === 0 ? 'Class UKG' : `Class ${c.class_number}`;
         return {
           ...c,
           name: lbl,
@@ -734,8 +734,8 @@ export async function getExportStudentsData(
        c.class_number,
        COALESCE(
          CASE 
-           WHEN c.class_number = -1 THEN 'Class L-KG'
-           WHEN c.class_number = 0 THEN 'Class U-KG'
+           WHEN c.class_number = -1 THEN 'Class LKG'
+           WHEN c.class_number = 0 THEN 'Class UKG'
            WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number::text
            ELSE NULL
          END,

@@ -367,7 +367,7 @@ export default function PeopleManagement() {
 
     if (!matchedMentor) return null;
 
-    const cDisplay = matchedMentor.class_number === -1 ? 'Class L-KG' : matchedMentor.class_number === 0 ? 'Class U-KG' : `Class ${matchedMentor.class_number}`;
+    const cDisplay = matchedMentor.class_number === -1 ? 'Class LKG' : matchedMentor.class_number === 0 ? 'Class UKG' : `Class ${matchedMentor.class_number}`;
     const sDisplay = matchedMentor.section_name || sectionIdOrName;
     const tDisplay = matchedMentor.teacher_name || 'Another Teacher';
     const empDisplay = matchedMentor.employee_id ? ` [${matchedMentor.employee_id}]` : '';
@@ -1140,7 +1140,7 @@ export default function PeopleManagement() {
                       </td>
                       <td>
                         <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
-                          {r.class_number === -1 ? 'L-KG' : r.class_number === 0 ? 'U-KG' : (r.class_number || String(r.class_name || '1').replace(/^class\s*/i, ''))}
+                          {r.class_number === -1 ? 'LKG' : r.class_number === 0 ? 'UKG' : (r.class_number || String(r.class_name || '1').replace(/^class\s*/i, ''))}
                         </span>
                       </td>
                       <td>
@@ -1756,8 +1756,8 @@ export default function PeopleManagement() {
                         const clsObj = allocClasses.find(c => String(c.id) === String(selectedClassId));
                         let clsName = '';
                         if (clsObj) {
-                          if (clsObj.class_number === -1) clsName = 'Class L KG';
-                          else if (clsObj.class_number === 0) clsName = 'Class U KG';
+                          if (clsObj.class_number === -1) clsName = 'Class LKG';
+                          else if (clsObj.class_number === 0) clsName = 'Class UKG';
                           else clsName = `Class ${clsObj.class_number}`;
                         } else if (selectedClassId) {
                           clsName = selectedClassId.startsWith('Class') ? selectedClassId : `Class ${selectedClassId}`;
@@ -1777,15 +1777,15 @@ export default function PeopleManagement() {
                       <option value="">Select Class (Optional)</option>
                       {allocClasses.length > 0 ? (
                         allocClasses.map(c => {
-                          const label = c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`;
+                          const label = c.class_number === -1 ? 'Class LKG' : c.class_number === 0 ? 'Class UKG' : `Class ${c.class_number}`;
                           return (
                             <option key={c.id} value={c.id}>{label}</option>
                           );
                         })
                       ) : (
                         <>
-                          <option value="Class L KG">Class L KG</option>
-                          <option value="Class U KG">Class U KG</option>
+                          <option value="Class LKG">Class LKG</option>
+                          <option value="Class UKG">Class UKG</option>
                           {Array.from({ length: 12 }, (_, i) => (
                             <option key={i + 1} value={`Class ${i + 1}`}>Class {i + 1}</option>
                           ))}

@@ -36,12 +36,12 @@ export async function syncStudentToFirestore(student: any): Promise<boolean> {
       admission_number: student.admission_number || student.admissionNumber || (student.id ? `ADM-${student.id}` : `ADM-${id}`),
       className: (() => {
         const cId = String(student.class_id || student.classId || '');
-        if (/l.?kg/i.test(cId)) return 'L-KG';
-        if (/u.?kg/i.test(cId)) return 'U-KG';
+        if (/l.?kg/i.test(cId)) return 'Class LKG';
+        if (/u.?kg/i.test(cId)) return 'Class UKG';
         const m = cId.match(/cls-(\d+)/);
         if (m) return `Class ${m[1]}`;
         if (student.class_number !== undefined && student.class_number !== null) {
-          return student.class_number === -1 ? 'L-KG' : student.class_number === 0 ? 'U-KG' : `Class ${student.class_number}`;
+          return student.class_number === -1 ? 'Class LKG' : student.class_number === 0 ? 'Class UKG' : `Class ${student.class_number}`;
         }
         return String(student.className || '');
       })(),

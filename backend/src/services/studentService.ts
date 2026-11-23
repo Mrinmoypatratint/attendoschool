@@ -341,7 +341,7 @@ export async function getStudentProfile(schoolId: string, userId: string, studen
     rollNumber: st.roll_number || '',
     admissionNumber: st.admission_number || '',
     className: st.class_number !== undefined && st.class_number !== null 
-      ? (st.class_number === -1 ? 'L-KG' : st.class_number === 0 ? 'U-KG' : `Class ${st.class_number}`) 
+      ? (st.class_number === -1 ? 'Class LKG' : st.class_number === 0 ? 'Class UKG' : `Class ${st.class_number}`) 
       : '',
     classNumber: st.class_number ?? 0,
     sectionName: st.section_name || '',
@@ -492,7 +492,7 @@ export async function updateStudentPhoto(schoolId: string, userId: string, photo
 
   // Formatting student details for reviewer
   const classStr = st.class_number !== undefined && st.class_number !== null
-    ? (st.class_number === -1 ? 'L-KG' : st.class_number === 0 ? 'U-KG' : `Class ${st.class_number}`)
+    ? (st.class_number === -1 ? 'Class LKG' : st.class_number === 0 ? 'Class UKG' : `Class ${st.class_number}`)
     : 'Class';
   const detail = `${classStr}${st.section_name ? ` - ${st.section_name}` : ''}`.trim();
   const identifier = `Roll: ${st.roll_number || '—'} · Adm: ${st.admission_number || '—'}`;
@@ -1022,7 +1022,7 @@ export async function getStudentDashboard(schoolId: string, userId: string, stud
       id: st.id,
       name: st.name || '',
       className: st.class_number !== undefined && st.class_number !== null 
-        ? (st.class_number === -1 ? 'L-KG' : st.class_number === 0 ? 'U-KG' : `Class ${st.class_number}`) 
+        ? (st.class_number === -1 ? 'Class LKG' : st.class_number === 0 ? 'Class UKG' : `Class ${st.class_number}`) 
         : '',
       sectionName: st.section_name || '',
       rollNumber: st.roll_number || '',
