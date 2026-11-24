@@ -78,14 +78,73 @@
 }
 @media (prefers-reduced-motion: reduce) { .login-control { transition: none; } }
 /* Reset the app shell's global semantic-element rules on this standalone page. */
-.as-simple-page .login-card { height: auto; flex: none; overflow: hidden; }
+.as-simple-page {
+  color-scheme: light !important;
+}
+.as-simple-page .login-card {
+  height: auto;
+  flex: none;
+  overflow: hidden;
+  background: #ffffff !important;
+  color: #141414 !important;
+}
 .as-simple-page .login-art { display: block; width: auto; height: auto; min-height: 0; position: relative; inset: auto; transform: none; border: 0; z-index: auto; transition: none; }
 .as-simple-page .login-heading { display: block; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
-.as-simple-page .login-control input { border: 0 !important; background: transparent !important; border-radius: 18px !important; color: #303033 !important; font-size: 17px !important; }
-.as-simple-page .login-field > label { color: #141414; }
+.as-simple-page .login-form-panel { background: #ffffff !important; color: #141414 !important; }
+.as-simple-page .login-heading h1 { color: #51030d !important; font-size: 44px !important; }
+.as-simple-page .login-heading p { color: #5d5e63 !important; }
+.as-simple-page .login-field > label { color: #141414 !important; }
+.as-simple-page .login-control {
+  background: #ffffff !important;
+  border: 2px solid #d7d7d9 !important;
+  color: #5a5b5d !important;
+}
+.as-simple-page .login-control:focus-within {
+  border-color: #9d0a29 !important;
+  box-shadow: 0 0 0 3px #9d0a2914 !important;
+}
+.as-simple-page .login-control input {
+  border: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border-radius: 18px !important;
+  color: #303033 !important;
+  font-size: 17px !important;
+}
+.as-simple-page .login-control input::placeholder {
+  color: #77777a !important;
+  opacity: 1 !important;
+}
+.as-simple-page .login-role-control {
+  background: #fbecef !important;
+  border-color: #a10a29 !important;
+  color: #6d081b !important;
+}
+.as-simple-page .login-role-control select {
+  color: #6d081b !important;
+  background: transparent !important;
+}
+
+/* Prevent browser autofill (Chrome, Edge, Safari) from tinting inputs dark or slate */
+.as-simple-page input:-webkit-autofill,
+.as-simple-page input:-webkit-autofill:hover,
+.as-simple-page input:-webkit-autofill:focus,
+.as-simple-page input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #303033 !important;
+  caret-color: #303033 !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+}
+
+/* Ensure modal overlays on login page are light-mode */
+.as-simple-page .modal {
+  background: #ffffff !important;
+  color: #141414 !important;
+}
+
 @media (max-width: 760px) { .as-simple-page .login-art { min-height: 225px; } }
 @media (max-width: 380px) { .as-simple-page .login-control input { font-size: 16px !important; } }
-.as-simple-page .login-heading h1 { font-size: 44px !important; }
 @media (max-width: 760px) { .as-simple-page .login-heading h1 { font-size: 46px !important; } }
 
 

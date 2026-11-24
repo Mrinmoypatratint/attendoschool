@@ -269,16 +269,38 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
       {/* ─── SIDEBAR ─── */}
       <aside id="primary-navigation" className={`sa-sidebar ${sidebarCollapsed ? 'sa-sidebar-collapsed' : ''} ${mobileDrawerOpen ? 'sa-sidebar-mobile-open mobile-open' : ''}`}>
         {/* Brand Header */}
-        <div className="sa-sidebar-brand" onClick={() => nav('/super-admin')}>
-          <div className="sa-brand-logo-wrap">
-            <img src="/attendo-school-logo.png" alt="AttendoSchool" className="sa-brand-logo" />
-          </div>
-          {!sidebarCollapsed && (
-            <div className="sa-brand-text">
-              <span className="sa-brand-name">AttendoSchool</span>
-              <span className="sa-brand-badge">Super Admin</span>
+        <div className="sa-sidebar-brand">
+          <div
+            className="sa-brand-interactive"
+            onClick={() => nav('/super-admin')}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', userSelect: 'none', minWidth: 0 }}
+          >
+            <div className="sa-brand-logo-wrap school-crest">
+              <img src="/attendo-school-logo.png" alt="AttendoSchool" className="sa-brand-logo" />
             </div>
-          )}
+            {!sidebarCollapsed && (
+              <div className="sa-brand-text school-info">
+                <span className="sa-brand-name">AttendoSchool</span>
+                <span className="sa-brand-badge">Super Admin</span>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            className="sidebar-collapse-toggle-btn sa-sidebar-collapse-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSidebarCollapsed(prev => {
+                const next = !prev;
+                localStorage.setItem('attendo_super_nav_collapsed', String(next));
+                return next;
+              });
+            }}
+            aria-label={sidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"}
+            title={sidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"}
+          >
+            {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={16} />}
+          </button>
           <button
             type="button"
             className="sa-sidebar-mobile-close-btn"

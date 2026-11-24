@@ -455,16 +455,9 @@ export default function SmtpLogs() {
       {/* ── Page Header ── */}
       <div className="flex justify-between items-start flex-wrap gap-4 mb-6">
         <div>
-          <div className="flex items-center gap-2.5 mb-1">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-              <Mail size={22} />
-            </div>
-            <div>
-              <h1 className="m-0 text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                SMTP Email Activity Logs
-              </h1>
-            </div>
-          </div>
+          <h1 className="m-0 text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            SMTP Email Activity Logs
+          </h1>
         </div>
 
         {/* Action Controls */}

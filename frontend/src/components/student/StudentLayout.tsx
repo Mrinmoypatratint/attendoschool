@@ -471,7 +471,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
 
       {/* Left Sidebar */}
       <aside id="primary-navigation" className={`student-sidebar ${sidebarCollapsed ? 'student-sidebar-collapsed' : ''} ${mobileNavOpen ? 'mobile-open' : ''}`}>
-        <div className="student-sidebar-brand" style={{ padding: '16px 16px 14px' }}>
+        <div className="student-sidebar-brand">
           <div 
             className="student-logo-wrap" 
             onClick={() => { 
@@ -481,13 +481,10 @@ export function StudentLayout({ children }: StudentLayoutProps) {
             title={targetWebsiteUrl ? `Visit Official School Website: ${targetWebsiteUrl}` : displaySchoolName}
             style={{ 
               cursor: 'pointer', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 12, 
-              minWidth: 0 
+              userSelect: 'none'
             }}
           >
-            <div className="school-crest" style={{ width: 44, height: 44, borderRadius: 4, background: '#ffffff', border: '1px solid rgba(234, 234, 236, 0.85)', boxShadow: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, flexShrink: 0, overflow: 'hidden' }}>
+            <div className="school-crest">
               <img
                 src={displaySchoolPhoto}
                 alt={displaySchoolName}
@@ -501,14 +498,16 @@ export function StudentLayout({ children }: StudentLayoutProps) {
                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
               />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-              <span className="school-name student-sidebar-brand-name" style={{ fontSize: 15, fontWeight: 800, color: 'var(--text, #1c1f2e)', letterSpacing: '-0.01em', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displaySchoolName}</span>
-              <span className="school-meta" style={{ fontSize: 12, color: 'var(--text-secondary, #696e79)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, whiteSpace: 'nowrap' }}>
-                Code: {displaySchoolCode} · Affiliated
-              </span>
-            </div>
+            {!sidebarCollapsed && (
+              <div className="school-info student-school-info" style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                <span className="school-name student-sidebar-brand-name" style={{ fontSize: 15, fontWeight: 800, color: 'var(--text, #1c1f2e)', letterSpacing: '-0.01em', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displaySchoolName}</span>
+                <span className="school-meta" style={{ fontSize: 12, color: 'var(--text-secondary, #696e79)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, whiteSpace: 'nowrap' }}>
+                  Code: {displaySchoolCode} · Affiliated
+                </span>
+              </div>
+            )}
           </div>
-                    <button
+          <button
             type="button"
             className="sidebar-collapse-toggle-btn student-sidebar-collapse-btn"
             onClick={(e) => {
@@ -522,7 +521,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
             aria-label={sidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"}
             title={sidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"}
           >
-            {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={16} />}
           </button>
           <button 
             type="button" 

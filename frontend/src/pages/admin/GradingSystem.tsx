@@ -653,27 +653,9 @@ export default function GradingSystem() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 12,
-                backgroundColor: 'rgba(225, 29, 72, 0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#e11d48'
-              }}
-            >
-              <Award size={26} />
-            </div>
-            <div>
-              <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text-primary, #0f172a)' }}>
-                Grading System & Examination Evaluation
-              </h1>
-            </div>
-          </div>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text-primary, #0f172a)' }}>
+            Grading System & Examination Evaluation
+          </h1>
         </div>
 
         {/* Primary Action Buttons */}
