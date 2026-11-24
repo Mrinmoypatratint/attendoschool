@@ -1108,7 +1108,7 @@ export async function getAnnouncementReplies(schoolId: string, announcementId: s
       `SELECT r.*, 
               u.name AS author_name, u.role AS author_role, u.email AS author_email,
               s.name AS student_name, s.roll_number AS student_roll,
-              CASE WHEN c.class_number = -1 THEN 'Class L KG' WHEN c.class_number = 0 THEN 'Class U KG' WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number ELSE NULL END AS class_name,
+              CASE WHEN c.class_number = -1 THEN 'Class LKG' WHEN c.class_number = 0 THEN 'Class UKG' WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number ELSE NULL END AS class_name,
               sec.name AS section_name
        FROM notification_replies r
        LEFT JOIN users u ON u.id = r.user_id
@@ -1150,7 +1150,7 @@ export async function listAllRepliesGrouped(
     let sql = `SELECT r.*, a.title AS announcement_title, a.priority AS announcement_priority,
               u.name AS author_name, u.role AS author_role, u.email AS author_email,
               s.name AS student_name, s.roll_number AS student_roll,
-              CASE WHEN c.class_number = -1 THEN 'Class L KG' WHEN c.class_number = 0 THEN 'Class U KG' WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number ELSE NULL END AS class_name,
+              CASE WHEN c.class_number = -1 THEN 'Class LKG' WHEN c.class_number = 0 THEN 'Class UKG' WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number ELSE NULL END AS class_name,
               sec.name AS section_name
        FROM notification_replies r
        JOIN announcements a ON a.id = r.announcement_id

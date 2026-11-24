@@ -58,8 +58,8 @@ export function formatPublishTime(dateStr?: string | null): string {
 function getAudienceBadgeText(item: Announcement): string {
   let clsLabel = '';
   if (item.class_number !== undefined && item.class_number !== null) {
-    if (Number(item.class_number) === -1) clsLabel = 'Class L KG';
-    else if (Number(item.class_number) === 0) clsLabel = 'Class U KG';
+    if (Number(item.class_number) === -1) clsLabel = 'Class LKG';
+    else if (Number(item.class_number) === 0) clsLabel = 'Class UKG';
     else clsLabel = `Class ${item.class_number}`;
   }
 

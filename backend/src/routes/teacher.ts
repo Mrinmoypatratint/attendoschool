@@ -3421,7 +3421,7 @@ r.get('/profile', ...teacher, async (req: AuthRequest, res) => {
         [userId, schoolId]
       );
       mentorQ.rows.forEach(row => {
-        const clsLabel = row.class_number === -1 ? 'L-KG' : row.class_number === 0 ? 'U-KG' : `Class ${row.class_number}`;
+        const clsLabel = row.class_number === -1 ? 'Class LKG' : row.class_number === 0 ? 'Class UKG' : `Class ${row.class_number}`;
         const clsSec = `${clsLabel} - Section ${row.section_name} (Class Mentor)`;
         const plainClsSec = `${clsLabel} - Section ${row.section_name}`;
         if (!assignedClasses.some(c => c.startsWith(plainClsSec))) {

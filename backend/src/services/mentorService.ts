@@ -167,7 +167,7 @@ export async function assignClassMentor(
         const classNum = cRes.rows[0]?.class_number;
         const secName = sRes.rows[0]?.name;
         if (classNum !== undefined && secName) {
-          const formattedCls = classNum === -1 ? 'Class L-KG' : classNum === 0 ? 'Class U-KG' : `Class ${classNum}`;
+          const formattedCls = classNum === -1 ? 'Class LKG' : classNum === 0 ? 'Class UKG' : `Class ${classNum}`;
           // Clear this class-section from any previous teacher's profile
           await client.query(
             `UPDATE teacher_profiles
@@ -256,7 +256,7 @@ export async function removeClassMentor(
         const classNum = cRes.rows[0]?.class_number;
         const secName = sRes.rows[0]?.name;
         if (classNum !== undefined && secName) {
-          const formattedCls = classNum === -1 ? 'Class L-KG' : classNum === 0 ? 'Class U-KG' : `Class ${classNum}`;
+          const formattedCls = classNum === -1 ? 'Class LKG' : classNum === 0 ? 'Class UKG' : `Class ${classNum}`;
           await pool.query(
             `UPDATE teacher_profiles
              SET class_name = NULL, section_name = NULL

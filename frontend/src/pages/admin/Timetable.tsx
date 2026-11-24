@@ -15,8 +15,8 @@ const DAYS = [
 ];
 
 const STANDARD_FALLBACK_CLASSES = [
-  { id: 'cls-lkg', class_number: -1, label: 'Class L KG' },
-  { id: 'cls-ukg', class_number: 0, label: 'Class U KG' },
+  { id: 'cls-lkg', class_number: -1, label: 'Class LKG' },
+  { id: 'cls-ukg', class_number: 0, label: 'Class UKG' },
   ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => ({ id: `cls-${n}`, class_number: n, label: `Class ${n}` }))
 ];
 
@@ -260,9 +260,9 @@ export default function Timetable() {
   const selClassObj = classes.find(c => c.id === selClassId);
   const selClassNum = selClassObj?.class_number ?? selClassObj?.classNumber ?? mentorAuthForSel?.classNumber ?? mentorAuthForSel?.class_number;
   const selClassName = (selClassNum === -1 || /l.?kg/i.test(String(selClassObj?.label || selClassObj?.id || '')))
-    ? 'Class L KG'
+    ? 'Class LKG'
     : (selClassNum === 0 || /u.?kg/i.test(String(selClassObj?.label || selClassObj?.id || '')))
-    ? 'Class U KG'
+    ? 'Class UKG'
     : (selClassObj?.label || (selClassNum !== undefined && selClassNum !== null ? `Class ${selClassNum}` : (selClassObj?.name || (mentorAuthForSel ? `Class ${mentorAuthForSel.classNumber}` : 'Class'))));
   const displayClassLabel = selClassName.toLowerCase().startsWith('class') ? selClassName : `Class ${selClassName}`;
 
@@ -420,9 +420,9 @@ export default function Timetable() {
 
     let cLabel = '';
     if (cNum === -1 || cNum === '-1' || /l.?kg/i.test(String(cNum))) {
-      cLabel = 'Class L KG';
+      cLabel = 'Class LKG';
     } else if (cNum === 0 || cNum === '0' || /u.?kg/i.test(String(cNum))) {
-      cLabel = 'Class U KG';
+      cLabel = 'Class UKG';
     } else if (cNum !== undefined && cNum !== null && cNum !== '') {
       cLabel = String(cNum).toLowerCase().startsWith('class') ? String(cNum) : `Class ${cNum}`;
     } else if (e.class_name) {
@@ -725,9 +725,9 @@ export default function Timetable() {
             {classes.map(c => {
               const cNum = c.class_number ?? c.classNumber;
               const label = cNum === -1 || cNum === '-1' || /l.?kg/i.test(String(c.label || c.id || c.name))
-                ? 'Class L KG'
+                ? 'Class LKG'
                 : cNum === 0 || cNum === '0' || /u.?kg/i.test(String(c.label || c.id || c.name))
-                ? 'Class U KG'
+                ? 'Class UKG'
                 : (c.label || (cNum !== undefined ? `Class ${cNum}` : c.name || 'Class'));
               return (
                 <option key={c.id} value={c.id}>
@@ -1242,9 +1242,9 @@ export default function Timetable() {
                     {classes.map(c => {
                       const cNum = c.class_number ?? c.classNumber;
                       const label = cNum === -1 || cNum === '-1' || /l.?kg/i.test(String(c.label || c.id || c.name))
-                        ? 'Class L KG'
+                        ? 'Class LKG'
                         : cNum === 0 || cNum === '0' || /u.?kg/i.test(String(c.label || c.id || c.name))
-                        ? 'Class U KG'
+                        ? 'Class UKG'
                         : (c.label || (cNum !== undefined ? `Class ${cNum}` : c.name || 'Class'));
                       return <option key={c.id} value={c.id}>{label}</option>;
                     })}

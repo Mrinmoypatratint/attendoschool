@@ -92,8 +92,8 @@ export interface ReplyItem {
 }
 
 export const STANDARD_CLASS_LIST = [
-  { classNumber: -1, label: 'Class L KG' },
-  { classNumber: 0, label: 'Class U KG' },
+  { classNumber: -1, label: 'Class LKG' },
+  { classNumber: 0, label: 'Class UKG' },
   { classNumber: 1, label: 'Class 1' },
   { classNumber: 2, label: 'Class 2' },
   { classNumber: 3, label: 'Class 3' },
@@ -109,8 +109,8 @@ export const STANDARD_CLASS_LIST = [
 ];
 
 export function formatClassGrade(num?: number | null): string {
-  if (num === -1) return 'Class L KG';
-  if (num === 0) return 'Class U KG';
+  if (num === -1) return 'Class LKG';
+  if (num === 0) return 'Class UKG';
   if (num !== null && num !== undefined && !isNaN(Number(num))) return `Class ${num}`;
   return '';
 }
@@ -345,7 +345,7 @@ export function TeacherAnnouncements() {
     api.get('/sections').then(r => setSections(r.data || [])).catch(() => {});
   }, []);
 
-  // Map standard grade list Class L KG to Class 12 to live DB class records
+  // Map standard grade list Class LKG to Class 12 to live DB class records
   const resolvedClasses = useMemo(() => {
     const stdMapped = STANDARD_CLASS_LIST.map(opt => {
       const found = classes.find(c => {
@@ -367,7 +367,7 @@ export function TeacherAnnouncements() {
       const already = stdMapped.some(m => (m.realId && m.realId === c.id) || (c.class_number !== undefined && Number(c.class_number) === m.classNumber));
       if (!already) {
         const cNum = c.class_number !== undefined && c.class_number !== null ? Number(c.class_number) : NaN;
-        const lbl = c.label || c.name || (!isNaN(cNum) ? (cNum === -1 ? 'Class L KG' : cNum === 0 ? 'Class U KG' : `Class ${cNum}`) : 'Custom Class');
+        const lbl = c.label || c.name || (!isNaN(cNum) ? (cNum === -1 ? 'Class LKG' : cNum === 0 ? 'Class UKG' : `Class ${cNum}`) : 'Custom Class');
         extras.push({
           id: c.id,
           classNumber: !isNaN(cNum) ? cNum : 999,
