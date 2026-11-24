@@ -891,7 +891,7 @@ aside {
   position: sticky;
   top: 0;
   height: 100vh;
-  overflow-y: auto;
+  overflow: hidden;
   border-right: 1px solid var(--border);
   z-index: 20;
   transition: all 0.2s ease;
@@ -899,6 +899,11 @@ aside {
 }
 
 .sidebar-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--sidebar, var(--bg-sidebar, #ffffff));
+  flex-shrink: 0;
   padding: 18px 16px 16px;
   border-bottom: 1px solid var(--border);
   display: flex;
@@ -909,7 +914,7 @@ aside {
 .school-crest {
   width: 44px;
   height: 44px;
-  border-radius: 4px;
+  border-radius: 8px;
   background: #ffffff;
   border: 1px solid rgba(234, 234, 236, 0.85);
   box-shadow: none;
@@ -1018,6 +1023,9 @@ aside {
   flex-direction: column;
   gap: 2px;
   flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
 }
 
 .sidebar-section-label {
@@ -5753,8 +5761,8 @@ header {
   animation: fadeIn 0.3s ease-out;
 }
 
-/* ─── Desktop Collapsed Sidebar (Only active on desktop >= 1181px) ─── */
-@media (min-width: 1181px) {
+/* ─── Desktop Collapsed Sidebar (Only active on desktop >= 1025px) ─── */
+@media (min-width: 1025px) {
   aside.sidebar-collapsed {
     width: 72px;
   }
@@ -6272,12 +6280,13 @@ header {
   position: sticky;
   top: 0;
   height: 100vh;
+  overflow: hidden;
   flex-shrink: 0;
   z-index: 40;
   transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s ease-in-out;
 }
 
-@media (min-width: 1181px) {
+@media (min-width: 1025px) {
   .student-sidebar.student-sidebar-collapsed {
     width: 72px;
   }
@@ -6306,6 +6315,11 @@ header {
 }
 
 .student-sidebar-brand {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--sidebar, var(--surface, #ffffff));
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -10843,7 +10857,8 @@ header {
   flex-direction: column;
   justify-content: center;
   align-items: stretch;
-  background-color: #121212;
+  background: radial-gradient(ellipse at 52% 4%, #9b5359 0, transparent 48%), radial-gradient(ellipse at 48% 100%, #a85d62 0, transparent 48%), #640414 !important;
+  color-scheme: light !important;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   overflow-x: hidden;
   box-sizing: border-box;
@@ -14411,13 +14426,13 @@ header {
 }
 
 /* Ensure mobile-only menu buttons are completely hidden on desktop */
-@media (min-width: 1181px) {
+@media (min-width: 1025px) {
   .mobile-only-menu-btn {
     display: none !important;
   }
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1024px) {
   .mobile-only-menu-btn {
     display: inline-flex !important;
   }
@@ -14426,43 +14441,174 @@ header {
   }
 }
 
-/* Collapsed Header Layout on Desktop */
-@media (min-width: 1181px) {
-  aside.sidebar-collapsed .sidebar-header,
-  .student-sidebar.student-sidebar-collapsed .student-sidebar-brand,
-  .sa-sidebar.sa-sidebar-collapsed .sa-sidebar-brand {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 14px 6px 12px !important;
-    gap: 8px !important;
-  }
+/* ─── Collapsed Header Layout on Desktop Across All Portals (Admin, Teacher, Student, SuperAdmin) ─── */
+aside.sidebar-collapsed,
+.student-sidebar.student-sidebar-collapsed,
+.sa-sidebar.sa-sidebar-collapsed {
+  width: 72px !important;
+  min-width: 72px !important;
+  max-width: 72px !important;
+  overflow: hidden !important;
+  scrollbar-width: none !important;
+}
 
-  aside.sidebar-collapsed .sidebar-brand-interactive,
-  .student-sidebar.student-sidebar-collapsed .student-logo-wrap {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
+aside.sidebar-collapsed::-webkit-scrollbar,
+.student-sidebar.student-sidebar-collapsed::-webkit-scrollbar,
+.sa-sidebar.sa-sidebar-collapsed::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+}
 
-  aside.sidebar-collapsed .school-crest,
-  .student-sidebar.student-sidebar-collapsed .school-crest {
-    width: 38px !important;
-    height: 38px !important;
-    border-radius: 4px !important;
-  }
+aside.sidebar-collapsed .sidebar-header,
+.student-sidebar.student-sidebar-collapsed .student-sidebar-brand,
+.sa-sidebar.sa-sidebar-collapsed .sa-sidebar-brand {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 50 !important;
+  background: var(--sidebar, #ffffff) !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px 0 14px !important;
+  gap: 10px !important;
+  width: 100% !important;
+  min-height: unset !important;
+  height: auto !important;
+  max-height: none !important;
+  box-sizing: border-box !important;
+  border-bottom: 1px solid var(--border, #eaeaec) !important;
+  overflow: visible !important;
+}
 
-  aside.sidebar-collapsed .sidebar-collapse-toggle-btn,
-  .student-sidebar.student-sidebar-collapsed .sidebar-collapse-toggle-btn,
-  .sa-sidebar.sa-sidebar-collapsed .sidebar-collapse-toggle-btn {
-    display: inline-flex !important;
-    margin: 0 auto !important;
-    width: 26px !important;
-    height: 26px !important;
-  }
+aside.sidebar-collapsed .sidebar-nav-container,
+.student-sidebar.student-sidebar-collapsed .student-nav-menu,
+.sa-sidebar.sa-sidebar-collapsed .sa-sidebar-nav-scroll {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: none !important;
+  min-height: 0 !important;
+}
+
+aside.sidebar-collapsed .sidebar-nav-container::-webkit-scrollbar,
+.student-sidebar.student-sidebar-collapsed .student-nav-menu::-webkit-scrollbar,
+.sa-sidebar.sa-sidebar-collapsed .sa-sidebar-nav-scroll::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+}
+
+aside.sidebar-collapsed .sidebar-brand-interactive,
+.student-sidebar.student-sidebar-collapsed .student-logo-wrap,
+.sa-sidebar.sa-sidebar-collapsed .sa-brand-interactive {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  width: 100% !important;
+}
+
+aside.sidebar-collapsed .school-crest,
+.student-sidebar.student-sidebar-collapsed .school-crest,
+.sa-sidebar.sa-sidebar-collapsed .sa-brand-logo-wrap {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  border: 1px solid var(--border, #eaeaec) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 4px !important;
+  margin: 0 auto !important;
+  flex-shrink: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+aside.sidebar-collapsed .school-crest img,
+.student-sidebar.student-sidebar-collapsed .school-crest img,
+.sa-sidebar.sa-sidebar-collapsed .sa-brand-logo-wrap img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+}
+
+aside.sidebar-collapsed .sidebar-collapse-toggle-btn,
+.student-sidebar.student-sidebar-collapsed .sidebar-collapse-toggle-btn,
+.sa-sidebar.sa-sidebar-collapsed .sidebar-collapse-toggle-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  border-radius: 8px !important;
+  background: var(--surface, #ffffff) !important;
+  border: 1px solid var(--border, #eaeaec) !important;
+  color: var(--text-secondary, #475569) !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+  cursor: pointer !important;
+  box-sizing: border-box !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+aside.sidebar-collapsed .sidebar-collapse-toggle-btn:hover,
+.student-sidebar.student-sidebar-collapsed .sidebar-collapse-toggle-btn:hover,
+.sa-sidebar.sa-sidebar-collapsed .sidebar-collapse-toggle-btn:hover {
+  background: var(--bg-hover, #f8fafc) !important;
+  border-color: var(--primary, #e11d55) !important;
+  color: var(--primary, #e11d55) !important;
+}
+
+aside.sidebar-collapsed .sidebar-collapse-toggle-btn svg,
+.student-sidebar.student-sidebar-collapsed .sidebar-collapse-toggle-btn svg,
+.sa-sidebar.sa-sidebar-collapsed .sidebar-collapse-toggle-btn svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+/* Dark mode overrides for collapsed sidebar header elements */
+[data-theme="dark"] aside.sidebar-collapsed .sidebar-header,
+[data-theme="dark"] .student-sidebar.student-sidebar-collapsed .student-sidebar-brand,
+[data-theme="dark"] .sa-sidebar.sa-sidebar-collapsed .sa-sidebar-brand,
+[data-theme="dark"] .sidebar-header,
+[data-theme="dark"] .student-sidebar-brand,
+[data-theme="dark"] .sa-sidebar-brand {
+  background: var(--sidebar, #181818) !important;
+  border-bottom-color: #282c3f !important;
+}
+
+[data-theme="dark"] aside.sidebar-collapsed .school-crest,
+[data-theme="dark"] .student-sidebar.student-sidebar-collapsed .school-crest,
+[data-theme="dark"] .sa-sidebar.sa-sidebar-collapsed .sa-brand-logo-wrap {
+  background: #1c1f2e !important;
+  border-color: #282c3f !important;
+}
+
+[data-theme="dark"] aside.sidebar-collapsed .sidebar-collapse-toggle-btn,
+[data-theme="dark"] .student-sidebar.student-sidebar-collapsed .sidebar-collapse-toggle-btn,
+[data-theme="dark"] .sa-sidebar.sa-sidebar-collapsed .sidebar-collapse-toggle-btn {
+  background: #282c3f !important;
+  border-color: #3e4152 !important;
+  color: #94969f !important;
+}
+
+[data-theme="dark"] aside.sidebar-collapsed .sidebar-collapse-toggle-btn:hover,
+[data-theme="dark"] .student-sidebar.student-sidebar-collapsed .sidebar-collapse-toggle-btn:hover,
+[data-theme="dark"] .sa-sidebar.sa-sidebar-collapsed .sidebar-collapse-toggle-btn:hover {
+  background: #3e4152 !important;
+  border-color: #ef5a85 !important;
+  color: #ef5a85 !important;
 }
 
 

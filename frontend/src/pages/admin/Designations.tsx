@@ -611,15 +611,10 @@ export default function Designations() {
       </Link>
       {/* Page Header */}
       <div className="flex items-start justify-between flex-wrap gap-4 mb-6">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
-            <Award size={26} />
-          </div>
-          <div>
-            <h1 className="m-0 text-xl font-bold text-slate-900 dark:text-white">
-              Staff Designations
-            </h1>
-          </div>
+        <div>
+          <h1 className="m-0 text-xl font-bold text-slate-900 dark:text-white">
+            Staff Designations
+          </h1>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">

@@ -444,6 +444,26 @@ function Login() {
     }
   }, [user, nav]);
 
+  // Ensure Login page is ALWAYS in light mode — dark mode does not apply to login
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.documentElement.classList.remove('dark');
+    document.documentElement.style.colorScheme = 'light';
+
+    return () => {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.documentElement.classList.add('dark');
+        document.documentElement.style.colorScheme = 'dark';
+      } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+        document.documentElement.classList.remove('dark');
+        document.documentElement.style.colorScheme = 'light';
+      }
+    };
+  }, []);
+
   const [institutes, setInstitutes] = useState<Institute[]>([]);
   const [institutesLoading, setInstitutesLoading] = useState(false);
   const [institutesError, setInstitutesError] = useState(false);
@@ -720,7 +740,7 @@ function Login() {
   }
 
   return (
-    <div className="as-simple-page">
+    <div className="as-simple-page" data-theme="light">
       <main className="login-card">
         <div className="login-art" role="img" aria-label="AttendoSchool - Smart Attendance System">
           <div className="login-brand">
@@ -2733,13 +2753,15 @@ function Layout({ children }: { children: React.ReactNode }) {
               style={{ width: '100%', height: '100%', objectFit: 'contain' }}
             />
           </div>
-          <div className="school-info">
-            <span className="school-name">{user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : currentSchoolName}</span>
-            <span className="school-meta">
-              {user.role === 'SUPER_ADMIN' ? 'Platform Administration' : `Code: ${currentSchoolCode} · Affiliated`}
-            </span>
-            <span className="role-tag">{String(user.role).replace(/_/g, ' ')}</span>
-          </div>
+          {!sidebarCollapsed && (
+            <div className="school-info">
+              <span className="school-name">{user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : currentSchoolName}</span>
+              <span className="school-meta">
+                {user.role === 'SUPER_ADMIN' ? 'Platform Administration' : `Code: ${currentSchoolCode} · Affiliated`}
+              </span>
+              <span className="role-tag">{String(user.role).replace(/_/g, ' ')}</span>
+            </div>
+          )}
         </div>
         <button
           type="button"
@@ -2751,7 +2773,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           aria-label={sidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"}
           title={sidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"}
         >
-          {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={16} />}
         </button>
         <button
           type="button"

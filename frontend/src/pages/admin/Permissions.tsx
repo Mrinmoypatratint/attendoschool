@@ -343,18 +343,13 @@ export default function Permissions() {
     <div className="feature-page w-full max-w-none m-0 pb-16" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 60px 0' }}>
       {/* ─── Institutional Header ─── */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
-            <ShieldCheck size={26} />
-          </div>
-          <div>
-            <h1 className="m-0 text-xl font-bold text-slate-900 dark:text-white">
-              Permissions & Roles
-            </h1>
-            <p className="m-0 mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Institutional role definitions, granular privileges, and multi-tenant access control policy.
-            </p>
-          </div>
+        <div>
+          <h1 className="m-0 text-xl font-bold text-slate-900 dark:text-white">
+            Permissions & Roles
+          </h1>
+          <p className="m-0 mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Institutional role definitions, granular privileges, and multi-tenant access control policy.
+          </p>
         </div>
 
         <div className="flex items-center gap-2.5">
@@ -372,9 +367,8 @@ export default function Permissions() {
             type="button"
             onClick={handleSeedDefaults}
             disabled={seeding || loading}
-            className={`inline-flex items-center gap-2 px-4.5 py-2 rounded-lg border-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors ${
-              seeding ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
-            }`}
+            className={`inline-flex items-center gap-2 px-4.5 py-2 rounded-lg border-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors ${seeding ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
+              }`}
           >
             <Sparkles size={15} />
             <span>{seeding ? 'Seeding...' : 'Seed Defaults'}</span>
@@ -385,11 +379,10 @@ export default function Permissions() {
       {/* ─── Feedback Alert ─── */}
       {feedback && (
         <div
-          className={`flex items-center justify-between gap-3 p-3 px-4.5 rounded-xl mb-5 text-sm font-medium border ${
-            feedback.type === 'success'
+          className={`flex items-center justify-between gap-3 p-3 px-4.5 rounded-xl mb-5 text-sm font-medium border ${feedback.type === 'success'
               ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
               : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300'
-          }`}
+            }`}
         >
           <div className="flex items-center gap-2.5">
             {feedback.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
@@ -965,5 +958,7 @@ export default function Permissions() {
         </div>
       )}
     </div>
+  );
+}
   );
 }
