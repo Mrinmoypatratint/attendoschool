@@ -960,5 +960,3 @@ export default function Permissions() {
     </div>
   );
 }
-  );
-}
